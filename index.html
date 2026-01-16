@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>威伊士超级联赛 | VES League - 官方网站</title>
+    <meta name="description" content="威伊士超级联赛 (VES League) 官方网站，提供最新的积分榜、射手榜、球员数据及球队资讯。">
+    <link rel="icon" type="image/png" href="Image/Team Logo/ves-league-logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+    <nav class="main-nav">
+    <div class="container">
+        <div class="logo">
+            <a href="index.html">
+                <img src="Image/Team Logo/威超联赛横版.png" class="website-logo" alt="威伊士超级联赛 VSL">
+            </a>
+        </div>
+        
+        <div class="menu-toggle" id="mobile-menu">
+            <i class="fas fa-bars"></i>
+        </div>
+
+        <ul class="nav-links" id="nav-list">
+    <li><a href="#standings"><i class="fas fa-table"></i> <span>积分榜</span></a></li>
+    <li><a href="match.html"><i class="fas fa-futbol"></i> <span>比赛</span></a></li> 
+    <li><a href="#stats"><i class="fas fa-chart-bar"></i> <span>统计榜</span></a></li>
+    <li><a href="#teams"><i class="fas fa-users"></i> <span>球队</span></a></li>
+</ul>
+    </div>
+</nav>
+
+    <header class="hero-header">
+        <div class="overlay">
+            <img src="Image/Team Logo/威超联赛横版.png" class="website-index-logo" alt="威伊士超级联赛 VSL">
+            <p class="subtitle">虚拟世界顶级足球联赛 | 独家球员数据管理</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="standings" class="content-section">
+            <div class="section-header">
+                <h2 class="section-title"><i class="fas fa-trophy"></i> 联赛积分榜</h2>
+                <div class="category-tabs">
+                    <button class="cat-btn active" id="btn-seasons">历届赛季</button>
+                    <button class="cat-btn" id="btn-history" data-season="history">历史总榜</button>
+                </div>
+            </div>
+
+            <div class="season-list-container">
+                <div class="season-list" id="seasonSelector">
+                    <span class="season-item active" data-season="18">18赛季</span>
+                    <span class="season-item" data-season="17">17赛季</span>
+                    <span class="season-item" data-season="16">16赛季</span>
+                    <span class="season-item" data-season="15">15赛季</span>
+                    <span class="season-item" data-season="14">14赛季</span>
+                    <span class="season-item" data-season="13">13赛季</span>
+                    <span class="season-item" data-season="12">12赛季</span>
+                    <span class="season-item" data-season="11">11赛季</span>
+                    <span class="season-item" data-season="10">10赛季</span>
+                    <span class="season-item" data-season="09">09赛季</span>
+                    <span class="season-item" data-season="08">08赛季</span>
+                    <span class="season-item" data-season="07">07赛季</span>
+                    <span class="season-item" data-season="06">06赛季</span>
+                    <span class="season-item" data-season="05">05赛季</span>
+                    <span class="season-item" data-season="04">04赛季</span>
+                    <span class="season-item" data-season="03">03赛季</span>
+                    <span class="season-item" data-season="02">02赛季</span>
+                    <span class="season-item" data-season="01">01赛季</span>
+                </div>
+            </div>
+
+            <h3 class="display-season-title" id="standingsTitle">第 18 赛季</h3>
+
+            <div class="table-responsive">
+                <table class="league-table">
+                    <thead>
+                        <tr>
+                            <th>排名</th>
+                            <th>球队</th>
+                            <th>赛</th>
+                            <th>胜</th>
+                            <th>平</th>
+                            <th>负</th>
+                            <th>进/失</th>
+                            <th>净胜</th>
+                            <th>积分</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standingsBody">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="stats" class="content-section">
+            <h2 class="section-title"><i class="fas fa-chart-line"></i> 个人数据统计</h2>
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="showTab('goals')">射手榜</button>
+                <button class="tab-btn" onclick="showTab('assists')">助攻榜</button>
+                <button class="tab-btn" onclick="showTab('cards')">纪律榜</button>
+            </div>
+
+            <div id="goals" class="tab-content active">
+                <div class="table-responsive">
+                    <table class="stats-table">
+                        <thead>
+                            <tr><th>排名</th><th>球员</th><th>球队</th><th>场次</th><th>进球</th></tr>
+                        </thead>
+                        <tbody id="goalsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="assists" class="tab-content">
+                <div class="table-responsive">
+                    <table class="stats-table">
+                        <thead>
+                            <tr><th>排名</th><th>球员</th><th>球队</th><th>场次</th><th>助攻</th></tr>
+                        </thead>
+                        <tbody id="assistsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="cards" class="tab-content">
+                <div class="discipline-container">
+                    <div class="table-responsive card-table">
+                        <h4><span class="card-icon yellow"></span> 黄牌榜</h4>
+                        <table id="yellow-cards">
+                            <thead><tr><th>排名</th><th>球员</th><th>球队</th><th>数量</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="table-responsive card-table">
+                        <h4><span class="card-icon red"></span> 红牌榜</h4>
+                        <table id="red-cards">
+                            <thead><tr><th>排名</th><th>球员</th><th>球队</th><th>数量</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="teams" class="content-section">
+            <h2 class="section-title" id="teamsTitle">18赛季参赛球队</h2>
+            <div class="teams-grid">
+                <div class="team-card">
+                    <div class="team-logo-wrap">
+                        <img src="Image/Team Logo/AlphaKnights.png" alt="阿尔法骑士">
+                    </div>
+                    <div class="team-info">
+                        <h3>阿尔法骑士</h3>
+                        <p>主教练：特罗萨姆</p>
+                        <div class="team-rating">综合评级：81</div>
+                        <a href="team-detail.html?team=alpha-knights" class="view-btn">查看详情</a>
+                    </div>
+                </div>
+                </div>
+        </section>
+    </main>
+
+    <footer class="main-footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>© 2025 - 2026 VES League. 保留所有权利。</p>
+                <p class="footer-meta">数据更新于：2026-01-02</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="index.js"></script>
+</body>
+</html>

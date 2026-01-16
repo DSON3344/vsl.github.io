@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200">
+    <title>球队详情 | VES League</title>
+    <link rel="icon" type="image/png" href="Image/Team Logo/ves-league-logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="detail.css">
+</head>
+
+<body>
+
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="logo">
+                <a href="index.html"><img src="Image/Team Logo/威超联赛横版.png" class="website-logo" alt="VSL"></a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#honors"><i class="fas fa-trophy"></i> 荣誉墙</a></li>
+                <li><a href="#lineup"><i class="fas fa-project-diagram"></i> 阵型可视化</a></li>
+                <li><a href="#players"><i class="fas fa-list-ul"></i> 名单列表</a></li>
+                <li><a href="#coach"><i class="fas fa-user-tie"></i> 执教团队</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div id="playerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="team-header">
+            <div class="team-logo"><img id="dynamic-logo" src=""></div>
+            <div class="team-info">
+                <h1 id="dynamic-team-name">加载中...</h1>
+                <div class="badge" id="currentLineupText">阵容加载中...</div>
+                <div class="badge" id="dynamic-style">风格：--</div>
+                <div class="badge" id="dynamic-stadium">主场：--</div>
+            </div>
+        </div>
+
+        <h2 id="honors">球队荣誉墙</h2>
+        <div class="honors-grid" id="teamHonors"></div>
+
+        <div class="stats-layout">
+            <div>
+                <h2>综合实力</h2>
+                <div class="stats-grid" id="strengthStats"></div>
+            </div>
+            <div>
+                <h2>实时状态</h2>
+                <div class="stats-grid" id="teamStatusGrid"></div>
+            </div>
+        </div>
+
+        <div class="section-header-flex" id="lineup">
+            <h2>阵型可视化</h2>
+            <div class="lineup-controls">
+                <button class="lineup-btn active" id="btn-LEAGUE" onclick="switchLineup('LEAGUE')">联赛主力阵</button>
+                <button class="lineup-btn" id="btn-CUP" onclick="switchLineup('CUP')">杯赛轮换阵</button>
+            </div>
+        </div>
+
+        <div class="pitch" id="pitchContainer">
+            <div class="halfway-line"></div>
+            <div class="center-circle"></div>
+            <div class="center-spot"></div>
+            <div class="penalty top"></div>
+            <div class="goal-area top"></div>
+            <div class="penalty bottom"></div>
+            <div class="goal-area bottom"></div>
+        </div>
+
+        <div class="section-header-flex" id="players">
+            <h2>名单列表</h2>
+            <div class="table-controls">
+                <select class="positionFilter" onchange="applyFilter()">
+                    <option value="all">显示全部位置</option>
+                    <option value="GK">门将</option>
+                    <option value="DF">后卫</option>
+                    <option value="MF">中场</option>
+                    <option value="FW">前锋</option>
+                </select>
+            </div>
+        </div>
+
+        <h3>首发名单 (Starting XI)</h3>
+        <div class="table-wrapper">
+            <table class="player-table" id="mainPlayerTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 0)">#</th>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 1)">位置</th>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 2)">国籍</th>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 3)">姓名</th>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 4)">评分</th>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 5)">身高</th>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 6)">体重</th>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 7)">年龄</th>
+                        <th colspan="3">生涯总计</th>
+                        <th colspan="3">本队数据</th>
+                        <th rowspan="2" onclick="sortByColumn('mainPlayerTable', 14)">身价</th>
+                    </tr>
+                    <tr>
+                        <th onclick="sortByColumn('mainPlayerTable', 8)">出场</th>
+                        <th onclick="sortByColumn('mainPlayerTable', 9)">进球</th>
+                        <th onclick="sortByColumn('mainPlayerTable', 10)">助攻</th>
+                        <th onclick="sortByColumn('mainPlayerTable', 11)">出场</th>
+                        <th onclick="sortByColumn('mainPlayerTable', 12)">进球</th>
+                        <th onclick="sortByColumn('mainPlayerTable', 13)">助攻</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <h3>未进入首发球员</h3>
+        <div class="table-wrapper">
+            <table class="player-table" id="subsTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 0)">#</th>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 1)">位置</th>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 2)">国籍</th>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 3)">姓名</th>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 4)">评分</th>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 5)">身高</th>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 6)">体重</th>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 7)">年龄</th>
+                        <th colspan="3">生涯总计</th>
+                        <th colspan="3">本队数据</th>
+                        <th rowspan="2" onclick="sortByColumn('subsTable', 14)">身价</th>
+                    </tr>
+                    <tr>
+                        <th onclick="sortByColumn('subsTable', 8)">出场</th>
+                        <th onclick="sortByColumn('subsTable', 9)">进球</th>
+                        <th onclick="sortByColumn('subsTable', 10)">助攻</th>
+                        <th onclick="sortByColumn('subsTable', 11)">出场</th>
+                        <th onclick="sortByColumn('subsTable', 12)">进球</th>
+                        <th onclick="sortByColumn('subsTable', 13)">助攻</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="footer-section" id="coach">
+            <h2>执教团队</h2>
+            <div class="table-wrapper">
+                <table class="coach-table">
+                    <thead>
+                        <tr>
+                            <th>主教练</th>
+                            <th>场次</th>
+                            <th>胜</th>
+                            <th>平</th>
+                            <th>负</th>
+                            <th>胜率</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coachInfoBody"></tbody>
+                </table>
+            </div>
+
+            <h2>全队统计概览</h2>
+            <div class="stats-grid" id="teamStats"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="detail.js"></script>
+    <script>
+        const container = document.getElementById('teamsContainer');
+        // 遍历你补充好的 leagueDatabase
+        Object.keys(leagueDatabase).forEach(teamId => {
+            const team = leagueDatabase[teamId];
+            const card = `
+            <a href="details.html?team=${teamId}" class="team-card">
+                <img src="${team.logo}" alt="${team.teamName}">
+                <span>${team.teamName}</span>
+            </a>
+        `;
+            container.innerHTML += card;
+        });
+    </script>
+</body>
+
+</html>

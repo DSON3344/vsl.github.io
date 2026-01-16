@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VES League - 引擎 4.0 自动化战术版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="match_style.css">
+</head>
+
+<body>
+
+    <header class="match-header">
+        <div class="team-card home">
+            <div class="team-info">
+                <img id="homeLogo" src="assets/logos/default.png" alt="" class="team-logo">
+                <h2 id="homeName">等待选择</h2>
+            </div>
+            <div id="homeCards" class="card-stats"></div>
+            <span class="team-label">HOME</span>
+        </div>
+
+        <div class="score-center">
+            <div class="match-timer">
+                <span id="matchTime">00</span><span class="blink">:</span>00
+            </div>
+            <div class="score-board" id="scoreBoard">0 - 0</div>
+        </div>
+
+        <div class="team-card away">
+            <div class="team-info">
+                <h2 id="awayName">等待选择</h2>
+                <img id="awayLogo" src="assets/logos/default.png" alt="" class="team-logo">
+            </div>
+            <div id="awayCards" class="card-stats"></div>
+            <span class="team-label">AWAY</span>
+        </div>
+    </header>
+
+    <main class="match-container">
+        <section class="pitch-area">
+            <div id="setupOverlay" class="setup-panel">
+                <h3><i class="fas fa-file-import"></i> 赛事部署</h3>
+                <div class="selection-grid">
+                    <div class="select-box">
+                        <label>主队 (HOME)</label>
+                        <select id="homeSelect"></select>
+                        <label>主队阵型</label>
+                        <select id="homeFormationSelect"></select>
+                    </div>
+                    <div class="vs-icon">VS</div>
+                    <div class="select-box">
+                        <label>客队 (AWAY)</label>
+                        <select id="awaySelect"></select>
+                        <label>客队阵型</label>
+                        <select id="awayFormationSelect"></select>
+                    </div>
+                </div>
+                <button class="btn-deploy" id="deployBtn">加载球队并部署阵容</button>
+            </div>
+
+            <div class="pitch-stadium" id="pitch">
+                <div class="goal-post l-post"></div>
+                <div class="goal-post r-post"></div>
+
+                <!-- 核心：Canvas 必须在这里 -->
+                <canvas id="matchPitch" width="860" height="560"></canvas>
+            </div>
+        </section>
+
+        <aside class="live-commentary">
+            <div class="log-header">
+                <i class="fas fa-broadcast-tower"></i> 逻辑 Tick 控制台
+            </div>
+            <div id="eventLog" class="log-content">
+                <div class="event-item init">系统：所有规则逻辑已就绪，等待部署。</div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" id="startBtn">
+                    <i class="fas fa-play"></i> 鸣哨开球
+                </button>
+                <button class="btn-secondary" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i> 物理重置
+                </button>
+            </div>
+        </aside>
+    </main>
+
+    <script src="team_setup.js"></script>
+    <script src="render_field.js"></script>
+    <script src="match_engine.js"></script>
+    <script src="match_setup.js"></script>
+
+</body>
+
+</html>

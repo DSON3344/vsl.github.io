@@ -1,0 +1,381 @@
+/* ===================================================
+   威超联赛 (Wei Chao League) 完整官方样式表
+   版本: 2026.1.2 (Navbar 手机端仅图标版)
+   =================================================== */
+
+/* --- 基础重置 --- */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: #0f0f14;
+    color: #fff;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+    transition: 0.3s;
+}
+
+/* --- 顶部导航栏 (Navbar) --- */
+.main-nav {
+    background: #11151c;
+    padding: 0 5%;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border-bottom: 1px solid rgba(0, 245, 255, 0.2); 
+}
+
+.main-nav .container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.website-logo {
+    height: 80px;
+    display: block;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: 30px;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-links li a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px; /* 图标与文字的间距 */
+}
+
+.nav-links li a:hover {
+    color: #00f5ff;
+}
+
+.nav-links li a i {
+    font-size: 18px; /* 稍微调大一点图标提升质感 */
+}
+
+/* --- 页眉 Hero Section --- */
+header.hero-header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    padding: 60px 10%;
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+}
+
+.website-index-logo {
+    height: 300px;
+    margin-top: 20px;
+    margin-bottom: 40px;
+}
+
+header p.subtitle {
+    font-size: 1.2rem;
+    opacity: 0.7;
+    font-weight: 300;
+}
+
+/* --- 核心布局容器 --- */
+section.content-section {
+    padding: 60px 10%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2.2rem;
+    margin-bottom: 40px;
+    position: relative;
+}
+
+.section-title::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 4px;
+    background: #00f5ff;
+    margin: 15px auto 0;
+}
+
+/* --- 分类与赛季切换器 --- */
+.category-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 20px;
+}
+
+.cat-btn {
+    padding: 12px 35px;
+    background: rgba(255,255,255,0.05);
+    color: #aaa;
+    border: 1px solid #444;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.cat-btn.active {
+    background: #00f5ff;
+    color: #000;
+    border-color: #00f5ff;
+    font-weight: bold;
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+}
+
+.season-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 30px;
+    justify-content: center;
+}
+
+.season-item {
+    padding: 8px 18px;
+    background: #222;
+    color: #ccc;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.season-item.active {
+    background: rgba(0, 245, 255, 0.15);
+    color: #00f5ff;
+    border-color: #00f5ff;
+    font-weight: bold;
+}
+
+/* --- 积分榜表格 --- */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 50px;
+}
+
+table {
+    width: 100%;
+    min-width: 1000px;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: rgba(255,255,255,0.02);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+th {
+    background: #11151c;
+    color: #00f5ff;
+    padding: 18px 10px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border-bottom: 2px solid #333;
+}
+
+td {
+    border-bottom: 1px solid #222;
+    padding: 14px 10px;
+    text-align: center;
+}
+
+/* 排名特殊色块 */
+.rank-champion { background: rgba(255, 215, 0, 0.1); font-weight: bold; }
+.rank-cup { background: rgba(105, 165, 255, 0.08); }
+.rank-continental { background: rgba(91, 239, 46, 0.08); }
+.rank-relegation { background: rgba(255, 68, 68, 0.1); }
+
+/* --- 统计 Tabs --- */
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.5s ease; }
+
+.tab-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.tab-btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 25px;
+    background: #333;
+    color: #fff;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.tab-btn.active {
+    background: #00f5ff;
+    color: #000;
+    box-shadow: 0 4px 12px rgba(0, 245, 255, 0.3);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.small-team-logo {
+    width: 28px;
+    height: 28px;
+    vertical-align: middle;
+    margin-right: 12px;
+    object-fit: contain;
+}
+
+/* --- 球队网格 --- */
+.teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 25px;
+}
+
+.team-card {
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid #222;
+    transition: 0.3s;
+}
+
+.team-card:hover {
+    transform: translateY(-10px);
+    border-color: #00f5ff;
+    background: rgba(0, 245, 255, 0.05);
+}
+
+.team-card img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    margin-bottom: 15px;
+}
+
+/* --- 页脚 --- */
+footer {
+    text-align: center;
+    padding: 60px 10%;
+    background: #0b0b10;
+    border-top: 1px solid #222;
+    color: #666;
+}
+
+/* --- 顶部导航栏基础样式 --- */
+.menu-toggle {
+    display: none; /* 电脑端隐藏 */
+    color: #00f5ff;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+/* --- 響應式處理：榜單自適應螢幕 (無滑動版) --- */
+@media (max-width: 768px) {
+    /* 1. 導航欄與基礎佈局 */
+    .nav-links li a span { display: none !important; }
+    .nav-links li a i { font-size: 24px; color: #00f5ff; }
+    .website-logo { height: 50px; }
+    header.hero-header { padding: 30px 5%; }
+    .website-index-logo { height: 150px; }
+    section.content-section { padding: 20px 3%; }
+
+    /* 2. 核心修改：取消表格最小寬度，允許壓縮 */
+    .table-responsive {
+        overflow-x: hidden; /* 徹底禁止左右滑動 */
+        margin-bottom: 30px;
+    }
+
+    table {
+        min-width: auto !important; /* 覆蓋掉 1000px */
+        width: 100% !important;
+        table-layout: fixed; /* 強制固定佈局，防止內容撐開 */
+    }
+
+    /* 3. 縮小字體與內邊距以擠出空間 */
+    th, td {
+        padding: 10px 2px !important;
+        font-size: 11px !important; /* 縮小文字 */
+        word-break: break-all;
+    }
+
+    /* 4. 聯賽積分榜：隱藏次要列 (勝、平、負、進/失) */
+    /* 假設結構：1排名, 2球隊, 3賽, 4勝, 5平, 6負, 7進失, 8淨勝, 9積分 */
+    .league-table th:nth-child(4), .league-table td:nth-child(4), /* 勝 */
+    .league-table th:nth-child(5), .league-table td:nth-child(5), /* 平 */
+    .league-table th:nth-child(6), .league-table td:nth-child(6), /* 負 */
+    .league-table th:nth-child(7), .league-table td:nth-child(7)  /* 進/失 */ {
+        display: none; 
+    }
+
+    /* 調整保留列的寬度比 */
+    .league-table th:nth-child(1) { width: 12%; } /* 排名 */
+    .league-table th:nth-child(2) { width: 40%; text-align: left; } /* 球隊 */
+    .league-table th:nth-child(3) { width: 12%; } /* 賽 */
+    .league-table th:nth-child(8) { width: 18%; } /* 淨勝 */
+    .league-table th:nth-child(9) { width: 18%; } /* 積分 */
+
+    .league-table td:nth-child(2) {
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis; /* 球隊名字太長顯示省略號 */
+    }
+
+    .small-team-logo {
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+    }
+
+    /* 5. 數據統計榜 (射手榜/助攻榜) 調整 */
+    /* 假設結構：1排名, 2球員, 3球隊, 4場次, 5數據 */
+    .stats-table th:nth-child(3), .stats-table td:nth-child(3) {
+        display: none; /* 隱藏球隊名字列，節省空間 */
+    }
+    
+    .stats-table th:nth-child(1) { width: 15%; }
+    .stats-table th:nth-child(2) { width: 55%; text-align: left; }
+    .stats-table th:nth-child(4) { width: 15%; }
+    .stats-table th:nth-child(5) { width: 15%; }
+
+    /* 6. 紀律榜 (紅黃牌) 調整 */
+    .discipline-container {
+        flex-direction: column; /* 讓紅黃牌榜單上下排列 */
+    }
+    
+    .card-table {
+        width: 100% !important;
+    }
+
+    /* 7. 其它元素調整 */
+    .cat-btn { padding: 8px 15px; font-size: 0.85rem; }
+    .season-item { padding: 5px 12px; font-size: 12px; }
+    .teams-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}

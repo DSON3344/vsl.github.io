@@ -1,0 +1,141 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+body {
+    background: #0e0e11;
+    color: #ffffff;
+}
+
+/* ===== Header ===== */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 40px;
+    background: #11151c;
+}
+
+.logo span {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.logo small {
+    display: block;
+    font-size: 12px;
+    color: #aaa;
+}
+
+nav a {
+    margin-left: 24px;
+    text-decoration: none;
+    color: #ddd;
+    font-size: 14px;
+}
+
+nav a:hover {
+    color: #00b3ff;
+}
+
+/* ===== Hero ===== */
+.hero {
+    height: 60vh;
+    background: linear-gradient(
+        rgba(0,0,0,0.7),
+        rgba(0,0,0,0.7)
+    ), url("hero.jpg") center / cover no-repeat;
+    display: flex;
+    align-items: center;
+    padding: 0 60px;
+}
+
+.hero-content h1 {
+    font-size: 48px;
+}
+
+.hero-content h2 {
+    font-size: 24px;
+    margin-top: 8px;
+    color: #00b3ff;
+}
+
+.hero-content p {
+    margin-top: 12px;
+    color: #ccc;
+}
+
+/* ===== Stats ===== */
+.stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 40px;
+    background: #11151c;
+}
+
+.stat-card {
+    text-align: center;
+}
+
+.stat-card h3 {
+    font-size: 36px;
+    color: #00b3ff;
+}
+
+/* ===== Results ===== */
+.results {
+    padding: 60px;
+}
+
+.results h2 {
+    margin-bottom: 24px;
+}
+
+.match {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 20px;
+    margin-bottom: 10px;
+    background: #161b26;
+    border-radius: 8px;
+}
+
+.score {
+    font-weight: bold;
+    color: #00b3ff;
+}
+
+/* ===== Quick Links ===== */
+.quick-links {
+    display: flex;
+    gap: 24px;
+    padding: 40px 60px;
+}
+
+.quick-card {
+    flex: 1;
+    padding: 30px;
+    text-align: center;
+    background: #161b26;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #fff;
+    font-size: 18px;
+}
+
+.quick-card:hover {
+    background: #00b3ff;
+    color: #000;
+}
+
+/* ===== Footer ===== */
+footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+    color: #888;
+}
