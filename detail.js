@@ -25,9 +25,9 @@ window.TEAMS_DATA = {
             LEAGUE: {
                 title: "联赛阵容 (3-5-2)",
                 players: {
-                    "GK": "阿利布克", "LCB": "莱昂斯", "CB": "范博梅尔", "RCB": "特尔森",
+                    "GK": "阿利布克", "LCB": "伊纳", "CB": "范博梅尔", "RCB": "范德凯隆",
                     "LWB": "斯滕斯", "RWB": "加西亚", "LDM": "卡尔", "RDM": "卢卡斯",
-                    "CAM": "伊斯塔", "LST": "梅泽", "RST": "安德烈"
+                    "CAM": "伊斯塔", "LST": "安德烈", "RST": "霍尔"
                 },
                 coords: {
                     "GK": [5, 50], "LCB": [22, 25], "CB": [18, 50], "RCB": [22, 75],
@@ -38,8 +38,8 @@ window.TEAMS_DATA = {
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
                 players: {
-                    "GK": "奥兹兰", "LB": "史密斯", "LCB": "克里斯", "RCB": "巴雷尔", "RB": "纳乔",
-                    "LDM": "纳格尔斯曼", "RDM": "席尔瓦", "CAM": "弗朗吉", "LW": "艾森", "RW": "加西亚",
+                    "GK": "奥兹兰", "LB": "史密斯", "LCB": "特尔森", "RCB": "巴雷尔", "RB": "纳乔",
+                    "LDM": "马科斯", "RDM": "纳格尔斯曼", "CAM": "弗朗吉", "LW": "席尔瓦", "RW": "丘库",
                     "ST": "托雷斯"
                 },
                 coords: {
@@ -49,33 +49,32 @@ window.TEAMS_DATA = {
             }
         },
         roster: [
-            { no: 4, pos: "CB", nat: "荷兰", name: "范博梅尔", rating: 91, height: 191, weight: 89, age: 30, cGP: 512, cG: 38, cA: 12, tGP: 180, tG: 12, tA: 2, value: "ⰵ85M", attributes: { spd: 76, sho: 60, pas: 82, dri: 75, def: 94, phy: 92, men: 95, sta: 85 } },
-            { no: 1, pos: "GK", nat: "英国", name: "阿利布克", rating: 89, height: 189, weight: 85, age: 28, cGP: 385, cG: 0, cA: 5, tGP: 156, tG: 0, tA: 1, value: "ⰵ68M", attributes: { div: 88, han: 87, kic: 82, ref: 91, spd: 58, pos_s: 90, men: 88, sta: 84 } },
-            { no: 8, pos: "CDM", nat: "德国", name: "卡尔", rating: 88, height: 184, weight: 80, age: 22, cGP: 125, cG: 18, cA: 32, tGP: 65, tG: 8, tA: 15, value: "ⰵ110M", attributes: { spd: 84, sho: 78, pas: 89, dri: 86, def: 85, phy: 84, men: 82, sta: 94 } },
-            { no: 9, pos: "ST", nat: "阿根廷", name: "梅泽", rating: 86, height: 185, weight: 81, age: 27, cGP: 320, cG: 185, cA: 48, tGP: 140, tG: 72, tA: 18, value: "ⰵ75M", attributes: { spd: 88, sho: 92, pas: 75, dri: 85, def: 42, phy: 82, men: 88, sta: 85 } },
-            { no: 11, pos: "ST", nat: "葡萄牙", name: "安德烈", rating: 85, height: 182, weight: 77, age: 26, cGP: 280, cG: 142, cA: 35, tGP: 125, tG: 56, tA: 15, value: "ⰵ62M", attributes: { spd: 85, sho: 89, pas: 78, dri: 84, def: 38, phy: 80, men: 85, sta: 82 } },
-            { no: 16, pos: "CDM", nat: "巴西", name: "卢卡斯", rating: 85, height: 183, weight: 79, age: 24, cGP: 185, cG: 15, cA: 28, tGP: 90, tG: 6, tA: 12, value: "ⰵ58M", attributes: { spd: 80, sho: 70, pas: 85, dri: 82, def: 84, phy: 85, men: 80, sta: 90 } },
-            { no: 2, pos: "RWB", nat: "西班牙", name: "加西亚", rating: 84, height: 179, weight: 72, age: 24, cGP: 195, cG: 15, cA: 52, tGP: 115, tG: 8, tA: 24, value: "ⰵ45M", attributes: { spd: 90, sho: 68, pas: 82, dri: 84, def: 78, phy: 75, men: 80, sta: 92 } },
-            { no: 6, pos: "CB", nat: "英格兰", name: "莱昂斯", rating: 83, height: 187, weight: 84, age: 26, cGP: 210, cG: 14, cA: 4, tGP: 120, tG: 5, tA: 1, value: "ⰵ38M", attributes: { spd: 78, sho: 50, pas: 72, dri: 70, def: 88, phy: 89, men: 84, sta: 85 } },
-            { no: 10, pos: "CAM", nat: "西班牙", name: "伊斯塔", rating: 83, height: 177, weight: 70, age: 26, cGP: 245, cG: 45, cA: 95, tGP: 135, tG: 18, tA: 42, value: "ⰵ42M", attributes: { spd: 82, sho: 80, pas: 88, dri: 87, def: 55, phy: 72, men: 86, sta: 80 } },
-            { no: 20, pos: "CDM", nat: "德国", name: "纳格尔斯曼", rating: 82, height: 181, weight: 78, age: 30, cGP: 480, cG: 32, cA: 65, tGP: 110, tG: 6, tA: 18, value: "ⰵ22M", attributes: { spd: 74, sho: 72, pas: 84, dri: 78, def: 82, phy: 83, men: 90, sta: 78 } },
-            { no: 5, pos: "CB", nat: "瑞典", name: "特尔森", rating: 82, height: 189, weight: 86, age: 25, cGP: 165, cG: 8, cA: 3, tGP: 85, tG: 4, tA: 1, value: "ⰵ28M", attributes: { spd: 76, sho: 45, pas: 68, dri: 65, def: 85, phy: 88, men: 80, sta: 82 } },
-            { no: 3, pos: "LWB", nat: "荷兰", name: "斯滕斯", rating: 81, height: 178, weight: 71, age: 24, cGP: 155, cG: 12, cA: 42, tGP: 88, tG: 4, tA: 21, value: "ⰵ25M", attributes: { spd: 88, sho: 65, pas: 80, dri: 82, def: 76, phy: 72, men: 78, sta: 89 } },
-            { no: 21, pos: "CB", nat: "美国", name: "克里斯", rating: 81, height: 186, weight: 83, age: 34, cGP: 580, cG: 22, cA: 5, tGP: 95, tG: 3, tA: 0, value: "ⰵ8M", attributes: { spd: 65, sho: 55, pas: 70, dri: 62, def: 86, phy: 84, men: 92, sta: 70 } },
-            { no: 18, pos: "CM", nat: "葡萄牙", name: "席尔瓦", rating: 81, height: 178, weight: 73, age: 25, cGP: 190, cG: 22, cA: 48, tGP: 55, tG: 4, tA: 12, value: "ⰵ24M", attributes: { spd: 82, sho: 75, pas: 82, dri: 83, def: 72, phy: 74, men: 80, sta: 85 } },
-            { no: 19, pos: "ST", nat: "西班牙", name: "托雷斯", rating: 81, height: 184, weight: 79, age: 25, cGP: 185, cG: 85, cA: 22, tGP: 50, tG: 18, tA: 4, value: "ⰵ26M", attributes: { spd: 84, sho: 85, pas: 70, dri: 80, def: 35, phy: 82, men: 78, sta: 80 } },
-            { no: 12, pos: "GK", nat: "土耳其", name: "奥兹兰", rating: 80, height: 188, weight: 84, age: 21, cGP: 95, cG: 0, cA: 0, tGP: 85, tG: 0, tA: 0, value: "ⰵ15M", attributes: { div: 81, han: 78, kic: 75, ref: 83, spd: 60, pos_s: 79, men: 75, sta: 80 } },
-            { no: 23, pos: "GK", nat: "比利时", name: "卡斯特", rating: 80, height: 190, weight: 86, age: 24, cGP: 110, cG: 0, cA: 0, tGP: 40, tG: 0, tA: 0, value: "ⰵ12M", attributes: { div: 82, han: 80, kic: 72, ref: 81, spd: 55, pos_s: 82, men: 78, sta: 78 } },
-            { no: 15, pos: "CB", nat: "英格兰", name: "巴雷尔", rating: 80, height: 186, weight: 84, age: 23, cGP: 125, cG: 6, cA: 2, tGP: 110, tG: 4, tA: 1, value: "ⰵ14M", attributes: { spd: 74, sho: 40, pas: 65, dri: 62, def: 83, phy: 85, men: 78, sta: 82 } },
-            { no: 25, pos: "CB", nat: "日本", name: "工藤健次", rating: 80, height: 185, weight: 79, age: 24, cGP: 140, cG: 5, cA: 1, tGP: 80, tG: 3, tA: 0, value: "ⰵ13M", attributes: { spd: 75, sho: 42, pas: 68, dri: 65, def: 82, phy: 83, men: 84, sta: 81 } },
-            { no: 14, pos: "CAM", nat: "意大利", name: "弗朗吉", rating: 80, height: 175, weight: 69, age: 23, cGP: 135, cG: 22, cA: 45, tGP: 48, tG: 6, tA: 14, value: "ⰵ18M", attributes: { spd: 84, sho: 76, pas: 82, dri: 84, def: 45, phy: 68, men: 76, sta: 82 } },
-            { no: 22, pos: "RWB", nat: "西班牙", name: "纳乔", rating: 79, height: 177, weight: 71, age: 24, cGP: 145, cG: 8, cA: 38, tGP: 42, tG: 1, tA: 11, value: "ⰵ11M", attributes: { spd: 86, sho: 62, pas: 78, dri: 79, def: 74, phy: 70, men: 75, sta: 85 } },
-            { no: 26, pos: "ST", nat: "英格兰", name: "莱尔斯", rating: 79, height: 181, weight: 76, age: 23, cGP: 120, cG: 52, cA: 15, tGP: 45, tG: 12, tA: 2, value: "ⰵ12M", attributes: { spd: 82, sho: 83, pas: 65, dri: 78, def: 32, phy: 78, men: 74, sta: 80 } },
-            { no: 17, pos: "CDM", nat: "阿尔及利亚", name: "法雷兹", rating: 78, height: 180, weight: 78, age: 28, cGP: 265, cG: 12, cA: 35, tGP: 85, tG: 5, tA: 15, value: "ⰵ6.5M", attributes: { spd: 72, sho: 65, pas: 78, dri: 74, def: 80, phy: 82, men: 82, sta: 80 } },
-            { no: 24, pos: "LB", nat: "美国", name: "史密斯", rating: 78, height: 176, weight: 70, age: 24, cGP: 160, cG: 5, cA: 42, tGP: 130, tG: 2, tA: 28, value: "ⰵ7M", attributes: { spd: 84, sho: 58, pas: 76, dri: 75, def: 76, phy: 71, men: 74, sta: 82 } },
-            { no: 7, pos: "LM", nat: "德国", name: "艾森", rating: 77, height: 174, weight: 68, age: 29, cGP: 310, cG: 42, cA: 85, tGP: 65, tG: 8, tA: 21, value: "ⰵ5.5M", attributes: { spd: 85, sho: 74, pas: 76, dri: 81, def: 48, phy: 65, men: 78, sta: 75 } },
-            { no: 13, pos: "CM", nat: "塞尔维亚", name: "萨维奇", rating: 74, height: 179, weight: 77, age: 30, cGP: 420, cG: 35, cA: 52, tGP: 25, tG: 1, tA: 3, value: "ⰵ2.5M", attributes: { spd: 70, sho: 68, pas: 75, dri: 72, def: 68, phy: 74, men: 80, sta: 72 } },
-            { no: 27, pos: "CM", nat: "意大利", name: "马努奇", rating: 73, height: 177, weight: 69, age: 20, cGP: 45, cG: 2, cA: 8, tGP: 20, tG: 0, tA: 2, value: "ⰵ4.8M", attributes: { spd: 76, sho: 62, pas: 74, dri: 78, def: 60, phy: 65, men: 70, sta: 85 } }
+            { no: 4, pos: "CB", nat: "荷兰", name: "范博梅尔", rating: 91, height: 191, weight: 89, age: 31, cGP: 512, cG: 38, cA: 12, tGP: 180, tG: 12, tA: 2, value: "ⰵ85M", attributes: { spd: 75, sho: 60, pas: 82, dri: 75, def: 94, phy: 91, men: 96, sta: 84 } },
+            { no: 1, pos: "GK", nat: "英国", name: "阿利布克", rating: 89, height: 189, weight: 85, age: 29, cGP: 385, cG: 0, cA: 5, tGP: 156, tG: 0, tA: 1, value: "ⰵ68M", attributes: { div: 88, han: 87, kic: 82, ref: 91, spd: 58, pos_s: 90, men: 89, sta: 84 } },
+            { no: 8, pos: "CDM", nat: "德国", name: "卡尔", rating: 90, height: 184, weight: 80, age: 23, cGP: 125, cG: 18, cA: 32, tGP: 65, tG: 8, tA: 15, value: "ⰵ125M", attributes: { spd: 85, sho: 78, pas: 91, dri: 88, def: 86, phy: 84, men: 84, sta: 94 } },
+            { no: 11, pos: "ST", nat: "葡萄牙", name: "安德烈", rating: 86, height: 182, weight: 77, age: 27, cGP: 280, cG: 142, cA: 35, tGP: 125, tG: 56, tA: 15, value: "ⰵ62M", attributes: { spd: 85, sho: 90, pas: 78, dri: 84, def: 38, phy: 80, men: 86, sta: 82 } },
+            { no: 16, pos: "CDM", nat: "巴西", name: "卢卡斯", rating: 86, height: 183, weight: 79, age: 25, cGP: 185, cG: 15, cA: 28, tGP: 90, tG: 6, tA: 12, value: "ⰵ58M", attributes: { spd: 80, sho: 70, pas: 85, dri: 82, def: 85, phy: 86, men: 80, sta: 90 } },
+            { no: 30, pos: "ST", nat: "丹麦", name: "霍尔", rating: 86, height: 184, weight: 81, age: 24, cGP: 80, cG: 45, cA: 10, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 92, sho: 88, pas: 72, dri: 85, def: 35, phy: 83, men: 82, sta: 84 } },
+            { no: 31, pos: "CB", nat: "荷兰", name: "范德凯隆", rating: 85, height: 192, weight: 88, age: 26, cGP: 120, cG: 5, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 78, sho: 45, pas: 75, dri: 70, def: 87, phy: 89, men: 82, sta: 84 } },
+            { no: 2, pos: "RWB", nat: "西班牙", name: "加西亚", rating: 85, height: 179, weight: 72, age: 25, cGP: 195, cG: 15, cA: 52, tGP: 115, tG: 8, tA: 24, value: "ⰵ50M", attributes: { spd: 90, sho: 68, pas: 83, dri: 85, def: 78, phy: 75, men: 80, sta: 92 } },
+            { no: 32, pos: "CB", nat: "葡萄牙", name: "伊纳", rating: 84, height: 186, weight: 82, age: 25, cGP: 105, cG: 3, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { spd: 75, sho: 50, pas: 85, dri: 76, def: 86, phy: 82, men: 83, sta: 81 } },
+            { no: 10, pos: "CAM", nat: "西班牙", name: "伊斯塔", rating: 83, height: 177, weight: 70, age: 27, cGP: 245, cG: 45, cA: 95, tGP: 135, tG: 18, tA: 42, value: "ⰵ42M", attributes: { spd: 82, sho: 80, pas: 88, dri: 87, def: 55, phy: 72, men: 86, sta: 80 } },
+            { no: 33, pos: "CDM", nat: "西班牙", name: "马科斯", rating: 84, height: 184, weight: 79, age: 24, cGP: 95, cG: 8, cA: 12, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 78, sho: 72, pas: 86, dri: 81, def: 83, phy: 80, men: 82, sta: 89 } },
+            { no: 20, pos: "CDM", nat: "德国", name: "纳格尔斯曼", rating: 81, height: 181, weight: 78, age: 31, cGP: 480, cG: 32, cA: 65, tGP: 110, tG: 6, tA: 18, value: "ⰵ18M", attributes: { spd: 72, sho: 72, pas: 84, dri: 77, def: 82, phy: 82, men: 91, sta: 76 } },
+            { no: 5, pos: "CB", nat: "瑞典", name: "特尔森", rating: 83, height: 189, weight: 86, age: 26, cGP: 165, cG: 8, cA: 3, tGP: 85, tG: 4, tA: 1, value: "ⰵ28M", attributes: { spd: 76, sho: 45, pas: 68, dri: 65, def: 86, phy: 88, men: 80, sta: 82 } },
+            { no: 3, pos: "LWB", nat: "荷兰", name: "斯滕斯", rating: 82, height: 178, weight: 71, age: 25, cGP: 155, cG: 12, cA: 42, tGP: 88, tG: 4, tA: 21, value: "ⰵ25M", attributes: { spd: 88, sho: 65, pas: 81, dri: 82, def: 76, phy: 72, men: 78, sta: 89 } },
+            { no: 34, pos: "RWB", nat: "尼日利亚", name: "丘库", rating: 83, height: 176, weight: 70, age: 27, cGP: 210, cG: 32, cA: 45, tGP: 0, tG: 0, tA: 0, value: "ⰵ25M", attributes: { spd: 90, sho: 78, pas: 75, dri: 88, def: 50, phy: 70, men: 78, sta: 82 } },
+            { no: 21, pos: "CB", nat: "美国", name: "克里斯", rating: 80, height: 186, weight: 83, age: 35, cGP: 580, cG: 22, cA: 5, tGP: 95, tG: 3, tA: 0, value: "ⰵ5M", attributes: { spd: 62, sho: 55, pas: 70, dri: 62, def: 86, phy: 82, men: 93, sta: 68 } },
+            { no: 18, pos: "CM", nat: "葡萄牙", name: "席尔瓦", rating: 82, height: 178, weight: 73, age: 26, cGP: 190, cG: 22, cA: 48, tGP: 55, tG: 4, tA: 12, value: "ⰵ24M", attributes: { spd: 82, sho: 75, pas: 82, dri: 83, def: 72, phy: 74, men: 80, sta: 85 } },
+            { no: 19, pos: "ST", nat: "西班牙", name: "托雷斯", rating: 82, height: 184, weight: 79, age: 26, cGP: 185, cG: 85, cA: 22, tGP: 50, tG: 18, tA: 4, value: "ⰵ26M", attributes: { spd: 84, sho: 86, pas: 70, dri: 80, def: 35, phy: 82, men: 78, sta: 80 } },
+            { no: 12, pos: "GK", nat: "土耳其", name: "奥兹兰", rating: 82, height: 188, weight: 84, age: 22, cGP: 95, cG: 0, cA: 0, tGP: 85, tG: 0, tA: 0, value: "ⰵ20M", attributes: { div: 82, han: 79, kic: 76, ref: 85, spd: 60, pos_s: 81, men: 77, sta: 80 } },
+            { no: 23, pos: "GK", nat: "比利时", name: "卡斯特", rating: 80, height: 190, weight: 86, age: 25, cGP: 110, cG: 0, cA: 0, tGP: 40, tG: 0, tA: 0, value: "ⰵ12M", attributes: { div: 82, han: 80, kic: 72, ref: 81, spd: 55, pos_s: 82, men: 78, sta: 78 } },
+            { no: 15, pos: "CB", nat: "英格兰", name: "巴雷尔", rating: 81, height: 186, weight: 84, age: 24, cGP: 125, cG: 6, cA: 2, tGP: 110, tG: 4, tA: 1, value: "ⰵ14M", attributes: { spd: 74, sho: 40, pas: 65, dri: 62, def: 84, phy: 85, men: 78, sta: 82 } },
+            { no: 25, pos: "CB", nat: "日本", name: "工藤健次", rating: 81, height: 185, weight: 79, age: 25, cGP: 140, cG: 5, cA: 1, tGP: 80, tG: 3, tA: 0, value: "ⰵ13M", attributes: { spd: 75, sho: 42, pas: 68, dri: 65, def: 83, phy: 83, men: 84, sta: 81 } },
+            { no: 14, pos: "CAM", nat: "意大利", name: "弗朗吉", rating: 82, height: 175, weight: 69, age: 24, cGP: 135, cG: 22, cA: 45, tGP: 48, tG: 6, tA: 14, value: "ⰵ22M", attributes: { spd: 84, sho: 76, pas: 83, dri: 86, def: 45, phy: 68, men: 76, sta: 82 } },
+            { no: 22, pos: "RWB", nat: "西班牙", name: "纳乔", rating: 80, height: 177, weight: 71, age: 25, cGP: 145, cG: 8, cA: 38, tGP: 42, tG: 1, tA: 11, value: "ⰵ11M", attributes: { spd: 86, sho: 62, pas: 78, dri: 79, def: 74, phy: 70, men: 75, sta: 85 } },
+            { no: 26, pos: "ST", nat: "英格兰", name: "莱尔斯", rating: 80, height: 181, weight: 76, age: 24, cGP: 120, cG: 52, cA: 15, tGP: 45, tG: 12, tA: 2, value: "ⰵ12M", attributes: { spd: 82, sho: 84, pas: 65, dri: 78, def: 32, phy: 78, men: 74, sta: 80 } },
+            { no: 24, pos: "LB", nat: "美国", name: "史密斯", rating: 79, height: 176, weight: 70, age: 25, cGP: 160, cG: 5, cA: 42, tGP: 130, tG: 2, tA: 28, value: "ⰵ7M", attributes: { spd: 84, sho: 58, pas: 76, dri: 75, def: 76, phy: 71, men: 74, sta: 82 } }
         ]
     },
 
@@ -100,7 +99,7 @@ window.TEAMS_DATA = {
                 title: "联赛阵容 (4-2-4)",
                 players: {
                     "GK": "亨德森", "LB": "戴维斯", "LCB": "佩德斯", "RCB": "丹尼尔", "RB": "帕奎奥",
-                    "LDM": "凯恩斯", "RDM": "拉希姆", "LW": "拉凯德", "RW": "维罗尼克",
+                    "LDM": "凯恩斯", "RDM": "拉希姆", "LW": "拉凯德", "RW": "亚玛",
                     "LST": "司炎尚武", "RST": "米林特维奇"
                 },
                 coords: {
@@ -112,8 +111,8 @@ window.TEAMS_DATA = {
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
                 players: {
-                    "GK": "与塔诺", "LB": "利亚特", "LCB": "克莱尔", "RCB": "阿拉比亚", "RB": "安德森",
-                    "LDM": "郑宇辰", "RDM": "林腾", "CAM": "图雷", "LW": "夸雷斯曼", "ST": "桑托斯", "RW": "格雷"
+                    "GK": "与塔诺", "LB": "安德森", "LCB": "克莱尔", "RCB": "阿拉比亚", "RB": "雷谷龙",
+                    "LDM": "郑宇辰", "RDM": "林腾", "CAM": "图雷", "LW": "夸雷斯曼", "ST": "桑托斯", "RW": "维罗尼克"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90],
@@ -122,34 +121,32 @@ window.TEAMS_DATA = {
             }
         },
         roster: [
-            { no: 9, pos: "ST", nat: "中国", name: "司炎尚武", rating: 90, height: 186, weight: 82, age: 27, cGP: 315, cG: 185, cA: 42, tGP: 105, tG: 82, tA: 18, value: "ⰵ135M", attributes: { spd: 92, sho: 95, pas: 78, dri: 90, def: 35, phy: 88, men: 90, sta: 85 } },
-            { no: 7, pos: "LM", nat: "阿根廷", name: "拉凯德", rating: 91, height: 176, weight: 71, age: 28, cGP: 340, cG: 92, cA: 155, tGP: 120, tG: 48, tA: 59, value: "ⰵ128M", attributes: { spd: 95, sho: 86, pas: 92, dri: 94, def: 42, phy: 75, men: 88, sta: 91 } },
-            { no: 11, pos: "ST", nat: "克罗地亚", name: "米林特维奇", rating: 89, height: 185, weight: 80, age: 26, cGP: 220, cG: 145, cA: 28, tGP: 154, tG: 112, tA: 15, value: "ⰵ115M", attributes: { spd: 84, sho: 92, pas: 78, dri: 85, def: 38, phy: 89, men: 94, sta: 82 } },
-            { no: 17, pos: "RM", nat: "法国", name: "维罗尼克", rating: 89, height: 178, weight: 74, age: 25, cGP: 215, cG: 42, cA: 78, tGP: 112, tG: 21, tA: 39, value: "ⰵ105M", attributes: { spd: 91, sho: 82, pas: 88, dri: 90, def: 48, phy: 76, men: 84, sta: 92 } },
-            { no: 26, pos: "ST", nat: "巴西", name: "桑托斯", rating: 88, height: 182, weight: 78, age: 24, cGP: 195, cG: 132, cA: 28, tGP: 120, tG: 88, tA: 11, value: "ⰵ98M", attributes: { spd: 88, sho: 90, pas: 74, dri: 87, def: 32, phy: 84, men: 82, sta: 88 } },
-            { no: 8, pos: "CM", nat: "英格兰", name: "凯恩斯", rating: 91, height: 183, weight: 79, age: 27, cGP: 325, cG: 48, cA: 112, tGP: 160, tG: 24, tA: 62, value: "ⰵ120M", attributes: { spd: 80, sho: 84, pas: 95, dri: 91, def: 78, phy: 82, men: 96, sta: 94 } },
-            { no: 16, pos: "CM", nat: "埃及", name: "拉希姆", rating: 88, height: 182, weight: 77, age: 32, cGP: 510, cG: 62, cA: 135, tGP: 90, tG: 8, tA: 21, value: "ⰵ32M", attributes: { spd: 82, sho: 78, pas: 89, dri: 86, def: 84, phy: 85, men: 80, sta: 92 } },
-            { no: 22, pos: "CM", nat: "马来西亚", name: "郑宇辰", rating: 87, height: 179, weight: 73, age: 30, cGP: 460, cG: 55, cA: 118, tGP: 105, tG: 14, tA: 38, value: "ⰵ38M", attributes: { spd: 85, sho: 76, pas: 90, dri: 89, def: 72, phy: 74, men: 82, sta: 88 } },
-            { no: 10, pos: "CAM", nat: "科特迪瓦", name: "图雷", rating: 86, height: 181, weight: 76, age: 33, cGP: 540, cG: 88, cA: 182, tGP: 48, tG: 9, tA: 16, value: "ⰵ22M", attributes: { spd: 84, sho: 80, pas: 88, dri: 89, def: 55, phy: 72, men: 85, sta: 84 } },
-            { no: 3, pos: "LB", nat: "加拿大", name: "戴维斯", rating: 90, height: 181, weight: 75, age: 29, cGP: 365, cG: 22, cA: 85, tGP: 135, tG: 12, tA: 39, value: "ⰵ85M", attributes: { spd: 96, sho: 68, pas: 85, dri: 88, def: 84, phy: 82, men: 85, sta: 96 } },
-            { no: 4, pos: "CB", nat: "葡萄牙", name: "佩德斯", rating: 91, height: 190, weight: 86, age: 28, cGP: 340, cG: 35, cA: 12, tGP: 180, tG: 12, tA: 3, value: "ⰵ92M", attributes: { spd: 78, sho: 55, pas: 80, dri: 74, def: 95, phy: 92, men: 98, sta: 85 } },
-            { no: 2, pos: "RB", nat: "美国", name: "帕奎奥", rating: 88, height: 179, weight: 74, age: 26, cGP: 215, cG: 12, cA: 45, tGP: 108, tG: 4, tA: 21, value: "ⰵ58M", attributes: { spd: 90, sho: 65, pas: 82, dri: 84, def: 82, phy: 78, men: 84, sta: 92 } },
-            { no: 5, pos: "CB", nat: "印尼", name: "丹尼尔", rating: 87, height: 188, weight: 84, age: 26, cGP: 205, cG: 22, cA: 5, tGP: 55, tG: 3, tA: 0, value: "ⰵ48M", attributes: { spd: 74, sho: 48, pas: 72, dri: 68, def: 89, phy: 91, men: 88, sta: 82 } },
-            { no: 1, pos: "GK", nat: "英格兰", name: "亨德森", rating: 88, height: 188, weight: 85, age: 23, cGP: 115, cG: 0, cA: 2, tGP: 110, tG: 0, tA: 0, value: "ⰵ115M", attributes: { div: 88, han: 85, kic: 82, ref: 90, spd: 55, pos_s: 89, men: 92, sta: 84 } },
-            { no: 12, pos: "GK", nat: "喀麦隆", name: "与塔诺", rating: 86, height: 190, weight: 88, age: 31, cGP: 480, cG: 0, cA: 1, tGP: 45, tG: 0, tA: 0, value: "ⰵ24M", attributes: { div: 84, han: 86, kic: 80, ref: 88, spd: 60, pos_s: 85, men: 80, sta: 82 } },
-            { no: 23, pos: "GK", nat: "美国", name: "杰克逊", rating: 84, height: 186, weight: 84, age: 41, cGP: 725, cG: 0, cA: 1, tGP: 50, tG: 0, tA: 0, value: "ⰵ4.5M", attributes: { div: 82, han: 80, kic: 78, ref: 85, spd: 45, pos_s: 86, men: 85, sta: 68 } },
-            { no: 15, pos: "CB", nat: "法国", name: "克莱尔", rating: 86, height: 187, weight: 83, age: 33, cGP: 555, cG: 28, cA: 5, tGP: 82, tG: 4, tA: 1, value: "ⰵ18M", attributes: { spd: 70, sho: 42, pas: 65, dri: 62, def: 88, phy: 89, men: 82, sta: 84 } },
-            { no: 13, pos: "LB", nat: "阿尔及利亚", name: "利亚特", rating: 87, height: 175, weight: 72, age: 34, cGP: 580, cG: 18, cA: 95, tGP: 60, tG: 1, tA: 12, value: "ⰵ12M", attributes: { spd: 85, sho: 60, pas: 80, dri: 85, def: 81, phy: 72, men: 78, sta: 94 } },
-            { no: 24, pos: "RB", nat: "瑞典", name: "安德森", rating: 87, height: 180, weight: 76, age: 22, cGP: 85, cG: 4, cA: 18, tGP: 70, tG: 2, tA: 15, value: "ⰵ82M", attributes: { spd: 88, sho: 62, pas: 82, dri: 83, def: 80, phy: 79, men: 84, sta: 91 } },
-            { no: 21, pos: "CB", nat: "沙特阿拉伯", name: "阿拉比亚", rating: 86, height: 186, weight: 81, age: 32, cGP: 510, cG: 32, cA: 5, tGP: 45, tG: 2, tA: 0, value: "ⰵ16M", attributes: { spd: 72, sho: 45, pas: 68, dri: 65, def: 86, phy: 87, men: 82, sta: 82 } },
-            { no: 25, pos: "RB", nat: "西班牙", name: "雷谷龙", rating: 87, height: 178, weight: 71, age: 28, cGP: 325, cG: 8, cA: 52, tGP: 50, tG: 1, tA: 9, value: "ⰵ46M", attributes: { spd: 91, sho: 64, pas: 78, dri: 86, def: 78, phy: 74, men: 80, sta: 93 } },
-            { no: 27, pos: "RM", nat: "牙买加", name: "格雷", rating: 87, height: 177, weight: 72, age: 20, cGP: 45, cG: 12, cA: 18, tGP: 65, tG: 10, tA: 14, value: "ⰵ135M", attributes: { spd: 89, sho: 78, pas: 84, dri: 88, def: 52, phy: 70, men: 85, sta: 88 } },
-            { no: 18, pos: "CM", nat: "德国", name: "林腾", rating: 86, height: 176, weight: 74, age: 32, cGP: 490, cG: 55, cA: 110, tGP: 40, tG: 4, tA: 9, value: "ⰵ14M", attributes: { spd: 78, sho: 74, pas: 85, dri: 87, def: 70, phy: 72, men: 82, sta: 90 } },
-            { no: 19, pos: "RM", nat: "埃及", name: "索罗赫", rating: 85, height: 175, weight: 72, age: 36, cGP: 615, cG: 95, cA: 125, tGP: 85, tG: 18, tA: 15, value: "ⰵ7.5M", attributes: { spd: 82, sho: 76, pas: 78, dri: 85, def: 45, phy: 68, men: 76, sta: 85 } },
-            { no: 28, pos: "LM", nat: "葡萄牙", name: "夸雷斯曼", rating: 85, height: 174, weight: 70, age: 31, cGP: 485, cG: 112, cA: 140, tGP: 60, tG: 15, tA: 22, value: "ⰵ20M", attributes: { spd: 88, sho: 74, pas: 80, dri: 89, def: 40, phy: 65, men: 74, sta: 82 } },
-            { no: 20, pos: "CM", nat: "威尔士", name: "摩根", rating: 84, height: 177, weight: 75, age: 30, cGP: 445, cG: 38, cA: 92, tGP: 35, tG: 2, tA: 8, value: "ⰵ26M", attributes: { spd: 80, sho: 70, pas: 86, dri: 84, def: 68, phy: 74, men: 80, sta: 92 } },
-            { no: 15, pos: "ST", nat: "意大利", name: "格罗索", rating: 87, height: 184, weight: 82, age: 28, cGP: 335, cG: 165, cA: 38, tGP: 50, tG: 28, tA: 3, value: "ⰵ68M", attributes: { spd: 86, sho: 89, pas: 70, dri: 84, def: 38, phy: 85, men: 90, sta: 84 } },
-            { no: 22, pos: "ST", nat: "加纳", name: "威廉姆斯", rating: 86, height: 181, weight: 77, age: 19, cGP: 30, cG: 12, cA: 4, tGP: 45, tG: 15, tA: 2, value: "ⰵ110M", attributes: { spd: 88, sho: 87, pas: 68, dri: 83, def: 35, phy: 78, men: 78, sta: 82 } }
+            { no: 37, pos: "RW", nat: "西班牙", name: "亚玛", rating: 92, height: 180, weight: 72, age: 20, cGP: 85, cG: 32, cA: 28, tGP: 0, tG: 0, tA: 0, value: "ⰵ185M", attributes: { spd: 97, sho: 86, pas: 89, dri: 96, def: 45, phy: 72, men: 84, sta: 89 } },
+            { no: 9, pos: "ST", nat: "中国", name: "司炎尚武", rating: 91, height: 186, weight: 82, age: 28, cGP: 315, cG: 185, cA: 42, tGP: 105, tG: 82, tA: 18, value: "ⰵ145M", attributes: { spd: 92, sho: 96, pas: 78, dri: 90, def: 35, phy: 88, men: 92, sta: 85 } },
+            { no: 7, pos: "LM", nat: "阿根廷", name: "拉凯德", rating: 91, height: 176, weight: 71, age: 29, cGP: 340, cG: 92, cA: 155, tGP: 120, tG: 48, tA: 59, value: "ⰵ120M", attributes: { spd: 94, sho: 86, pas: 92, dri: 94, def: 42, phy: 74, men: 90, sta: 90 } },
+            { no: 8, pos: "CM", nat: "英格兰", name: "凯恩斯", rating: 92, height: 183, weight: 79, age: 28, cGP: 325, cG: 48, cA: 112, tGP: 160, tG: 24, tA: 62, value: "ⰵ130M", attributes: { spd: 80, sho: 84, pas: 96, dri: 91, def: 78, phy: 82, men: 97, sta: 94 } },
+            { no: 4, pos: "CB", nat: "葡萄牙", name: "佩德斯", rating: 91, height: 190, weight: 86, age: 29, cGP: 340, cG: 35, cA: 12, tGP: 180, tG: 12, tA: 3, value: "ⰵ92M", attributes: { spd: 77, sho: 55, pas: 80, dri: 74, def: 95, phy: 92, men: 98, sta: 84 } },
+            { no: 3, pos: "LB", nat: "加拿大", name: "戴维斯", rating: 90, height: 181, weight: 75, age: 30, cGP: 365, cG: 22, cA: 85, tGP: 135, tG: 12, tA: 39, value: "ⰵ80M", attributes: { spd: 95, sho: 68, pas: 85, dri: 88, def: 84, phy: 82, men: 86, sta: 94 } },
+            { no: 11, pos: "ST", nat: "克罗地亚", name: "米林特维奇", rating: 90, height: 185, weight: 80, age: 27, cGP: 220, cG: 145, cA: 28, tGP: 154, tG: 112, tA: 15, value: "ⰵ115M", attributes: { spd: 84, sho: 93, pas: 78, dri: 85, def: 38, phy: 90, men: 95, sta: 82 } },
+            { no: 17, pos: "RM", nat: "法国", name: "维罗尼克", rating: 90, height: 178, weight: 74, age: 26, cGP: 215, cG: 42, cA: 78, tGP: 112, tG: 21, tA: 39, value: "ⰵ110M", attributes: { spd: 91, sho: 83, pas: 88, dri: 91, def: 48, phy: 76, men: 85, sta: 92 } },
+            { no: 26, pos: "ST", nat: "巴西", name: "桑托斯", rating: 89, height: 182, weight: 78, age: 25, cGP: 195, cG: 132, cA: 28, tGP: 120, tG: 88, tA: 11, value: "ⰵ105M", attributes: { spd: 88, sho: 91, pas: 74, dri: 88, def: 32, phy: 84, men: 84, sta: 88 } },
+            { no: 1, pos: "GK", nat: "英格兰", name: "亨德森", rating: 89, height: 188, weight: 85, age: 24, cGP: 115, cG: 0, cA: 2, tGP: 110, tG: 0, tA: 0, value: "ⰵ125M", attributes: { div: 89, han: 86, kic: 82, ref: 91, spd: 55, pos_s: 90, men: 93, sta: 84 } },
+            { no: 16, pos: "CM", nat: "埃及", name: "拉希姆", rating: 87, height: 182, weight: 77, age: 33, cGP: 510, cG: 62, cA: 135, tGP: 90, tG: 8, tA: 21, value: "ⰵ22M", attributes: { spd: 80, sho: 78, pas: 89, dri: 85, def: 84, phy: 83, men: 84, sta: 88 } },
+            { no: 2, pos: "RB", nat: "美国", name: "帕奎奥", rating: 88, height: 179, weight: 74, age: 27, cGP: 215, cG: 12, cA: 45, tGP: 108, tG: 4, tA: 21, value: "ⰵ58M", attributes: { spd: 90, sho: 65, pas: 82, dri: 84, def: 82, phy: 78, men: 85, sta: 91 } },
+            { no: 15, pos: "ST", nat: "意大利", name: "格罗索", rating: 87, height: 184, weight: 82, age: 29, cGP: 335, cG: 165, cA: 38, tGP: 50, tG: 28, tA: 3, value: "ⰵ68M", attributes: { spd: 85, sho: 89, pas: 70, dri: 84, def: 38, phy: 85, men: 91, sta: 82 } },
+            { no: 22, pos: "ST", nat: "加纳", name: "威廉姆斯", rating: 88, height: 181, weight: 77, age: 20, cGP: 30, cG: 12, cA: 4, tGP: 45, tG: 15, tA: 2, value: "ⰵ125M", attributes: { spd: 90, sho: 89, pas: 68, dri: 85, def: 35, phy: 80, men: 80, sta: 84 } },
+            { no: 5, pos: "CB", nat: "印尼", name: "丹尼尔", rating: 87, height: 188, weight: 84, age: 27, cGP: 205, cG: 22, cA: 5, tGP: 55, tG: 3, tA: 0, value: "ⰵ48M", attributes: { spd: 74, sho: 48, pas: 72, dri: 68, def: 89, phy: 91, men: 89, sta: 81 } },
+            { no: 24, pos: "RB", nat: "瑞典", name: "安德森", rating: 88, height: 180, weight: 76, age: 23, cGP: 85, cG: 4, cA: 18, tGP: 70, tG: 2, tA: 15, value: "ⰵ90M", attributes: { spd: 89, sho: 62, pas: 83, dri: 84, def: 81, phy: 80, men: 85, sta: 92 } },
+            { no: 25, pos: "RB", nat: "西班牙", name: "雷谷龙", rating: 87, height: 178, weight: 71, age: 29, cGP: 325, cG: 8, cA: 52, tGP: 50, tG: 1, tA: 9, value: "ⰵ42M", attributes: { spd: 90, sho: 64, pas: 78, dri: 86, def: 78, phy: 73, men: 82, sta: 91 } },
+            { no: 27, pos: "RM", nat: "牙买加", name: "格雷", rating: 89, height: 177, weight: 72, age: 21, cGP: 45, cG: 12, cA: 18, tGP: 65, tG: 10, tA: 14, value: "ⰵ150M", attributes: { spd: 91, sho: 80, pas: 85, dri: 90, def: 52, phy: 72, men: 87, sta: 90 } },
+            { no: 22, pos: "CM", nat: "马来西亚", name: "郑宇辰", rating: 86, height: 179, weight: 73, age: 31, cGP: 460, cG: 55, cA: 118, tGP: 105, tG: 14, tA: 38, value: "ⰵ28M", attributes: { spd: 83, sho: 76, pas: 90, dri: 88, def: 72, phy: 73, men: 84, sta: 86 } },
+            { no: 12, pos: "GK", nat: "喀麦隆", name: "与塔诺", rating: 86, height: 190, weight: 88, age: 32, cGP: 480, cG: 0, cA: 1, tGP: 45, tG: 0, tA: 0, value: "ⰵ20M", attributes: { div: 84, han: 86, kic: 80, ref: 88, spd: 60, pos_s: 85, men: 82, sta: 80 } },
+            { no: 15, pos: "CB", nat: "法国", name: "克莱尔", rating: 85, height: 187, weight: 83, age: 34, cGP: 555, cG: 28, cA: 5, tGP: 82, tG: 4, tA: 1, value: "ⰵ12M", attributes: { spd: 68, sho: 42, pas: 65, dri: 62, def: 88, phy: 87, men: 84, sta: 81 } },
+            { no: 21, pos: "CB", nat: "沙特阿拉伯", name: "阿拉比亚", rating: 85, height: 186, weight: 81, age: 33, cGP: 510, cG: 32, cA: 5, tGP: 45, tG: 2, tA: 0, value: "ⰵ10M", attributes: { spd: 70, sho: 45, pas: 68, dri: 65, def: 86, phy: 85, men: 85, sta: 80 } },
+            { no: 18, pos: "CM", nat: "德国", name: "林腾", rating: 85, height: 176, weight: 74, age: 33, cGP: 490, cG: 55, cA: 110, tGP: 40, tG: 4, tA: 9, value: "ⰵ10M", attributes: { spd: 76, sho: 74, pas: 85, dri: 86, def: 70, phy: 70, men: 85, sta: 88 } },
+            { no: 10, pos: "CAM", nat: "科特迪瓦", name: "图雷", rating: 84, height: 181, weight: 76, age: 34, cGP: 540, cG: 88, cA: 182, tGP: 48, tG: 9, tA: 16, value: "ⰵ12M", attributes: { spd: 81, sho: 80, pas: 88, dri: 87, def: 55, phy: 70, men: 88, sta: 80 } },
+            { no: 28, pos: "LM", nat: "葡萄牙", name: "夸雷斯曼", rating: 84, height: 174, weight: 70, age: 32, cGP: 485, cG: 112, cA: 140, tGP: 60, tG: 15, tA: 22, value: "ⰵ14M", attributes: { spd: 86, sho: 74, pas: 80, dri: 88, def: 40, phy: 63, men: 76, sta: 80 } },
+            { no: 8, pos: "CM", nat: "英格兰", name: "摩根", rating: 84, height: 177, weight: 75, age: 31, cGP: 445, cG: 38, cA: 92, tGP: 35, tG: 2, tA: 8, value: "ⰵ20M", attributes: { spd: 78, sho: 70, pas: 86, dri: 84, def: 68, phy: 74, men: 82, sta: 91 } }
         ]
     },
 
@@ -173,9 +170,9 @@ window.TEAMS_DATA = {
             LEAGUE: {
                 title: "联赛阵容 (3-4-1-2)",
                 players: {
-                    "GK": "加扎尼斯", "LCB": "努诺", "CB": "德约科维奇", "RCB": "法波",
-                    "CDM": "克莱恩", "LM": "扎法", "RM": "贝尔", "CM": "普拉迪亚",
-                    "CAM": "格林纳尔", "LST": "杰米", "RST": "席尔瓦"
+                    "GK": "迈格", "LCB": "努诺", "CB": "德约科维奇", "RCB": "巴斯托",
+                    "CDM": "克莱恩", "LM": "扎法", "RM": "贝尔", "CM": "霍伊",
+                    "CAM": "佩德", "LST": "杰米", "RST": "席尔瓦"
                 },
                 coords: {
                     "GK": [5, 50], "LCB": [22, 25], "CB": [18, 50], "RCB": [22, 75],
@@ -186,8 +183,8 @@ window.TEAMS_DATA = {
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
                 players: {
-                    "GK": "亚瑟", "LB": "罗杰", "LCB": "门德兹", "RCB": "劳尔", "RB": "佩尔顿",
-                    "LDM": "索切克", "RDM": "菲利普", "CAM": "厄兰纳", "LW": "扎法", "ST": "基力亚尔", "RW": "肯尼"
+                    "GK": "加扎尼斯", "LB": "罗杰", "LCB": "劳尔", "RCB": "法波", "RB": "佩尔顿",
+                    "LDM": "索切克", "RDM": "菲利普", "CAM": "格林纳尔", "LW": "扎法", "ST": "基力亚尔", "RW": "肯尼"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90],
@@ -196,32 +193,32 @@ window.TEAMS_DATA = {
             }
         },
         roster: [
-            { no: 9, pos: "ST", nat: "英格兰", name: "杰米", rating: 92, height: 187, weight: 82, age: 30, cGP: 485, cG: 295, cA: 62, tGP: 120, tG: 88, tA: 15, value: "ⰵ95M", attributes: { spd: 88, sho: 96, pas: 82, dri: 92, def: 38, phy: 90, men: 98, sta: 84 } },
-            { no: 11, pos: "ST", nat: "葡萄牙", name: "席尔瓦", rating: 92, height: 184, weight: 78, age: 25, cGP: 245, cG: 158, cA: 35, tGP: 110, tG: 62, tA: 12, value: "ⰵ195M", attributes: { spd: 94, sho: 93, pas: 85, dri: 95, def: 42, phy: 86, men: 92, sta: 89 } },
-            { no: 7, pos: "LM", nat: "法国", name: "扎法", rating: 89, height: 175, weight: 70, age: 29, cGP: 362, cG: 85, cA: 142, tGP: 65, tG: 12, tA: 24, value: "ⰵ72M", attributes: { spd: 91, sho: 78, pas: 90, dri: 93, def: 45, phy: 72, men: 88, sta: 82 } },
-            { no: 8, pos: "CM", nat: "西班牙", name: "普拉迪亚", rating: 88, height: 182, weight: 76, age: 27, cGP: 312, cG: 48, cA: 115, tGP: 150, tG: 18, tA: 56, value: "ⰵ68M", attributes: { spd: 82, sho: 80, pas: 92, dri: 88, def: 74, phy: 78, men: 92, sta: 94 } },
-            { no: 13, pos: "LM", nat: "英格兰", name: "格林纳尔", rating: 87, height: 176, weight: 71, age: 31, cGP: 410, cG: 92, cA: 118, tGP: 95, tG: 21, tA: 38, value: "ⰵ22M", attributes: { spd: 85, sho: 82, pas: 88, dri: 86, def: 48, phy: 70, men: 85, sta: 78 } },
-            { no: 17, pos: "RM", nat: "威尔士", name: "贝尔", rating: 87, height: 180, weight: 74, age: 25, cGP: 220, cG: 48, cA: 65, tGP: 112, tG: 15, tA: 32, value: "ⰵ85M", attributes: { spd: 92, sho: 80, pas: 84, dri: 91, def: 45, phy: 74, men: 82, sta: 88 } },
-            { no: 6, pos: "CDM", nat: "德国", name: "克莱恩", rating: 87, height: 183, weight: 79, age: 26, cGP: 235, cG: 15, cA: 45, tGP: 125, tG: 5, tA: 21, value: "ⰵ75M", attributes: { spd: 78, sho: 65, pas: 86, dri: 82, def: 89, phy: 85, men: 88, sta: 92 } },
-            { no: 26, pos: "ST", nat: "希腊", name: "基力亚尔", rating: 87, height: 182, weight: 76, age: 23, cGP: 140, cG: 76, cA: 21, tGP: 140, tG: 76, tA: 21, value: "ⰵ95M", attributes: { spd: 89, sho: 88, pas: 72, dri: 87, def: 35, phy: 82, men: 78, sta: 85 } },
-            { no: 1, pos: "GK", nat: "阿根廷", name: "加扎尼斯", rating: 86, height: 191, weight: 88, age: 25, cGP: 195, cG: 0, cA: 1, tGP: 156, tG: 0, tA: 0, value: "ⰵ48M", attributes: { div: 88, han: 84, kic: 80, ref: 89, spd: 58, pos_s: 85, men: 80, sta: 84 } },
-            { no: 4, pos: "CB", nat: "塞尔维亚", name: "德约科维奇", rating: 86, height: 188, weight: 85, age: 25, cGP: 210, cG: 15, cA: 2, tGP: 180, tG: 9, tA: 2, value: "ⰵ45M", attributes: { spd: 82, sho: 45, pas: 74, dri: 72, def: 88, phy: 92, men: 84, sta: 88 } },
-            { no: 19, pos: "ST", nat: "日本", name: "佐藤健", rating: 86, height: 177, weight: 70, age: 23, cGP: 95, cG: 58, cA: 15, tGP: 95, tG: 58, tA: 15, value: "ⰵ78M", attributes: { spd: 90, sho: 86, pas: 75, dri: 89, def: 32, phy: 68, men: 76, sta: 82 } },
-            { no: 18, pos: "CM", nat: "捷克", name: "索切克", rating: 85, height: 188, weight: 86, age: 28, cGP: 312, cG: 42, cA: 31, tGP: 140, tG: 12, tA: 15, value: "ⰵ38M", attributes: { spd: 76, sho: 82, pas: 84, dri: 80, def: 82, phy: 88, men: 85, sta: 90 } },
-            { no: 12, pos: "GK", nat: "巴西", name: "亚瑟", rating: 84, height: 189, weight: 89, age: 37, cGP: 580, cG: 0, cA: 1, tGP: 45, tG: 0, tA: 0, value: "ⰵ4.5M", attributes: { div: 82, han: 85, kic: 78, ref: 80, spd: 45, pos_s: 88, men: 95, sta: 70 } },
-            { no: 5, pos: "CB", nat: "葡萄牙", name: "努诺", rating: 84, height: 186, weight: 82, age: 28, cGP: 245, cG: 12, cA: 4, tGP: 85, tG: 4, tA: 1, value: "ⰵ28M", attributes: { spd: 78, sho: 42, pas: 70, dri: 68, def: 86, phy: 84, men: 80, sta: 82 } },
-            { no: 14, pos: "CB", nat: "法国", name: "法波", rating: 84, height: 185, weight: 81, age: 31, cGP: 420, cG: 22, cA: 5, tGP: 50, tG: 2, tA: 0, value: "ⰵ12M", attributes: { spd: 72, sho: 40, pas: 72, dri: 65, def: 87, phy: 82, men: 90, sta: 75 } },
-            { no: 3, pos: "LB", nat: "巴西", name: "罗杰", rating: 84, height: 178, weight: 73, age: 28, cGP: 210, cG: 6, cA: 42, tGP: 60, tG: 1, tA: 15, value: "ⰵ26M", attributes: { spd: 88, sho: 62, pas: 84, dri: 83, def: 81, phy: 75, men: 82, sta: 88 } },
-            { no: 16, pos: "CM", nat: "德国", name: "菲利普", rating: 84, height: 179, weight: 75, age: 26, cGP: 185, cG: 18, cA: 52, tGP: 50, tG: 4, tA: 11, value: "ⰵ32M", attributes: { spd: 80, sho: 74, pas: 85, dri: 84, def: 78, phy: 76, men: 80, sta: 85 } },
-            { no: 27, pos: "RM", nat: "爱尔兰", name: "肯尼", rating: 84, height: 175, weight: 69, age: 27, cGP: 240, cG: 38, cA: 55, tGP: 65, tG: 8, tA: 15, value: "ⰵ29M", attributes: { spd: 89, sho: 76, pas: 78, dri: 87, def: 52, phy: 70, men: 78, sta: 82 } },
-            { no: 2, pos: "RB", nat: "美国", name: "佩尔顿", rating: 83, height: 180, weight: 77, age: 23, cGP: 115, cG: 4, cA: 28, tGP: 55, tG: 1, tA: 12, value: "ⰵ42M", attributes: { spd: 91, sho: 60, pas: 80, dri: 84, def: 79, phy: 74, men: 72, sta: 94 } },
-            { no: 21, pos: "CB", nat: "阿尔及利亚", name: "门德兹", rating: 83, height: 187, weight: 84, age: 33, cGP: 485, cG: 22, cA: 5, tGP: 40, tG: 2, tA: 0, value: "ⰵ8.5M", attributes: { spd: 68, sho: 45, pas: 65, dri: 60, def: 85, phy: 86, men: 84, sta: 72 } },
-            { no: 15, pos: "CB", nat: "西班牙", name: "劳尔", rating: 82, height: 188, weight: 83, age: 24, cGP: 85, cG: 3, cA: 0, tGP: 85, tG: 3, tA: 0, value: "ⰵ35M", attributes: { spd: 76, sho: 40, pas: 62, dri: 60, def: 84, phy: 88, men: 78, sta: 80 } },
-            { no: 25, pos: "CB", nat: "葡萄牙", name: "德萨", rating: 82, height: 186, weight: 82, age: 28, cGP: 155, cG: 8, cA: 2, tGP: 75, tG: 4, tA: 0, value: "ⰵ18M", attributes: { spd: 74, sho: 38, pas: 64, dri: 62, def: 83, phy: 85, men: 75, sta: 82 } },
-            { no: 20, pos: "CM", nat: "葡萄牙", name: "門德斯", rating: 82, height: 181, weight: 77, age: 30, cGP: 295, cG: 22, cA: 58, tGP: 48, tG: 3, tA: 8, value: "ⰵ14M", attributes: { spd: 78, sho: 72, pas: 83, dri: 80, def: 74, phy: 76, men: 82, sta: 85 } },
-            { no: 22, pos: "CM", nat: "以色列", name: "拉兹", rating: 82, height: 177, weight: 72, age: 34, cGP: 510, cG: 32, cA: 85, tGP: 80, tG: 5, tA: 18, value: "ⰵ7.5M", attributes: { spd: 72, sho: 74, pas: 85, dri: 81, def: 70, phy: 72, men: 88, sta: 78 } },
-            { no: 28, pos: "ST", nat: "法国", name: "厄兰纳", rating: 82, height: 183, weight: 80, age: 29, cGP: 315, cG: 142, cA: 21, tGP: 45, tG: 12, tA: 2, value: "ⰵ16M", attributes: { spd: 84, sho: 85, pas: 68, dri: 82, def: 35, phy: 80, men: 74, sta: 82 } },
-            { no: 23, pos: "GK", nat: "挪威", name: "奥丁", rating: 81, height: 186, weight: 87, age: 21, cGP: 45, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ28M", attributes: { div: 82, han: 80, kic: 76, ref: 85, spd: 60, pos_s: 82, men: 74, sta: 80 } }
+            { no: 12, pos: "GK", nat: "法国", name: "迈格", rating: 89, height: 191, weight: 80, age: 31, cGP: 410, cG: 0, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { div: 88, han: 86, kic: 82, ref: 92, spd: 55, pos_s: 90, men: 88, sta: 82 } },
+            { no: 9, pos: "ST", nat: "英格兰", name: "杰米", rating: 92, height: 187, weight: 82, age: 31, cGP: 485, cG: 295, cA: 62, tGP: 120, tG: 88, tA: 15, value: "ⰵ95M", attributes: { spd: 88, sho: 96, pas: 82, dri: 92, def: 38, phy: 90, men: 98, sta: 84 } },
+            { no: 11, pos: "ST", nat: "葡萄牙", name: "席尔瓦", rating: 92, height: 184, weight: 78, age: 26, cGP: 245, cG: 158, cA: 35, tGP: 110, tG: 62, tA: 12, value: "ⰵ195M", attributes: { spd: 94, sho: 93, pas: 85, dri: 95, def: 42, phy: 86, men: 90, sta: 89 } },
+            { no: 10, pos: "CAM", nat: "西班牙", name: "佩德", rating: 88, height: 174, weight: 60, age: 23, cGP: 180, cG: 32, cA: 75, tGP: 0, tG: 0, tA: 0, value: "ⰵ91M", attributes: { spd: 84, sho: 78, pas: 92, dri: 94, def: 52, phy: 65, men: 88, sta: 85 } },
+            { no: 31, pos: "CB", nat: "意大利", name: "巴斯托", rating: 88, height: 190, weight: 85, age: 27, cGP: 320, cG: 12, cA: 15, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 78, sho: 45, pas: 84, dri: 75, def: 91, phy: 88, men: 85, sta: 85 } },
+            { no: 7, pos: "LM", nat: "法国", name: "扎法", rating: 89, height: 175, weight: 70, age: 30, cGP: 362, cG: 85, cA: 142, tGP: 65, tG: 12, tA: 24, value: "ⰵ72M", attributes: { spd: 91, sho: 78, pas: 90, dri: 93, def: 45, phy: 72, men: 88, sta: 82 } },
+            { no: 33, pos: "CM", nat: "丹麦", name: "霍伊", rating: 87, height: 185, weight: 82, age: 29, cGP: 340, cG: 22, cA: 18, tGP: 0, tG: 0, tA: 0, value: "Exchange", attributes: { spd: 75, sho: 78, pas: 84, dri: 78, def: 88, phy: 91, men: 92, sta: 94 } },
+            { no: 17, pos: "RM", nat: "威尔士", name: "贝尔", rating: 87, height: 180, weight: 74, age: 26, cGP: 220, cG: 48, cA: 65, tGP: 112, tG: 15, tA: 32, value: "ⰵ85M", attributes: { spd: 92, sho: 80, pas: 84, dri: 91, def: 45, phy: 74, men: 82, sta: 88 } },
+            { no: 6, pos: "CDM", nat: "德国", name: "克莱恩", rating: 87, height: 183, weight: 79, age: 27, cGP: 235, cG: 15, cA: 45, tGP: 125, tG: 5, tA: 21, value: "ⰵ75M", attributes: { spd: 78, sho: 65, pas: 86, dri: 82, def: 89, phy: 85, men: 88, sta: 92 } },
+            { no: 13, pos: "CAM", nat: "英格兰", name: "格林纳尔", rating: 87, height: 176, weight: 71, age: 32, cGP: 410, cG: 92, cA: 118, tGP: 95, tG: 21, tA: 38, value: "ⰵ22M", attributes: { spd: 85, sho: 82, pas: 88, dri: 86, def: 48, phy: 70, men: 85, sta: 78 } },
+            { no: 26, pos: "ST", nat: "希腊", name: "基力亚尔", rating: 87, height: 182, weight: 76, age: 24, cGP: 140, cG: 76, cA: 21, tGP: 140, tG: 76, tA: 21, value: "ⰵ95M", attributes: { spd: 89, sho: 88, pas: 72, dri: 87, def: 35, phy: 82, men: 78, sta: 85 } },
+            { no: 1, pos: "GK", nat: "阿根廷", name: "加扎尼斯", rating: 86, height: 191, weight: 88, age: 26, cGP: 195, cG: 0, cA: 1, tGP: 156, tG: 0, tA: 0, value: "ⰵ48M", attributes: { div: 88, han: 84, kic: 80, ref: 89, spd: 58, pos_s: 85, men: 80, sta: 84 } },
+            { no: 4, pos: "CB", nat: "塞尔维亚", name: "德约科维奇", rating: 86, height: 188, weight: 85, age: 26, cGP: 210, cG: 15, cA: 2, tGP: 180, tG: 9, tA: 2, value: "ⰵ45M", attributes: { spd: 82, sho: 45, pas: 74, dri: 72, def: 88, phy: 92, men: 84, sta: 88 } },
+            { no: 19, pos: "ST", nat: "日本", name: "佐藤健", rating: 86, height: 177, weight: 70, age: 24, cGP: 95, cG: 58, cA: 15, tGP: 95, tG: 58, tA: 15, value: "ⰵ78M", attributes: { spd: 90, sho: 86, pas: 75, dri: 89, def: 32, phy: 68, men: 76, sta: 82 } },
+            { no: 18, pos: "CM", nat: "捷克", name: "索切克", rating: 85, height: 188, weight: 86, age: 29, cGP: 312, cG: 42, cA: 31, tGP: 140, tG: 12, tA: 15, value: "ⰵ38M", attributes: { spd: 76, sho: 82, pas: 84, dri: 80, def: 82, phy: 88, men: 85, sta: 90 } },
+            { no: 5, pos: "CB", nat: "葡萄牙", name: "努诺", rating: 84, height: 186, weight: 82, age: 29, cGP: 245, cG: 12, cA: 4, tGP: 85, tG: 4, tA: 1, value: "ⰵ28M", attributes: { spd: 78, sho: 42, pas: 70, dri: 68, def: 86, phy: 84, men: 80, sta: 82 } },
+            { no: 14, pos: "CB", nat: "法国", name: "法波", rating: 84, height: 185, weight: 81, age: 32, cGP: 420, cG: 22, cA: 5, tGP: 50, tG: 2, tA: 0, value: "ⰵ12M", attributes: { spd: 72, sho: 40, pas: 72, dri: 65, def: 87, phy: 82, men: 90, sta: 75 } },
+            { no: 3, pos: "LB", nat: "巴西", name: "罗杰", rating: 84, height: 178, weight: 73, age: 29, cGP: 210, cG: 6, cA: 42, tGP: 60, tG: 1, tA: 15, value: "ⰵ26M", attributes: { spd: 88, sho: 62, pas: 84, dri: 83, def: 81, phy: 75, men: 82, sta: 88 } },
+            { no: 16, pos: "CM", nat: "德国", name: "菲利普", rating: 84, height: 179, weight: 75, age: 27, cGP: 185, cG: 18, cA: 52, tGP: 50, tG: 4, tA: 11, value: "ⰵ32M", attributes: { spd: 80, sho: 74, pas: 85, dri: 84, def: 78, phy: 76, men: 80, sta: 85 } },
+            { no: 27, pos: "RM", nat: "爱尔兰", name: "肯尼", rating: 84, height: 175, weight: 69, age: 28, cGP: 240, cG: 38, cA: 55, tGP: 65, tG: 8, tA: 15, value: "ⰵ29M", attributes: { spd: 89, sho: 76, pas: 78, dri: 87, def: 52, phy: 70, men: 78, sta: 82 } },
+            { no: 2, pos: "RB", nat: "美国", name: "佩尔顿", rating: 83, height: 180, weight: 77, age: 24, cGP: 115, cG: 4, cA: 28, tGP: 55, tG: 1, tA: 12, value: "ⰵ42M", attributes: { spd: 91, sho: 60, pas: 80, dri: 84, def: 79, phy: 74, men: 72, sta: 94 } },
+            { no: 15, pos: "CB", nat: "西班牙", name: "劳尔", rating: 82, height: 188, weight: 83, age: 25, cGP: 85, cG: 3, cA: 0, tGP: 85, tG: 3, tA: 0, value: "ⰵ35M", attributes: { spd: 76, sho: 40, pas: 62, dri: 60, def: 84, phy: 88, men: 78, sta: 80 } },
+            { no: 25, pos: "CB", nat: "葡萄牙", name: "德萨", rating: 82, height: 186, weight: 82, age: 29, cGP: 155, cG: 8, cA: 2, tGP: 75, tG: 4, tA: 0, value: "ⰵ18M", attributes: { spd: 74, sho: 38, pas: 64, dri: 62, def: 83, phy: 85, men: 75, sta: 82 } },
+            { no: 20, pos: "CM", nat: "葡萄牙", name: "門德斯", rating: 82, height: 181, weight: 77, age: 31, cGP: 295, cG: 22, cA: 58, tGP: 48, tG: 3, tA: 8, value: "ⰵ14M", attributes: { spd: 78, sho: 72, pas: 83, dri: 80, def: 74, phy: 76, men: 82, sta: 85 } },
+            { no: 22, pos: "CM", nat: "以色列", name: "拉兹", rating: 82, height: 177, weight: 72, age: 35, cGP: 510, cG: 32, cA: 85, tGP: 80, tG: 5, tA: 18, value: "ⰵ7.5M", attributes: { spd: 72, sho: 74, pas: 85, dri: 81, def: 70, phy: 72, men: 88, sta: 78 } },
+            { no: 28, pos: "ST", nat: "法国", name: "厄兰纳", rating: 82, height: 183, weight: 80, age: 30, cGP: 315, cG: 142, cA: 21, tGP: 45, tG: 12, tA: 2, value: "ⰵ16M", attributes: { spd: 84, sho: 85, pas: 68, dri: 82, def: 35, phy: 80, men: 74, sta: 82 } }
         ]
     },
 
@@ -246,8 +243,8 @@ window.TEAMS_DATA = {
             LEAGUE: {
                 title: "联赛阵容 (4-5-1)",
                 players: {
-                    "GK": "雷恩", "LB": "比萨卡", "LCB": "阿克塞尔", "RCB": "马斯切拉诺", "RB": "阿方索",
-                    "CDM": "普拉维尼", "LM": "安利克", "CM": "萨比策", "CAM": "弗朗吉", "RM": "斯顿斯", "ST": "梅西亚"
+                    "GK": "雷恩", "LB": "比萨卡", "LCB": "阿克塞尔", "RCB": "科内", "RB": "阿方索",
+                    "CDM": "普拉维尼", "LM": "安利克", "CM": "萨比策", "CAM": "席尔瓦", "RM": "斯顿斯", "ST": "梅西亚"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
@@ -267,32 +264,32 @@ window.TEAMS_DATA = {
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "法国", name: "雷恩", rating: 81, height: 188, weight: 83, age: 26, cGP: 215, cG: 0, cA: 2, tGP: 145, tG: 0, tA: 1, value: "ⰵ18M", attributes: { div: 82, han: 78, kic: 75, ref: 84, spd: 55, pos_s: 80, men: 78, sta: 82 } },
-            { no: 3, pos: "LB", nat: "英格兰", name: "比萨卡", rating: 87, height: 183, weight: 76, age: 27, cGP: 342, cG: 12, cA: 78, tGP: 120, tG: 4, tA: 25, value: "ⰵ58M", attributes: { spd: 88, sho: 65, pas: 82, dri: 84, def: 86, phy: 80, men: 82, sta: 90 } },
-            { no: 4, pos: "CB", nat: "德国", name: "阿克塞尔", rating: 84, height: 189, weight: 85, age: 26, cGP: 245, cG: 15, cA: 4, tGP: 110, tG: 5, tA: 1, value: "ⰵ36M", attributes: { spd: 76, sho: 45, pas: 68, dri: 70, def: 88, phy: 89, men: 82, sta: 84 } },
-            { no: 14, pos: "CB", nat: "阿根廷", name: "马斯切拉诺", rating: 83, height: 174, weight: 73, age: 31, cGP: 585, cG: 18, cA: 15, tGP: 88, tG: 2, tA: 1, value: "ⰵ14M", attributes: { spd: 70, sho: 58, pas: 78, dri: 72, def: 89, phy: 82, men: 95, sta: 75 } },
-            { no: 2, pos: "RB", nat: "加拿大", name: "阿方索", rating: 82, height: 181, weight: 75, age: 24, cGP: 165, cG: 8, cA: 45, tGP: 82, tG: 3, tA: 18, value: "ⰵ42M", attributes: { spd: 92, sho: 60, pas: 76, dri: 85, def: 78, phy: 74, men: 75, sta: 94 } },
-            { no: 6, pos: "CDM", nat: "意大利", name: "普拉维尼", rating: 84, height: 182, weight: 78, age: 25, cGP: 195, cG: 18, cA: 28, tGP: 125, tG: 6, tA: 12, value: "ⰵ38M", attributes: { spd: 78, sho: 68, pas: 84, dri: 79, def: 82, phy: 85, men: 84, sta: 91 } },
-            { no: 8, pos: "CM", nat: "奥地利", name: "萨比策", rating: 82, height: 178, weight: 74, age: 28, cGP: 412, cG: 85, cA: 92, tGP: 165, tG: 12, tA: 21, value: "ⰵ22M", attributes: { spd: 79, sho: 80, pas: 84, dri: 81, def: 75, phy: 78, men: 85, sta: 85 } },
-            { no: 10, pos: "CAM", nat: "荷兰", name: "弗朗吉", rating: 78, height: 177, weight: 71, age: 22, cGP: 95, cG: 14, cA: 28, tGP: 75, tG: 9, tA: 15, value: "ⰵ25M", attributes: { spd: 84, sho: 74, pas: 80, dri: 82, def: 50, phy: 65, men: 72, sta: 80 } },
-            { no: 7, pos: "LM", nat: "西班牙", name: "安利克", rating: 81, height: 177, weight: 70, age: 24, cGP: 155, cG: 32, cA: 45, tGP: 45, tG: 5, tA: 12, value: "ⰵ28M", attributes: { spd: 86, sho: 76, pas: 78, dri: 83, def: 45, phy: 70, men: 74, sta: 85 } },
-            { no: 17, pos: "RM", nat: "英格兰", name: "斯顿斯", rating: 80, height: 188, weight: 80, age: 25, cGP: 145, cG: 18, cA: 31, tGP: 40, tG: 2, tA: 5, value: "ⰵ15M", attributes: { spd: 74, sho: 65, pas: 74, dri: 72, def: 82, phy: 84, men: 78, sta: 82 } },
-            { no: 9, pos: "ST", nat: "巴西", name: "梅西亚", rating: 81, height: 184, weight: 79, age: 23, cGP: 120, cG: 58, cA: 14, tGP: 85, tG: 42, tA: 8, value: "ⰵ32M", attributes: { spd: 85, sho: 84, pas: 68, dri: 80, def: 35, phy: 81, men: 78, sta: 80 } },
-            { no: 12, pos: "GK", nat: "挪威", name: "夏兰特", rating: 80, height: 191, weight: 90, age: 23, cGP: 110, cG: 0, cA: 0, tGP: 35, tG: 0, tA: 0, value: "ⰵ14M", attributes: { div: 81, han: 79, kic: 82, ref: 80, spd: 50, pos_s: 81, men: 75, sta: 78 } },
-            { no: 22, pos: "LB", nat: "西班牙", name: "阿隆", rating: 80, height: 176, weight: 72, age: 22, cGP: 85, cG: 4, cA: 21, tGP: 75, tG: 2, tA: 18, value: "ⰵ16M", attributes: { spd: 85, sho: 58, pas: 78, dri: 79, def: 74, phy: 70, men: 72, sta: 84 } },
-            { no: 5, pos: "CB", nat: "法国", name: "梅里耶", rating: 79, height: 187, weight: 82, age: 24, cGP: 135, cG: 6, cA: 2, tGP: 42, tG: 1, tA: 0, value: "ⰵ11M", attributes: { spd: 72, sho: 40, pas: 65, dri: 64, def: 81, phy: 83, men: 78, sta: 80 } },
-            { no: 15, pos: "CB", nat: "英格兰", name: "巴恩斯", rating: 77, height: 185, weight: 81, age: 22, cGP: 90, cG: 4, cA: 1, tGP: 65, tG: 3, tA: 0, value: "ⰵ9M", attributes: { spd: 75, sho: 42, pas: 62, dri: 60, def: 78, phy: 80, men: 74, sta: 78 } },
-            { no: 20, pos: "RB", nat: "阿根廷", name: "特维斯", rating: 79, height: 179, weight: 77, age: 25, cGP: 155, cG: 12, cA: 28, tGP: 48, tG: 2, tA: 6, value: "ⰵ10M", attributes: { spd: 84, sho: 62, pas: 74, dri: 78, def: 75, phy: 74, men: 76, sta: 82 } },
-            { no: 16, pos: "CDM", nat: "中国", name: "李思德", rating: 76, height: 180, weight: 78, age: 21, cGP: 45, cG: 2, cA: 8, tGP: 35, tG: 2, tA: 5, value: "ⰵ12M", attributes: { spd: 75, sho: 60, pas: 76, dri: 74, def: 78, phy: 78, men: 80, sta: 88 } },
-            { no: 18, pos: "CM", nat: "英格兰", name: "科尔", rating: 81, height: 180, weight: 75, age: 23, cGP: 115, cG: 22, cA: 38, tGP: 95, tG: 15, tA: 28, value: "ⰵ34M", attributes: { spd: 80, sho: 75, pas: 82, dri: 83, def: 70, phy: 72, men: 80, sta: 85 } },
-            { no: 21, pos: "CM", nat: "比利时", name: "德鲁涅", rating: 78, height: 181, weight: 74, age: 23, cGP: 110, cG: 18, cA: 35, tGP: 50, tG: 4, tA: 8, value: "ⰵ18M", attributes: { spd: 78, sho: 72, pas: 80, dri: 79, def: 68, phy: 74, men: 75, sta: 82 } },
-            { no: 11, pos: "LW", nat: "巴西", name: "迪达", rating: 77, height: 172, weight: 68, age: 24, cGP: 165, cG: 42, cA: 52, tGP: 55, tG: 4, tA: 9, value: "ⰵ12M", attributes: { spd: 90, sho: 74, pas: 72, dri: 82, def: 42, phy: 62, men: 70, sta: 84 } },
-            { no: 26, pos: "ST", nat: "德国", name: "基尔克特", rating: 80, height: 183, weight: 80, age: 23, cGP: 135, cG: 82, cA: 18, tGP: 45, tG: 18, tA: 4, value: "ⰵ26M", attributes: { spd: 82, sho: 82, pas: 65, dri: 78, def: 30, phy: 76, men: 74, sta: 80 } },
-            { no: 19, pos: "RW", nat: "葡萄牙", name: "维克特", rating: 78, height: 174, weight: 69, age: 22, cGP: 95, cG: 22, cA: 28, tGP: 42, tG: 3, tA: 11, value: "ⰵ14M", attributes: { spd: 88, sho: 76, pas: 74, dri: 81, def: 40, phy: 64, men: 72, sta: 82 } },
-            { no: 27, pos: "ST", nat: "丹麦", name: "劳德", rating: 78, height: 185, weight: 81, age: 21, cGP: 65, cG: 28, cA: 5, tGP: 50, tG: 18, tA: 3, value: "ⰵ13M", attributes: { spd: 80, sho: 78, pas: 60, dri: 72, def: 32, phy: 80, men: 72, sta: 78 } },
-            { no: 28, pos: "ST", nat: "意大利", name: "费雷莫", rating: 77, height: 182, weight: 78, age: 21, cGP: 55, cG: 21, cA: 4, tGP: 40, tG: 12, tA: 2, value: "ⰵ9.5M", attributes: { spd: 82, sho: 76, pas: 62, dri: 74, def: 35, phy: 78, men: 70, sta: 75 } },
-            { no: 24, pos: "LB", nat: "意大利", name: "赞多罗", rating: 77, height: 173, weight: 70, age: 20, cGP: 42, cG: 1, cA: 12, tGP: 20, tG: 0, tA: 8, value: "ⰵ8.8M", attributes: { spd: 86, sho: 55, pas: 74, dri: 78, def: 72, phy: 65, men: 70, sta: 85 } },
-            { no: 23, pos: "GK", nat: "瑞士", name: "费雷特", rating: 78, height: 189, weight: 86, age: 21, cGP: 50, cG: 0, cA: 0, tGP: 30, tG: 0, tA: 0, value: "ⰵ7.5M", attributes: { div: 78, han: 76, kic: 80, ref: 82, spd: 48, pos_s: 76, men: 72, sta: 75 } }
+            { no: 1, pos: "GK", nat: "法国", name: "雷恩", rating: 82, height: 188, weight: 83, age: 27, cGP: 360, cG: 0, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { div: 83, han: 79, kic: 76, ref: 85, spd: 55, pos_s: 82, men: 80, sta: 82 } },
+            { no: 3, pos: "LB", nat: "英格兰", name: "比萨卡", rating: 87, height: 183, weight: 76, age: 28, cGP: 462, cG: 16, cA: 103, tGP: 0, tG: 0, tA: 0, value: "ⰵ62M", attributes: { spd: 88, sho: 65, pas: 82, dri: 84, def: 88, phy: 82, men: 85, sta: 92 } },
+            { no: 4, pos: "CB", nat: "德国", name: "阿克塞尔", rating: 85, height: 189, weight: 85, age: 27, cGP: 355, cG: 20, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 77, sho: 45, pas: 70, dri: 72, def: 90, phy: 91, men: 84, sta: 85 } },
+            { no: 14, pos: "CB", nat: "法国", name: "科内", rating: 81, height: 186, weight: 80, age: 23, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 85, sho: 40, pas: 72, dri: 68, def: 82, phy: 84, men: 78, sta: 82 } },
+            { no: 2, pos: "RB", nat: "加拿大", name: "阿方索", rating: 83, height: 181, weight: 75, age: 25, cGP: 247, cG: 11, cA: 63, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 94, sho: 62, pas: 78, dri: 87, def: 79, phy: 76, men: 78, sta: 95 } },
+            { no: 6, pos: "CDM", nat: "意大利", name: "普拉维尼", rating: 85, height: 182, weight: 78, age: 26, cGP: 320, cG: 24, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 78, sho: 70, pas: 86, dri: 81, def: 84, phy: 86, men: 86, sta: 92 } },
+            { no: 8, pos: "CM", nat: "奥地利", name: "萨比策", rating: 82, height: 178, weight: 74, age: 29, cGP: 577, cG: 97, cA: 113, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { spd: 78, sho: 80, pas: 84, dri: 81, def: 75, phy: 78, men: 85, sta: 82 } },
+            { no: 10, pos: "CAM", nat: "葡萄牙", name: "席尔瓦", rating: 83, height: 176, weight: 70, age: 25, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 80, sho: 78, pas: 86, dri: 85, def: 45, phy: 68, men: 80, sta: 82 } },
+            { no: 7, pos: "LM", nat: "西班牙", name: "安利克", rating: 82, height: 177, weight: 70, age: 25, cGP: 200, cG: 37, cA: 57, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 87, sho: 78, pas: 80, dri: 84, def: 45, phy: 70, men: 76, sta: 86 } },
+            { no: 17, pos: "RM", nat: "英格兰", name: "斯顿斯", rating: 81, height: 188, weight: 80, age: 26, cGP: 185, cG: 20, cA: 36, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { spd: 75, sho: 66, pas: 76, dri: 74, def: 83, phy: 86, men: 80, sta: 84 } },
+            { no: 9, pos: "ST", nat: "巴西", name: "梅西亚", rating: 83, height: 184, weight: 79, age: 24, cGP: 205, cG: 100, cA: 22, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 86, sho: 87, pas: 70, dri: 82, def: 35, phy: 83, men: 80, sta: 82 } },
+            { no: 12, pos: "GK", nat: "挪威", name: "夏兰特", rating: 81, height: 191, weight: 90, age: 24, cGP: 145, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ16M", attributes: { div: 82, han: 80, kic: 83, ref: 82, spd: 50, pos_s: 82, men: 76, sta: 78 } },
+            { no: 22, pos: "LB", nat: "西班牙", name: "阿隆", rating: 81, height: 176, weight: 72, age: 23, cGP: 160, cG: 6, cA: 39, tGP: 0, tG: 0, tA: 0, value: "ⰵ20M", attributes: { spd: 86, sho: 58, pas: 80, dri: 80, def: 75, phy: 71, men: 74, sta: 85 } },
+            { no: 5, pos: "CB", nat: "法国", name: "梅里耶", rating: 80, height: 187, weight: 82, age: 25, cGP: 177, cG: 7, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ13M", attributes: { spd: 73, sho: 40, pas: 66, dri: 65, def: 82, phy: 84, men: 80, sta: 80 } },
+            { no: 15, pos: "CB", nat: "英格兰", name: "巴恩斯", rating: 79, height: 185, weight: 81, age: 23, cGP: 155, cG: 7, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 76, sho: 42, pas: 64, dri: 62, def: 80, phy: 82, men: 76, sta: 78 } },
+            { no: 20, pos: "RB", nat: "阿根廷", name: "特维斯", rating: 80, height: 179, weight: 77, age: 26, cGP: 203, cG: 14, cA: 34, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 85, sho: 62, pas: 75, dri: 79, def: 76, phy: 75, men: 78, sta: 82 } },
+            { no: 16, pos: "CDM", nat: "中国", name: "李思德", rating: 78, height: 180, weight: 78, age: 22, cGP: 80, cG: 4, cA: 13, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { spd: 77, sho: 62, pas: 78, dri: 76, def: 80, phy: 80, men: 82, sta: 90 } },
+            { no: 18, pos: "CM", nat: "英格兰", name: "科尔", rating: 82, height: 180, weight: 75, age: 24, cGP: 210, cG: 37, cA: 66, tGP: 0, tG: 0, tA: 0, value: "ⰵ40M", attributes: { spd: 81, sho: 76, pas: 83, dri: 84, def: 70, phy: 73, men: 82, sta: 86 } },
+            { no: 21, pos: "CM", nat: "比利时", name: "德鲁涅", rating: 80, height: 181, weight: 74, age: 24, cGP: 160, cG: 22, cA: 43, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 79, sho: 74, pas: 82, dri: 80, def: 68, phy: 75, men: 77, sta: 82 } },
+            { no: 11, pos: "LW", nat: "巴西", name: "迪达", rating: 78, height: 172, weight: 68, age: 25, cGP: 220, cG: 46, cA: 61, tGP: 0, tG: 0, tA: 0, value: "ⰵ14M", attributes: { spd: 91, sho: 75, pas: 73, dri: 83, def: 42, phy: 63, men: 72, sta: 85 } },
+            { no: 26, pos: "ST", nat: "德国", name: "基尔克特", rating: 82, height: 183, weight: 80, age: 24, cGP: 180, cG: 100, cA: 22, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 83, sho: 84, pas: 66, dri: 80, def: 30, phy: 78, men: 76, sta: 81 } },
+            { no: 19, pos: "RW", nat: "葡萄牙", name: "维克特", rating: 80, height: 174, weight: 69, age: 23, cGP: 137, cG: 25, cA: 39, tGP: 0, tG: 0, tA: 0, value: "ⰵ20M", attributes: { spd: 89, sho: 78, pas: 76, dri: 83, def: 40, phy: 66, men: 74, sta: 84 } },
+            { no: 28, pos: "ST", nat: "意大利", name: "费雷莫", rating: 79, height: 182, weight: 78, age: 22, cGP: 95, cG: 33, cA: 6, tGP: 0, tG: 0, tA: 0, value: "ⰵ15M", attributes: { spd: 84, sho: 78, pas: 63, dri: 76, def: 35, phy: 80, men: 72, sta: 76 } },
+            { no: 24, pos: "LB", nat: "意大利", name: "赞多罗", rating: 79, height: 173, weight: 70, age: 21, cGP: 62, cG: 1, cA: 20, tGP: 0, tG: 0, tA: 0, value: "ⰵ14M", attributes: { spd: 87, sho: 56, pas: 76, dri: 80, def: 74, phy: 67, men: 72, sta: 86 } },
+            { no: 23, pos: "GK", nat: "瑞士", name: "费雷特", rating: 79, height: 189, weight: 86, age: 22, cGP: 80, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ11M", attributes: { div: 79, han: 77, kic: 81, ref: 83, spd: 48, pos_s: 77, men: 74, sta: 76 } },
+            { no: 25, pos: "CAM", nat: "荷兰", name: "弗朗吉", rating: 80, height: 177, weight: 71, age: 23, cGP: 170, cG: 23, cA: 43, tGP: 0, tG: 0, tA: 0, value: "ⰵ30M", attributes: { spd: 85, sho: 75, pas: 82, dri: 84, def: 50, phy: 66, men: 74, sta: 81 } }
         ]
     },
 
@@ -318,7 +315,7 @@ window.TEAMS_DATA = {
                 title: "联赛阵容 (4-5-1)",
                 players: {
                     "GK": "德约罗", "LB": "特雷森", "LCB": "布朗", "RCB": "伊恩", "RB": "卡纳威",
-                    "CDM": "克斯特里奇", "LM": "万亚尔", "CM": "莱昂内尔", "CAM": "卢卡莫德", "RM": "赫南德斯", "ST": "卡瓦龙"
+                    "CDM": "克斯特里奇", "LM": "万亚尔", "CM": "莱昂内尔", "CAM": "卢卡莫德", "RM": "萨维尼奥", "ST": "巴尔加斯"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
@@ -329,41 +326,40 @@ window.TEAMS_DATA = {
                 title: "杯赛阵容 (4-3-3)",
                 players: {
                     "GK": "祖安", "LB": "里比斯", "LCB": "孔蒂", "RCB": "葛雷洛", "RB": "阿兰",
-                    "LCM": "塔尔萨", "CDM": "恩瓦内德", "RCM": "马可", "LW": "亚历山大", "ST": "雷诺", "RW": "加内蒂"
+                    "LCM": "塔尔萨", "CDM": "埃斯托", "RCM": "马可", "LW": "赫南德斯", "ST": "雷诺", "RW": "加内蒂"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
                     "LCM": [52, 30], "CDM": [45, 50], "RCM": [52, 70], "LW": [78, 18], "ST": [85, 50], "RW": [78, 82]
                 }
-            }
+            },
         },
         roster: [
-            { no: 1, pos: "GK", nat: "瑞士", name: "德约罗", rating: 84, height: 189, weight: 85, age: 29, cGP: 352, cG: 0, cA: 2, tGP: 156, tG: 0, tA: 1, value: "ⰵ22M", attributes: { div: 85, han: 82, kic: 78, ref: 86, spd: 52, pos_s: 84, men: 88, sta: 80 } },
-            { no: 3, pos: "LB", nat: "挪威", name: "特雷森", rating: 80, height: 176, weight: 71, age: 24, cGP: 145, cG: 4, cA: 35, tGP: 82, tG: 2, tA: 11, value: "ⰵ25M", attributes: { spd: 88, sho: 60, pas: 78, dri: 82, def: 76, phy: 72, men: 75, sta: 92 } },
-            { no: 4, pos: "CB", nat: "英格兰", name: "布朗", rating: 84, height: 187, weight: 84, age: 26, cGP: 210, cG: 15, cA: 4, tGP: 110, tG: 5, tA: 1, value: "ⰵ38M", attributes: { spd: 78, sho: 50, pas: 70, dri: 68, def: 88, phy: 90, men: 84, sta: 85 } },
-            { no: 5, pos: "CB", nat: "苏格兰", name: "伊恩", rating: 83, height: 185, weight: 82, age: 25, cGP: 165, cG: 8, cA: 2, tGP: 92, tG: 3, tA: 0, value: "ⰵ35M", attributes: { spd: 80, sho: 45, pas: 68, dri: 72, def: 85, phy: 86, men: 82, sta: 84 } },
-            { no: 2, pos: "RB", nat: "爱尔兰", name: "卡纳威", rating: 80, height: 178, weight: 73, age: 24, cGP: 135, cG: 5, cA: 28, tGP: 55, tG: 1, tA: 6, value: "ⰵ24M", attributes: { spd: 90, sho: 62, pas: 76, dri: 84, def: 78, phy: 70, men: 72, sta: 95 } },
-            { no: 6, pos: "CDM", nat: "奥地利", name: "克斯特里奇", rating: 83, height: 182, weight: 79, age: 26, cGP: 220, cG: 18, cA: 32, tGP: 125, tG: 6, tA: 12, value: "ⰵ36M", attributes: { spd: 78, sho: 70, pas: 84, dri: 79, def: 82, phy: 84, men: 85, sta: 94 } },
-            { no: 16, pos: "CDM", nat: "西班牙", name: "埃斯托", rating: 82, height: 180, weight: 76, age: 25, cGP: 155, cG: 12, cA: 18, tGP: 88, tG: 4, tA: 9, value: "ⰵ32M", attributes: { spd: 76, sho: 68, pas: 82, dri: 76, def: 80, phy: 82, men: 80, sta: 90 } },
-            { no: 7, pos: "LM", nat: "西班牙", name: "万亚尔", rating: 77, height: 174, weight: 68, age: 21, cGP: 65, cG: 15, cA: 28, tGP: 45, tG: 5, tA: 12, value: "ⰵ18M", attributes: { spd: 88, sho: 72, pas: 74, dri: 81, def: 42, phy: 60, men: 70, sta: 85 } },
-            { no: 10, pos: "CAM", nat: "克罗地亚", name: "卢卡莫德", rating: 85, height: 172, weight: 67, age: 28, cGP: 412, cG: 58, cA: 145, tGP: 110, tG: 12, tA: 31, value: "ⰵ48M", attributes: { spd: 79, sho: 82, pas: 90, dri: 88, def: 60, phy: 70, men: 95, sta: 82 } },
-            { no: 17, pos: "RM", nat: "墨西哥", name: "赫南德斯", rating: 79, height: 175, weight: 70, age: 22, cGP: 85, cG: 22, cA: 35, tGP: 65, tG: 12, tA: 18, value: "ⰵ20M", attributes: { spd: 86, sho: 78, pas: 76, dri: 83, def: 48, phy: 68, men: 74, sta: 84 } },
-            { no: 9, pos: "ST", nat: "乌拉圭", name: "卡瓦龙", rating: 80, height: 184, weight: 78, age: 24, cGP: 140, cG: 82, cA: 15, tGP: 85, tG: 32, tA: 4, value: "ⰵ28M", attributes: { spd: 85, sho: 84, pas: 65, dri: 79, def: 32, phy: 80, men: 78, sta: 82 } },
-            { no: 12, pos: "GK", nat: "巴西", name: "祖安", rating: 80, height: 188, weight: 84, age: 23, cGP: 95, cG: 0, cA: 0, tGP: 85, tG: 0, tA: 0, value: "ⰵ15M", attributes: { div: 81, han: 80, kic: 76, ref: 83, spd: 55, pos_s: 79, men: 76, sta: 78 } },
-            { no: 22, pos: "LB", nat: "葡萄牙", name: "里比斯", rating: 76, height: 175, weight: 71, age: 22, cGP: 55, cG: 2, cA: 15, tGP: 40, tG: 1, tA: 8, value: "ⰵ12M", attributes: { spd: 84, sho: 55, pas: 74, dri: 78, def: 72, phy: 65, men: 70, sta: 85 } },
-            { no: 15, pos: "CB", nat: "意大利", name: "孔蒂", rating: 81, height: 186, weight: 82, age: 23, cGP: 115, cG: 8, cA: 2, tGP: 90, tG: 5, tA: 1, value: "ⰵ26M", attributes: { spd: 74, sho: 40, pas: 65, dri: 62, def: 84, phy: 86, men: 80, sta: 82 } },
-            { no: 25, pos: "CB", nat: "西班牙", name: "葛雷洛", rating: 78, height: 185, weight: 81, age: 22, cGP: 75, cG: 4, cA: 1, tGP: 55, tG: 2, tA: 0, value: "ⰵ14M", attributes: { spd: 75, sho: 42, pas: 62, dri: 60, def: 81, phy: 82, men: 74, sta: 78 } },
-            { no: 20, pos: "RB", nat: "巴西", name: "阿兰", rating: 77, height: 177, weight: 72, age: 21, cGP: 48, cG: 2, cA: 12, tGP: 35, tG: 1, tA: 9, value: "ⰵ12M", attributes: { spd: 85, sho: 60, pas: 72, dri: 78, def: 74, phy: 68, men: 70, sta: 82 } },
-            { no: 14, pos: "CDM", nat: "尼日利亚", name: "恩瓦内德", rating: 80, height: 181, weight: 78, age: 24, cGP: 155, cG: 10, cA: 18, tGP: 120, tG: 6, tA: 14, value: "ⰵ20M", attributes: { spd: 76, sho: 65, pas: 80, dri: 75, def: 82, phy: 80, men: 78, sta: 91 } },
-            { no: 8, pos: "CM", nat: "阿根廷", name: "莱昂内尔", rating: 84, height: 180, weight: 74, age: 25, cGP: 195, cG: 35, cA: 62, tGP: 48, tG: 5, tA: 12, value: "ⰵ42M", attributes: { spd: 82, sho: 78, pas: 86, dri: 84, def: 74, phy: 76, men: 82, sta: 88 } },
-            { no: 18, pos: "CM", nat: "意大利", name: "马可", rating: 78, height: 178, weight: 73, age: 20, cGP: 35, cG: 4, cA: 12, tGP: 25, tG: 3, tA: 11, value: "ⰵ15M", attributes: { spd: 80, sho: 72, pas: 81, dri: 82, def: 68, phy: 70, men: 72, sta: 85 } },
-            { no: 11, pos: "LW", nat: "瑞典", name: "亚历山大", rating: 75, height: 173, weight: 68, age: 19, cGP: 25, cG: 6, cA: 11, tGP: 15, tG: 4, tA: 6, value: "ⰵ11M", attributes: { spd: 91, sho: 74, pas: 70, dri: 84, def: 40, phy: 62, men: 70, sta: 82 } },
-            { no: 26, pos: "ST", nat: "法国", name: "雷诺", rating: 77, height: 182, weight: 77, age: 21, cGP: 55, cG: 22, cA: 4, tGP: 35, tG: 12, tA: 2, value: "ⰵ10M", attributes: { spd: 82, sho: 78, pas: 60, dri: 72, def: 35, phy: 78, men: 70, sta: 78 } },
-            { no: 19, pos: "RW", nat: "意大利", name: "加内蒂", rating: 76, height: 174, weight: 70, age: 20, cGP: 32, cG: 8, cA: 15, tGP: 20, tG: 5, tA: 8, value: "ⰵ9M", attributes: { spd: 88, sho: 72, pas: 74, dri: 80, def: 40, phy: 64, men: 68, sta: 82 } },
-            { no: 23, pos: "GK", nat: "俄罗斯", name: "尤里", rating: 77, height: 186, weight: 83, age: 21, cGP: 45, cG: 0, cA: 0, tGP: 30, tG: 0, tA: 0, value: "ⰵ8M", attributes: { div: 78, han: 76, kic: 74, ref: 80, spd: 55, pos_s: 75, men: 72, sta: 75 } },
-            { no: 15, pos: "CB", nat: "法国", name: "埃梅里", rating: 78, height: 187, weight: 82, age: 22, cGP: 65, cG: 4, cA: 1, tGP: 45, tG: 2, tA: 0, value: "ⰵ13M", attributes: { spd: 72, sho: 40, pas: 60, dri: 58, def: 82, phy: 84, men: 75, sta: 80 } },
-            { no: 27, pos: "CDM", nat: "比利时", name: "温克森", rating: 78, height: 182, weight: 79, age: 23, cGP: 105, cG: 8, cA: 22, tGP: 40, tG: 2, tA: 5, value: "ⰵ14M", attributes: { spd: 74, sho: 62, pas: 81, dri: 72, def: 80, phy: 80, men: 78, sta: 88 } },
-            { no: 21, pos: "CAM", nat: "美国", name: "塔尔萨", rating: 79, height: 179, weight: 74, age: 24, cGP: 125, cG: 22, cA: 38, tGP: 35, tG: 3, tA: 8, value: "ⰵ18M", attributes: { spd: 82, sho: 76, pas: 83, dri: 85, def: 52, phy: 68, men: 76, sta: 82 } }
+            { no: 1, pos: "GK", nat: "瑞士", name: "德约罗", rating: 85, age: 30, cGP: 508, cG: 0, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ26M", attributes: { div: 86, han: 83, kic: 78, ref: 87, spd: 52, pos_s: 85, men: 90, sta: 80 } },
+            { no: 3, pos: "LB", nat: "挪威", name: "特雷森", rating: 82, age: 25, cGP: 227, cG: 6, cA: 46, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 90, sho: 60, pas: 80, dri: 84, def: 78, phy: 74, men: 76, sta: 94 } },
+            { no: 4, pos: "CB", nat: "英格兰", name: "布朗", rating: 85, age: 27, cGP: 320, cG: 20, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 79, sho: 50, pas: 72, dri: 70, def: 89, phy: 91, men: 86, sta: 85 } },
+            { no: 5, pos: "CB", nat: "苏格兰", name: "伊恩", rating: 84, age: 26, cGP: 257, cG: 11, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { spd: 81, sho: 45, pas: 68, dri: 72, def: 86, phy: 88, men: 82, sta: 84 } },
+            { no: 2, pos: "RB", nat: "爱尔兰", name: "卡纳威", rating: 82, age: 25, cGP: 190, cG: 6, cA: 34, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 92, sho: 62, pas: 78, dri: 86, def: 79, phy: 72, men: 74, sta: 96 } },
+            { no: 6, pos: "CDM", nat: "奥地利", name: "克斯特里奇", rating: 84, age: 27, cGP: 345, cG: 24, cA: 44, tGP: 0, tG: 0, tA: 0, value: "ⰵ40M", attributes: { spd: 78, sho: 70, pas: 85, dri: 79, def: 84, phy: 86, men: 86, sta: 94 } },
+            { no: 10, pos: "CAM", nat: "克罗地亚", name: "卢卡莫德", rating: 85, age: 29, cGP: 522, cG: 70, cA: 176, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 78, sho: 82, pas: 91, dri: 88, def: 60, phy: 70, men: 96, sta: 80 } },
+            { no: 8, pos: "CM", nat: "阿根廷", name: "莱昂内尔", rating: 85, age: 26, cGP: 243, cG: 40, cA: 74, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 82, sho: 78, pas: 87, dri: 85, def: 75, phy: 77, men: 84, sta: 88 } },
+            { no: 7, pos: "LM", nat: "西班牙", name: "万亚尔", rating: 80, age: 22, cGP: 110, cG: 20, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { spd: 90, sho: 74, pas: 76, dri: 83, def: 42, phy: 64, men: 72, sta: 86 } },
+            { no: 11, pos: "RM", nat: "巴西", name: "萨维尼奥", rating: 83, age: 21, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 90, sho: 76, pas: 80, dri: 88, def: 45, phy: 68, men: 74, sta: 84 } },
+            { no: 9, pos: "ST", nat: "乌拉圭", name: "巴尔加斯", rating: 84, age: 23, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 86, sho: 88, pas: 66, dri: 81, def: 35, phy: 82, men: 80, sta: 82 } },
+            { no: 12, pos: "GK", nat: "巴西", name: "祖安", rating: 81, age: 24, cGP: 180, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ17M", attributes: { div: 82, han: 81, kic: 76, ref: 84, spd: 55, pos_s: 80, men: 77, sta: 78 } },
+            { no: 16, pos: "CDM", nat: "西班牙", name: "埃斯托", rating: 83, age: 26, cGP: 243, cG: 16, cA: 27, tGP: 0, tG: 0, tA: 0, value: "ⰵ34M", attributes: { spd: 76, sho: 68, pas: 83, dri: 77, def: 82, phy: 83, men: 82, sta: 91 } },
+            { no: 17, pos: "LW", nat: "墨西哥", name: "赫南德斯", rating: 81, age: 23, cGP: 150, cG: 34, cA: 53, tGP: 0, tG: 0, tA: 0, value: "ⰵ26M", attributes: { spd: 87, sho: 79, pas: 78, dri: 84, def: 48, phy: 70, men: 76, sta: 85 } },
+            { no: 15, pos: "CB", nat: "意大利", name: "孔蒂", rating: 82, age: 24, cGP: 205, cG: 13, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { spd: 75, sho: 40, pas: 66, dri: 63, def: 85, phy: 88, men: 82, sta: 82 } },
+            { no: 18, pos: "CM", nat: "意大利", name: "马可", rating: 80, age: 21, cGP: 60, cG: 7, cA: 23, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 81, sho: 74, pas: 82, dri: 84, def: 68, phy: 72, men: 75, sta: 86 } },
+            { no: 21, pos: "CAM", nat: "美国", name: "塔尔萨", rating: 80, age: 25, cGP: 160, cG: 25, cA: 46, tGP: 0, tG: 0, tA: 0, value: "ⰵ20M", attributes: { spd: 82, sho: 76, pas: 84, dri: 86, def: 52, phy: 68, men: 77, sta: 82 } },
+            { no: 24, pos: "ST", nat: "乌拉圭", name: "卡瓦龙", rating: 80, age: 25, cGP: 225, cG: 114, cA: 19, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { spd: 85, sho: 84, pas: 65, dri: 79, def: 32, phy: 80, men: 78, sta: 82 } },
+            { no: 25, pos: "CB", nat: "西班牙", name: "葛雷洛", rating: 79, age: 23, cGP: 130, cG: 6, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ16M", attributes: { spd: 76, sho: 42, pas: 63, dri: 61, def: 82, phy: 83, men: 75, sta: 78 } },
+            { no: 20, pos: "RB", nat: "巴西", name: "阿兰", rating: 78, age: 22, cGP: 83, cG: 3, cA: 21, tGP: 0, tG: 0, tA: 0, value: "ⰵ14M", attributes: { spd: 86, sho: 60, pas: 74, dri: 79, def: 75, phy: 69, men: 71, sta: 83 } },
+            { no: 22, pos: "LB", nat: "葡萄牙", name: "里比斯", rating: 77, age: 23, cGP: 95, cG: 3, cA: 23, tGP: 0, tG: 0, tA: 0, value: "ⰵ13M", attributes: { spd: 85, sho: 55, pas: 75, dri: 79, def: 73, phy: 66, men: 71, sta: 85 } },
+            { no: 26, pos: "ST", nat: "法国", name: "雷诺", rating: 79, age: 22, cGP: 90, cG: 34, cA: 6, tGP: 0, tG: 0, tA: 0, value: "ⰵ14M", attributes: { spd: 84, sho: 80, pas: 61, dri: 74, def: 35, phy: 79, men: 72, sta: 78 } },
+            { no: 19, pos: "RW", nat: "意大利", name: "加内蒂", rating: 78, age: 21, cGP: 52, cG: 13, cA: 23, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 89, sho: 74, pas: 75, dri: 82, def: 40, phy: 65, men: 70, sta: 83 } },
+            { no: 23, pos: "GK", nat: "俄罗斯", name: "尤里", rating: 78, age: 22, cGP: 75, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ10M", attributes: { div: 79, han: 77, kic: 75, ref: 81, spd: 55, pos_s: 76, men: 74, sta: 75 } },
+            { no: 27, pos: "CDM", nat: "比利时", name: "温克森", rating: 79, age: 24, cGP: 145, cG: 10, cA: 27, tGP: 0, tG: 0, tA: 0, value: "ⰵ16M", attributes: { spd: 75, sho: 62, pas: 82, dri: 73, def: 81, phy: 81, men: 80, sta: 89 } }
         ]
     },
 
@@ -389,7 +385,7 @@ window.TEAMS_DATA = {
                 title: "联赛阵容 (4-2-3-1)",
                 players: {
                     "GK": "斯莱斯欧", "LB": "德斯特", "LCB": "范德克", "RCB": "鲁本斯", "RB": "拉米欧斯",
-                    "LDM": "坎德", "RDM": "索萨", "CAM": "帕尔诺", "LM": "特里", "RM": "特劳纳多", "ST": "瓦尔"
+                    "LDM": "坎德", "RDM": "索萨", "CAM": "帕尔诺", "LM": "儒尼奥", "RM": "特劳纳多", "ST": "瓦尔"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
@@ -399,8 +395,8 @@ window.TEAMS_DATA = {
             CUP: {
                 title: "杯赛阵容 (4-3-3)",
                 players: {
-                    "GK": "金", "LB": "贾斯丁", "LCB": "德泽比", "RCB": "埃托·利亚斯", "RB": "基恩",
-                    "LDM": "邓佩莱", "LCM": "佩雷拉", "RCM": "维尔梅伦", "LW": "中村太郎", "ST": "罗梅欧", "RW": "艾斯"
+                    "GK": "迪奥·科斯", "LB": "阿莱德", "LCB": "德泽比", "RCB": "马基", "RB": "维亚纳",
+                    "LDM": "邓佩莱", "LCM": "菲力克", "RCM": "维尔梅伦", "LW": "中村太郎", "ST": "海拉德", "RW": "艾斯"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
@@ -409,33 +405,32 @@ window.TEAMS_DATA = {
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "荷兰", name: "斯莱斯欧", rating: 90, height: 192, weight: 88, age: 32, cGP: 485, cG: 0, cA: 5, tGP: 180, tG: 0, tA: 1, value: "ⰵ42M", attributes: { div: 91, han: 88, kic: 84, ref: 92, spd: 55, pos_s: 93, men: 95, sta: 82 } },
-            { no: 3, pos: "LB", nat: "美国", name: "德斯特", rating: 87, height: 175, weight: 68, age: 25, cGP: 195, cG: 15, cA: 42, tGP: 95, tG: 4, tA: 18, value: "ⰵ75M", attributes: { spd: 92, sho: 68, pas: 84, dri: 88, def: 81, phy: 74, men: 80, sta: 94 } },
-            { no: 4, pos: "CB", nat: "荷兰", name: "范德克", rating: 94, height: 193, weight: 92, age: 29, cGP: 512, cG: 32, cA: 8, tGP: 210, tG: 15, tA: 3, value: "ⰵ125M", attributes: { spd: 85, sho: 60, pas: 88, dri: 78, def: 97, phy: 95, men: 99, sta: 88 } },
-            { no: 5, pos: "CB", nat: "葡萄牙", name: "鲁本斯", rating: 91, height: 188, weight: 85, age: 27, cGP: 245, cG: 12, cA: 4, tGP: 120, tG: 8, tA: 1, value: "ⰵ92M", attributes: { spd: 82, sho: 50, pas: 80, dri: 75, def: 94, phy: 91, men: 95, sta: 85 } },
-            { no: 2, pos: "RB", nat: "西班牙", name: "拉米欧斯", rating: 89, height: 181, weight: 76, age: 31, cGP: 420, cG: 12, cA: 65, tGP: 125, tG: 3, tA: 19, value: "ⰵ38M", attributes: { spd: 88, sho: 65, pas: 86, dri: 84, def: 85, phy: 80, men: 90, sta: 84 } },
-            { no: 6, pos: "CDM", nat: "法国", name: "坎德", rating: 90, height: 168, weight: 70, age: 30, cGP: 465, cG: 22, cA: 85, tGP: 160, tG: 9, tA: 28, value: "ⰵ55M", attributes: { spd: 84, sho: 70, pas: 88, dri: 86, def: 92, phy: 95, men: 96, sta: 98 } },
-            { no: 16, pos: "CDM", nat: "葡萄牙", name: "索萨", rating: 88, height: 182, weight: 77, age: 24, cGP: 165, cG: 12, cA: 38, tGP: 98, tG: 5, tA: 22, value: "ⰵ98M", attributes: { spd: 80, sho: 72, pas: 86, dri: 84, def: 85, phy: 88, men: 82, sta: 95 } },
-            { no: 17, pos: "RM", nat: "阿根廷", name: "特劳纳多", rating: 92, height: 179, weight: 73, age: 29, cGP: 450, cG: 182, cA: 115, tGP: 280, tG: 152, tA: 62, value: "ⰵ110M", attributes: { spd: 98, sho: 86, pas: 92, dri: 94, def: 55, phy: 78, men: 94, sta: 89 } },
-            { no: 10, pos: "CAM", nat: "意大利", name: "帕尔诺", rating: 88, height: 177, weight: 72, age: 24, cGP: 185, cG: 42, cA: 78, tGP: 60, tG: 11, tA: 24, value: "ⰵ86M", attributes: { spd: 86, sho: 84, pas: 90, dri: 89, def: 52, phy: 75, men: 80, sta: 88 } },
-            { no: 29, pos: "LM", nat: "英格兰", name: "特里", rating: 87, height: 180, weight: 75, age: 26, cGP: 230, cG: 42, cA: 68, tGP: 88, tG: 12, tA: 21, value: "ⰵ68M", attributes: { spd: 94, sho: 82, pas: 85, dri: 88, def: 45, phy: 72, men: 78, sta: 92 } },
-            { no: 9, pos: "ST", nat: "英格兰", name: "瓦尔", rating: 91, height: 185, weight: 78, age: 27, cGP: 388, cG: 306, cA: 32, tGP: 388, tG: 306, tA: 32, value: "ⰵ125M", attributes: { spd: 90, sho: 96, pas: 78, dri: 91, def: 38, phy: 88, men: 94, sta: 85 } },
-            { no: 21, pos: "CB", nat: "意大利", name: "德泽比", rating: 89, height: 187, weight: 84, age: 26, cGP: 210, cG: 15, cA: 4, tGP: 110, tG: 6, tA: 1, value: "ⰵ72M", attributes: { spd: 82, sho: 48, pas: 72, dri: 70, def: 91, phy: 89, men: 82, sta: 86 } },
-            { no: 15, pos: "CB", nat: "希腊", name: "埃托·利亚斯", rating: 88, height: 185, weight: 82, age: 33, cGP: 480, cG: 28, cA: 5, tGP: 70, tG: 4, tA: 1, value: "ⰵ22M", attributes: { spd: 74, sho: 45, pas: 70, dri: 68, def: 89, phy: 88, men: 92, sta: 78 } },
-            { no: 14, pos: "CDM", nat: "比利时", name: "邓佩莱", rating: 88, height: 184, weight: 80, age: 32, cGP: 460, cG: 25, cA: 78, tGP: 50, tG: 4, tA: 12, value: "ⰵ28M", attributes: { spd: 78, sho: 72, pas: 88, dri: 84, def: 86, phy: 84, men: 88, sta: 82 } },
-            { no: 18, pos: "CM", nat: "巴西", name: "佩雷拉", rating: 88, height: 178, weight: 74, age: 30, cGP: 440, cG: 58, cA: 125, tGP: 115, tG: 18, tA: 45, value: "ⰵ36M", attributes: { spd: 80, sho: 82, pas: 91, dri: 89, def: 65, phy: 72, men: 90, sta: 85 } },
-            { no: 12, pos: "GK", nat: "加纳", name: "金", rating: 87, height: 190, weight: 85, age: 35, cGP: 520, cG: 0, cA: 1, tGP: 40, tG: 0, tA: 0, value: "ⰵ6.5M", attributes: { div: 85, han: 88, kic: 82, ref: 84, spd: 48, pos_s: 90, men: 92, sta: 75 } },
-            { no: 8, pos: "CM", nat: "比利时", name: "维尔梅伦", rating: 87, height: 180, weight: 72, age: 23, cGP: 115, cG: 12, cA: 38, tGP: 45, tG: 3, tA: 12, value: "ⰵ88M", attributes: { spd: 85, sho: 76, pas: 89, dri: 88, def: 78, phy: 74, men: 82, sta: 92 } },
-            { no: 27, pos: "RM", nat: "西班牙", name: "艾斯", rating: 87, height: 176, weight: 70, age: 24, cGP: 140, cG: 25, cA: 42, tGP: 42, tG: 6, tA: 11, value: "ⰵ78M", attributes: { spd: 91, sho: 82, pas: 84, dri: 89, def: 48, phy: 70, men: 76, sta: 85 } },
-            { no: 7, pos: "ST", nat: "葡萄牙", name: "罗梅欧", rating: 87, height: 182, weight: 79, age: 37, cGP: 580, cG: 595, cA: 132, tGP: 455, tG: 471, tA: 53, value: "ⰵ18M", attributes: { spd: 72, sho: 95, pas: 74, dri: 86, def: 32, phy: 82, men: 98, sta: 65 } },
-            { no: 25, pos: "CB", nat: "喀麦隆", name: "庞德培", rating: 87, height: 189, weight: 87, age: 36, cGP: 550, cG: 22, cA: 4, tGP: 55, tG: 2, tA: 0, value: "ⰵ5.5M", attributes: { spd: 70, sho: 45, pas: 70, dri: 65, def: 90, phy: 92, men: 94, sta: 72 } },
-            { no: 24, pos: "CB", nat: "爱尔兰", name: "基恩", rating: 87, height: 186, weight: 83, age: 33, cGP: 485, cG: 18, cA: 2, tGP: 45, tG: 2, tA: 0, value: "ⰵ14M", attributes: { spd: 72, sho: 42, pas: 68, dri: 65, def: 91, phy: 88, men: 89, sta: 76 } },
-            { no: 23, pos: "GK", nat: "喀麦隆", name: "祖卡", rating: 86, height: 188, weight: 86, age: 40, cGP: 750, cG: 0, cA: 2, tGP: 60, tG: 0, tA: 0, value: "ⰵ2.5M", attributes: { div: 82, han: 86, kic: 80, ref: 81, spd: 40, pos_s: 88, men: 95, sta: 65 } },
-            { no: 22, pos: "CB", nat: "荷兰", name: "库曼", rating: 86, height: 187, weight: 85, age: 34, cGP: 490, cG: 45, cA: 5, tGP: 95, tG: 12, tA: 1, value: "ⰵ8.2M", attributes: { spd: 74, sho: 58, pas: 75, dri: 68, def: 88, phy: 89, men: 92, sta: 78 } },
-            { no: 19, pos: "LM", nat: "日本", name: "中村太郎", rating: 86, height: 173, weight: 66, age: 25, cGP: 185, cG: 68, cA: 52, tGP: 65, tG: 25, tA: 18, value: "ⰵ64M", attributes: { spd: 90, sho: 78, pas: 83, dri: 92, def: 42, phy: 65, men: 76, sta: 82 } },
-            { no: 20, pos: "CM", nat: "德国", name: "凯特", rating: 86, height: 179, weight: 72, age: 32, cGP: 465, cG: 62, cA: 95, tGP: 48, tG: 3, tA: 9, value: "ⰵ11M", attributes: { spd: 75, sho: 78, pas: 86, dri: 84, def: 72, phy: 76, men: 88, sta: 80 } },
-            { no: 13, pos: "LB", nat: "美国", name: "贾斯丁", rating: 85, height: 174, weight: 69, age: 33, cGP: 410, cG: 15, cA: 82, tGP: 55, tG: 2, tA: 18, value: "ⰵ7.5M", attributes: { spd: 84, sho: 60, pas: 80, dri: 82, def: 78, phy: 70, men: 75, sta: 82 } },
-            { no: 28, pos: "CAM", nat: "葡萄牙", name: "菲力克", rating: 85, height: 181, weight: 73, age: 18, cGP: 25, cG: 8, cA: 12, tGP: 10, tG: 1, tA: 2, value: "ⰵ110M", attributes: { spd: 88, sho: 82, pas: 85, dri: 92, def: 45, phy: 70, men: 74, sta: 95 } }
+            { no: 11, pos: "LM", nat: "巴西", name: "儒尼奥", rating: 91, age: 25, cGP: 285, cG: 82, cA: 74, tGP: 0, tG: 0, tA: 0, value: "ⰵ145M", attributes: { spd: 97, sho: 85, pas: 80, dri: 94, def: 40, phy: 75, men: 85, sta: 90 } },
+            { no: 4, pos: "CB", nat: "荷兰", name: "范德克", rating: 93, age: 30, cGP: 722, cG: 47, cA: 11, tGP: 0, tG: 0, tA: 0, value: "ⰵ110M", attributes: { spd: 84, sho: 60, pas: 88, dri: 78, def: 96, phy: 94, men: 99, sta: 86 } },
+            { no: 9, pos: "ST", nat: "英格兰", name: "瓦尔", rating: 92, age: 28, cGP: 776, cG: 612, cA: 64, tGP: 0, tG: 0, tA: 0, value: "ⰵ140M", attributes: { spd: 90, sho: 97, pas: 78, dri: 92, def: 38, phy: 89, men: 95, sta: 86 } },
+            { no: 5, pos: "CB", nat: "葡萄牙", name: "鲁本斯", rating: 92, age: 28, cGP: 365, cG: 20, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 82, sho: 50, pas: 80, dri: 75, def: 95, phy: 92, men: 96, sta: 85 } },
+            { no: 17, pos: "RM", nat: "阿根廷", name: "特劳纳多", rating: 92, age: 30, cGP: 730, cG: 334, cA: 177, tGP: 0, tG: 0, tA: 0, value: "ⰵ110M", attributes: { spd: 97, sho: 86, pas: 92, dri: 94, def: 55, phy: 78, men: 95, sta: 87 } },
+            { no: 10, pos: "CAM", nat: "意大利", name: "帕尔诺", rating: 89, age: 25, cGP: 245, cG: 53, cA: 102, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 87, sho: 85, pas: 91, dri: 90, def: 52, phy: 76, men: 82, sta: 89 } },
+            { no: 16, pos: "CDM", nat: "葡萄牙", name: "索萨", rating: 89, age: 25, cGP: 263, cG: 17, cA: 60, tGP: 0, tG: 0, tA: 0, value: "ⰵ105M", attributes: { spd: 81, sho: 72, pas: 87, dri: 85, def: 86, phy: 89, men: 84, sta: 96 } },
+            { no: 6, pos: "CDM", nat: "法国", name: "坎德", rating: 89, age: 31, cGP: 625, cG: 31, cA: 113, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 82, sho: 70, pas: 88, dri: 85, def: 91, phy: 94, men: 96, sta: 96 } },
+            { no: 3, pos: "LB", nat: "美国", name: "德斯特", rating: 88, age: 26, cGP: 290, cG: 19, cA: 60, tGP: 0, tG: 0, tA: 0, value: "ⰵ82M", attributes: { spd: 93, sho: 68, pas: 85, dri: 89, def: 82, phy: 75, men: 82, sta: 95 } },
+            { no: 2, pos: "RB", nat: "西班牙", name: "拉米欧斯", rating: 88, age: 32, cGP: 545, cG: 15, cA: 84, tGP: 0, tG: 0, tA: 0, value: "ⰵ30M", attributes: { spd: 86, sho: 65, pas: 86, dri: 83, def: 84, phy: 78, men: 90, sta: 82 } },
+            { no: 1, pos: "GK", nat: "荷兰", name: "斯莱斯欧", rating: 89, age: 33, cGP: 665, cG: 0, cA: 6, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { div: 90, han: 87, kic: 84, ref: 91, spd: 55, pos_s: 92, men: 95, sta: 82 } },
+            { no: 8, pos: "CB", nat: "巴西", name: "马基", rating: 90, age: 31, cGP: 485, cG: 32, cA: 15, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 78, sho: 55, pas: 78, dri: 72, def: 92, phy: 85, men: 94, sta: 85 } },
+            { no: 88, pos: "GK", nat: "葡萄牙", name: "迪奥科斯", rating: 87, age: 26, cGP: 215, cG: 0, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ60M", attributes: { div: 88, han: 85, kic: 88, ref: 90, spd: 58, pos_s: 86, men: 84, sta: 82 } },
+            { no: 28, pos: "CAM", nat: "葡萄牙", name: "菲力克", rating: 88, age: 19, cGP: 35, cG: 9, cA: 14, tGP: 0, tG: 0, tA: 0, value: "ⰵ135M", attributes: { spd: 89, sho: 84, pas: 87, dri: 93, def: 45, phy: 72, men: 76, sta: 96 } },
+            { no: 33, pos: "ST", nat: "丹麦", name: "海拉德", rating: 84, age: 22, cGP: 125, cG: 48, cA: 12, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 88, sho: 85, pas: 68, dri: 78, def: 30, phy: 86, men: 78, sta: 80 } },
+            { no: 21, pos: "CB", nat: "意大利", name: "德泽比", rating: 90, age: 27, cGP: 320, cG: 21, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 83, sho: 48, pas: 74, dri: 72, def: 92, phy: 90, men: 84, sta: 87 } },
+            { no: 35, pos: "CM", nat: "德国", name: "克洛", rating: 86, age: 35, cGP: 720, cG: 78, cA: 185, tGP: 0, tG: 0, tA: 0, value: "ⰵ8M", attributes: { spd: 65, sho: 80, pas: 95, dri: 82, def: 68, phy: 65, men: 98, sta: 70 } },
+            { no: 26, pos: "RB", nat: "西班牙", name: "维亚纳", rating: 82, age: 22, cGP: 110, cG: 4, cA: 28, tGP: 0, tG: 0, tA: 0, value: "ⰵ25M", attributes: { spd: 91, sho: 65, pas: 82, dri: 84, def: 75, phy: 70, men: 78, sta: 88 } },
+            { no: 11, pos: "LB", nat: "西班牙", name: "阿莱德", rating: 83, age: 22, cGP: 132, cG: 6, cA: 35, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 92, sho: 55, pas: 78, dri: 86, def: 78, phy: 72, men: 75, sta: 90 } },
+            { no: 20, pos: "CM", nat: "比利时", name: "维尔梅伦", rating: 88, age: 24, cGP: 160, cG: 15, cA: 50, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 86, sho: 76, pas: 90, dri: 89, def: 79, phy: 75, men: 84, sta: 93 } },
+            { no: 19, pos: "LW", nat: "日本", name: "中村太郎", rating: 87, age: 26, cGP: 250, cG: 93, cA: 70, tGP: 0, tG: 0, tA: 0, value: "ⰵ70M", attributes: { spd: 91, sho: 79, pas: 84, dri: 93, def: 42, phy: 66, men: 78, sta: 83 } },
+            { no: 27, pos: "RM", nat: "西班牙", name: "艾斯", rating: 87, age: 25, cGP: 182, cG: 31, cA: 53, tGP: 0, tG: 0, tA: 0, value: "ⰵ78M", attributes: { spd: 91, sho: 82, pas: 84, dri: 89, def: 48, phy: 70, men: 76, sta: 85 } },
+            { no: 42, pos: "CM", nat: "西班牙", name: "扎伊", rating: 78, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ5M", attributes: { spd: 80, sho: 70, pas: 84, dri: 82, def: 65, phy: 68, men: 74, sta: 85 } },
+            { no: 44, pos: "CB", nat: "荷兰", name: "古利", rating: 76, age: 18, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ4M", attributes: { spd: 78, sho: 40, pas: 65, dri: 60, def: 80, phy: 86, men: 72, sta: 82 } },
+            { no: 49, pos: "ST", nat: "英格兰", name: "库阿", rating: 75, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ7M", attributes: { spd: 92, sho: 78, pas: 60, dri: 75, def: 25, phy: 65, men: 70, sta: 80 } },
+            { no: 14, pos: "CDM", nat: "比利时", name: "邓佩莱", rating: 87, age: 33, cGP: 510, cG: 29, cA: 90, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 76, sho: 72, pas: 87, dri: 82, def: 85, phy: 82, men: 88, sta: 80 } }
         ]
     },
 
@@ -458,22 +453,28 @@ window.TEAMS_DATA = {
         ],
         coords: {
             LEAGUE: {
-                title: "联赛阵容 (3-1-4-2)",
+                title: "联赛最强阵容 (3-1-4-2)",
                 players: {
-                    "GK": "菲戈", "LCB": "阿兹兰", "CB": "卢西奥", "RCB": "玉本太郎",
-                    "CDM": "戈萨", "LM": "罗德里戈", "CM-L": "莫雷", "CM-R": "沃克", "RM": "戴巴利亚", "ST-L": "莫雷拉", "ST-R": "范德维奇"
+                    "GK": "菲戈",
+                    "LCB": "阿兹兰", "CB": "卢西奥", "RCB": "马科斯",
+                    "CDM": "戈萨",
+                    "LM": "拉法尔", "LCM": "贝林", "RCM": "莫雷", "RM": "布卡",
+                    "LST": "莫雷拉", "RST": "范德维奇"
                 },
                 coords: {
                     "GK": [5, 50], "LCB": [20, 28], "CB": [16, 50], "RCB": [20, 72],
-                    "CDM": [38, 50], "LM": [58, 12], "CM-L": [55, 35], "CM-R": [55, 65], "RM": [58, 88], "ST-L": [85, 38], "ST-R": [85, 62]
+                    "CDM": [38, 50], "LM": [58, 12], "LCM": [55, 35], "RCM": [55, 65], "RM": [58, 88],
+                    "LST": [85, 38], "RST": [85, 62]
                 }
             },
             CUP: {
-                title: "杯赛阵容 (4-2-3-1)",
+                title: "杯赛潜力阵容 (4-2-3-1)",
                 players: {
-                    "GK": "科斯蒂奇",
-                    "LB": "洛佩兹", "LCB": "丹尼尔斯", "RCB": "艾利森", "RB": "贝尔南迪奥",
-                    "LDM": "埃罗", "RDM": "希勒", "CAM": "奥丁", "LW": "肯迪尼", "RW": "马丁内斯", "ST": "格洛克"
+                    "GK": "迪奥戈",
+                    "LB": "阿莱德", "LCB": "玉本太郎", "RCB": "丹尼尔斯", "RB": "维亚纳",
+                    "LDM": "希勒", "RDM": "沃克",
+                    "CAM": "莫德",
+                    "LW": "肯迪尼", "RW": "马丁内斯", "ST": "格洛克"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 10], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 90],
@@ -482,32 +483,37 @@ window.TEAMS_DATA = {
             }
         },
         roster: [
-            { no: 11, pos: "ST", nat: "巴西", name: "莫雷拉", rating: 92, height: 186, weight: 82, age: 30, cGP: 485, cG: 302, cA: 65, tGP: 160, tG: 105, tA: 18, value: "ⰵ95M", attributes: { spd: 88, sho: 96, pas: 82, dri: 92, def: 38, phy: 90, men: 98, sta: 84 } },
-            { no: 4, pos: "CB", nat: "巴西", name: "卢西奥", rating: 91, height: 188, weight: 86, age: 27, cGP: 312, cG: 18, cA: 5, tGP: 180, tG: 12, tA: 2, value: "ⰵ115M", attributes: { spd: 82, sho: 50, pas: 78, dri: 74, def: 95, phy: 92, men: 98, sta: 85 } },
-            { no: 8, pos: "CM", nat: "苏格兰", name: "莫雷", rating: 91, height: 181, weight: 75, age: 30, cGP: 440, cG: 62, cA: 155, tGP: 165, tG: 22, tA: 76, value: "ⰵ88M", attributes: { spd: 79, sho: 84, pas: 96, dri: 91, def: 75, phy: 80, men: 98, sta: 85 } },
-            { no: 6, pos: "CDM", nat: "西班牙", name: "戈萨", rating: 90, height: 191, weight: 88, age: 25, cGP: 195, cG: 15, cA: 38, tGP: 120, tG: 11, tA: 28, value: "ⰵ125M", attributes: { spd: 84, sho: 72, pas: 90, dri: 85, def: 88, phy: 90, men: 92, sta: 96 } },
-            { no: 5, pos: "CB", nat: "马来西亚", name: "阿兹兰", rating: 89, height: 187, weight: 84, age: 30, cGP: 455, cG: 22, cA: 5, tGP: 110, tG: 5, tA: 1, value: "ⰵ55M", attributes: { spd: 78, sho: 45, pas: 72, dri: 70, def: 92, phy: 91, men: 94, sta: 84 } },
-            { no: 9, pos: "ST", nat: "荷兰", name: "范德维奇", rating: 89, height: 184, weight: 79, age: 32, cGP: 510, cG: 282, cA: 48, tGP: 125, tG: 72, tA: 12, value: "ⰵ38M", attributes: { spd: 85, sho: 91, pas: 78, dri: 84, def: 38, phy: 88, men: 92, sta: 82 } },
-            { no: 1, pos: "GK", nat: "葡萄牙", name: "菲戈", rating: 88, height: 189, weight: 85, age: 32, cGP: 492, cG: 0, cA: 5, tGP: 210, tG: 0, tA: 2, value: "ⰵ35M", attributes: { div: 88, han: 87, kic: 84, ref: 91, spd: 55, pos_s: 90, men: 95, sta: 80 } },
-            { no: 7, pos: "LM", nat: "巴西", name: "罗德里戈", rating: 88, height: 177, weight: 72, age: 28, cGP: 320, cG: 65, cA: 112, tGP: 95, tG: 21, tA: 38, value: "ⰵ65M", attributes: { spd: 94, sho: 82, pas: 88, dri: 92, def: 45, phy: 78, men: 85, sta: 94 } },
-            { no: 2, pos: "CDM", nat: "英格兰", name: "沃克", rating: 87, height: 185, weight: 81, age: 33, cGP: 535, cG: 28, cA: 62, tGP: 65, tG: 4, tA: 11, value: "ⰵ18M", attributes: { spd: 82, sho: 68, pas: 84, dri: 82, def: 88, phy: 89, men: 92, sta: 86 } },
-            { no: 15, pos: "CB", nat: "日本", name: "玉本太郎", rating: 87, height: 183, weight: 78, age: 24, cGP: 145, cG: 8, cA: 2, tGP: 88, tG: 4, tA: 1, value: "ⰵ75M", attributes: { spd: 85, sho: 52, pas: 75, dri: 78, def: 88, phy: 84, men: 82, sta: 90 } },
-            { no: 16, pos: "CM", nat: "挪威", name: "奥丁", rating: 86, height: 180, weight: 76, age: 33, cGP: 505, cG: 42, cA: 125, tGP: 92, tG: 8, tA: 24, value: "ⰵ15M", attributes: { spd: 80, sho: 76, pas: 86, dri: 85, def: 74, phy: 76, men: 84, sta: 82 } },
-            { no: 21, pos: "CB", nat: "印尼", name: "丹尼尔斯", rating: 86, height: 188, weight: 85, age: 26, cGP: 205, cG: 12, cA: 4, tGP: 55, tG: 3, tA: 0, value: "ⰵ48M", attributes: { spd: 76, sho: 45, pas: 70, dri: 68, def: 87, phy: 91, men: 86, sta: 82 } },
-            { no: 17, pos: "RM", nat: "阿尔巴尼亚", name: "戴巴利亚", rating: 86, height: 178, weight: 71, age: 33, cGP: 480, cG: 72, cA: 122, tGP: 110, tG: 12, tA: 31, value: "ⰵ12M", attributes: { spd: 84, sho: 82, pas: 88, dri: 89, def: 55, phy: 72, men: 88, sta: 80 } },
-            { no: 12, pos: "GK", nat: "塞尔维亚", name: "科斯蒂奇", rating: 85, height: 190, weight: 87, age: 23, cGP: 88, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ42M", attributes: { div: 85, han: 80, kic: 78, ref: 86, spd: 60, pos_s: 82, men: 78, sta: 84 } },
-            { no: 3, pos: "LB", nat: "西班牙", name: "洛佩兹", rating: 85, height: 176, weight: 73, age: 34, cGP: 545, cG: 15, cA: 92, tGP: 50, tG: 2, tA: 15, value: "ⰵ8.5M", attributes: { spd: 88, sho: 60, pas: 82, dri: 80, def: 81, phy: 75, men: 80, sta: 78 } },
-            { no: 25, pos: "CB", nat: "巴西", name: "艾利森", rating: 85, height: 187, weight: 83, age: 33, cGP: 490, cG: 22, cA: 4, tGP: 45, tG: 2, tA: 0, value: "ⰵ10M", attributes: { spd: 74, sho: 40, pas: 68, dri: 65, def: 86, phy: 88, men: 84, sta: 75 } },
-            { no: 22, pos: "RB", nat: "意大利", name: "贝尔南迪奥", rating: 85, height: 180, weight: 75, age: 34, cGP: 515, cG: 14, cA: 98, tGP: 42, tG: 1, tA: 12, value: "ⰵ7.5M", attributes: { spd: 86, sho: 62, pas: 78, dri: 81, def: 80, phy: 78, men: 78, sta: 72 } },
-            { no: 13, pos: "LM", nat: "澳大利亚", name: "尊尼", rating: 85, height: 175, weight: 70, age: 31, cGP: 435, cG: 55, cA: 110, tGP: 60, tG: 8, tA: 24, value: "ⰵ24M", attributes: { spd: 90, sho: 74, pas: 84, dri: 88, def: 42, phy: 70, men: 78, sta: 82 } },
-            { no: 18, pos: "CM", nat: "西班牙", name: "埃罗", rating: 85, height: 179, weight: 74, age: 30, cGP: 405, cG: 42, cA: 95, tGP: 55, tG: 5, tA: 18, value: "ⰵ28M", attributes: { spd: 82, sho: 78, pas: 86, dri: 84, def: 72, phy: 76, men: 80, sta: 88 } },
-            { no: 27, pos: "RM", nat: "澳大利亚", name: "扎修", rating: 85, height: 177, weight: 72, age: 29, cGP: 382, cG: 45, cA: 78, tGP: 48, tG: 9, tA: 11, value: "ⰵ32M", attributes: { spd: 87, sho: 76, pas: 82, dri: 89, def: 48, phy: 68, men: 76, sta: 84 } },
-            { no: 19, pos: "LW", nat: "意大利", name: "肯迪尼", rating: 85, height: 174, weight: 69, age: 31, cGP: 390, cG: 68, cA: 72, tGP: 65, tG: 21, tA: 18, value: "ⰵ20M", attributes: { spd: 91, sho: 80, pas: 78, dri: 92, def: 40, phy: 65, men: 82, sta: 80 } },
-            { no: 24, pos: "CB", nat: "韩国", name: "李泰焕", rating: 84, height: 186, weight: 82, age: 18, cGP: 35, cG: 2, cA: 1, tGP: 80, tG: 4, tA: 0, value: "ⰵ105M", attributes: { spd: 88, sho: 42, pas: 72, dri: 74, def: 84, phy: 86, men: 74, sta: 95 } },
-            { no: 20, pos: "RW", nat: "墨西哥", name: "马丁内斯", rating: 84, height: 176, weight: 73, age: 23, cGP: 102, cG: 28, cA: 32, tGP: 40, tG: 11, tA: 8, value: "ⰵ45M", attributes: { spd: 90, sho: 82, pas: 80, dri: 88, def: 45, phy: 72, men: 76, sta: 89 } },
-            { no: 22, pos: "ST", nat: "德国", name: "格洛克", rating: 84, height: 185, weight: 80, age: 18, cGP: 28, cG: 18, cA: 4, tGP: 45, tG: 18, tA: 4, value: "ⰵ110M", attributes: { spd: 91, sho: 87, pas: 68, dri: 84, def: 35, phy: 82, men: 75, sta: 92 } },
-            { no: 28, pos: "CM", nat: "英格兰", name: "希勒", rating: 83, height: 178, weight: 74, age: 20, cGP: 42, cG: 5, cA: 12, tGP: 30, tG: 2, tA: 8, value: "ⰵ35M", attributes: { spd: 82, sho: 72, pas: 85, dri: 86, def: 68, phy: 70, men: 72, sta: 85 } },
-            { no: 23, pos: "GK", nat: "巴西", name: "祖卡", rating: 86, height: 188, weight: 86, age: 40, cGP: 750, cG: 0, cA: 2, tGP: 60, tG: 0, tA: 0, value: "ⰵ2.5M", attributes: { div: 82, han: 86, kic: 80, ref: 81, spd: 40, pos_s: 88, men: 95, sta: 65 } }
+            { no: 11, pos: "LST", nat: "巴西", name: "莫雷拉", rating: 92, age: 31, cGP: 645, cG: 407, cA: 83, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 87, sho: 96, pas: 82, dri: 91, def: 38, phy: 89, men: 98, sta: 82 } },
+            { no: 22, pos: "RST", nat: "德国", name: "格洛克", rating: 86, age: 19, cGP: 73, cG: 36, cA: 8, tGP: 0, tG: 0, tA: 0, value: "ⰵ125M", attributes: { spd: 92, sho: 89, pas: 70, dri: 85, def: 35, phy: 83, men: 78, sta: 94 } },
+            { no: 4, pos: "CB", nat: "巴西", name: "卢西奥", rating: 92, age: 28, cGP: 492, cG: 30, cA: 7, tGP: 0, tG: 0, tA: 0, value: "ⰵ115M", attributes: { spd: 83, sho: 50, pas: 78, dri: 74, def: 96, phy: 93, men: 99, sta: 85 } },
+            { no: 8, pos: "RCM", nat: "苏格兰", name: "莫雷", rating: 91, age: 31, cGP: 605, cG: 84, cA: 231, tGP: 0, tG: 0, tA: 0, value: "ⰵ88M", attributes: { spd: 79, sho: 84, pas: 96, dri: 91, def: 75, phy: 80, men: 98, sta: 85 } },
+            { no: 10, pos: "LCM", nat: "英格兰", name: "贝林", rating: 91, age: 22, cGP: 185, cG: 45, cA: 32, tGP: 0, tG: 0, tA: 0, value: "ⰵ125M", attributes: { spd: 85, sho: 84, pas: 90, dri: 88, def: 75, phy: 88, men: 82, sta: 91 } },
+            { no: 6, pos: "CDM", nat: "西班牙", name: "戈萨", rating: 91, age: 26, cGP: 315, cG: 26, cA: 66, tGP: 0, tG: 0, tA: 0, value: "ⰵ130M", attributes: { spd: 84, sho: 72, pas: 91, dri: 86, def: 89, phy: 91, men: 93, sta: 97 } },
+            { no: 7, pos: "RM", nat: "英格兰", name: "布卡", rating: 90, age: 24, cGP: 220, cG: 65, cA: 78, tGP: 0, tG: 0, tA: 0, value: "ⰵ110M", attributes: { spd: 92, sho: 85, pas: 88, dri: 90, def: 45, phy: 72, men: 80, sta: 88 } },
+            { no: 13, pos: "LM", nat: "葡萄牙", name: "拉法尔", rating: 90, age: 26, cGP: 265, cG: 72, cA: 55, tGP: 0, tG: 0, tA: 0, value: "ⰵ98M", attributes: { spd: 94, sho: 82, pas: 80, dri: 92, def: 42, phy: 78, men: 84, sta: 85 } },
+            { no: 80, pos: "RCB", nat: "巴西", name: "马科斯", rating: 90, age: 31, cGP: 485, cG: 32, cA: 15, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 78, sho: 55, pas: 78, dri: 72, def: 92, phy: 85, men: 94, sta: 85 } },
+            { no: 5, pos: "LCB", nat: "伊朗", name: "阿兹兰", rating: 88, age: 31, cGP: 565, cG: 27, cA: 6, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 77, sho: 45, pas: 72, dri: 70, def: 91, phy: 91, men: 94, sta: 82 } },
+            { no: 15, pos: "CB", nat: "日本", name: "玉本太郎", rating: 88, age: 25, cGP: 233, cG: 12, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ82M", attributes: { spd: 85, sho: 52, pas: 75, dri: 78, def: 89, phy: 85, men: 84, sta: 91 } },
+            { no: 1, pos: "GK", nat: "葡萄牙", name: "菲戈", rating: 88, age: 33, cGP: 702, cG: 0, cA: 7, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { div: 88, han: 87, kic: 84, ref: 91, spd: 55, pos_s: 90, men: 95, sta: 80 } },
+            { no: 88, pos: "GK", nat: "巴西", name: "迪奥戈", rating: 84, age: 25, cGP: 180, cG: 0, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ30M", attributes: { div: 84, han: 82, kic: 78, ref: 88, spd: 65, pos_s: 82, men: 80, sta: 84 } },
+            { no: 33, pos: "LB", nat: "西班牙", name: "阿莱德", rating: 83, age: 22, cGP: 132, cG: 6, cA: 35, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 92, sho: 55, pas: 78, dri: 86, def: 78, phy: 72, men: 75, sta: 90 } },
+            { no: 26, pos: "RB", nat: "西班牙", name: "维亚纳", rating: 82, age: 22, cGP: 110, cG: 4, cA: 28, tGP: 0, tG: 0, tA: 0, value: "ⰵ25M", attributes: { spd: 91, sho: 65, pas: 82, dri: 84, def: 75, phy: 70, men: 78, sta: 88 } },
+            { no: 14, pos: "CAM", nat: "克罗地亚", name: "莫德", rating: 86, age: 35, cGP: 720, cG: 78, cA: 185, tGP: 0, tG: 0, tA: 0, value: "ⰵ8M", attributes: { spd: 70, sho: 78, pas: 94, dri: 92, def: 72, phy: 68, men: 99, sta: 75 } },
+            { no: 9, pos: "ST", nat: "荷兰", name: "范德维奇", rating: 88, age: 33, cGP: 635, cG: 354, cA: 60, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { spd: 84, sho: 90, pas: 78, dri: 83, def: 38, phy: 87, men: 92, sta: 80 } },
+            { no: 21, pos: "CB", nat: "印尼", name: "丹尼尔斯", rating: 87, age: 27, cGP: 260, cG: 15, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 76, sho: 45, pas: 70, dri: 68, def: 88, phy: 91, men: 86, sta: 82 } },
+            { no: 25, pos: "CB", nat: "巴西", name: "艾利森", rating: 84, age: 34, cGP: 535, cG: 24, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ8M", attributes: { spd: 72, sho: 40, pas: 68, dri: 65, def: 85, phy: 88, men: 84, sta: 72 } },
+            { no: 2, pos: "CDM", nat: "英格兰", name: "沃克", rating: 86, age: 34, cGP: 600, cG: 32, cA: 73, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 80, sho: 68, pas: 84, dri: 81, def: 87, phy: 88, men: 92, sta: 82 } },
+            { no: 16, pos: "CM", nat: "挪威", name: "奥丁", rating: 85, age: 34, cGP: 597, cG: 50, cA: 149, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 78, sho: 76, pas: 86, dri: 84, def: 74, phy: 75, men: 84, sta: 80 } },
+            { no: 18, pos: "LCM", nat: "西班牙", name: "埃罗", rating: 85, age: 31, cGP: 460, cG: 47, cA: 113, tGP: 0, tG: 0, tA: 0, value: "ⰵ26M", attributes: { spd: 82, sho: 78, pas: 86, dri: 84, def: 72, phy: 76, men: 80, sta: 87 } },
+            { no: 19, pos: "LW", nat: "意大利", name: "肯迪尼", rating: 85, age: 32, cGP: 455, cG: 89, cA: 90, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { spd: 90, sho: 80, pas: 78, dri: 92, def: 40, phy: 65, men: 82, sta: 80 } },
+            { no: 20, pos: "RW", nat: "墨西哥", name: "马丁内斯", rating: 85, age: 24, cGP: 142, cG: 39, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 91, sho: 82, pas: 80, dri: 88, def: 45, phy: 73, men: 76, sta: 89 } },
+            { no: 28, pos: "RCM", nat: "英格兰", name: "希勒", rating: 84, age: 21, cGP: 72, cG: 7, cA: 20, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { spd: 83, sho: 72, pas: 86, dri: 87, def: 68, phy: 71, men: 72, sta: 86 } },
+
+            // --- 青训天才 (Academy) ---
+            { no: 99, pos: "ST", nat: "中国", name: "张峰", rating: 77, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ6M", attributes: { spd: 85, sho: 78, pas: 65, dri: 75, def: 30, phy: 72, men: 70, sta: 80 } },
+            { no: 81, pos: "RW", nat: "沙特", name: "阿里", rating: 76, age: 18, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ5M", attributes: { spd: 91, sho: 72, pas: 70, dri: 84, def: 35, phy: 60, men: 68, sta: 78 } },
+            { no: 66, pos: "CDM", nat: "日本", name: "佐藤", rating: 78, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ7M", attributes: { spd: 78, sho: 60, pas: 82, dri: 78, def: 75, phy: 70, men: 80, sta: 90 } },
+            { no: 12, pos: "GK", nat: "塞尔维亚", name: "科斯蒂奇", rating: 85, age: 24, cGP: 133, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { div: 85, han: 81, kic: 78, ref: 86, spd: 60, pos_s: 82, men: 78, sta: 84 } }
         ]
     },
 
@@ -649,8 +655,8 @@ window.TEAMS_DATA = {
         color: "#f59e0b",
         style: "攻击性控球",
         stadium: "莱昂内尔足球场",
-        coach: { name: "但丁", gp: 412, w: 185, d: 82, l: 145, rate: "44.90%" },
-        status: { best: "晴天 · 下午", worst: "阴天 · 深夜", injury: "0", tactic: "高位逼抢" },
+        coach: { name: "马绍尔", gp: 693, w: 444, d: 62, l: 187, rate: "64.07%" },
+        status: { best: "阴天 · 傍晚", worst: "雨天 · 晚上", injury: "0", tactic: "攻击性控球" },
         honors: [
             { name: "世联赛冠军", count: 0, seasons: "暂无", icon: "fas fa-globe-americas", level: "world" },
             { name: "全联冠", count: 1, seasons: "S-83赛季", icon: "fas fa-crown", level: "teal-glow" },
@@ -663,34 +669,55 @@ window.TEAMS_DATA = {
         ],
         coords: {
             LEAGUE: {
-                title: "联赛阵容 (3-5-2)",
+                title: "联赛阵容 (3-1-4-2)",
                 players: {
-                    "GK": "弗莱尔", "LCB": "伊格内修斯", "CB": "萨拉曼德", "RCB": "伯内尔",
-                    "LWB": "布雷斯", "RWB": "菲尼克斯",
-                    "LDM": "恩博", "RDM": "派罗", "CAM": "赫利奥斯", "LST": "沃尔卡诺", "RST": "因弗诺"
+                    "GK": "库尔图", "LCB": "瓦尔内", "CB": "德谟克利特", "RCB": "阿德里亚德",
+                    "CDM": "赖斯利", "LM": "迪斯特法诺", "LCM": "托内利", "RCM": "凯文·布雷恩", "RM": "赫雷拉", "LST": "罗伯特·维克", "RST": "桑奇斯"
                 },
                 coords: {
-                    "GK": [5, 50], "LCB": [20, 28], "CB": [16, 50], "RCB": [20, 72],
-                    "LWB": [45, 12], "RWB": [45, 88],
-                    "LDM": [42, 35], "RDM": [42, 65], "CAM": [62, 50], "LST": [85, 38], "RST": [85, 62]
+                    "GK": [5, 50], "LCB": [22, 28], "CB": [18, 50], "RCB": [22, 72],
+                    "CDM": [38, 50], "LM": [58, 12], "LCM": [55, 35], "RCM": [55, 65], "RM": [58, 88], "LST": [85, 38], "RST": [85, 62]
                 }
             },
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
                 players: {
-                    "GK": "辛德", "LB": "斯帕克", "LCB": "斯科奇", "RCB": "马格马", "RB": "弗林特",
-                    "LDM": "格劳", "RDM": "希特", "LM": "费罗", "CAM": "雷", "RM": "金德尔", "ST": "托奇"
+                    "GK": "迪达", "LB": "利桑德罗", "LCB": "卡莱斯", "RCB": "汉斯", "RB": "拉比奥特",
+                    "LDM": "罗伯逊", "RDM": "石磊", "CAM": "威纳德", "LW": "阿诺舍瓦", "RW": "凯·布兰特", "ST": "巴尔加斯"
                 },
                 coords: {
-                    "GK": [5, 50], "LB": [25, 12], "LCB": [20, 38], "RCB": [20, 62], "RB": [25, 88],
-                    "LDM": [45, 35], "RDM": [45, 65], "LM": [72, 15], "CAM": [65, 50], "RM": [72, 85], "ST": [85, 50]
+                    "GK": [5, 50], "LB": [28, 12], "LCB": [20, 38], "RCB": [20, 62], "RB": [28, 88],
+                    "LDM": [48, 35], "RDM": [48, 65], "CAM": [68, 50], "LW": [82, 15], "RW": [82, 85], "ST": [85, 50]
                 }
             }
         },
         roster: [
-            { pos: "GK", name: "格温", rating: 82 }, { pos: "LB", name: "利桑德罗", rating: 85 }, { pos: "LCB", name: "德谟克利特", rating: 86 }, { pos: "RCB", name: "瓦尔内", rating: 85 },
-            { pos: "RB", name: "拉比奥特", rating: 86 }, { pos: "LDM", name: "托内利", rating: 88 }, { pos: "RDM", name: "凯文·布雷恩", rating: 87 }, { pos: "LW", name: "迪斯特法诺", rating: 87 },
-            { pos: "RW", name: "赫雷拉", rating: 85 }, { pos: "LST", name: "罗伯特·维克", rating: 90 }, { pos: "RST", name: "桑奇斯", rating: 89 }
+            { no: 9, pos: "LST", nat: "德国", name: "罗伯特·维克", rating: 92, height: 185, weight: 82, age: 25, cGP: 272, cG: 207, cA: 43, tGP: 0, tG: 0, tA: 0, value: "ⰵ195M", attributes: { spd: 95, sho: 97, pas: 78, dri: 92, def: 35, phy: 89, men: 92, sta: 87 } },
+            { no: 11, pos: "RST", nat: "西班牙", name: "桑奇斯", rating: 90, height: 182, weight: 78, age: 29, cGP: 545, cG: 304, cA: 50, tGP: 0, tG: 0, tA: 0, value: "ⰵ115M", attributes: { spd: 85, sho: 93, pas: 74, dri: 88, def: 32, phy: 82, men: 96, sta: 82 } },
+            { no: 19, pos: "ST", nat: "智利", name: "巴尔加斯", rating: 86, height: 184, weight: 81, age: 25, cGP: 245, cG: 110, cA: 19, tGP: 0, tG: 0, tA: 0, value: "ⰵ82M", attributes: { spd: 88, sho: 90, pas: 72, dri: 84, def: 30, phy: 86, men: 78, sta: 80 } },
+            { no: 22, pos: "ST", nat: "荷兰", name: "法恩", rating: 85, height: 183, weight: 79, age: 24, cGP: 170, cG: 76, cA: 20, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 86, sho: 87, pas: 68, dri: 82, def: 28, phy: 78, men: 74, sta: 78 } },
+            { no: 1, pos: "GK", nat: "比利时", name: "库尔图", rating: 89, height: 199, weight: 94, age: 26, cGP: 320, cG: 0, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { div: 89, han: 85, kic: 82, ref: 91, spd: 58, pos_s: 94, men: 95, sta: 84 } },
+            { no: 10, pos: "CDM", nat: "英格兰", name: "赖斯利", rating: 89, height: 185, weight: 80, age: 24, cGP: 215, cG: 15, cA: 38, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 82, sho: 70, pas: 85, dri: 84, def: 92, phy: 91, men: 88, sta: 96 } },
+            { no: 8, pos: "RCM", nat: "意大利", name: "托内利", rating: 89, height: 181, weight: 76, age: 28, cGP: 505, cG: 60, cA: 177, tGP: 0, tG: 0, tA: 0, value: "ⰵ88M", attributes: { spd: 80, sho: 82, pas: 93, dri: 90, def: 72, phy: 76, men: 94, sta: 88 } },
+            { no: 17, pos: "RCM", nat: "比利时", name: "凯文·布雷恩", rating: 88, height: 182, weight: 75, age: 27, cGP: 410, cG: 44, cA: 133, tGP: 0, tG: 0, tA: 0, value: "ⰵ84M", attributes: { spd: 82, sho: 78, pas: 91, dri: 88, def: 68, phy: 74, men: 90, sta: 92 } },
+            { no: 6, pos: "LCM", nat: "法国", name: "阿德里亚德", rating: 87, height: 183, weight: 80, age: 26, cGP: 287, cG: 19, cA: 63, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 78, sho: 70, pas: 86, dri: 82, def: 88, phy: 90, men: 82, sta: 95 } },
+            { no: 21, pos: "CM", nat: "中国", name: "石磊", rating: 84, height: 181, weight: 74, age: 24, cGP: 250, cG: 24, cA: 62, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 78, sho: 75, pas: 84, dri: 82, def: 65, phy: 72, men: 74, sta: 90 } },
+            { no: 28, pos: "CDM", nat: "苏格兰", name: "罗伯逊", rating: 83, height: 180, weight: 71, age: 26, cGP: 185, cG: 6, cA: 50, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 84, sho: 65, pas: 82, dri: 80, def: 81, phy: 75, men: 78, sta: 92 } },
+            { no: 7, pos: "LM", nat: "阿根廷", name: "迪斯特法诺", rating: 88, height: 178, weight: 74, age: 27, cGP: 405, cG: 104, cA: 171, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 93, sho: 82, pas: 89, dri: 92, def: 42, phy: 72, men: 86, sta: 92 } },
+            { no: 17, pos: "RM", nat: "墨西哥", name: "赫雷拉", rating: 86, height: 176, weight: 70, age: 26, cGP: 325, cG: 66, cA: 66, tGP: 0, tG: 0, tA: 0, value: "ⰵ78M", attributes: { spd: 91, sho: 84, pas: 82, dri: 89, def: 38, phy: 68, men: 80, sta: 85 } },
+            { no: 25, pos: "LW", nat: "俄罗斯", name: "阿诺舍瓦", rating: 84, height: 175, weight: 68, age: 23, cGP: 173, cG: 27, cA: 45, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 90, sho: 78, pas: 80, dri: 86, def: 35, phy: 65, men: 72, sta: 84 } },
+            { no: 20, pos: "CAM", nat: "英格兰", name: "威纳德", rating: 84, height: 179, weight: 72, age: 25, cGP: 215, cG: 28, cA: 56, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { spd: 82, sho: 80, pas: 85, dri: 86, def: 48, phy: 70, men: 76, sta: 82 } },
+            { no: 4, pos: "CB", nat: "希腊", name: "德谟克利特", rating: 87, height: 188, weight: 85, age: 28, cGP: 430, cG: 24, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 76, sho: 45, pas: 70, dri: 68, def: 91, phy: 89, men: 94, sta: 84 } },
+            { no: 2, pos: "RB", nat: "法国", name: "拉比奥特", rating: 87, height: 184, weight: 80, age: 27, cGP: 392, cG: 17, cA: 53, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 88, sho: 60, pas: 84, dri: 82, def: 85, phy: 80, men: 82, sta: 95 } },
+            { no: 3, pos: "LB", nat: "阿根廷", name: "利桑德罗", rating: 86, height: 175, weight: 72, age: 26, cGP: 290, cG: 13, cA: 63, tGP: 0, tG: 0, tA: 0, value: "ⰵ46M", attributes: { spd: 91, sho: 58, pas: 82, dri: 85, def: 83, phy: 74, men: 80, sta: 94 } },
+            { no: 5, pos: "LCB", nat: "法国", name: "瓦尔内", rating: 86, height: 187, weight: 82, age: 27, cGP: 333, cG: 18, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 82, sho: 42, pas: 68, dri: 70, def: 89, phy: 91, men: 88, sta: 80 } },
+            { no: 15, pos: "RCB", nat: "西班牙", name: "卡莱斯", rating: 84, height: 186, weight: 83, age: 25, cGP: 230, cG: 14, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 74, sho: 40, pas: 65, dri: 62, def: 86, phy: 88, men: 82, sta: 82 } },
+            { no: 24, pos: "LCB", nat: "奥地利", name: "汉斯", rating: 83, height: 189, weight: 86, age: 25, cGP: 190, cG: 8, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { spd: 70, sho: 38, pas: 60, dri: 58, def: 84, phy: 90, men: 78, sta: 76 } },
+            { no: 13, pos: "LB", nat: "荷兰", name: "范恩", rating: 82, height: 177, weight: 70, age: 23, cGP: 190, cG: 8, cA: 36, tGP: 0, tG: 0, tA: 0, value: "ⰵ25M", attributes: { spd: 88, sho: 55, pas: 76, dri: 78, def: 74, phy: 68, men: 72, sta: 90 } },
+            { no: 12, pos: "GK", nat: "巴西", name: "迪达", rating: 80, height: 191, weight: 88, age: 25, cGP: 140, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ15M", attributes: { div: 80, han: 78, kic: 75, ref: 82, spd: 55, pos_s: 78, men: 75, sta: 80 } },
+            { no: 99, pos: "CM", nat: "德国", name: "凯·布兰特", rating: 78, height: 183, weight: 75, age: 18, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 82, sho: 70, pas: 88, dri: 84, def: 60, phy: 68, men: 72, sta: 85 } },
+            { no: 81, pos: "CB", nat: "巴西", name: "卢卡斯·席尔瓦", rating: 77, height: 188, weight: 82, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ8M", attributes: { spd: 78, sho: 40, pas: 80, dri: 72, def: 79, phy: 82, men: 75, sta: 82 } },
+            { no: 66, pos: "CDM", nat: "日本", name: "中村弘", rating: 76, height: 176, weight: 72, age: 18, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ7M", attributes: { spd: 84, sho: 60, pas: 75, dri: 72, def: 78, phy: 72, men: 78, sta: 95 } }
         ]
     },
 
@@ -928,43 +955,42 @@ window.TEAMS_DATA = {
         coords: {
             LEAGUE: {
                 title: "联赛阵容 (4-3-3)",
-                players: { "GK": "法拉第", "LB": "罗梅罗", "LCB": "蒂亚戈", "RCB": "艾特维尔德", "RB": "达伦特", "CDM": "维蒂尼亚", "LCM": "艾迪森", "RCM": "帕耶罗", "LW": "罗德里奇", "ST": "巴洛蒂", "RW": "桑德乔" },
+                players: { "GK": "法拉第", "LB": "罗梅罗", "LCB": "约什·瓦迪", "RCB": "艾特维尔德", "RB": "达伦特", "CDM": "维蒂尼亚", "LCM": "弗洛里安·维尔", "RCM": "艾迪森", "LW": "拉法·维尼", "ST": "巴洛蒂", "RW": "桑德乔" },
                 coords: { "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88], "CDM": [45, 50], "LCM": [58, 28], "RCM": [58, 72], "LW": [82, 15], "ST": [85, 50], "RW": [82, 85] }
             },
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
-                players: { "GK": "索莫斯", "LB": "罗德里格夫斯", "LCB": "范德贝克", "RCB": "法蒂", "RB": "考托伊斯", "LDM": "科密奇", "RDM": "德保路", "CAM": "麦迪森", "LW": "比萨卡", "RW": "艾力夫曼", "ST": "杰雷特" },
+                players: { "GK": "索莫斯", "LB": "罗德里格夫斯", "LCB": "范德贝克", "RCB": "法蒂", "RB": "蒂亚戈", "LDM": "科密奇", "RDM": "德保路", "CAM": "麦迪森", "LW": "罗德里奇", "RW": "艾力夫曼", "ST": "杰雷特" },
                 coords: { "GK": [5, 50], "LB": [25, 12], "LCB": [20, 38], "RCB": [20, 62], "RB": [25, 88], "LDM": [45, 35], "RDM": [45, 65], "CAM": [62, 50], "LW": [82, 15], "ST": [85, 50], "RW": [82, 85] }
             }
         },
         roster: [
-            { no: 7, pos: "RW", nat: "英格兰", name: "桑德乔", rating: 92, height: 180, weight: 75, age: 26, cGP: 325, cG: 122, cA: 145, tGP: 156, tG: 62, tA: 78, value: "ⰵ195M", attributes: { spd: 89, sho: 86, pas: 94, dri: 96, def: 38, phy: 72, men: 91, sta: 85 } },
-            { no: 9, pos: "ST", nat: "意大利", name: "巴洛蒂", rating: 90, height: 186, weight: 81, age: 25, cGP: 248, cG: 185, cA: 28, tGP: 110, tG: 88, tA: 9, value: "ⰵ158M", attributes: { spd: 91, sho: 94, pas: 72, dri: 88, def: 30, phy: 86, men: 82, sta: 84 } },
-            { no: 11, pos: "LW", nat: "克罗地亚", name: "罗德里奇", rating: 89, height: 177, weight: 70, age: 24, cGP: 195, cG: 82, cA: 55, tGP: 92, tG: 41, tA: 22, value: "ⰵ125M", attributes: { spd: 95, sho: 84, pas: 80, dri: 92, def: 35, phy: 70, men: 88, sta: 86 } },
-            { no: 17, pos: "RW", nat: "德国", name: "艾力夫曼", rating: 88, height: 178, weight: 73, age: 24, cGP: 172, cG: 48, cA: 38, tGP: 55, tG: 12, tA: 9, value: "ⰵ92M", attributes: { spd: 93, sho: 82, pas: 84, dri: 89, def: 42, phy: 75, men: 76, sta: 82 } },
-            { no: 25, pos: "LW", nat: "英格兰", name: "比萨卡", rating: 87, height: 176, weight: 71, age: 27, cGP: 268, cG: 55, cA: 62, tGP: 85, tG: 21, tA: 18, value: "ⰵ68M", attributes: { spd: 90, sho: 80, pas: 78, dri: 91, def: 48, phy: 74, men: 80, sta: 85 } },
-            { no: 10, pos: "LW", nat: "荷兰", name: "范特西", rating: 87, height: 184, weight: 78, age: 37, cGP: 642, cG: 645, cA: 162, tGP: 428, tG: 459, tA: 108, value: "ⰵ12M", attributes: { spd: 72, sho: 88, pas: 90, dri: 92, def: 32, phy: 68, men: 99, sta: 62 } },
-            { no: 19, pos: "ST", nat: "美国", name: "杰雷特", rating: 87, height: 185, weight: 80, age: 26, cGP: 220, cG: 118, cA: 25, tGP: 62, tG: 31, tA: 5, value: "ⰵ75M", attributes: { spd: 84, sho: 89, pas: 70, dri: 82, def: 30, phy: 84, men: 82, sta: 80 } },
-            { no: 6, pos: "CDM", nat: "葡萄牙", name: "维蒂尼亚", rating: 90, height: 178, weight: 72, age: 24, cGP: 188, cG: 22, cA: 52, tGP: 125, tG: 12, tA: 31, value: "ⰵ165M", attributes: { spd: 82, sho: 76, pas: 94, dri: 91, def: 85, phy: 82, men: 88, sta: 94 } },
-            { no: 8, pos: "CM", nat: "巴西", name: "艾迪森", rating: 90, height: 181, weight: 76, age: 28, cGP: 315, cG: 45, cA: 112, tGP: 140, tG: 21, tA: 42, value: "ⰵ110M", attributes: { spd: 78, sho: 82, pas: 91, dri: 88, def: 74, phy: 76, men: 92, sta: 85 } },
-            { no: 18, pos: "CM", nat: "阿根廷", name: "帕耶罗", rating: 89, height: 182, weight: 75, age: 29, cGP: 352, cG: 52, cA: 98, tGP: 112, tG: 18, tA: 28, value: "ⰵ95M", attributes: { spd: 80, sho: 80, pas: 88, dri: 86, def: 70, phy: 75, men: 85, sta: 88 } },
-            { no: 16, pos: "CDM", nat: "德国", name: "科密奇", rating: 89, height: 177, weight: 73, age: 32, cGP: 525, cG: 45, cA: 138, tGP: 65, tG: 4, tA: 12, value: "ⰵ45M", attributes: { spd: 74, sho: 72, pas: 92, dri: 85, def: 88, phy: 82, men: 95, sta: 80 } },
-            { no: 20, pos: "CM", nat: "英格兰", name: "麦迪森", rating: 88, height: 175, weight: 70, age: 27, cGP: 295, cG: 72, cA: 118, tGP: 50, tG: 8, tA: 14, value: "ⰵ82M", attributes: { spd: 84, sho: 86, pas: 90, dri: 92, def: 55, phy: 68, men: 84, sta: 82 } },
-            { no: 21, pos: "CDM", nat: "阿根廷", name: "德保路", rating: 88, height: 180, weight: 75, age: 30, cGP: 388, cG: 32, cA: 48, tGP: 112, tG: 9, tA: 15, value: "ⰵ52M", attributes: { spd: 78, sho: 70, pas: 82, dri: 80, def: 84, phy: 88, men: 91, sta: 92 } },
-            { no: 22, pos: "CM", nat: "巴西", name: "保罗", rating: 86, height: 182, weight: 77, age: 33, cGP: 465, cG: 35, cA: 92, tGP: 45, tG: 3, tA: 9, value: "ⰵ22M", attributes: { spd: 70, sho: 78, pas: 86, dri: 82, def: 74, phy: 76, men: 88, sta: 75 } },
-            { no: 28, pos: "CM", nat: "英格兰", name: "哈里", rating: 86, height: 181, weight: 76, age: 21, cGP: 112, cG: 18, cA: 32, tGP: 42, tG: 4, tA: 8, value: "ⰵ95M", attributes: { spd: 86, sho: 80, pas: 85, dri: 88, def: 60, phy: 74, men: 82, sta: 89 } },
-            { no: 1, pos: "GK", nat: "英格兰", name: "法拉第", rating: 92, height: 189, weight: 85, age: 30, cGP: 412, cG: 0, cA: 2, tGP: 156, tG: 0, tA: 1, value: "ⰵ65M", attributes: { div: 93, han: 89, kic: 85, ref: 94, spd: 55, pos_s: 92, men: 95, sta: 80 } },
-            { no: 4, pos: "CB", nat: "比利时", name: "艾特维尔德", rating: 89, height: 190, weight: 89, age: 32, cGP: 495, cG: 28, cA: 5, tGP: 180, tG: 11, tA: 2, value: "ⰵ38M", attributes: { spd: 78, sho: 50, pas: 75, dri: 68, def: 92, phy: 91, men: 96, sta: 82 } },
-            { no: 5, pos: "CB", nat: "西班牙", name: "蒂亚戈", rating: 89, height: 188, weight: 84, age: 30, cGP: 382, cG: 25, cA: 4, tGP: 120, tG: 9, tA: 1, value: "ⰵ52M", attributes: { spd: 82, sho: 45, pas: 70, dri: 65, def: 90, phy: 88, men: 94, sta: 84 } },
-            { no: 3, pos: "LB", nat: "阿根廷", name: "罗梅罗", rating: 88, height: 181, weight: 77, age: 27, cGP: 215, cG: 12, cA: 48, tGP: 110, tG: 4, tA: 21, value: "ⰵ74M", attributes: { spd: 91, sho: 62, pas: 84, dri: 86, def: 83, phy: 80, men: 85, sta: 92 } },
-            { no: 2, pos: "RB", nat: "荷兰", name: "达伦特", rating: 87, height: 179, weight: 74, age: 27, cGP: 232, cG: 8, cA: 42, tGP: 95, tG: 2, tA: 18, value: "ⰵ68M", attributes: { spd: 92, sho: 65, pas: 82, dri: 84, def: 81, phy: 78, men: 78, sta: 91 } },
-            { no: 13, pos: "LB", nat: "葡萄牙", name: "罗德里格夫斯", rating: 87, height: 178, weight: 72, age: 20, cGP: 115, cG: 4, cA: 31, tGP: 110, tG: 4, tA: 28, value: "ⰵ88M", attributes: { spd: 94, sho: 55, pas: 80, dri: 82, def: 84, phy: 72, men: 74, sta: 95 } },
-            { no: 15, pos: "CB", nat: "西班牙", name: "法蒂", rating: 87, height: 185, weight: 78, age: 19, cGP: 98, cG: 6, cA: 1, tGP: 95, tG: 6, tA: 1, value: "ⰵ105M", attributes: { spd: 86, sho: 48, pas: 72, dri: 74, def: 88, phy: 91, men: 80, sta: 88 } },
-            { no: 24, pos: "CB", nat: "荷兰", name: "范德贝克", rating: 86, height: 184, weight: 79, age: 19, cGP: 110, cG: 8, cA: 15, tGP: 12, tG: 1, tA: 2, value: "ⰵ112M", attributes: { spd: 84, sho: 52, pas: 68, dri: 70, def: 89, phy: 93, men: 82, sta: 90 } },
-            { no: 12, pos: "GK", nat: "瑞士", name: "索莫斯", rating: 88, height: 188, weight: 83, age: 25, cGP: 215, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ72M", attributes: { div: 88, han: 84, kic: 82, ref: 91, spd: 62, pos_s: 86, men: 80, sta: 85 } },
-            { no: 23, pos: "GK", nat: "葡萄牙", name: "帕特里西塞", rating: 86, height: 190, weight: 86, age: 18, cGP: 48, cG: 0, cA: 1, tGP: 35, tG: 0, tA: 0, value: "ⰵ88M", attributes: { div: 89, han: 82, kic: 80, ref: 93, spd: 65, pos_s: 84, men: 78, sta: 85 } },
-            { no: 26, pos: "CB", nat: "比利时", name: "考托伊斯", rating: 84, height: 189, weight: 88, age: 36, cGP: 545, cG: 18, cA: 2, tGP: 45, tG: 2, tA: 0, value: "ⰵ8M", attributes: { spd: 55, sho: 40, pas: 65, dri: 52, def: 86, phy: 88, men: 95, sta: 68 } },
-            { no: 27, pos: "CB", nat: "西班牙", name: "门德兹", rating: 83, height: 186, weight: 82, age: 35, cGP: 512, cG: 15, cA: 1, tGP: 30, tG: 1, tA: 0, value: "ⰵ6M", attributes: { spd: 62, sho: 38, pas: 62, dri: 55, def: 84, phy: 85, men: 94, sta: 70 } }
+            { no: 7, pos: "RW", nat: "英格兰", name: "桑德乔", rating: 93, height: 180, weight: 75, age: 27, cGP: 481, cG: 184, cA: 223, tGP: 0, tG: 0, tA: 0, value: "ⰵ195M", attributes: { spd: 90, sho: 87, pas: 95, dri: 97, def: 38, phy: 73, men: 92, sta: 85 } },
+            { no: 9, pos: "ST", nat: "意大利", name: "巴洛蒂", rating: 91, height: 186, weight: 81, age: 26, cGP: 358, cG: 273, cA: 37, tGP: 0, tG: 0, tA: 0, value: "ⰵ165M", attributes: { spd: 92, sho: 95, pas: 72, dri: 89, def: 30, phy: 87, men: 83, sta: 85 } },
+            { no: 22, pos: "LW", nat: "巴西", name: "拉法·维尼", rating: 92, height: 176, weight: 73, age: 25, cGP: 320, cG: 145, cA: 88, tGP: 0, tG: 0, tA: 0, value: "ⰵ200M", attributes: { spd: 98, sho: 88, pas: 82, dri: 96, def: 35, phy: 76, men: 85, sta: 92 } },
+            { no: 10, pos: "LCM", nat: "德国", name: "弗洛里安·维尔", rating: 90, height: 177, weight: 71, age: 23, cGP: 215, cG: 62, cA: 115, tGP: 0, tG: 0, tA: 0, value: "ⰵ125M", attributes: { spd: 85, sho: 86, pas: 94, dri: 95, def: 55, phy: 72, men: 88, sta: 86 } },
+            { no: 27, pos: "LCB", nat: "克罗地亚", name: "约什·瓦迪", rating: 91, height: 186, weight: 82, age: 24, cGP: 245, cG: 12, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ145M", attributes: { spd: 88, sho: 55, pas: 84, dri: 80, def: 92, phy: 90, men: 91, sta: 88 } },
+            { no: 11, pos: "LW", nat: "克罗地亚", name: "罗德里奇", rating: 90, height: 177, weight: 70, age: 25, cGP: 287, cG: 123, cA: 77, tGP: 0, tG: 0, tA: 0, value: "ⰵ130M", attributes: { spd: 96, sho: 85, pas: 80, dri: 93, def: 35, phy: 71, men: 89, sta: 87 } },
+            { no: 17, pos: "RW", nat: "德国", name: "艾力夫曼", rating: 88, height: 178, weight: 73, age: 25, cGP: 227, cG: 60, cA: 47, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 93, sho: 82, pas: 84, dri: 89, def: 42, phy: 75, men: 76, sta: 82 } },
+            { no: 25, pos: "LW", nat: "英格兰", name: "比萨卡", rating: 87, height: 176, weight: 71, age: 28, cGP: 353, cG: 76, cA: 80, tGP: 0, tG: 0, tA: 0, value: "ⰵ65M", attributes: { spd: 90, sho: 80, pas: 78, dri: 91, def: 48, phy: 74, men: 80, sta: 85 } },
+            { no: 19, pos: "ST", nat: "美国", name: "杰雷特", rating: 87, height: 185, weight: 80, age: 27, cGP: 282, cG: 149, cA: 30, tGP: 0, tG: 0, tA: 0, value: "ⰵ72M", attributes: { spd: 84, sho: 89, pas: 70, dri: 82, def: 30, phy: 84, men: 82, sta: 80 } },
+            { no: 6, pos: "CDM", nat: "葡萄牙", name: "维蒂尼亚", rating: 91, height: 178, weight: 72, age: 25, cGP: 313, cG: 34, cA: 83, tGP: 0, tG: 0, tA: 0, value: "ⰵ172M", attributes: { spd: 83, sho: 77, pas: 95, dri: 92, def: 86, phy: 83, men: 89, sta: 95 } },
+            { no: 8, pos: "CM", nat: "巴西", name: "艾迪森", rating: 91, height: 181, weight: 76, age: 29, cGP: 455, cG: 66, cA: 154, tGP: 0, tG: 0, tA: 0, value: "ⰵ105M", attributes: { spd: 78, sho: 82, pas: 91, dri: 88, def: 74, phy: 76, men: 92, sta: 84 } },
+            { no: 18, pos: "CM", nat: "阿根廷", name: "帕耶罗", rating: 89, height: 182, weight: 75, age: 30, cGP: 464, cG: 70, cA: 126, tGP: 0, tG: 0, tA: 0, value: "ⰵ90M", attributes: { spd: 79, sho: 80, pas: 88, dri: 86, def: 70, phy: 74, men: 85, sta: 86 } },
+            { no: 16, pos: "CDM", nat: "德国", name: "科密奇", rating: 89, height: 177, weight: 73, age: 33, cGP: 590, cG: 49, cA: 150, tGP: 0, tG: 0, tA: 0, value: "ⰵ40M", attributes: { spd: 73, sho: 72, pas: 92, dri: 85, def: 88, phy: 81, men: 96, sta: 78 } },
+            { no: 20, pos: "CM", nat: "英格兰", name: "麦迪森", rating: 88, height: 175, weight: 70, age: 28, cGP: 345, cG: 80, cA: 132, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 84, sho: 86, pas: 91, dri: 92, def: 55, phy: 68, men: 85, sta: 81 } },
+            { no: 21, pos: "CDM", nat: "阿根廷", name: "德保路", rating: 88, height: 180, weight: 75, age: 31, cGP: 500, cG: 41, cA: 63, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 77, sho: 70, pas: 82, dri: 80, def: 84, phy: 88, men: 91, sta: 91 } },
+            { no: 28, pos: "CM", nat: "英格兰", name: "哈里", rating: 87, height: 181, weight: 76, age: 22, cGP: 154, cG: 22, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ102M", attributes: { spd: 87, sho: 81, pas: 86, dri: 89, def: 60, phy: 75, men: 83, sta: 90 } },
+            { no: 1, pos: "GK", nat: "英格兰", name: "法拉第", rating: 93, height: 189, weight: 85, age: 31, cGP: 568, cG: 0, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ72M", attributes: { div: 94, han: 90, kic: 86, ref: 95, spd: 55, pos_s: 93, men: 96, sta: 80 } },
+            { no: 4, pos: "CB", nat: "比利时", name: "艾特维尔德", rating: 89, height: 190, weight: 89, age: 33, cGP: 675, cG: 39, cA: 7, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 77, sho: 50, pas: 75, dri: 68, def: 92, phy: 91, men: 96, sta: 80 } },
+            { no: 5, pos: "CB", nat: "西班牙", name: "蒂亚戈", rating: 89, height: 188, weight: 84, age: 31, cGP: 502, cG: 34, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 81, sho: 45, pas: 70, dri: 65, def: 90, phy: 88, men: 95, sta: 82 } },
+            { no: 3, pos: "LB", nat: "阿根廷", name: "罗梅罗", rating: 88, height: 181, weight: 77, age: 28, cGP: 325, cG: 16, cA: 69, tGP: 0, tG: 0, tA: 0, value: "ⰵ70M", attributes: { spd: 91, sho: 62, pas: 84, dri: 86, def: 83, phy: 80, men: 85, sta: 92 } },
+            { no: 2, pos: "RB", nat: "荷兰", name: "达伦特", rating: 87, height: 179, weight: 74, age: 28, cGP: 327, cG: 10, cA: 60, tGP: 0, tG: 0, tA: 0, value: "ⰵ65M", attributes: { spd: 92, sho: 65, pas: 82, dri: 84, def: 81, phy: 78, men: 78, sta: 91 } },
+            { no: 13, pos: "LB", nat: "葡萄牙", name: "罗德里格夫斯", rating: 88, height: 178, weight: 72, age: 21, cGP: 225, cG: 8, cA: 59, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 95, sho: 55, pas: 81, dri: 83, def: 85, phy: 73, men: 75, sta: 96 } },
+            { no: 15, pos: "CB", nat: "西班牙", name: "法蒂", rating: 88, height: 185, weight: 78, age: 20, cGP: 193, cG: 12, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ112M", attributes: { spd: 87, sho: 48, pas: 73, dri: 75, def: 89, phy: 92, men: 81, sta: 89 } },
+            { no: 24, pos: "CB", nat: "荷兰", name: "范德贝克", rating: 88, height: 184, weight: 79, age: 20, cGP: 122, cG: 9, cA: 17, tGP: 0, tG: 0, tA: 0, value: "ⰵ120M", attributes: { spd: 85, sho: 52, pas: 69, dri: 71, def: 90, phy: 94, men: 83, sta: 91 } },
+            { no: 12, pos: "GK", nat: "瑞士", name: "索莫斯", rating: 89, height: 188, weight: 83, age: 26, cGP: 260, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { div: 89, han: 85, kic: 82, ref: 92, spd: 62, pos_s: 87, men: 81, sta: 85 } },
+            { no: 23, pos: "GK", nat: "葡萄牙", name: "帕特里西塞", rating: 87, height: 190, weight: 86, age: 19, cGP: 83, cG: 0, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { div: 90, han: 83, kic: 80, ref: 94, spd: 65, pos_s: 85, men: 79, sta: 85 } }
         ]
     },
 
@@ -987,55 +1013,57 @@ window.TEAMS_DATA = {
         ],
         coords: {
             LEAGUE: {
-                title: "联赛阵容 (4-3-2-1)",
+                title: "联赛阵容 (4-3-1-2)",
                 players: {
-                    "GK": "麦尼耶", "LB": "加图索", "LCB": "格瓦蒂内斯", "RCB": "诺瓦辛格", "RB": "儒日内奥",
-                    "LCM": "佩里西吉", "CM": "孔德", "RCM": "维纳尔", "LCAM": "沃特劳斯", "RCAM": "伍迪", "ST": "鲁尼尔"
+                    "GK": "麦尼耶", "LB": "加图索", "LCB": "威廉·萨利", "RCB": "诺瓦辛格", "RB": "杰里米·弗林",
+                    "LCM": "费德里科·巴尔", "CM": "佩里西吉", "RCM": "哈里",
+                    "CAM": "沃特劳斯", "LST": "鲁尼尔", "RST": "维克多·奥斯"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
-                    "LCM": [48, 28], "CM": [45, 50], "RCM": [48, 72], "LCAM": [68, 35], "RCAM": [68, 65], "ST": [85, 50]
+                    "LCM": [45, 25], "CM": [42, 50], "RCM": [45, 75], "CAM": [65, 50], "LST": [85, 35], "RST": [85, 65]
                 }
             },
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
                 players: {
-                    "GK": "福斯特森", "LB": "里哈多", "LCB": "圣马西斯", "RCB": "纳赛尔", "RB": "罗马尼欧",
-                    "LDM": "迪福", "RDM": "贾马鲁斯", "LM": "罗马迪尼奥", "CAM": "德佩林", "RM": "施密特", "ST": "维尔兹"
+                    "GK": "福斯特森", "LB": "里哈多", "LCB": "圣马西斯", "RCB": "纳赛尔", "RB": "儒日内奥",
+                    "LDM": "迪福", "RDM": "派特", "LM": "罗马迪尼奥", "CAM": "维尔兹", "RM": "施密特", "ST": "伍迪"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 12], "LCB": [20, 38], "RCB": [20, 62], "RB": [25, 88],
-                    "LDM": [45, 35], "RDM": [45, 65], "LM": [72, 15], "CAM": [65, 50], "RM": [72, 85], "ST": [85, 50]
+                    "LDM": [45, 35], "RDM": [45, 65], "LM": [65, 20], "CAM": [62, 50], "RM": [65, 80], "ST": [85, 50]
                 }
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "法国", name: "麦尼耶", rating: 88, height: 191, weight: 87, age: 27, cGP: 328, cG: 0, cA: 2, tGP: 120, tG: 0, tA: 1, value: "ⰵ105M", attributes: { div: 89, han: 87, kic: 84, ref: 90, spd: 55, pos_s: 91, men: 88, sta: 80 } },
-            { no: 3, pos: "LB", nat: "意大利", name: "加图索", rating: 86, height: 177, weight: 78, age: 26, cGP: 235, cG: 15, cA: 38, tGP: 110, tG: 4, tA: 18, value: "ⰵ92M", attributes: { spd: 88, sho: 72, pas: 84, dri: 82, def: 85, phy: 90, men: 95, sta: 92 } },
-            { no: 4, pos: "CB", nat: "克罗地亚", name: "格瓦蒂内斯", rating: 85, height: 188, weight: 83, age: 24, cGP: 158, cG: 8, cA: 2, tGP: 88, tG: 3, tA: 1, value: "ⰵ88M", attributes: { spd: 78, sho: 45, pas: 70, dri: 72, def: 88, phy: 86, men: 82, sta: 85 } },
-            { no: 5, pos: "CB", nat: "印度", name: "诺瓦辛格", rating: 85, height: 186, weight: 82, age: 25, cGP: 172, cG: 10, cA: 1, tGP: 92, tG: 2, tA: 0, value: "ⰵ82M", attributes: { spd: 80, sho: 42, pas: 68, dri: 70, def: 86, phy: 89, men: 84, sta: 82 } },
-            { no: 2, pos: "RB", nat: "意大利", name: "儒日内奥", rating: 86, height: 181, weight: 75, age: 25, cGP: 205, cG: 8, cA: 45, tGP: 112, tG: 3, tA: 15, value: "ⰵ98M", attributes: { spd: 92, sho: 65, pas: 86, dri: 88, def: 82, phy: 78, men: 85, sta: 94 } },
-            { no: 6, pos: "CM", nat: "克罗地亚", name: "佩里西吉", rating: 85, height: 182, weight: 77, age: 26, cGP: 228, cG: 25, cA: 58, tGP: 115, tG: 12, tA: 31, value: "ⰵ78M", attributes: { spd: 84, sho: 82, pas: 82, dri: 86, def: 74, phy: 80, men: 84, sta: 90 } },
-            { no: 8, pos: "CM", nat: "法国", name: "孔德", rating: 83, height: 180, weight: 76, age: 24, cGP: 142, cG: 5, cA: 21, tGP: 50, tG: 1, tA: 6, value: "ⰵ52M", attributes: { spd: 78, sho: 60, pas: 78, dri: 80, def: 81, phy: 82, men: 78, sta: 88 } },
-            { no: 14, pos: "CM", nat: "荷兰", name: "维纳尔", rating: 84, height: 179, weight: 74, age: 25, cGP: 185, cG: 18, cA: 35, tGP: 60, tG: 4, tA: 12, value: "ⰵ58M", attributes: { spd: 82, sho: 74, pas: 84, dri: 84, def: 72, phy: 76, men: 80, sta: 86 } },
-            { no: 10, pos: "CAM", nat: "英格兰", name: "沃特劳斯", rating: 87, height: 178, weight: 73, age: 28, cGP: 412, cG: 68, cA: 128, tGP: 165, tG: 24, tA: 62, value: "ⰵ85M", attributes: { spd: 80, sho: 84, pas: 91, dri: 89, def: 45, phy: 72, men: 90, sta: 84 } },
-            { no: 17, pos: "CAM", nat: "英格兰", name: "伍迪", rating: 84, height: 175, weight: 70, age: 23, cGP: 128, cG: 32, cA: 52, tGP: 45, tG: 8, tA: 15, value: "ⰵ72M", attributes: { spd: 86, sho: 82, pas: 85, dri: 88, def: 40, phy: 68, men: 76, sta: 82 } },
-            { no: 9, pos: "ST", nat: "英格兰", name: "鲁尼尔", rating: 85, height: 184, weight: 82, age: 26, cGP: 258, cG: 182, cA: 25, tGP: 125, tG: 82, tA: 9, value: "ⰵ88M", attributes: { spd: 86, sho: 90, pas: 70, dri: 84, def: 35, phy: 88, men: 92, sta: 82 } },
-            { no: 12, pos: "GK", nat: "英格兰", name: "福斯特森", rating: 85, height: 190, weight: 89, age: 24, cGP: 98, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ78M", attributes: { div: 86, han: 82, kic: 80, ref: 88, spd: 58, pos_s: 84, men: 80, sta: 82 } },
-            { no: 13, pos: "LB", nat: "葡萄牙", name: "里哈多", rating: 83, height: 181, weight: 75, age: 22, cGP: 92, cG: 3, cA: 21, tGP: 85, tG: 2, tA: 15, value: "ⰵ55M", attributes: { spd: 91, sho: 58, pas: 78, dri: 84, def: 78, phy: 72, men: 74, sta: 90 } },
-            { no: 15, pos: "CB", nat: "法国", name: "圣马西斯", rating: 85, height: 189, weight: 82, age: 25, cGP: 188, cG: 14, cA: 2, tGP: 55, tG: 4, tA: 0, value: "ⰵ74M", attributes: { spd: 76, sho: 40, pas: 72, dri: 65, def: 89, phy: 88, men: 82, sta: 80 } },
-            { no: 24, pos: "CB", nat: "摩洛哥", name: "纳赛尔", rating: 84, height: 187, weight: 83, age: 24, cGP: 125, cG: 6, cA: 2, tGP: 115, tG: 5, tA: 2, value: "ⰵ52M", attributes: { spd: 74, sho: 38, pas: 68, dri: 62, def: 86, phy: 88, men: 78, sta: 82 } },
-            { no: 22, pos: "RB", nat: "意大利", name: "罗马尼欧", rating: 84, height: 180, weight: 77, age: 23, cGP: 118, cG: 5, cA: 32, tGP: 48, tG: 1, tA: 12, value: "ⰵ55M", attributes: { spd: 90, sho: 55, pas: 82, dri: 85, def: 81, phy: 75, men: 78, sta: 92 } },
-            { no: 16, pos: "CDM", nat: "英格兰", name: "迪福", rating: 81, height: 178, weight: 72, age: 21, cGP: 58, cG: 3, cA: 12, tGP: 45, tG: 2, tA: 8, value: "ⰵ38M", attributes: { spd: 84, sho: 65, pas: 78, dri: 80, def: 78, phy: 76, men: 72, sta: 88 } },
-            { no: 26, pos: "CDM", nat: "德国", name: "贾马鲁斯", rating: 79, height: 183, weight: 78, age: 20, cGP: 42, cG: 1, cA: 6, tGP: 25, tG: 1, tA: 4, value: "ⰵ32M", attributes: { spd: 78, sho: 62, pas: 74, dri: 72, def: 80, phy: 82, men: 74, sta: 85 } },
-            { no: 7, pos: "LM", nat: "巴西", name: "罗马迪尼奥", rating: 84, height: 176, weight: 73, age: 24, cGP: 148, cG: 48, cA: 62, tGP: 55, tG: 12, tA: 18, value: "ⰵ70M", attributes: { spd: 88, sho: 81, pas: 82, dri: 92, def: 42, phy: 68, men: 82, sta: 80 } },
-            { no: 20, pos: "CAM", nat: "荷兰", name: "德佩林", rating: 82, height: 179, weight: 76, age: 22, cGP: 72, cG: 14, cA: 25, tGP: 65, tG: 12, tA: 21, value: "ⰵ42M", attributes: { spd: 80, sho: 76, pas: 85, dri: 86, def: 48, phy: 70, men: 74, sta: 78 } },
-            { no: 25, pos: "RM", nat: "德国", name: "施密特", rating: 81, height: 174, weight: 68, age: 21, cGP: 58, cG: 12, cA: 18, tGP: 40, tG: 8, tA: 15, value: "ⰵ35M", attributes: { spd: 91, sho: 74, pas: 76, dri: 88, def: 35, phy: 60, men: 70, sta: 84 } },
-            { no: 11, pos: "ST", nat: "德国", name: "维尔兹", rating: 84, height: 182, weight: 75, age: 23, cGP: 105, cG: 55, cA: 18, tGP: 45, tG: 22, tA: 4, value: "ⰵ75M", attributes: { spd: 82, sho: 86, pas: 85, dri: 91, def: 42, phy: 72, men: 88, sta: 85 } },
-            { no: 23, pos: "GK", nat: "尼日利亚", name: "恩迪斯", rating: 83, height: 188, weight: 85, age: 22, cGP: 62, cG: 0, cA: 0, tGP: 55, tG: 0, tA: 0, value: "ⰵ45M", attributes: { div: 84, han: 80, kic: 78, ref: 85, spd: 58, pos_s: 82, men: 75, sta: 80 } },
-            { no: 21, pos: "CB", nat: "英格兰", name: "卡里克", rating: 83, height: 185, weight: 80, age: 23, cGP: 115, cG: 8, cA: 1, tGP: 40, tG: 2, tA: 0, value: "ⰵ42M", attributes: { spd: 72, sho: 45, pas: 74, dri: 68, def: 84, phy: 80, men: 85, sta: 75 } },
-            { no: 18, pos: "CM", nat: "苏里南", name: "苏里南", rating: 83, height: 178, weight: 74, age: 22, cGP: 88, cG: 12, cA: 22, tGP: 75, tG: 8, tA: 15, value: "ⰵ48M", attributes: { spd: 84, sho: 72, pas: 86, dri: 84, def: 68, phy: 72, men: 76, sta: 90 } },
-            { no: 28, pos: "ST", nat: "英格兰", name: "萨克", rating: 80, height: 186, weight: 78, age: 21, cGP: 45, cG: 18, cA: 5, tGP: 35, tG: 12, tA: 4, value: "ⰵ32M", attributes: { spd: 88, sho: 82, pas: 65, dri: 78, def: 25, phy: 80, men: 72, sta: 78 } }
+            { no: 1, pos: "GK", nat: "法国", name: "麦尼耶", rating: 89, height: 191, weight: 87, age: 28, cGP: 448, cG: 0, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ105M", attributes: { div: 90, han: 88, kic: 84, ref: 91, spd: 55, pos_s: 92, men: 89, sta: 80 } },
+            { no: 99, pos: "RST", nat: "尼日利亚", name: "维克多·奥斯", rating: 89, height: 186, weight: 80, age: 26, cGP: 280, cG: 145, cA: 22, tGP: 0, tG: 0, tA: 0, value: "ⰵ115M", attributes: { spd: 93, sho: 88, pas: 72, dri: 84, def: 42, phy: 94, men: 85, sta: 88 } },
+            { no: 10, pos: "CAM", nat: "英格兰", name: "沃特劳斯", rating: 88, height: 178, weight: 73, age: 29, cGP: 577, cG: 92, cA: 190, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 80, sho: 84, pas: 92, dri: 89, def: 45, phy: 72, men: 91, sta: 84 } },
+            { no: 9, pos: "LST", nat: "英格兰", name: "鲁尼尔", rating: 86, height: 184, weight: 82, age: 27, cGP: 383, cG: 264, cA: 34, tGP: 0, tG: 0, tA: 0, value: "ⰵ88M", attributes: { spd: 86, sho: 91, pas: 70, dri: 84, def: 35, phy: 88, men: 93, sta: 82 } },
+            { no: 4, pos: "LCB", nat: "法国", name: "威廉·萨利", rating: 90, height: 192, weight: 89, age: 24, cGP: 210, cG: 8, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ115M", attributes: { spd: 88, sho: 40, pas: 75, dri: 72, def: 93, phy: 89, men: 88, sta: 85 } },
+            { no: 8, pos: "LCM", nat: "乌拉圭", name: "费德里科·巴尔", rating: 91, height: 182, weight: 78, age: 27, cGP: 315, cG: 45, cA: 62, tGP: 0, tG: 0, tA: 0, value: "ⰵ125M", attributes: { spd: 92, sho: 86, pas: 85, dri: 88, def: 82, phy: 88, men: 90, sta: 99 } },
+            { no: 30, pos: "RB", nat: "荷兰", name: "杰里米·弗林", rating: 90, height: 171, weight: 65, age: 24, cGP: 185, cG: 15, cA: 52, tGP: 0, tG: 0, tA: 0, value: "ⰵ110M", attributes: { spd: 98, sho: 68, pas: 85, dri: 94, def: 81, phy: 72, men: 82, sta: 91 } },
+            { no: 2, pos: "RB", nat: "意大利", name: "儒日内奥", rating: 87, height: 181, weight: 75, age: 26, cGP: 317, cG: 11, cA: 60, tGP: 0, tG: 0, tA: 0, value: "ⰵ98M", attributes: { spd: 92, sho: 65, pas: 87, dri: 88, def: 83, phy: 78, men: 86, sta: 94 } },
+            { no: 3, pos: "LB", nat: "意大利", name: "加图索", rating: 87, height: 177, weight: 78, age: 27, cGP: 345, cG: 19, cA: 56, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 88, sho: 72, pas: 84, dri: 82, def: 86, phy: 91, men: 96, sta: 92 } },
+            { no: 5, pos: "CB", nat: "印度", name: "诺瓦辛格", rating: 85, height: 186, weight: 82, age: 26, cGP: 264, cG: 12, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ82M", attributes: { spd: 80, sho: 42, pas: 68, dri: 70, def: 87, phy: 90, men: 84, sta: 82 } },
+            { no: 6, pos: "CM", nat: "克罗地亚", name: "佩里西吉", rating: 85, height: 182, weight: 77, age: 27, cGP: 343, cG: 37, cA: 89, tGP: 0, tG: 0, tA: 0, value: "ⰵ78M", attributes: { spd: 84, sho: 82, pas: 82, dri: 86, def: 74, phy: 80, men: 84, sta: 90 } },
+            { no: 28, pos: "RCM", nat: "英格兰", name: "哈里", rating: 87, height: 181, weight: 76, age: 22, cGP: 154, cG: 22, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 86, sho: 81, pas: 86, dri: 89, def: 60, phy: 75, men: 82, sta: 89 } },
+            { no: 17, pos: "CAM", nat: "英格兰", name: "伍迪", rating: 85, height: 175, weight: 70, age: 24, cGP: 173, cG: 40, cA: 67, tGP: 0, tG: 0, tA: 0, value: "ⰵ72M", attributes: { spd: 87, sho: 83, pas: 86, dri: 89, def: 40, phy: 68, men: 77, sta: 82 } },
+            { no: 11, pos: "CAM", nat: "德国", name: "维尔兹", rating: 85, height: 182, weight: 75, age: 24, cGP: 150, cG: 77, cA: 22, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 82, sho: 87, pas: 86, dri: 92, def: 42, phy: 73, men: 89, sta: 85 } },
+            { no: 12, pos: "GK", nat: "英格兰", name: "福斯特森", rating: 85, height: 190, weight: 89, age: 25, cGP: 143, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ78M", attributes: { div: 86, han: 82, kic: 80, ref: 88, spd: 58, pos_s: 84, men: 80, sta: 82 } },
+            { no: 13, pos: "LB", nat: "葡萄牙", name: "里哈多", rating: 84, height: 181, weight: 75, age: 23, cGP: 177, cG: 5, cA: 36, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { spd: 91, sho: 58, pas: 78, dri: 84, def: 78, phy: 72, men: 74, sta: 90 } },
+            { no: 15, pos: "CB", nat: "法国", name: "圣马西斯", rating: 85, height: 189, weight: 82, age: 26, cGP: 243, cG: 18, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ74M", attributes: { spd: 76, sho: 40, pas: 72, dri: 65, def: 90, phy: 88, men: 82, sta: 80 } },
+            { no: 24, pos: "CB", nat: "摩洛哥", name: "纳赛尔", rating: 85, height: 187, weight: 83, age: 25, cGP: 240, cG: 11, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 75, sho: 38, pas: 68, dri: 62, def: 87, phy: 89, men: 79, sta: 82 } },
+            { no: 22, pos: "RB", nat: "意大利", name: "罗马尼欧", rating: 84, height: 180, weight: 77, age: 24, cGP: 166, cG: 6, cA: 44, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { spd: 90, sho: 55, pas: 82, dri: 85, def: 81, phy: 75, men: 78, sta: 92 } },
+            { no: 16, pos: "CDM", nat: "英格兰", name: "迪福", rating: 81, height: 178, weight: 72, age: 22, cGP: 103, cG: 5, cA: 20, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { spd: 84, sho: 65, pas: 78, dri: 80, def: 78, phy: 76, men: 72, sta: 88 } },
+            { no: 26, pos: "CDM", nat: "德国", name: "贾马鲁斯", rating: 80, height: 183, weight: 78, age: 21, cGP: 67, cG: 2, cA: 10, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 78, sho: 62, pas: 74, dri: 72, def: 80, phy: 82, men: 74, sta: 85 } },
+            { no: 7, pos: "LM", nat: "巴西", name: "罗马迪尼奥", rating: 85, height: 176, weight: 73, age: 25, cGP: 203, cG: 60, cA: 80, tGP: 0, tG: 0, tA: 0, value: "ⰵ70M", attributes: { spd: 88, sho: 81, pas: 82, dri: 92, def: 42, phy: 68, men: 82, sta: 80 } },
+            { no: 20, pos: "CAM", nat: "荷兰", name: "德佩林", rating: 83, height: 179, weight: 76, age: 23, cGP: 137, cG: 26, cA: 46, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 80, sho: 76, pas: 85, dri: 86, def: 48, phy: 70, men: 74, sta: 78 } },
+            { no: 25, pos: "RM", nat: "德国", name: "施密特", rating: 81, height: 174, weight: 68, age: 22, cGP: 98, cG: 20, cA: 33, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 91, sho: 74, pas: 76, dri: 88, def: 35, phy: 60, men: 70, sta: 84 } },
+            { no: 23, pos: "GK", nat: "尼日利亚", name: "恩迪斯", rating: 83, height: 188, weight: 85, age: 23, cGP: 117, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { div: 84, han: 80, kic: 78, ref: 85, spd: 58, pos_s: 82, men: 75, sta: 80 } },
+            { no: 21, pos: "CB", nat: "英格兰", name: "卡里克", rating: 83, height: 185, weight: 80, age: 24, cGP: 155, cG: 10, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 72, sho: 45, pas: 74, dri: 68, def: 84, phy: 80, men: 85, sta: 75 } },
+            { no: 27, pos: "CDM", nat: "英格兰", name: "派特", rating: 76, height: 185, weight: 78, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ15M", attributes: { spd: 75, sho: 60, pas: 80, dri: 72, def: 78, phy: 82, men: 75, sta: 88 } }
         ]
     },
 
@@ -1059,45 +1087,42 @@ window.TEAMS_DATA = {
         coords: {
             LEAGUE: {
                 title: "联赛阵容 (4-3-3)",
-                players: { "GK": "萨坦", "LB": "维克托", "LCB": "罗宾", "RCB": "奥巴内", "RB": "道森", "LCM": "恩佐", "CM": "穆克尔", "RCM": "夏奇拉", "LW": "埃兰加", "ST": "胡里奥", "RW": "孙兴浩" },
+                players: { "GK": "萨坦", "LB": "维克托", "LCB": "罗宾", "RCB": "奥巴内", "RB": "道森", "LCM": "恩佐", "CM": "莱姆", "RCM": "夏奇拉", "LW": "埃兰加", "ST": "胡里奥", "RW": "孙兴浩" },
                 coords: { "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88], "LCM": [50, 28], "CM": [45, 50], "RCM": [50, 72], "LW": [82, 15], "ST": [85, 50], "RW": [82, 85] }
             },
             CUP: {
                 title: "杯赛阵容 (5-4-1)",
-                players: { "GK": "麦诺", "LB": "雷吉洛克", "LCB": "加斯", "CB": "克洛格", "RCB": "法拉格", "RB": "劳塔纳", "LM": "韦洛克", "LCM": "米利克", "RCM": "安道尔", "RM": "杰克罗斯", "ST": "巴扎南德" },
+                players: { "GK": "麦诺", "LB": "雷吉洛克", "LCB": "加斯", "CB": "克洛格", "RCB": "法拉格", "RB": "劳塔纳", "LM": "韦洛克", "LCM": "米利克", "RCM": "安道尔", "RM": "杰克罗斯", "ST": "维扎" },
                 coords: { "GK": [5, 50], "LB": [25, 12], "LCB": [20, 31], "CB": [18, 50], "RCB": [20, 69], "RB": [25, 88], "LM": [52, 15], "LCM": [45, 38], "RCM": [45, 62], "RM": [52, 85], "ST": [85, 50] }
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "巴西", name: "萨坦", rating: 80, height: 189, weight: 85, age: 28, cGP: 325, cG: 0, cA: 1, tGP: 120, tG: 0, tA: 0, value: "ⰵ45M", attributes: { div: 82, han: 78, kic: 74, ref: 81, spd: 55, pos_s: 83, men: 82, sta: 75 } },
-            { no: 3, pos: "LB", nat: "尼日利亚", name: "维克托", rating: 81, height: 178, weight: 73, age: 26, cGP: 238, cG: 14, cA: 42, tGP: 95, tG: 4, tA: 12, value: "ⰵ65M", attributes: { spd: 88, sho: 62, pas: 78, dri: 80, def: 78, phy: 72, men: 80, sta: 92 } },
-            { no: 4, pos: "CB", nat: "德国", name: "罗宾", rating: 81, height: 187, weight: 84, age: 27, cGP: 285, cG: 12, cA: 2, tGP: 110, tG: 5, tA: 1, value: "ⰵ58M", attributes: { spd: 74, sho: 40, pas: 65, dri: 58, def: 84, phy: 86, men: 85, sta: 80 } },
-            { no: 5, pos: "CB", nat: "科特迪瓦", name: "奥巴内", rating: 79, height: 189, weight: 86, age: 26, cGP: 192, cG: 11, cA: 2, tGP: 75, tG: 4, tA: 1, value: "ⰵ32M", attributes: { spd: 70, sho: 38, pas: 60, dri: 55, def: 81, phy: 84, men: 78, sta: 82 } },
-            { no: 15, pos: "CB", nat: "德国", name: "克洛格", rating: 79, height: 190, weight: 88, age: 25, cGP: 168, cG: 8, cA: 1, tGP: 88, tG: 3, tA: 0, value: "ⰵ35M", attributes: { spd: 72, sho: 35, pas: 58, dri: 52, def: 80, phy: 88, men: 75, sta: 84 } },
-            { no: 13, pos: "LB", nat: "西班牙", name: "雷吉洛克", rating: 79, height: 177, weight: 71, age: 25, cGP: 158, cG: 8, cA: 32, tGP: 55, tG: 2, tA: 11, value: "ⰵ34M", attributes: { spd: 86, sho: 55, pas: 74, dri: 78, def: 75, phy: 68, men: 72, sta: 88 } },
-            { no: 8, pos: "CM", nat: "阿根廷", name: "恩佐", rating: 81, height: 180, weight: 77, age: 24, cGP: 162, cG: 22, cA: 55, tGP: 60, tG: 5, tA: 14, value: "ⰵ72M", attributes: { spd: 82, sho: 74, pas: 88, dri: 84, def: 70, phy: 72, men: 82, sta: 90 } },
-            { no: 10, pos: "CM", nat: "奥地利", name: "穆克尔", rating: 80, height: 182, weight: 78, age: 30, cGP: 428, cG: 48, cA: 92, tGP: 156, tG: 12, tA: 28, value: "ⰵ22M", attributes: { spd: 75, sho: 78, pas: 85, dri: 82, def: 68, phy: 74, men: 95, sta: 80 } },
-            { no: 18, pos: "CM", nat: "哥伦比亚", name: "夏奇拉", rating: 80, height: 178, weight: 72, age: 27, cGP: 225, cG: 32, cA: 48, tGP: 50, tG: 6, tA: 11, value: "ⰵ38M", attributes: { spd: 80, sho: 76, pas: 82, dri: 85, def: 55, phy: 68, men: 80, sta: 82 } },
-            { no: 9, pos: "ST", nat: "西班牙", name: "胡里奥", rating: 82, height: 184, weight: 81, age: 26, cGP: 258, cG: 185, cA: 32, tGP: 112, tG: 76, tA: 10, value: "ⰵ82M", attributes: { spd: 88, sho: 91, pas: 70, dri: 84, def: 30, phy: 86, men: 85, sta: 82 } },
-            { no: 7, pos: "ST", nat: "韩国", name: "孙兴浩", rating: 80, height: 183, weight: 78, age: 26, cGP: 218, cG: 122, cA: 35, tGP: 45, tG: 18, tA: 5, value: "ⰵ48M", attributes: { spd: 91, sho: 86, pas: 68, dri: 82, def: 28, phy: 78, men: 80, sta: 80 } },
-            { no: 12, pos: "GK", nat: "意大利", name: "麦诺", rating: 78, height: 192, weight: 88, age: 24, cGP: 92, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ28M", attributes: { div: 80, han: 76, kic: 72, ref: 82, spd: 55, pos_s: 78, men: 72, sta: 74 } },
-            { no: 23, pos: "GK", nat: "西班牙", name: "门多", rating: 77, height: 188, weight: 83, age: 21, cGP: 38, cG: 0, cA: 0, tGP: 35, tG: 0, tA: 0, value: "ⰵ18M", attributes: { div: 78, han: 74, kic: 70, ref: 84, spd: 60, pos_s: 75, men: 68, sta: 70 } },
-            { no: 14, pos: "CB", nat: "英格兰", name: "加斯", rating: 78, height: 191, weight: 89, age: 24, cGP: 112, cG: 6, cA: 0, tGP: 60, tG: 3, tA: 0, value: "ⰵ25M", attributes: { spd: 70, sho: 35, pas: 55, dri: 50, def: 81, phy: 88, men: 76, sta: 80 } },
-            { no: 24, pos: "CB", nat: "埃及", name: "法拉格", rating: 77, height: 186, weight: 82, age: 24, cGP: 105, cG: 5, cA: 4, tGP: 65, tG: 1, tA: 1, value: "ⰵ24M", attributes: { spd: 72, sho: 32, pas: 52, dri: 48, def: 78, phy: 84, men: 74, sta: 78 } },
-            { no: 2, pos: "RB", nat: "乌拉圭", name: "劳塔纳", rating: 77, height: 180, weight: 75, age: 23, cGP: 92, cG: 3, cA: 21, tGP: 48, tG: 1, tA: 5, value: "ⰵ26M", attributes: { spd: 90, sho: 58, pas: 72, dri: 80, def: 74, phy: 70, men: 68, sta: 92 } },
-            { no: 22, pos: "RB", nat: "英格兰", name: "道森", rating: 77, height: 181, weight: 77, age: 25, cGP: 165, cG: 6, cA: 28, tGP: 72, tG: 1, tA: 9, value: "ⰵ28M", attributes: { spd: 88, sho: 55, pas: 74, dri: 78, def: 76, phy: 75, men: 74, sta: 85 } },
-            { no: 17, pos: "CAM", nat: "波兰", name: "米利克", rating: 79, height: 181, weight: 76, age: 25, cGP: 148, cG: 42, cA: 31, tGP: 45, tG: 12, tA: 8, value: "ⰵ38M", attributes: { spd: 82, sho: 84, pas: 80, dri: 84, def: 42, phy: 76, men: 78, sta: 82 } },
-            { no: 19, pos: "ST", nat: "葡萄牙", name: "巴扎南德", rating: 79, height: 185, weight: 81, age: 36, cGP: 322, cG: 85, cA: 12, tGP: 35, tG: 8, tA: 2, value: "ⰵ3.5M", attributes: { spd: 75, sho: 82, pas: 65, dri: 77, def: 32, phy: 70, men: 75, sta: 75 } },
-            { no: 11, pos: "LM", nat: "瑞典", name: "埃兰加", rating: 78, height: 176, weight: 70, age: 23, cGP: 108, cG: 22, cA: 25, tGP: 45, tG: 8, tA: 5, value: "ⰵ38M", attributes: { spd: 92, sho: 78, pas: 72, dri: 86, def: 35, phy: 64, men: 70, sta: 85 } },
-            { no: 6, pos: "CDM", nat: "法国", name: "安道尔", rating: 77, height: 183, weight: 79, age: 24, cGP: 115, cG: 5, cA: 14, tGP: 60, tG: 2, tA: 6, value: "ⰵ22M", attributes: { spd: 76, sho: 60, pas: 74, dri: 70, def: 78, phy: 82, men: 72, sta: 90 } },
-            { no: 20, pos: "CM", nat: "美国", name: "查罗克", rating: 76, height: 178, weight: 74, age: 22, cGP: 85, cG: 8, cA: 15, tGP: 88, tG: 8, tA: 12, value: "ⰵ28M", attributes: { spd: 84, sho: 70, pas: 78, dri: 82, def: 62, phy: 68, men: 74, sta: 88 } },
-            { no: 25, pos: "RM", nat: "英格兰", name: "杰克罗斯", rating: 76, height: 179, weight: 72, age: 24, cGP: 95, cG: 12, cA: 15, tGP: 40, tG: 4, tA: 6, value: "ⰵ25M", attributes: { spd: 86, sho: 74, pas: 75, dri: 80, def: 45, phy: 62, men: 68, sta: 80 } },
-            { no: 21, pos: "LB", nat: "英格兰", name: "韦洛克", rating: 76, height: 175, weight: 70, age: 22, cGP: 78, cG: 1, cA: 12, tGP: 78, tG: 1, tA: 12, value: "ⰵ24M", attributes: { spd: 88, sho: 58, pas: 72, dri: 84, def: 72, phy: 65, men: 64, sta: 85 } },
-            { no: 22, pos: "CB", nat: "英格兰", name: "理查德森", rating: 75, height: 187, weight: 83, age: 23, cGP: 62, cG: 4, cA: 0, tGP: 42, tG: 1, tA: 0, value: "ⰵ18M", attributes: { spd: 72, sho: 32, pas: 55, dri: 48, def: 78, phy: 80, men: 70, sta: 78 } },
-            { no: 28, pos: "ST", nat: "匈牙利", name: "维扎", rating: 75, height: 181, weight: 77, age: 22, cGP: 58, cG: 21, cA: 6, tGP: 30, tG: 8, tA: 1, value: "ⰵ22M", attributes: { spd: 90, sho: 80, pas: 62, dri: 82, def: 25, phy: 74, men: 68, sta: 82 } },
-            { no: 27, pos: "CB", nat: "英格兰", name: "哈密尔顿", rating: 75, height: 186, weight: 82, age: 21, cGP: 42, cG: 2, cA: 1, tGP: 48, tG: 2, tA: 1, value: "ⰵ20M", attributes: { spd: 70, sho: 30, pas: 58, dri: 45, def: 76, phy: 82, men: 65, sta: 75 } },
-            { no: 26, pos: "CB", nat: "英格兰", name: "查洛巴", rating: 74, height: 190, weight: 87, age: 20, cGP: 35, cG: 1, cA: 0, tGP: 25, tG: 1, tA: 0, value: "ⰵ22M", attributes: { spd: 68, sho: 28, pas: 50, dri: 42, def: 78, phy: 85, men: 74, sta: 72 } },
-            { no: 29, pos: "RM", nat: "丹麦", name: "欧克伦森", rating: 75, height: 180, weight: 75, age: 21, cGP: 40, cG: 4, cA: 8, tGP: 42, tG: 4, tA: 8, value: "ⰵ19M", attributes: { spd: 84, sho: 65, pas: 70, dri: 78, def: 42, phy: 60, men: 62, sta: 78 } }
+            { no: 1, pos: "GK", nat: "巴西", name: "萨坦", rating: 80, height: 189, weight: 85, age: 29, cGP: 445, cG: 0, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { div: 82, han: 78, kic: 74, ref: 81, spd: 55, pos_s: 83, men: 82, sta: 75 } },
+            { no: 9, pos: "ST", nat: "西班牙", name: "胡里奥", rating: 83, height: 184, weight: 81, age: 27, cGP: 370, cG: 261, cA: 42, tGP: 0, tG: 0, tA: 0, value: "ⰵ88M", attributes: { spd: 89, sho: 92, pas: 70, dri: 85, def: 30, phy: 87, men: 86, sta: 82 } },
+            { no: 8, pos: "CM", nat: "阿根廷", name: "恩佐", rating: 82, height: 180, weight: 77, age: 25, cGP: 222, cG: 27, cA: 69, tGP: 0, tG: 0, tA: 0, value: "ⰵ78M", attributes: { spd: 82, sho: 74, pas: 90, dri: 85, def: 72, phy: 73, men: 84, sta: 91 } },
+            { no: 7, pos: "RW", nat: "韩国", name: "孙兴浩", rating: 81, height: 183, weight: 78, age: 27, cGP: 263, cG: 140, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 91, sho: 87, pas: 68, dri: 83, def: 28, phy: 78, men: 81, sta: 80 } },
+            { no: 3, pos: "LB", nat: "尼日利亚", name: "维克托", rating: 82, height: 178, weight: 73, age: 27, cGP: 333, cG: 18, cA: 54, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 89, sho: 62, pas: 79, dri: 81, def: 79, phy: 73, men: 81, sta: 93 } },
+            { no: 4, pos: "CB", nat: "德国", name: "罗宾", rating: 82, height: 187, weight: 84, age: 28, cGP: 395, cG: 17, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { spd: 74, sho: 40, pas: 65, dri: 58, def: 85, phy: 87, men: 86, sta: 80 } },
+            { no: 5, pos: "CB", nat: "科特迪瓦", name: "奥巴内", rating: 80, height: 189, weight: 86, age: 27, cGP: 267, cG: 15, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ30M", attributes: { spd: 70, sho: 38, pas: 60, dri: 55, def: 82, phy: 85, men: 79, sta: 82 } },
+            { no: 15, pos: "CB", nat: "德国", name: "克洛格", rating: 80, height: 190, weight: 88, age: 26, cGP: 256, cG: 11, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ36M", attributes: { spd: 72, sho: 35, pas: 58, dri: 52, def: 81, phy: 89, men: 76, sta: 84 } },
+            { no: 13, pos: "LB", nat: "西班牙", name: "雷吉洛克", rating: 80, height: 177, weight: 71, age: 26, cGP: 213, cG: 10, cA: 43, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 86, sho: 55, pas: 75, dri: 79, def: 76, phy: 69, men: 73, sta: 88 } },
+            { no: 18, pos: "CM", nat: "哥伦比亚", name: "夏奇拉", rating: 81, height: 178, weight: 72, age: 28, cGP: 275, cG: 38, cA: 59, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 80, sho: 76, pas: 83, dri: 86, def: 55, phy: 68, men: 81, sta: 82 } },
+            { no: 30, pos: "CM", nat: "英格兰", name: "莱姆", rating: 76, height: 182, weight: 75, age: 18, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ15M", attributes: { spd: 84, sho: 70, pas: 82, dri: 80, def: 65, phy: 74, men: 72, sta: 88 } },
+            { no: 12, pos: "GK", nat: "意大利", name: "麦诺", rating: 78, height: 192, weight: 88, age: 25, cGP: 137, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ25M", attributes: { div: 80, han: 76, kic: 72, ref: 82, spd: 55, pos_s: 78, men: 72, sta: 74 } },
+            { no: 23, pos: "GK", nat: "西班牙", name: "门多", rating: 78, height: 188, weight: 83, age: 22, cGP: 73, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ20M", attributes: { div: 79, han: 74, kic: 70, ref: 85, spd: 60, pos_s: 76, men: 68, sta: 70 } },
+            { no: 14, pos: "CB", nat: "英格兰", name: "加斯", rating: 79, height: 191, weight: 89, age: 25, cGP: 172, cG: 9, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 70, sho: 35, pas: 55, dri: 50, def: 82, phy: 89, men: 77, sta: 80 } },
+            { no: 24, pos: "CB", nat: "埃及", name: "法拉格", rating: 78, height: 186, weight: 82, age: 25, cGP: 170, cG: 6, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ20M", attributes: { spd: 72, sho: 32, pas: 52, dri: 48, def: 79, phy: 85, men: 74, sta: 78 } },
+            { no: 2, pos: "RB", nat: "乌拉圭", name: "劳塔纳", rating: 78, height: 180, weight: 75, age: 24, cGP: 140, cG: 4, cA: 26, tGP: 0, tG: 0, tA: 0, value: "ⰵ24M", attributes: { spd: 91, sho: 58, pas: 73, dri: 81, def: 75, phy: 71, men: 68, sta: 92 } },
+            { no: 22, pos: "RB", nat: "英格兰", name: "道森", rating: 78, height: 181, weight: 77, age: 26, cGP: 237, cG: 7, cA: 37, tGP: 0, tG: 0, tA: 0, value: "ⰵ25M", attributes: { spd: 88, sho: 55, pas: 75, dri: 79, def: 77, phy: 76, men: 74, sta: 85 } },
+            { no: 17, pos: "CAM", nat: "波兰", name: "米利克", rating: 80, height: 181, weight: 76, age: 26, cGP: 193, cG: 54, cA: 39, tGP: 0, tG: 0, tA: 0, value: "ⰵ36M", attributes: { spd: 82, sho: 85, pas: 81, dri: 85, def: 42, phy: 76, men: 79, sta: 82 } },
+            { no: 11, pos: "LM", nat: "瑞典", name: "埃兰加", rating: 79, height: 176, weight: 70, age: 24, cGP: 153, cG: 30, cA: 30, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 93, sho: 79, pas: 72, dri: 87, def: 35, phy: 64, men: 70, sta: 85 } },
+            { no: 6, pos: "CDM", nat: "法国", name: "安道尔", rating: 78, height: 183, weight: 79, age: 25, cGP: 175, cG: 7, cA: 20, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { spd: 76, sho: 60, pas: 75, dri: 71, def: 79, phy: 83, men: 72, sta: 90 } },
+            { no: 20, pos: "CM", nat: "美国", name: "查罗克", rating: 78, height: 178, weight: 74, age: 23, cGP: 173, cG: 16, cA: 27, tGP: 0, tG: 0, tA: 0, value: "ⰵ30M", attributes: { spd: 85, sho: 71, pas: 79, dri: 83, def: 62, phy: 69, men: 75, sta: 88 } },
+            { no: 25, pos: "RM", nat: "英格兰", name: "杰克罗斯", rating: 77, height: 179, weight: 72, age: 25, cGP: 135, cG: 16, cA: 21, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 86, sho: 75, pas: 76, dri: 81, def: 45, phy: 62, men: 68, sta: 80 } },
+            { no: 21, pos: "LB", nat: "英格兰", name: "韦洛克", rating: 77, height: 175, weight: 70, age: 23, cGP: 156, cG: 2, cA: 24, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 89, sho: 58, pas: 73, dri: 85, def: 73, phy: 65, men: 64, sta: 85 } },
+            { no: 28, pos: "ST", nat: "匈牙利", name: "维扎", rating: 77, height: 181, weight: 77, age: 23, cGP: 88, cG: 29, cA: 7, tGP: 0, tG: 0, tA: 0, value: "ⰵ20M", attributes: { spd: 91, sho: 82, pas: 62, dri: 83, def: 25, phy: 75, men: 68, sta: 82 } },
+            { no: 26, pos: "CB", nat: "英格兰", name: "查洛巴", rating: 75, height: 190, weight: 87, age: 21, cGP: 60, cG: 2, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { spd: 68, sho: 28, pas: 50, dri: 42, def: 79, phy: 86, men: 74, sta: 72 } },
+            { no: 29, pos: "RM", nat: "丹麦", name: "欧克伦森", rating: 76, height: 180, weight: 75, age: 22, cGP: 82, cG: 8, cA: 16, tGP: 0, tG: 0, tA: 0, value: "ⰵ16M", attributes: { spd: 85, sho: 65, pas: 71, dri: 79, def: 42, phy: 60, men: 62, sta: 78 } }
         ]
     },
 
@@ -1120,44 +1145,55 @@ window.TEAMS_DATA = {
         ],
         coords: {
             LEAGUE: {
-                title: "联赛阵容 (4-2-3-1)",
-                players: { "GK": "皮克勒", "LB": "拉斐尔", "LCB": "马奎塔", "RCB": "金旻奎", "RB": "罗梅罗", "LDM": "皮尔萨", "RDM": "蒂尔尼", "LW": "斯丁格", "CAM": "德布鲁诺", "RW": "拉米雷斯", "ST": "杰拉尔" },
-                coords: { "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90], "LDM": [40, 35], "RDM": [40, 65], "LW": [65, 15], "CAM": [65, 50], "RW": [65, 85], "ST": [85, 50] }
+                title: "联赛阵容 (4-3-3 Attack)",
+                players: {
+                    "GK": "皮克勒", "LB": "拉斐尔", "LCB": "鲁本·迪亚", "RCB": "金旻奎", "RB": "罗梅罗",
+                    "CM": "蒂尔尼", "LCM": "德布鲁诺", "RCM": "贝林厄姆", "LW": "斯丁格", "ST": "杰拉尔", "RW": "拉米雷斯"
+                },
+                coords: {
+                    "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90],
+                    "CM": [42, 50], "LCM": [58, 28], "RCM": [58, 72], "LW": [82, 15], "ST": [85, 50], "RW": [82, 85]
+                }
             },
             CUP: {
                 title: "杯赛阵容 (4-4-2)",
-                players: { "GK": "朴贤洙", "LB": "佩莱林", "LCB": "门迪", "RCB": "沃尔夫斯", "RB": "奥塔门诺", "LM": "霍尔格", "LCM": "莫雷诺", "RCM": "贝林厄姆", "RM": "范尼", "LST": "米林特维奇", "RST": "希门尼斯" },
-                coords: { "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90], "LM": [50, 10], "LCM": [45, 38], "RCM": [45, 62], "RM": [50, 90], "LST": [80, 35], "RST": [80, 65] }
+                players: {
+                    "GK": "朴贤洙", "LB": "佩莱林", "LCB": "门迪", "RCB": "沃尔夫斯", "RB": "奥塔门诺",
+                    "LM": "霍尔格", "LCM": "莫雷诺", "RCM": "米斯特卡纳", "RM": "范尼", "LST": "米林特维奇", "RST": "希门尼斯"
+                },
+                coords: {
+                    "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90],
+                    "LM": [52, 15], "LCM": [45, 38], "RCM": [45, 62], "RM": [52, 85], "LST": [80, 35], "RST": [80, 65]
+                }
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "德国", name: "皮克勒", rating: 90, height: 193, weight: 92, age: 30, cGP: 520, cG: 0, cA: 2, tGP: 120, tG: 0, tA: 1, value: "ⰵ45M", attributes: { div: 88, han: 91, kic: 84, ref: 92, spd: 55, pos_s: 93, men: 95, sta: 82 } },
-            { no: 12, pos: "GK", nat: "韩国", name: "朴贤洙", rating: 87, height: 187, weight: 84, age: 20, cGP: 85, cG: 0, cA: 1, tGP: 45, tG: 0, tA: 1, value: "ⰵ75M", attributes: { div: 89, han: 82, kic: 80, ref: 93, spd: 62, pos_s: 84, men: 78, sta: 85 } },
-            { no: 23, pos: "GK", nat: "英格兰", name: "夏克斯", rating: 85, height: 185, weight: 81, age: 27, cGP: 310, cG: 0, cA: 0, tGP: 65, tG: 0, tA: 0, value: "ⰵ18M", attributes: { div: 84, han: 86, kic: 78, ref: 85, spd: 50, pos_s: 86, men: 82, sta: 80 } },
-            { no: 3, pos: "LB", nat: "巴西", name: "拉斐尔", rating: 89, height: 176, weight: 73, age: 28, cGP: 415, cG: 18, cA: 72, tGP: 110, tG: 4, tA: 22, value: "ⰵ65M", attributes: { spd: 91, sho: 72, pas: 88, dri: 86, def: 83, phy: 78, men: 85, sta: 92 } },
-            { no: 22, pos: "LB", nat: "西班牙", name: "佩莱林", rating: 87, height: 176, weight: 72, age: 28, cGP: 380, cG: 12, cA: 55, tGP: 95, tG: 2, tA: 15, value: "ⰵ38M", attributes: { spd: 88, sho: 68, pas: 84, dri: 82, def: 84, phy: 80, men: 80, sta: 88 } },
-            { no: 4, pos: "CB", nat: "巴西", name: "马奎塔", rating: 91, height: 186, weight: 85, age: 33, cGP: 620, cG: 32, cA: 8, tGP: 150, tG: 6, tA: 2, value: "ⰵ25M", attributes: { spd: 72, sho: 55, pas: 78, dri: 74, def: 95, phy: 92, men: 98, sta: 75 } },
-            { no: 5, pos: "CB", nat: "韩国", name: "金旻奎", rating: 90, height: 188, weight: 88, age: 27, cGP: 395, cG: 20, cA: 5, tGP: 125, tG: 5, tA: 1, value: "ⰵ85M", attributes: { spd: 84, sho: 50, pas: 75, dri: 76, def: 92, phy: 90, men: 94, sta: 89 } },
-            { no: 6, pos: "CB", nat: "法国", name: "门迪", rating: 88, height: 185, weight: 83, age: 30, cGP: 480, cG: 15, cA: 4, tGP: 105, tG: 2, tA: 0, value: "ⰵ35M", attributes: { spd: 78, sho: 45, pas: 72, dri: 70, def: 89, phy: 87, men: 86, sta: 84 } },
-            { no: 15, pos: "CB", nat: "荷兰", name: "沃尔夫斯", rating: 88, height: 187, weight: 85, age: 25, cGP: 280, cG: 12, cA: 3, tGP: 85, tG: 4, tA: 1, value: "ⰵ70M", attributes: { spd: 82, sho: 48, pas: 70, dri: 72, def: 88, phy: 91, men: 82, sta: 86 } },
-            { no: 21, pos: "CB", nat: "科特迪瓦", name: "德罗格巴", rating: 87, height: 186, weight: 89, age: 26, cGP: 310, cG: 22, cA: 2, tGP: 90, tG: 5, tA: 0, value: "ⰵ42M", attributes: { spd: 76, sho: 52, pas: 68, dri: 68, def: 87, phy: 93, men: 88, sta: 82 } },
-            { no: 2, pos: "RB", nat: "阿根廷", name: "罗梅罗", rating: 89, height: 178, weight: 76, age: 28, cGP: 420, cG: 15, cA: 68, tGP: 115, tG: 3, tA: 18, value: "ⰵ65M", attributes: { spd: 92, sho: 70, pas: 86, dri: 87, def: 82, phy: 77, men: 84, sta: 94 } },
-            { no: 24, pos: "RB", nat: "阿根廷", name: "奥塔门诺", rating: 87, height: 179, weight: 78, age: 26, cGP: 325, cG: 10, cA: 42, tGP: 80, tG: 2, tA: 10, value: "ⰵ42M", attributes: { spd: 89, sho: 65, pas: 82, dri: 83, def: 81, phy: 79, men: 78, sta: 91 } },
-            { no: 14, pos: "CDM", nat: "意大利", name: "皮尔萨", rating: 90, height: 183, weight: 79, age: 29, cGP: 460, cG: 38, cA: 85, tGP: 130, tG: 8, tA: 52, value: "ⰵ80M", attributes: { spd: 78, sho: 75, pas: 90, dri: 84, def: 88, phy: 86, men: 92, sta: 95 } },
-            { no: 16, pos: "CDM", nat: "西班牙", name: "莫雷诺", rating: 89, height: 182, weight: 77, age: 25, cGP: 295, cG: 22, cA: 48, tGP: 90, tG: 5, tA: 14, value: "ⰵ115M", attributes: { spd: 83, sho: 72, pas: 86, dri: 85, def: 86, phy: 88, men: 88, sta: 96 } },
-            { no: 17, pos: "CDM", nat: "德国", name: "米勒", rating: 88, height: 181, weight: 80, age: 33, cGP: 610, cG: 45, cA: 62, tGP: 140, tG: 6, tA: 10, value: "ⰵ15M", attributes: { spd: 70, sho: 78, pas: 88, dri: 81, def: 85, phy: 84, men: 96, sta: 78 } },
-            { no: 7, pos: "CM", nat: "比利时", name: "德布鲁诺", rating: 93, height: 181, weight: 75, age: 30, cGP: 550, cG: 115, cA: 385, tGP: 145, tG: 22, tA: 125, value: "ⰵ95M", attributes: { spd: 79, sho: 88, pas: 96, dri: 92, def: 75, phy: 82, men: 98, sta: 85 } },
-            { no: 8, pos: "CM", nat: "苏格兰", name: "蒂尔尼", rating: 91, height: 179, weight: 74, age: 28, cGP: 430, cG: 75, cA: 190, tGP: 120, tG: 18, tA: 92, value: "ⰵ125M", attributes: { spd: 85, sho: 82, pas: 92, dri: 89, def: 84, phy: 87, men: 92, sta: 95 } },
-            { no: 18, pos: "CM", nat: "葡萄牙", name: "米斯特卡纳", rating: 87, height: 178, weight: 73, age: 26, cGP: 315, cG: 35, cA: 62, tGP: 85, tG: 8, tA: 15, value: "ⰵ58M", attributes: { spd: 84, sho: 78, pas: 86, dri: 88, def: 74, phy: 76, men: 80, sta: 90 } },
-            { no: 19, pos: "CM", nat: "尼日利亚", name: "阿德巴约", rating: 87, height: 182, weight: 80, age: 23, cGP: 185, cG: 28, cA: 45, tGP: 70, tG: 10, tA: 18, value: "ⰵ90M", attributes: { spd: 81, sho: 76, pas: 85, dri: 86, def: 80, phy: 84, men: 82, sta: 92 } },
-            { no: 10, pos: "CAM", nat: "英格兰", name: "贝林厄姆", rating: 91, height: 186, weight: 82, age: 20, cGP: 165, cG: 42, cA: 78, tGP: 65, tG: 15, tA: 28, value: "ⰵ210M", attributes: { spd: 86, sho: 84, pas: 90, dri: 92, def: 82, phy: 89, men: 93, sta: 96 } },
-            { no: 20, pos: "CAM", nat: "墨西哥", name: "希门尼斯", rating: 86, height: 175, weight: 71, age: 29, cGP: 440, cG: 55, cA: 95, tGP: 100, tG: 10, tA: 20, value: "ⰵ32M", attributes: { spd: 78, sho: 80, pas: 88, dri: 87, def: 60, phy: 72, men: 85, sta: 82 } },
-            { no: 11, pos: "LW", nat: "德国", name: "斯丁格", rating: 93, height: 177, weight: 73, age: 27, cGP: 410, cG: 215, cA: 110, tGP: 130, tG: 65, tA: 35, value: "ⰵ180M", attributes: { spd: 96, sho: 90, pas: 86, dri: 94, def: 45, phy: 80, men: 91, sta: 94 } },
-            { no: 25, pos: "LW", nat: "丹麦", name: "霍尔格", rating: 86, height: 173, weight: 70, age: 22, cGP: 145, cG: 52, cA: 42, tGP: 60, tG: 18, tA: 12, value: "ⰵ80M", attributes: { spd: 92, sho: 82, pas: 80, dri: 89, def: 40, phy: 74, men: 76, sta: 90 } },
-            { no: 9, pos: "ST", nat: "西班牙", name: "杰拉尔", rating: 95, height: 181, weight: 81, age: 26, cGP: 480, cG: 520, cA: 58, tGP: 125, tG: 140, tA: 15, value: "ⰵ235M", attributes: { spd: 94, sho: 97, pas: 82, dri: 93, def: 42, phy: 89, men: 99, sta: 92 } },
-            { no: 26, pos: "ST", nat: "塞尔维亚", name: "米林特维奇", rating: 89, height: 184, weight: 82, age: 28, cGP: 425, cG: 210, cA: 45, tGP: 110, tG: 45, tA: 12, value: "ⰵ95M", attributes: { spd: 86, sho: 91, pas: 78, dri: 85, def: 38, phy: 88, men: 92, sta: 86 } },
-            { no: 27, pos: "RW", nat: "巴西", name: "拉米雷斯", rating: 90, height: 181, weight: 78, age: 28, cGP: 415, cG: 185, cA: 92, tGP: 115, tG: 55, tA: 28, value: "ⰵ135M", attributes: { spd: 90, sho: 88, pas: 88, dri: 91, def: 48, phy: 82, men: 90, sta: 91 } },
-            { no: 28, pos: "RW", nat: "荷兰", name: "范尼", rating: 86, height: 174, weight: 72, age: 22, cGP: 150, cG: 62, cA: 55, tGP: 60, tG: 22, tA: 18, value: "ⰵ78M", attributes: { spd: 91, sho: 84, pas: 82, dri: 88, def: 42, phy: 75, men: 78, sta: 89 } }
+            { no: 9, pos: "ST", nat: "西班牙", name: "杰拉尔", rating: 96, height: 181, weight: 81, age: 27, cGP: 605, cG: 660, cA: 73, tGP: 0, tG: 0, tA: 0, value: "ⰵ245M", attributes: { spd: 94, sho: 98, pas: 82, dri: 94, def: 42, phy: 89, men: 99, sta: 92 } },
+            { no: 11, pos: "LW", nat: "德国", name: "斯丁格", rating: 94, height: 177, weight: 73, age: 28, cGP: 540, cG: 280, cA: 145, tGP: 0, tG: 0, tA: 0, value: "ⰵ190M", attributes: { spd: 96, sho: 90, pas: 87, dri: 95, def: 45, phy: 81, men: 91, sta: 94 } },
+            { no: 7, pos: "CAM", nat: "比利时", name: "德布鲁诺", rating: 94, height: 181, weight: 75, age: 31, cGP: 695, cG: 137, cA: 510, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 78, sho: 88, pas: 97, dri: 93, def: 75, phy: 82, men: 99, sta: 84 } },
+            { no: 4, pos: "CB", nat: "葡萄牙", name: "鲁本·迪亚", rating: 92, height: 187, weight: 82, age: 28, cGP: 310, cG: 15, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ145M", attributes: { spd: 85, sho: 40, pas: 78, dri: 72, def: 94, phy: 91, men: 95, sta: 88 } },
+            { no: 10, pos: "CAM", nat: "英格兰", name: "贝林厄姆", rating: 92, height: 186, weight: 82, age: 21, cGP: 230, cG: 57, cA: 106, tGP: 0, tG: 0, tA: 0, value: "ⰵ225M", attributes: { spd: 87, sho: 85, pas: 91, dri: 93, def: 83, phy: 90, men: 94, sta: 96 } },
+            { no: 8, pos: "CM", nat: "苏格兰", name: "蒂尔尼", rating: 92, height: 179, weight: 74, age: 29, cGP: 550, cG: 93, cA: 282, tGP: 0, tG: 0, tA: 0, value: "ⰵ130M", attributes: { spd: 85, sho: 82, pas: 93, dri: 90, def: 84, phy: 87, men: 93, sta: 95 } },
+            { no: 5, pos: "CB", nat: "韩国", name: "金旻奎", rating: 91, height: 188, weight: 88, age: 28, cGP: 520, cG: 25, cA: 6, tGP: 0, tG: 0, tA: 0, value: "ⰵ90M", attributes: { spd: 84, sho: 50, pas: 75, dri: 76, def: 93, phy: 91, men: 95, sta: 89 } },
+            { no: 14, pos: "LW", nat: "西班牙", name: "亚马鲁", rating: 82, height: 172, weight: 68, age: 21, cGP: 58, cG: 18, cA: 12, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 94, sho: 78, pas: 74, dri: 94, def: 33, phy: 73, men: 75, sta: 92 } },
+            { no: 27, pos: "RW", nat: "巴西", name: "拉米雷斯", rating: 91, height: 181, weight: 78, age: 29, cGP: 530, cG: 240, cA: 120, tGP: 0, tG: 0, tA: 0, value: "ⰵ140M", attributes: { spd: 90, sho: 89, pas: 89, dri: 92, def: 48, phy: 83, men: 91, sta: 91 } },
+            { no: 3, pos: "LB", nat: "巴西", name: "拉斐尔", rating: 90, height: 176, weight: 73, age: 29, cGP: 525, cG: 22, cA: 94, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 91, sho: 72, pas: 88, dri: 86, def: 84, phy: 78, men: 86, sta: 93 } },
+            { no: 1, pos: "GK", nat: "德国", name: "皮克勒", rating: 90, height: 193, weight: 92, age: 31, cGP: 640, cG: 0, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ40M", attributes: { div: 88, han: 91, kic: 84, ref: 92, spd: 55, pos_s: 93, men: 96, sta: 82 } },
+            { no: 2, pos: "RB", nat: "阿根廷", name: "罗梅罗", rating: 90, height: 178, weight: 76, age: 29, cGP: 535, cG: 18, cA: 86, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 92, sho: 70, pas: 87, dri: 88, def: 83, phy: 77, men: 85, sta: 94 } },
+            { no: 26, pos: "ST", nat: "塞尔维亚", name: "米林特维奇", rating: 89, height: 184, weight: 82, age: 29, cGP: 535, cG: 255, cA: 57, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 86, sho: 91, pas: 78, dri: 85, def: 38, phy: 88, men: 92, sta: 86 } },
+            { no: 16, pos: "CDM", nat: "西班牙", name: "莫雷诺", rating: 90, height: 182, weight: 77, age: 26, cGP: 385, cG: 27, cA: 62, tGP: 0, tG: 0, tA: 0, value: "ⰵ115M", attributes: { spd: 84, sho: 72, pas: 87, dri: 86, def: 87, phy: 89, men: 89, sta: 96 } },
+            { no: 6, pos: "CB", nat: "法国", name: "门迪", rating: 88, height: 185, weight: 83, age: 31, cGP: 585, cG: 17, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ30M", attributes: { spd: 78, sho: 45, pas: 72, dri: 70, def: 89, phy: 87, men: 86, sta: 84 } },
+            { no: 15, pos: "CB", nat: "荷兰", name: "沃尔夫斯", rating: 88, height: 187, weight: 85, age: 26, cGP: 365, cG: 16, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 83, sho: 48, pas: 70, dri: 72, def: 88, phy: 91, men: 82, sta: 86 } },
+            { no: 12, pos: "GK", nat: "韩国", name: "朴贤洙", rating: 88, height: 187, weight: 84, age: 21, cGP: 130, cG: 0, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { div: 90, han: 83, kic: 80, ref: 94, spd: 62, pos_s: 85, men: 79, sta: 86 } },
+            { no: 21, pos: "CB", nat: "科特迪瓦", name: "德罗格巴", rating: 87, height: 186, weight: 89, age: 27, cGP: 400, cG: 27, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ40M", attributes: { spd: 76, sho: 52, pas: 68, dri: 68, def: 87, phy: 93, men: 88, sta: 82 } },
+            { no: 24, pos: "RB", nat: "阿根廷", name: "奥塔门诺", rating: 87, height: 179, weight: 78, age: 27, cGP: 405, cG: 12, cA: 52, tGP: 0, tG: 0, tA: 0, value: "ⰵ40M", attributes: { spd: 89, sho: 65, pas: 82, dri: 83, def: 81, phy: 79, men: 78, sta: 91 } },
+            { no: 18, pos: "CM", nat: "葡萄牙", name: "米斯特卡纳", rating: 87, height: 178, weight: 73, age: 27, cGP: 400, cG: 43, cA: 77, tGP: 0, tG: 0, tA: 0, value: "ⰵ58M", attributes: { spd: 84, sho: 78, pas: 86, dri: 88, def: 74, phy: 76, men: 80, sta: 90 } },
+            { no: 19, pos: "CM", nat: "尼日利亚", name: "阿德巴约", rating: 87, height: 182, weight: 80, age: 24, cGP: 255, cG: 38, cA: 63, tGP: 0, tG: 0, tA: 0, value: "ⰵ90M", attributes: { spd: 81, sho: 76, pas: 85, dri: 86, def: 80, phy: 84, men: 82, sta: 92 } },
+            { no: 20, pos: "CAM", nat: "墨西哥", name: "希门尼斯", rating: 86, height: 175, weight: 71, age: 30, cGP: 540, cG: 65, cA: 115, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { spd: 78, sho: 80, pas: 88, dri: 87, def: 60, phy: 72, men: 85, sta: 82 } },
+            { no: 25, pos: "LW", nat: "丹麦", name: "霍尔格", rating: 86, height: 173, weight: 70, age: 23, cGP: 205, cG: 70, cA: 54, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 92, sho: 82, pas: 80, dri: 89, def: 40, phy: 74, men: 76, sta: 90 } },
+            { no: 28, pos: "RW", nat: "荷兰", name: "范尼", rating: 86, height: 174, weight: 72, age: 23, cGP: 210, cG: 84, cA: 73, tGP: 0, tG: 0, tA: 0, value: "ⰵ78M", attributes: { spd: 91, sho: 84, pas: 82, dri: 88, def: 42, phy: 75, men: 78, sta: 89 } },
+            { no: 23, pos: "GK", nat: "英格兰", name: "夏克斯", rating: 85, height: 185, weight: 81, age: 28, cGP: 375, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ15M", attributes: { div: 84, han: 86, kic: 78, ref: 85, spd: 50, pos_s: 86, men: 82, sta: 80 } },
+            { no: 22, pos: "LB", nat: "西班牙", name: "佩莱林", rating: 87, height: 176, weight: 72, age: 29, cGP: 475, cG: 14, cA: 70, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 88, sho: 68, pas: 84, dri: 82, def: 84, phy: 80, men: 80, sta: 88 } }
         ]
     },
 
@@ -1300,8 +1336,8 @@ window.TEAMS_DATA = {
             LEAGUE: {
                 title: "联赛阵容 (3-4-3)",
                 players: {
-                    "GK": "汉达诺威基", "LCB": "泽尼特", "CB": "巴斯托古", "RCB": "普拉迪姆",
-                    "LM": "穆克什尼", "LCM": "德川信治", "RCM": "迪奥利", "RM": "布什", "LW": "拉什·德福", "ST": "法罗莱纳", "RW": "斯特罗"
+                    "GK": "图格涅夫", "LCB": "泽尼特", "CB": "巴斯托古", "RCB": "帕夫洛",
+                    "LM": "迪洛·费德", "LCM": "皮尔萨", "RCM": "凯西·杜尔", "RM": "布什", "LW": "拉什·德福", "ST": "法罗莱纳", "RW": "斯特罗"
                 },
                 coords: {
                     "GK": [5, 50], "LCB": [20, 28], "CB": [16, 50], "RCB": [20, 72],
@@ -1311,41 +1347,42 @@ window.TEAMS_DATA = {
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
                 players: {
-                    "GK": "图格涅夫", "LB": "洛特纳", "LCB": "巴雷特", "RCB": "哈格曼", "RB": "洛夫林",
-                    "LDM": "萨科", "RDM": "梅罗姆", "CAM": "德利赫芬", "LW": "亚马鲁", "ST": "斯卡洛夫", "RW": "克鲁格"
+                    "GK": "马格林", "LB": "洛特纳", "LCB": "巴雷特", "RCB": "哈格曼", "RB": "洛夫林",
+                    "LDM": "萨科", "RDM": "梅罗姆", "CAM": "德利赫芬", "LW": "穆克什尼", "ST": "斯卡洛夫", "RW": "克鲁格"
                 },
                 coords: {
-                    "GK": [5, 50], "LB": [25, 10], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 90],
-                    "LDM": [40, 35], "RDM": [40, 65], "CAM": [65, 50], "LW": [72, 15], "ST": [88, 50], "RW": [72, 85]
+                    "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
+                    "LDM": [45, 30], "RDM": [45, 70], "CAM": [60, 50], "LW": [80, 18], "ST": [86, 50], "RW": [80, 82]
                 }
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "斯洛文尼亚", name: "汉达诺威基", rating: 85, height: 191, weight: 89, age: 32, cGP: 552, cG: 0, cA: 2, tGP: 120, tG: 0, tA: 1, value: "ⰵ35M", attributes: { div: 88, han: 85, kic: 82, ref: 86, spd: 50, pos_s: 91, men: 94, sta: 78 } },
-            { no: 4, pos: "CB", nat: "俄罗斯", name: "泽尼特", rating: 85, height: 187, weight: 84, age: 26, cGP: 235, cG: 12, cA: 2, tGP: 110, tG: 5, tA: 1, value: "ⰵ58M", attributes: { spd: 78, sho: 40, pas: 65, dri: 58, def: 86, phy: 88, men: 82, sta: 85 } },
-            { no: 5, pos: "CB", nat: "意大利", name: "巴斯托古", rating: 85, height: 189, weight: 86, age: 25, cGP: 215, cG: 8, cA: 1, tGP: 95, tG: 4, tA: 0, value: "ⰵ62M", attributes: { spd: 74, sho: 35, pas: 68, dri: 62, def: 88, phy: 90, men: 85, sta: 82 } },
-            { no: 15, pos: "CB", nat: "塞尔维亚", name: "普拉迪姆", rating: 85, height: 186, weight: 82, age: 24, cGP: 168, cG: 6, cA: 1, tGP: 88, tG: 3, tA: 0, value: "ⰵ65M", attributes: { spd: 82, sho: 42, pas: 70, dri: 68, def: 85, phy: 84, men: 80, sta: 88 } },
-            { no: 11, pos: "LM", nat: "克罗地亚", name: "穆克什尼", rating: 84, height: 178, weight: 74, age: 25, cGP: 195, cG: 22, cA: 55, tGP: 112, tG: 12, tA: 31, value: "ⰵ52M", attributes: { spd: 91, sho: 74, pas: 82, dri: 88, def: 52, phy: 70, men: 78, sta: 94 } },
-            { no: 10, pos: "CM", nat: "日本", name: "德川信治", rating: 91, height: 176, weight: 71, age: 30, cGP: 410, cG: 172, cA: 285, tGP: 30, tG: 5, tA: 18, value: "ⰵ165M", attributes: { spd: 85, sho: 88, pas: 96, dri: 94, def: 72, phy: 76, men: 92, sta: 95 } },
-            { no: 8, pos: "CM", nat: "意大利", name: "迪奥利", rating: 86, height: 181, weight: 76, age: 28, cGP: 385, cG: 42, cA: 88, tGP: 165, tG: 15, tA: 28, value: "ⰵ78M", attributes: { spd: 76, sho: 80, pas: 89, dri: 84, def: 70, phy: 75, men: 91, sta: 86 } },
-            { no: 17, pos: "RM", nat: "德国", name: "布什", rating: 84, height: 177, weight: 73, age: 23, cGP: 138, cG: 22, cA: 48, tGP: 92, tG: 12, tA: 28, value: "ⰵ48M", attributes: { spd: 88, sho: 70, pas: 85, dri: 86, def: 58, phy: 68, men: 76, sta: 90 } },
-            { no: 7, pos: "LW", nat: "英格兰", name: "拉什·德福", rating: 87, height: 180, weight: 75, age: 24, cGP: 198, cG: 95, cA: 52, tGP: 110, tG: 48, tA: 24, value: "ⰵ118M", attributes: { spd: 95, sho: 88, pas: 82, dri: 92, def: 38, phy: 78, men: 88, sta: 91 } },
-            { no: 9, pos: "ST", nat: "西班牙", name: "法罗莱纳", rating: 85, height: 184, weight: 81, age: 25, cGP: 225, cG: 148, cA: 28, tGP: 140, tG: 72, tA: 12, value: "ⰵ88M", attributes: { spd: 88, sho: 92, pas: 70, dri: 85, def: 30, phy: 86, men: 85, sta: 82 } },
-            { no: 19, pos: "RW", nat: "德国", name: "斯特罗", rating: 85, height: 175, weight: 70, age: 23, cGP: 148, cG: 48, cA: 45, tGP: 115, tG: 31, tA: 22, value: "ⰵ82M", attributes: { spd: 93, sho: 84, pas: 80, dri: 90, def: 35, phy: 65, men: 78, sta: 88 } },
-            { no: 12, pos: "GK", nat: "俄罗斯", name: "图格涅夫", rating: 81, height: 189, weight: 87, age: 23, cGP: 95, cG: 0, cA: 0, tGP: 85, tG: 0, tA: 0, value: "ⰵ28M", attributes: { div: 82, han: 78, kic: 74, ref: 85, spd: 58, pos_s: 80, men: 74, sta: 76 } },
-            { no: 3, pos: "LB", nat: "德国", name: "洛特纳", rating: 77, height: 174, weight: 69, age: 21, cGP: 58, cG: 1, cA: 22, tGP: 45, tG: 1, tA: 15, value: "ⰵ24M", attributes: { spd: 88, sho: 45, pas: 72, dri: 75, def: 74, phy: 55, men: 68, sta: 86 } },
-            { no: 14, pos: "CB", nat: "英格兰", name: "巴雷特", rating: 84, height: 188, weight: 85, age: 25, cGP: 165, cG: 10, cA: 2, tGP: 82, tG: 4, tA: 1, value: "ⰵ45M", attributes: { spd: 72, sho: 32, pas: 60, dri: 52, def: 88, phy: 91, men: 78, sta: 82 } },
-            { no: 24, pos: "CB", nat: "德国", name: "哈格曼", rating: 79, height: 186, weight: 83, age: 22, cGP: 78, cG: 3, cA: 0, tGP: 65, tG: 3, tA: 0, value: "ⰵ22M", attributes: { spd: 75, sho: 30, pas: 55, dri: 48, def: 80, phy: 84, men: 72, sta: 78 } },
-            { no: 2, pos: "RB", nat: "克罗地亚", name: "洛夫林", rating: 78, height: 180, weight: 76, age: 22, cGP: 72, cG: 2, cA: 22, tGP: 55, tG: 2, tA: 18, value: "ⰵ21M", attributes: { spd: 85, sho: 48, pas: 74, dri: 78, def: 76, phy: 68, men: 70, sta: 90 } },
-            { no: 6, pos: "CDM", nat: "法国", name: "萨科", rating: 80, height: 179, weight: 79, age: 23, cGP: 112, cG: 4, cA: 15, tGP: 48, tG: 2, tA: 6, value: "ⰵ34M", attributes: { spd: 78, sho: 60, pas: 78, dri: 75, def: 82, phy: 80, men: 82, sta: 92 } },
-            { no: 16, pos: "CDM", nat: "以色列", name: "梅罗姆", rating: 80, height: 181, weight: 77, age: 21, cGP: 62, cG: 1, cA: 14, tGP: 40, tG: 1, tA: 8, value: "ⰵ36M", attributes: { spd: 76, sho: 58, pas: 80, dri: 78, def: 78, phy: 82, men: 75, sta: 88 } },
-            { no: 20, pos: "CAM", nat: "荷兰", name: "德利赫芬", rating: 81, height: 177, weight: 74, age: 24, cGP: 128, cG: 18, cA: 42, tGP: 50, tG: 6, tA: 15, value: "ⰵ38M", attributes: { spd: 80, sho: 76, pas: 86, dri: 88, def: 42, phy: 65, men: 82, sta: 84 } },
-            { no: 25, pos: "LW", nat: "西班牙", name: "亚马鲁", rating: 81, height: 172, weight: 68, age: 20, cGP: 58, cG: 18, cA: 12, tGP: 35, tG: 12, tA: 9, value: "ⰵ85M", attributes: { spd: 94, sho: 78, pas: 72, dri: 92, def: 32, phy: 72, men: 75, sta: 92 } },
-            { no: 22, pos: "RW", nat: "德国", name: "克鲁格", rating: 84, height: 176, weight: 73, age: 24, cGP: 155, cG: 38, cA: 35, tGP: 65, tG: 12, tA: 11, value: "ⰵ48M", attributes: { spd: 90, sho: 80, pas: 82, dri: 88, def: 40, phy: 74, men: 80, sta: 86 } },
-            { no: 21, pos: "ST", nat: "保加利亚", name: "斯卡洛夫", rating: 81, height: 183, weight: 79, age: 22, cGP: 88, cG: 35, cA: 12, tGP: 75, tG: 28, tA: 8, value: "ⰵ45M", attributes: { spd: 84, sho: 86, pas: 65, dri: 78, def: 25, phy: 76, men: 72, sta: 78 } },
-            { no: 18, pos: "CM", nat: "巴拉圭", name: "库巴斯", rating: 85, height: 182, weight: 78, age: 26, cGP: 228, cG: 22, cA: 52, tGP: 40, tG: 3, tA: 8, value: "ⰵ52M", attributes: { spd: 80, sho: 76, pas: 86, dri: 84, def: 74, phy: 78, men: 80, sta: 88 } },
-            { no: 27, pos: "CB", nat: "丹麦", name: "佩德尔格", rating: 78, height: 187, weight: 84, age: 23, cGP: 98, cG: 4, cA: 1, tGP: 35, tG: 1, tA: 0, value: "ⰵ20M", attributes: { spd: 70, sho: 32, pas: 55, dri: 50, def: 81, phy: 85, men: 72, sta: 78 } },
-            { no: 23, pos: "GK", nat: "爱尔兰", name: "马格林", rating: 78, height: 190, weight: 87, age: 21, cGP: 35, cG: 0, cA: 0, tGP: 30, tG: 0, tA: 0, value: "ⰵ18M", attributes: { div: 80, han: 76, kic: 72, ref: 82, spd: 55, pos_s: 75, men: 70, sta: 72 } }
+            { no: 14, pos: "CDM", nat: "意大利", name: "皮尔萨", rating: 91, height: 183, weight: 79, age: 30, cGP: 590, cG: 46, cA: 137, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 78, sho: 75, pas: 91, dri: 84, def: 89, phy: 86, men: 93, sta: 95 } },
+            { no: 7, pos: "LW", nat: "英格兰", name: "拉什·德福", rating: 88, height: 180, weight: 75, age: 25, cGP: 308, cG: 143, cA: 76, tGP: 0, tG: 0, tA: 0, value: "ⰵ125M", attributes: { spd: 95, sho: 89, pas: 82, dri: 93, def: 38, phy: 79, men: 88, sta: 91 } },
+            { no: 10, pos: "CB", nat: "俄罗斯", name: "帕夫洛", rating: 87, height: 188, weight: 85, age: 24, cGP: 215, cG: 8, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ65M", attributes: { spd: 84, sho: 40, pas: 68, dri: 62, def: 88, phy: 92, men: 80, sta: 85 } },
+            { no: 8, pos: "CM", nat: "意大利", name: "迪奥利", rating: 87, height: 181, weight: 76, age: 29, cGP: 550, cG: 57, cA: 116, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 76, sho: 80, pas: 90, dri: 84, def: 70, phy: 75, men: 92, sta: 86 } },
+            { no: 9, pos: "ST", nat: "西班牙", name: "法罗莱纳", rating: 86, height: 184, weight: 81, age: 26, cGP: 365, cG: 220, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ90M", attributes: { spd: 88, sho: 93, pas: 70, dri: 85, def: 30, phy: 86, men: 86, sta: 82 } },
+            { no: 21, pos: "CDM", nat: "科特迪瓦", name: "凯西·杜尔", rating: 86, height: 183, weight: 82, age: 26, cGP: 185, cG: 12, cA: 24, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 82, sho: 70, pas: 80, dri: 78, def: 84, phy: 90, men: 82, sta: 95 } },
+            { no: 19, pos: "RW", nat: "德国", name: "斯特罗", rating: 86, height: 175, weight: 70, age: 24, cGP: 263, cG: 79, cA: 67, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 93, sho: 84, pas: 80, dri: 91, def: 35, phy: 65, men: 79, sta: 88 } },
+            { no: 11, pos: "LM", nat: "克罗地亚", name: "穆克什尼", rating: 85, height: 178, weight: 74, age: 26, cGP: 307, cG: 34, cA: 86, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { spd: 91, sho: 74, pas: 83, dri: 88, def: 52, phy: 71, men: 79, sta: 94 } },
+            { no: 4, pos: "CB", nat: "俄罗斯", name: "泽尼特", rating: 85, height: 187, weight: 84, age: 27, cGP: 345, cG: 17, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ58M", attributes: { spd: 78, sho: 40, pas: 65, dri: 58, def: 86, phy: 88, men: 82, sta: 85 } },
+            { no: 5, pos: "CB", nat: "意大利", name: "巴斯托古", rating: 85, height: 189, weight: 86, age: 26, cGP: 310, cG: 12, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ62M", attributes: { spd: 74, sho: 35, pas: 68, dri: 62, def: 88, phy: 90, men: 85, sta: 82 } },
+            { no: 26, pos: "LM", nat: "意大利", name: "迪洛·费德", rating: 85, height: 175, weight: 70, age: 25, cGP: 190, cG: 22, cA: 45, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 90, sho: 74, pas: 85, dri: 84, def: 60, phy: 72, men: 78, sta: 90 } },
+            { no: 17, pos: "RM", nat: "德国", name: "布什", rating: 85, height: 177, weight: 73, age: 24, cGP: 230, cG: 34, cA: 76, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 88, sho: 70, pas: 85, dri: 86, def: 58, phy: 68, men: 77, sta: 90 } },
+            { no: 18, pos: "CM", nat: "巴拉圭", name: "库巴斯", rating: 85, height: 182, weight: 78, age: 27, cGP: 268, cG: 25, cA: 60, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 80, sho: 76, pas: 86, dri: 84, def: 74, phy: 78, men: 80, sta: 88 } },
+            { no: 14, pos: "CB", nat: "英格兰", name: "巴雷特", rating: 84, height: 188, weight: 85, age: 26, cGP: 247, cG: 14, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 72, sho: 32, pas: 60, dri: 52, def: 88, phy: 91, men: 78, sta: 82 } },
+            { no: 22, pos: "RW", nat: "德国", name: "克鲁格", rating: 84, height: 176, weight: 73, age: 25, cGP: 220, cG: 50, cA: 46, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 90, sho: 80, pas: 82, dri: 88, def: 40, phy: 74, men: 80, sta: 86 } },
+            { no: 21, pos: "ST", nat: "保加利亚", name: "斯卡洛夫", rating: 82, height: 183, weight: 79, age: 23, cGP: 163, cG: 63, cA: 20, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 84, sho: 87, pas: 65, dri: 78, def: 25, phy: 76, men: 73, sta: 78 } },
+            { no: 12, pos: "GK", nat: "俄罗斯", name: "图格涅夫", rating: 81, height: 189, weight: 87, age: 24, cGP: 180, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { div: 82, han: 78, kic: 74, ref: 85, spd: 58, pos_s: 80, men: 74, sta: 76 } },
+            { no: 20, pos: "CAM", nat: "荷兰", name: "德利赫芬", rating: 81, height: 177, weight: 74, age: 25, cGP: 178, cG: 24, cA: 57, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { spd: 80, sho: 76, pas: 86, dri: 88, def: 42, phy: 65, men: 82, sta: 84 } },
+            { no: 6, pos: "CDM", nat: "法国", name: "萨科", rating: 80, height: 179, weight: 79, age: 24, cGP: 160, cG: 6, cA: 21, tGP: 0, tG: 0, tA: 0, value: "ⰵ34M", attributes: { spd: 78, sho: 60, pas: 78, dri: 75, def: 82, phy: 80, men: 82, sta: 92 } },
+            { no: 16, pos: "CDM", nat: "以色列", name: "梅罗姆", rating: 80, height: 181, weight: 77, age: 22, cGP: 102, cG: 2, cA: 22, tGP: 0, tG: 0, tA: 0, value: "ⰵ36M", attributes: { spd: 76, sho: 58, pas: 80, dri: 78, def: 78, phy: 82, men: 75, sta: 88 } },
+            { no: 24, pos: "CB", nat: "德国", name: "哈格曼", rating: 80, height: 186, weight: 83, age: 23, cGP: 143, cG: 6, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 75, sho: 30, pas: 55, dri: 48, def: 81, phy: 85, men: 73, sta: 78 } },
+            { no: 2, pos: "RB", nat: "克罗地亚", name: "洛夫林", rating: 79, height: 180, weight: 76, age: 23, cGP: 127, cG: 4, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 85, sho: 48, pas: 75, dri: 79, def: 77, phy: 69, men: 71, sta: 90 } },
+            { no: 27, pos: "CB", nat: "丹麦", name: "佩德尔格", rating: 78, height: 187, weight: 84, age: 24, cGP: 133, cG: 5, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ20M", attributes: { spd: 70, sho: 32, pas: 55, dri: 50, def: 82, phy: 86, men: 72, sta: 78 } },
+            { no: 23, pos: "GK", nat: "爱尔兰", name: "马格林", rating: 78, height: 190, weight: 87, age: 22, cGP: 65, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { div: 80, han: 76, kic: 72, ref: 82, spd: 55, pos_s: 75, men: 70, sta: 72 } },
+            { no: 3, pos: "LB", nat: "德国", name: "洛特纳", rating: 78, height: 174, weight: 69, age: 22, cGP: 103, cG: 2, cA: 37, tGP: 0, tG: 0, tA: 0, value: "ⰵ24M", attributes: { spd: 89, sho: 45, pas: 73, dri: 76, def: 75, phy: 56, men: 69, sta: 87 } },
+            { no: 99, pos: "CDM", nat: "日本", name: "德川幸村", rating: 75, height: 178, weight: 72, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 80, sho: 60, pas: 85, dri: 82, def: 68, phy: 70, men: 75, sta: 85 } }
         ]
     },
 
@@ -1369,43 +1406,54 @@ window.TEAMS_DATA = {
         coords: {
             LEAGUE: {
                 title: "联赛阵容 (4-3-3)",
-                players: { "GK": "奥斯卡", "LB": "郑宰明", "LCB": "陆坚", "RCB": "佩奎", "RB": "卡瓦尼斯", "CDM": "梅诺", "LCM": "丁智寅", "RCM": "范德容", "LW": "内达尔", "ST": "金海秀", "RW": "马尔奎托" },
-                coords: { "GK": [5, 50], "LB": [25, 12], "LCB": [18, 38], "RCB": [18, 62], "RB": [25, 88], "CDM": [45, 50], "LCM": [52, 28], "RCM": [52, 72], "LW": [82, 15], "ST": [85, 50], "RW": [82, 85] }
+                players: {
+                    "GK": "奥斯卡", "LB": "郑宰明", "LCB": "陆坚", "RCB": "阿劳霍", "RB": "卡瓦尼斯",
+                    "CDM": "梅诺", "LCM": "丁智寅", "RCM": "亚当斯", "LW": "林宇辉", "ST": "金海秀", "RW": "马尔奎托"
+                },
+                coords: {
+                    "GK": [5, 50], "LB": [20, 15], "LCB": [20, 40], "RCB": [20, 60], "RB": [20, 85],
+                    "CDM": [45, 50], "LCM": [45, 30], "RCM": [45, 70], "LW": [75, 20], "ST": [85, 50], "RW": [75, 80]
+                }
             },
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
-                players: { "GK": "克浦", "LB": "卡瓦略", "LCB": "特罗萨德", "RCB": "罗伯特", "RB": "乔丹", "LDM": "亚雷科森", "RDM": "凯撒多", "CAM": "亚当斯", "LW": "林宇辉", "RW": "纳维斯", "ST": "费尔南德斯" },
-                coords: { "GK": [5, 50], "LB": [25, 12], "LCB": [18, 38], "RCB": [18, 62], "RB": [25, 88], "LDM": [40, 35], "RDM": [40, 65], "CAM": [62, 50], "LW": [75, 15], "RW": [75, 85], "ST": [85, 50] }
+                players: {
+                    "GK": "克浦", "LB": "卡瓦略", "LCB": "罗伯特", "RCB": "特罗萨德", "RB": "邵子豪",
+                    "LDM": "亚雷科森", "RDM": "凯撒多", "CAM": "姜敏勋", "LW": "内达尔", "RW": "纳维斯", "ST": "费尔南德斯"
+                },
+                coords: {
+                    "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
+                    "LDM": [45, 30], "RDM": [45, 70], "CAM": [60, 50], "LW": [80, 18], "ST": [86, 50], "RW": [80, 82]
+                }
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "西班牙", name: "奥斯卡", rating: 90, height: 191, weight: 88, age: 27, cGP: 385, cG: 0, cA: 2, tGP: 156, tG: 0, tA: 0, value: "ⰵ85M", attributes: { div: 91, han: 88, kic: 84, ref: 92, spd: 55, pos_s: 93, men: 90, sta: 82 } },
-            { no: 3, pos: "LB", nat: "韩国", name: "郑宰明", rating: 88, height: 178, weight: 74, age: 31, cGP: 465, cG: 18, cA: 72, tGP: 120, tG: 5, tA: 28, value: "ⰵ42M", attributes: { spd: 86, sho: 68, pas: 88, dri: 84, def: 85, phy: 78, men: 92, sta: 88 } },
-            { no: 4, pos: "CB", nat: "西班牙", name: "佩奎", rating: 89, height: 188, weight: 86, age: 32, cGP: 520, cG: 32, cA: 8, tGP: 180, tG: 9, tA: 2, value: "ⰵ38M", attributes: { spd: 74, sho: 55, pas: 75, dri: 72, def: 94, phy: 90, men: 96, sta: 80 } },
-            { no: 5, pos: "CB", nat: "中国", name: "陆坚", rating: 90, height: 187, weight: 85, age: 29, cGP: 382, cG: 18, cA: 4, tGP: 145, tG: 7, tA: 1, value: "ⰵ68M", attributes: { spd: 82, sho: 50, pas: 72, dri: 70, def: 92, phy: 91, men: 88, sta: 86 } },
-            { no: 2, pos: "RB", nat: "乌拉圭", name: "卡瓦尼斯", rating: 88, height: 181, weight: 77, age: 25, cGP: 258, cG: 12, cA: 65, tGP: 115, tG: 3, tA: 21, value: "ⰵ72M", attributes: { spd: 91, sho: 65, pas: 86, dri: 84, def: 82, phy: 76, men: 80, sta: 94 } },
-            { no: 6, pos: "CDM", nat: "英格兰", name: "梅诺", rating: 88, height: 182, weight: 79, age: 19, cGP: 120, cG: 14, cA: 18, tGP: 120, tG: 14, tA: 18, value: "ⰵ145M", attributes: { spd: 84, sho: 72, pas: 86, dri: 89, def: 85, phy: 82, men: 80, sta: 92 } },
-            { no: 18, pos: "CM", nat: "韩国", name: "丁智寅", rating: 94, height: 181, weight: 77, age: 26, cGP: 345, cG: 82, cA: 168, tGP: 160, tG: 42, tA: 78, value: "ⰵ215M", attributes: { spd: 82, sho: 89, pas: 97, dri: 95, def: 78, phy: 81, men: 96, sta: 90 } },
-            { no: 8, pos: "CM", nat: "荷兰", name: "范德容", rating: 88, height: 180, weight: 76, age: 34, cGP: 585, cG: 55, cA: 125, tGP: 130, tG: 12, tA: 31, value: "ⰵ28M", attributes: { spd: 72, sho: 78, pas: 92, dri: 88, def: 84, phy: 80, men: 98, sta: 78 } },
-            { no: 37, pos: "LW", nat: "中国", name: "林宇辉", rating: 88, height: 177, weight: 71, age: 19, cGP: 98, cG: 72, cA: 55, tGP: 95, tG: 41, tA: 28, value: "ⰵ155M", attributes: { spd: 96, sho: 85, pas: 82, dri: 93, def: 35, phy: 70, men: 78, sta: 88 } },
-            { no: 9, pos: "ST", nat: "韩国", name: "金海秀", rating: 94, height: 184, weight: 81, age: 26, cGP: 312, cG: 285, cA: 42, tGP: 156, tG: 108, tA: 15, value: "ⰵ245M", attributes: { spd: 92, sho: 97, pas: 82, dri: 92, def: 32, phy: 88, men: 95, sta: 88 } },
-            { no: 11, pos: "RW", nat: "巴西", name: "马尔奎托", rating: 90, height: 175, weight: 69, age: 24, cGP: 215, cG: 98, cA: 72, tGP: 125, tG: 48, tA: 39, value: "ⰵ118M", attributes: { spd: 94, sho: 88, pas: 85, dri: 96, def: 40, phy: 72, men: 82, sta: 90 } },
-            { no: 12, pos: "GK", nat: "德国", name: "克浦", rating: 88, height: 189, weight: 87, age: 23, cGP: 145, cG: 0, cA: 0, tGP: 35, tG: 0, tA: 0, value: "ⰵ52M", attributes: { div: 88, han: 84, kic: 80, ref: 90, spd: 55, pos_s: 86, men: 78, sta: 75 } },
-            { no: 23, pos: "GK", nat: "巴西", name: "艾利森纳", rating: 85, height: 188, weight: 85, age: 20, cGP: 48, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ42M", attributes: { div: 85, han: 82, kic: 78, ref: 88, spd: 60, pos_s: 82, men: 72, sta: 78 } },
-            { no: 14, pos: "CB", nat: "比利时", name: "特罗萨德", rating: 87, height: 185, weight: 82, age: 25, cGP: 192, cG: 12, cA: 4, tGP: 60, tG: 2, tA: 1, value: "ⰵ48M", attributes: { spd: 80, sho: 45, pas: 68, dri: 72, def: 87, phy: 86, men: 82, sta: 84 } },
-            { no: 13, pos: "LB", nat: "葡萄牙", name: "卡瓦略", rating: 87, height: 174, weight: 70, age: 24, cGP: 190, cG: 8, cA: 42, tGP: 55, tG: 1, tA: 9, value: "ⰵ55M", attributes: { spd: 89, sho: 62, pas: 84, dri: 85, def: 81, phy: 74, men: 78, sta: 90 } },
-            { no: 24, pos: "CB", nat: "意大利", name: "帕斯卡斯", rating: 86, height: 189, weight: 88, age: 33, cGP: 410, cG: 22, cA: 2, tGP: 40, tG: 3, tA: 0, value: "ⰵ18M", attributes: { spd: 70, sho: 42, pas: 70, dri: 65, def: 88, phy: 88, men: 90, sta: 72 } },
-            { no: 44, pos: "CB", nat: "英格兰", name: "罗伯特", rating: 86, height: 186, weight: 84, age: 18, cGP: 95, cG: 6, cA: 0, tGP: 95, tG: 6, tA: 0, value: "ⰵ68M", attributes: { spd: 82, sho: 38, pas: 65, dri: 62, def: 86, phy: 85, men: 75, sta: 88 } },
-            { no: 22, pos: "RB", nat: "美国", name: "乔丹", rating: 86, height: 179, weight: 76, age: 34, cGP: 525, cG: 15, cA: 82, tGP: 48, tG: 1, tA: 6, value: "ⰵ15M", attributes: { spd: 78, sho: 60, pas: 82, dri: 78, def: 84, phy: 75, men: 92, sta: 70 } },
-            { no: 16, pos: "CDM", nat: "丹麦", name: "亚雷科森", rating: 87, height: 183, weight: 80, age: 22, cGP: 240, cG: 15, cA: 25, tGP: 65, tG: 4, tA: 8, value: "ⰵ62M", attributes: { spd: 78, sho: 65, pas: 84, dri: 80, def: 85, phy: 82, men: 82, sta: 90 } },
-            { no: 28, pos: "CM", nat: "美国", name: "亚当斯", rating: 87, height: 178, weight: 75, age: 30, cGP: 395, cG: 38, cA: 92, tGP: 50, tG: 6, tA: 14, value: "ⰵ35M", attributes: { spd: 80, sho: 76, pas: 88, dri: 86, def: 75, phy: 74, men: 88, sta: 85 } },
-            { no: 10, pos: "CM", nat: "克罗地亚", name: "门得利奇", rating: 86, height: 176, weight: 73, age: 36, cGP: 610, cG: 45, cA: 135, tGP: 45, tG: 7, tA: 12, value: "ⰵ12M", attributes: { spd: 68, sho: 74, pas: 90, dri: 85, def: 72, phy: 70, men: 99, sta: 65 } },
-            { no: 20, pos: "CM", nat: "厄瓜多尔", name: "凯撒多", rating: 86, height: 177, weight: 74, age: 21, cGP: 85, cG: 12, cA: 24, tGP: 85, tG: 9, tA: 15, value: "ⰵ88M", attributes: { spd: 85, sho: 70, pas: 82, dri: 84, def: 80, phy: 82, men: 76, sta: 92 } },
-            { no: 27, pos: "CDM", nat: "西班牙", name: "加维里", rating: 85, height: 181, weight: 78, age: 20, cGP: 55, cG: 4, cA: 12, tGP: 40, tG: 2, tA: 5, value: "ⰵ45M", attributes: { spd: 82, sho: 55, pas: 78, dri: 80, def: 84, phy: 78, men: 72, sta: 88 } },
-            { no: 17, pos: "RW", nat: "葡萄牙", name: "纳维斯", rating: 87, height: 174, weight: 68, age: 26, cGP: 220, cG: 65, cA: 55, tGP: 50, tG: 12, tA: 10, value: "ⰵ48M", attributes: { spd: 92, sho: 84, pas: 80, dri: 88, def: 42, phy: 65, men: 78, sta: 82 } },
-            { no: 25, pos: "LW", nat: "荷兰", name: "内达尔", rating: 89, height: 178, weight: 75, age: 26, cGP: 120, cG: 52, cA: 41, tGP: 120, tG: 52, tA: 41, value: "ⰵ105M", attributes: { spd: 94, sho: 86, pas: 82, dri: 92, def: 38, phy: 78, men: 82, sta: 90 } },
-            { no: 7, pos: "LW", nat: "葡萄牙", name: "穆内", rating: 86, height: 175, weight: 71, age: 33, cGP: 480, cG: 185, cA: 95, tGP: 75, tG: 28, tA: 19, value: "ⰵ22M", attributes: { spd: 84, sho: 82, pas: 85, dri: 86, def: 40, phy: 72, men: 90, sta: 75 } },
-            { no: 21, pos: "ST", nat: "阿根廷", name: "费尔南德斯", rating: 86, height: 182, weight: 80, age: 27, cGP: 245, cG: 112, cA: 35, tGP: 45, tG: 21, tA: 4, value: "ⰵ42M", attributes: { spd: 86, sho: 88, pas: 72, dri: 82, def: 35, phy: 80, men: 80, sta: 82 } }
+            { no: 9, pos: "ST", nat: "韩国", name: "金海秀", rating: 95, height: 184, weight: 81, age: 27, cGP: 468, cG: 393, cA: 57, tGP: 0, tG: 0, tA: 0, value: "ⰵ245M", attributes: { spd: 92, sho: 98, pas: 82, dri: 92, def: 32, phy: 88, men: 95, sta: 88 } },
+            { no: 18, pos: "CM", nat: "韩国", name: "丁智寅", rating: 95, height: 181, weight: 77, age: 27, cGP: 505, cG: 124, cA: 246, tGP: 0, tG: 0, tA: 0, value: "ⰵ215M", attributes: { spd: 82, sho: 89, pas: 98, dri: 95, def: 78, phy: 81, men: 96, sta: 90 } },
+            { no: 4, pos: "CB", nat: "乌拉圭", name: "阿劳霍", rating: 91, height: 192, weight: 91, age: 26, cGP: 280, cG: 15, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ125M", attributes: { spd: 88, sho: 45, pas: 68, dri: 65, def: 92, phy: 94, men: 88, sta: 85 } },
+            { no: 37, pos: "LW", nat: "中国", name: "林宇辉", rating: 90, height: 177, weight: 71, age: 20, cGP: 193, cG: 113, cA: 83, tGP: 0, tG: 0, tA: 0, value: "ⰵ155M", attributes: { spd: 97, sho: 85, pas: 82, dri: 94, def: 35, phy: 70, men: 78, sta: 88 } },
+            { no: 11, pos: "RW", nat: "巴西", name: "马尔奎托", rating: 91, height: 175, weight: 69, age: 25, cGP: 340, cG: 146, cA: 111, tGP: 0, tG: 0, tA: 0, value: "ⰵ118M", attributes: { spd: 94, sho: 89, pas: 86, dri: 97, def: 40, phy: 72, men: 82, sta: 90 } },
+            { no: 1, pos: "GK", nat: "西班牙", name: "奥斯卡", rating: 91, height: 191, weight: 88, age: 28, cGP: 541, cG: 0, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { div: 92, han: 88, kic: 84, ref: 93, spd: 55, pos_s: 94, men: 90, sta: 82 } },
+            { no: 5, pos: "CB", nat: "中国", name: "陆坚", rating: 91, height: 187, weight: 85, age: 30, cGP: 527, cG: 25, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 82, sho: 50, pas: 72, dri: 70, def: 93, phy: 91, men: 88, sta: 86 } },
+            { no: 6, pos: "CDM", nat: "英格兰", name: "梅诺", rating: 89, height: 182, weight: 79, age: 20, cGP: 240, cG: 28, cA: 36, tGP: 0, tG: 0, tA: 0, value: "ⰵ145M", attributes: { spd: 84, sho: 72, pas: 87, dri: 90, def: 86, phy: 82, men: 80, sta: 92 } },
+            { no: 2, pos: "RB", nat: "乌拉圭", name: "卡瓦尼斯", rating: 89, height: 181, weight: 77, age: 26, cGP: 373, cG: 15, cA: 86, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 92, sho: 65, pas: 87, dri: 85, def: 83, phy: 76, men: 81, sta: 94 } },
+            { no: 3, pos: "LB", nat: "韩国", name: "郑宰明", rating: 88, height: 178, weight: 74, age: 32, cGP: 585, cG: 23, cA: 100, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 84, sho: 68, pas: 88, dri: 84, def: 85, phy: 78, men: 92, sta: 85 } },
+            { no: 28, pos: "CM", nat: "美国", name: "亚当斯", rating: 88, height: 178, weight: 75, age: 31, cGP: 445, cG: 44, cA: 106, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 80, sho: 76, pas: 88, dri: 86, def: 75, phy: 74, men: 88, sta: 85 } },
+            { no: 20, pos: "CM", nat: "厄瓜多尔", name: "凯撒多", rating: 87, height: 177, weight: 74, age: 22, cGP: 170, cG: 21, cA: 39, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 85, sho: 70, pas: 83, dri: 85, def: 81, phy: 83, men: 77, sta: 92 } },
+            { no: 12, pos: "GK", nat: "德国", name: "克浦", rating: 89, height: 189, weight: 87, age: 24, cGP: 180, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { div: 89, han: 85, kic: 80, ref: 91, spd: 55, pos_s: 87, men: 78, sta: 75 } },
+            { no: 14, pos: "CB", nat: "比利时", name: "特罗萨德", rating: 88, height: 185, weight: 82, age: 26, cGP: 252, cG: 14, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 80, sho: 45, pas: 68, dri: 72, def: 88, phy: 87, men: 82, sta: 84 } },
+            { no: 13, pos: "LB", nat: "葡萄牙", name: "卡瓦略", rating: 88, height: 174, weight: 70, age: 25, cGP: 245, cG: 9, cA: 51, tGP: 0, tG: 0, tA: 0, value: "ⰵ58M", attributes: { spd: 90, sho: 62, pas: 84, dri: 86, def: 82, phy: 74, men: 78, sta: 91 } },
+            { no: 16, pos: "CDM", nat: "丹麦", name: "亚雷科森", rating: 88, height: 183, weight: 80, age: 23, cGP: 305, cG: 19, cA: 33, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 78, sho: 65, pas: 85, dri: 81, def: 86, phy: 83, men: 82, sta: 91 } },
+            { no: 17, pos: "RW", nat: "葡萄牙", name: "纳维斯", rating: 88, height: 174, weight: 68, age: 27, cGP: 270, cG: 77, cA: 65, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 92, sho: 85, pas: 81, dri: 89, def: 42, phy: 65, men: 79, sta: 82 } },
+            { no: 25, pos: "LW", nat: "荷兰", name: "内达尔", rating: 90, height: 178, weight: 75, age: 27, cGP: 240, cG: 104, cA: 82, tGP: 0, tG: 0, tA: 0, value: "ⰵ115M", attributes: { spd: 95, sho: 87, pas: 83, dri: 93, def: 38, phy: 79, men: 83, sta: 91 } },
+            { no: 21, pos: "ST", nat: "阿根廷", name: "费尔南德斯", rating: 87, height: 182, weight: 80, age: 28, cGP: 290, cG: 133, cA: 39, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 86, sho: 89, pas: 72, dri: 83, def: 35, phy: 80, men: 81, sta: 82 } },
+            { no: 27, pos: "CDM", nat: "西班牙", name: "加维里", rating: 86, height: 181, weight: 78, age: 21, cGP: 95, cG: 6, cA: 17, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { spd: 83, sho: 55, pas: 79, dri: 81, def: 85, phy: 79, men: 73, sta: 89 } },
+            { no: 23, pos: "GK", nat: "巴西", name: "艾利森纳", rating: 86, height: 188, weight: 85, age: 21, cGP: 93, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { div: 86, han: 82, kic: 78, ref: 89, spd: 60, pos_s: 83, men: 72, sta: 78 } },
+            { no: 44, pos: "CB", nat: "英格兰", name: "罗伯特", rating: 87, height: 186, weight: 84, age: 19, cGP: 190, cG: 12, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 83, sho: 38, pas: 65, dri: 62, def: 87, phy: 86, men: 75, sta: 88 } },
+            { no: 40, pos: "RB", nat: "中国", name: "邵子豪", rating: 76, height: 184, weight: 77, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { spd: 91, sho: 58, pas: 74, dri: 78, def: 75, phy: 72, men: 68, sta: 88 } },
+            { no: 41, pos: "CAM", nat: "韩国", name: "姜敏勋", rating: 78, height: 179, weight: 73, age: 18, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 80, sho: 72, pas: 86, dri: 84, def: 60, phy: 68, men: 74, sta: 82 } },
+            { no: 42, pos: "ST", nat: "巴西", name: "卢卡斯·维拉", rating: 75, height: 182, weight: 76, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ15M", attributes: { spd: 86, sho: 80, pas: 68, dri: 88, def: 28, phy: 70, men: 65, sta: 78 } },
+            { no: 43, pos: "CDM", nat: "德国", name: "汉斯·舒尔茨", rating: 75, height: 188, weight: 82, age: 18, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ12M", attributes: { spd: 74, sho: 55, pas: 72, dri: 70, def: 82, phy: 85, men: 78, sta: 84 } }
         ]
     },
 
@@ -1429,8 +1477,9 @@ window.TEAMS_DATA = {
         coords: {
             LEAGUE: {
                 title: "联赛阵容 (4-3-3)",
+                desc: "超速反击：全联盟最快的双翼卫配合，伊朗双塔在禁区内拥有绝对统治力。",
                 players: {
-                    "GK": "斯帕雷恩", "LB": "马提普", "LCB": "克林顿", "RCB": "扎卡", "RB": "范德萨克",
+                    "GK": "迪奥戈·科斯", "LB": "巴尔德", "LCB": "克林顿", "RCB": "强森", "RB": "古斯托",
                     "CDM": "洛佩斯", "LCM": "法布雷特", "RCM": "克里斯蒂安", "LW": "奥赛梅恩", "ST": "德拉西亚", "RW": "坎波拉"
                 },
                 coords: {
@@ -1441,43 +1490,42 @@ window.TEAMS_DATA = {
             CUP: {
                 title: "杯赛阵容 (4-2-3-1)",
                 players: {
-                    "GK": "艾克松", "LB": "乌帕梅斯", "LCB": "强森", "RCB": "埃兰加", "RB": "兰恩",
-                    "LDM": "伯顿肯", "RDM": "大卫", "CAM": "坎通恩", "LW": "桑托斯", "RW": "门德兹", "ST": "巴尔加斯"
+                    "GK": "斯帕雷恩", "LB": "乌帕梅斯", "LCB": "埃兰加", "RCB": "兰恩", "RB": "范德萨克",
+                    "LDM": "伯顿肯", "RDM": "法拉赫", "CAM": "坎通恩", "LW": "桑托斯", "RW": "门德兹", "ST": "巴尔加斯"
                 },
                 coords: {
-                    "GK": [5, 50], "LB": [25, 12], "LCB": [20, 38], "RCB": [20, 62], "RB": [25, 88],
-                    "LDM": [40, 35], "RDM": [40, 65], "CAM": [62, 50], "LW": [75, 15], "RW": [75, 85], "ST": [85, 50]
+                    "GK": [5, 50], "LB": [25, 12], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 88],
+                    "LDM": [45, 30], "RDM": [45, 70], "CAM": [60, 50], "LW": [80, 18], "ST": [86, 50], "RW": [80, 82]
                 }
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "德国", name: "斯帕雷恩", rating: 84, height: 188, weight: 85, age: 26, cGP: 285, cG: 0, cA: 2, tGP: 110, tG: 0, tA: 0, value: "ⰵ42M", attributes: { div: 86, han: 82, kic: 78, ref: 85, spd: 55, pos_s: 84, men: 80, sta: 78 } },
-            { no: 3, pos: "LB", nat: "喀麦隆", name: "马提普", rating: 84, height: 178, weight: 74, age: 25, cGP: 215, cG: 12, cA: 48, tGP: 95, tG: 4, tA: 15, value: "ⰵ65M", attributes: { spd: 88, sho: 60, pas: 82, dri: 84, def: 78, phy: 72, men: 76, sta: 92 } },
-            { no: 4, pos: "CB", nat: "瑞士", name: "扎卡", rating: 85, height: 186, weight: 82, age: 27, cGP: 312, cG: 22, cA: 4, tGP: 140, tG: 8, tA: 1, value: "ⰵ58M", attributes: { spd: 74, sho: 65, pas: 78, dri: 70, def: 86, phy: 88, men: 90, sta: 82 } },
-            { no: 5, pos: "CB", nat: "美国", name: "克林顿", rating: 87, height: 190, weight: 89, age: 26, cGP: 245, cG: 15, cA: 2, tGP: 120, tG: 6, tA: 1, value: "ⰵ78M", attributes: { spd: 78, sho: 40, pas: 68, dri: 62, def: 90, phy: 91, men: 85, sta: 84 } },
-            { no: 2, pos: "RB", nat: "荷兰", name: "范德萨克", rating: 85, height: 181, weight: 76, age: 24, cGP: 168, cG: 8, cA: 45, tGP: 88, tG: 2, tA: 18, value: "ⰵ72M", attributes: { spd: 91, sho: 55, pas: 80, dri: 84, def: 81, phy: 76, men: 78, sta: 94 } },
-            { no: 6, pos: "CDM", nat: "西班牙", name: "洛佩斯", rating: 88, height: 184, weight: 81, age: 28, cGP: 382, cG: 25, cA: 55, tGP: 165, tG: 9, tA: 22, value: "ⰵ95M", attributes: { spd: 78, sho: 70, pas: 88, dri: 82, def: 87, phy: 86, men: 92, sta: 96 } },
-            { no: 8, pos: "CM", nat: "法国", name: "法布雷特", rating: 86, height: 179, weight: 73, age: 25, cGP: 195, cG: 38, cA: 72, tGP: 92, tG: 12, tA: 31, value: "ⰵ82M", attributes: { spd: 82, sho: 78, pas: 90, dri: 88, def: 72, phy: 70, men: 82, sta: 88 } },
-            { no: 10, pos: "CM", nat: "丹麦", name: "克里斯蒂安", rating: 85, height: 180, weight: 75, age: 26, cGP: 220, cG: 22, cA: 65, tGP: 112, tG: 5, tA: 28, value: "ⰵ68M", attributes: { spd: 76, sho: 74, pas: 86, dri: 84, def: 68, phy: 72, men: 88, sta: 82 } },
-            { no: 7, pos: "LW", nat: "尼日利亚", name: "奥赛梅恩", rating: 87, height: 185, weight: 79, age: 24, cGP: 190, cG: 122, cA: 35, tGP: 85, tG: 48, tA: 12, value: "ⰵ115M", attributes: { spd: 95, sho: 89, pas: 78, dri: 92, def: 38, phy: 84, men: 82, sta: 90 } },
-            { no: 9, pos: "ST", nat: "伊朗", name: "德拉西亚", rating: 89, height: 194, weight: 90, age: 25, cGP: 220, cG: 178, cA: 32, tGP: 115, tG: 92, tA: 9, value: "ⰵ128M", attributes: { spd: 90, sho: 94, pas: 75, dri: 87, def: 35, phy: 90, men: 85, sta: 90 } },
-            { no: 11, pos: "RW", nat: "伊朗", name: "坎波拉", rating: 87, height: 176, weight: 72, age: 24, cGP: 185, cG: 68, cA: 62, tGP: 140, tG: 52, tA: 48, value: "ⰵ88M", attributes: { spd: 94, sho: 82, pas: 85, dri: 94, def: 42, phy: 70, men: 80, sta: 88 } },
-            { no: 12, pos: "GK", nat: "瑞典", name: "艾克松", rating: 82, height: 191, weight: 88, age: 24, cGP: 95, cG: 0, cA: 0, tGP: 35, tG: 0, tA: 0, value: "ⰵ28M", attributes: { div: 84, han: 80, kic: 76, ref: 86, spd: 55, pos_s: 82, men: 74, sta: 75 } },
-            { no: 13, pos: "LB", nat: "法国", name: "乌帕梅斯", rating: 83, height: 186, weight: 83, age: 22, cGP: 85, cG: 2, cA: 25, tGP: 85, tG: 2, tA: 15, value: "ⰵ68M", attributes: { spd: 89, sho: 40, pas: 72, dri: 78, def: 85, phy: 88, men: 80, sta: 86 } },
-            { no: 14, pos: "CB", nat: "英格兰", name: "强森", rating: 85, height: 189, weight: 85, age: 25, cGP: 165, cG: 9, cA: 1, tGP: 50, tG: 4, tA: 0, value: "ⰵ45M", attributes: { spd: 72, sho: 32, pas: 60, dri: 52, def: 88, phy: 91, men: 78, sta: 82 } },
-            { no: 24, pos: "CB", nat: "瑞典", name: "埃兰加", rating: 83, height: 187, weight: 82, age: 22, cGP: 75, cG: 5, cA: 1, tGP: 75, tG: 5, tA: 1, value: "ⰵ38M", attributes: { spd: 82, sho: 45, pas: 65, dri: 70, def: 83, phy: 84, men: 72, sta: 78 } },
-            { no: 22, pos: "RB", nat: "英格兰", name: "兰恩", rating: 84, height: 180, weight: 75, age: 23, cGP: 115, cG: 4, cA: 32, tGP: 115, tG: 4, tA: 22, value: "ⰵ52M", attributes: { spd: 90, sho: 52, pas: 78, dri: 82, def: 76, phy: 70, men: 74, sta: 92 } },
-            { no: 16, pos: "CDM", nat: "英格兰", name: "伯顿肯", rating: 82, height: 182, weight: 78, age: 21, cGP: 58, cG: 4, cA: 12, tGP: 50, tG: 4, tA: 8, value: "ⰵ45M", attributes: { spd: 84, sho: 65, pas: 78, dri: 80, def: 81, phy: 84, men: 76, sta: 92 } },
-            { no: 26, pos: "CDM", nat: "加拿大", name: "大卫", rating: 81, height: 181, weight: 77, age: 22, cGP: 65, cG: 2, cA: 15, tGP: 65, tG: 2, tA: 12, value: "ⰵ32M", attributes: { spd: 78, sho: 60, pas: 82, dri: 78, def: 75, phy: 78, men: 72, sta: 88 } },
-            { no: 20, pos: "CAM", nat: "法国", name: "坎通恩", rating: 85, height: 182, weight: 79, age: 28, cGP: 412, cG: 105, cA: 112, tGP: 65, tG: 12, tA: 15, value: "ⰵ48M", attributes: { spd: 74, sho: 85, pas: 88, dri: 86, def: 55, phy: 78, men: 95, sta: 80 } },
-            { no: 18, pos: "CAM", nat: "西班牙", name: "贝莱林", rating: 84, height: 175, weight: 70, age: 23, cGP: 122, cG: 18, cA: 55, tGP: 45, tG: 3, tA: 12, value: "ⰵ55M", attributes: { spd: 82, sho: 70, pas: 84, dri: 88, def: 42, phy: 60, men: 78, sta: 85 } },
-            { no: 25, pos: "RM", nat: "葡萄牙", name: "门德兹", rating: 84, height: 177, weight: 72, age: 24, cGP: 130, cG: 28, cA: 42, tGP: 48, tG: 6, tA: 14, value: "ⰵ42M", attributes: { spd: 88, sho: 75, pas: 82, dri: 85, def: 45, phy: 68, men: 74, sta: 86 } },
-            { no: 21, pos: "ST", nat: "智利", name: "巴尔加斯", rating: 85, height: 184, weight: 81, age: 24, cGP: 190, cG: 95, cA: 22, tGP: 55, tG: 22, tA: 4, value: "ⰵ85M", attributes: { spd: 86, sho: 88, pas: 68, dri: 82, def: 32, phy: 80, men: 72, sta: 78 } },
-            { no: 27, pos: "RB", nat: "法国", name: "马夏乐", rating: 83, height: 179, weight: 74, age: 24, cGP: 128, cG: 5, cA: 38, tGP: 42, tG: 1, tA: 9, value: "ⰵ38M", attributes: { spd: 91, sho: 60, pas: 80, dri: 84, def: 74, phy: 70, men: 65, sta: 92 } },
-            { no: 17, pos: "CM", nat: "埃及", name: "法拉赫", rating: 81, height: 178, weight: 73, age: 21, cGP: 55, cG: 4, cA: 21, tGP: 45, tG: 3, tA: 15, value: "ⰵ32M", attributes: { spd: 85, sho: 72, pas: 82, dri: 88, def: 52, phy: 60, men: 70, sta: 88 } },
-            { no: 23, pos: "LW", nat: "巴西", name: "桑托斯", rating: 81, height: 174, weight: 69, age: 21, cGP: 48, cG: 15, cA: 12, tGP: 40, tG: 12, tA: 9, value: "ⰵ42M", attributes: { spd: 94, sho: 78, pas: 70, dri: 90, def: 30, phy: 62, men: 72, sta: 90 } },
-            { no: 19, pos: "ST", nat: "波兰", name: "雷克斯塔", rating: 81, height: 183, weight: 80, age: 20, cGP: 35, cG: 12, cA: 4, tGP: 25, tG: 8, tA: 2, value: "ⰵ45M", attributes: { spd: 88, sho: 82, pas: 60, dri: 80, def: 28, phy: 75, men: 68, sta: 82 } },
-            { no: 15, pos: "RW", nat: "哥伦比亚", name: "贝鲁加", rating: 78, height: 173, weight: 68, age: 19, cGP: 22, cG: 2, cA: 8, tGP: 12, tG: 1, tA: 4, value: "ⰵ22M", attributes: { spd: 92, sho: 68, pas: 74, dri: 85, def: 35, phy: 58, men: 65, sta: 85 } }
+            { no: 30, pos: "GK", nat: "葡萄牙", name: "迪奥戈·科斯", rating: 89, height: 188, weight: 82, age: 26, cGP: 310, cG: 0, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ105M", attributes: { div: 88, han: 86, kic: 85, ref: 93, spd: 58, pos_s: 89, men: 82, sta: 80 } },
+            { no: 9, pos: "ST", nat: "伊朗", name: "德拉西亚", rating: 91, height: 194, weight: 90, age: 26, cGP: 335, cG: 270, cA: 41, tGP: 0, tG: 0, tA: 0, value: "ⰵ145M", attributes: { spd: 90, sho: 95, pas: 75, dri: 88, def: 35, phy: 91, men: 86, sta: 90 } },
+            { no: 7, pos: "LW", nat: "尼日利亚", name: "奥赛梅恩", rating: 89, height: 185, weight: 79, age: 25, cGP: 275, cG: 170, cA: 47, tGP: 0, tG: 0, tA: 0, value: "ⰵ125M", attributes: { spd: 96, sho: 90, pas: 78, dri: 93, def: 38, phy: 84, men: 83, sta: 90 } },
+            { no: 28, pos: "LB", nat: "西班牙", name: "巴尔德", rating: 88, height: 175, weight: 69, age: 22, cGP: 150, cG: 4, cA: 35, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 96, sho: 62, pas: 79, dri: 87, def: 82, phy: 75, men: 76, sta: 90 } },
+            { no: 29, pos: "RB", nat: "法国", name: "古斯托", rating: 86, height: 179, weight: 74, age: 22, cGP: 110, cG: 2, cA: 25, tGP: 0, tG: 0, tA: 0, value: "ⰵ72M", attributes: { spd: 91, sho: 55, pas: 80, dri: 84, def: 85, phy: 82, men: 76, sta: 88 } },
+            { no: 6, pos: "CDM", nat: "西班牙", name: "洛佩斯", rating: 89, height: 184, weight: 81, age: 29, cGP: 547, cG: 34, cA: 77, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 78, sho: 70, pas: 89, dri: 82, def: 88, phy: 87, men: 93, sta: 96 } },
+            { no: 5, pos: "CB", nat: "美国", name: "克林顿", rating: 88, height: 190, weight: 89, age: 27, cGP: 365, cG: 21, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 78, sho: 40, pas: 68, dri: 62, def: 91, phy: 92, men: 86, sta: 84 } },
+            { no: 11, pos: "RW", nat: "伊朗", name: "坎波拉", rating: 88, height: 176, weight: 72, age: 25, cGP: 325, cG: 120, cA: 110, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 94, sho: 83, pas: 86, dri: 95, def: 42, phy: 70, men: 81, sta: 88 } },
+            { no: 8, pos: "CM", nat: "法国", name: "法布雷特", rating: 87, height: 179, weight: 73, age: 26, cGP: 287, cG: 50, cA: 103, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 82, sho: 78, pas: 91, dri: 89, def: 72, phy: 70, men: 83, sta: 88 } },
+            { no: 14, pos: "CB", nat: "英格兰", name: "强森", rating: 86, height: 189, weight: 85, age: 26, cGP: 215, cG: 13, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 72, sho: 32, pas: 60, dri: 52, def: 89, phy: 92, men: 78, sta: 82 } },
+            { no: 10, pos: "CM", nat: "丹麦", name: "克里斯蒂安", rating: 86, height: 180, weight: 75, age: 27, cGP: 332, cG: 27, cA: 93, tGP: 0, tG: 0, tA: 0, value: "ⰵ72M", attributes: { spd: 76, sho: 74, pas: 87, dri: 85, def: 68, phy: 72, men: 89, sta: 82 } },
+            { no: 1, pos: "GK", nat: "德国", name: "斯帕雷恩", rating: 85, height: 188, weight: 85, age: 27, cGP: 395, cG: 0, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { div: 87, han: 83, kic: 78, ref: 86, spd: 55, pos_s: 85, men: 80, sta: 78 } },
+            { no: 2, pos: "RB", nat: "荷兰", name: "范德萨克", rating: 86, height: 181, weight: 76, age: 25, cGP: 256, cG: 10, cA: 63, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 91, sho: 55, pas: 81, dri: 85, def: 82, phy: 76, men: 78, sta: 94 } },
+            { no: 12, pos: "GK", nat: "瑞典", name: "艾克松", rating: 83, height: 191, weight: 88, age: 25, cGP: 130, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ30M", attributes: { div: 85, han: 81, kic: 76, ref: 87, spd: 55, pos_s: 83, men: 74, sta: 75 } },
+            { no: 13, pos: "LB", nat: "法国", name: "乌帕梅斯", rating: 84, height: 186, weight: 83, age: 23, cGP: 170, cG: 4, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 89, sho: 40, pas: 72, dri: 78, def: 85, phy: 88, men: 80, sta: 86 } },
+            { no: 24, pos: "CB", nat: "瑞典", name: "埃兰加", rating: 84, height: 187, weight: 82, age: 23, cGP: 150, cG: 10, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 82, sho: 45, pas: 65, dri: 70, def: 84, phy: 85, men: 72, sta: 78 } },
+            { no: 22, pos: "RB", nat: "英格兰", name: "兰恩", rating: 85, height: 180, weight: 75, age: 24, cGP: 230, cG: 8, cA: 54, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { spd: 90, sho: 52, pas: 79, dri: 83, def: 77, phy: 70, men: 74, sta: 92 } },
+            { no: 16, pos: "CDM", nat: "英格兰", name: "伯顿肯", rating: 83, height: 182, weight: 78, age: 22, cGP: 108, cG: 8, cA: 20, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 84, sho: 65, pas: 78, dri: 80, def: 82, phy: 85, men: 76, sta: 92 } },
+            { no: 20, pos: "CAM", nat: "法国", name: "坎通恩", rating: 86, height: 182, weight: 79, age: 29, cGP: 477, cG: 117, cA: 127, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 74, sho: 86, pas: 89, dri: 87, def: 55, phy: 78, men: 96, sta: 80 } },
+            { no: 18, pos: "CAM", nat: "西班牙", name: "贝莱林", rating: 85, height: 175, weight: 70, age: 24, cGP: 167, cG: 21, cA: 67, tGP: 0, tG: 0, tA: 0, value: "ⰵ58M", attributes: { spd: 82, sho: 70, pas: 85, dri: 89, def: 42, phy: 60, men: 78, sta: 85 } },
+            { no: 25, pos: "RM", nat: "葡萄牙", name: "门德兹", rating: 85, height: 177, weight: 72, age: 25, cGP: 178, cG: 34, cA: 56, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 88, sho: 75, pas: 83, dri: 86, def: 45, phy: 68, men: 74, sta: 86 } },
+            { no: 21, pos: "ST", nat: "智利", name: "巴尔加斯", rating: 86, height: 184, weight: 81, age: 25, cGP: 245, cG: 117, cA: 26, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 86, sho: 89, pas: 68, dri: 82, def: 32, phy: 80, men: 72, sta: 78 } },
+            { no: 27, pos: "RB", nat: "法国", name: "马夏乐", rating: 84, height: 179, weight: 74, age: 25, cGP: 170, cG: 6, cA: 47, tGP: 0, tG: 0, tA: 0, value: "ⰵ40M", attributes: { spd: 91, sho: 60, pas: 81, dri: 84, def: 75, phy: 71, men: 65, sta: 92 } },
+            { no: 17, pos: "CM", nat: "埃及", name: "法拉赫", rating: 82, height: 178, weight: 73, age: 22, cGP: 100, cG: 7, cA: 36, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 85, sho: 72, pas: 83, dri: 88, def: 52, phy: 60, men: 70, sta: 88 } },
+            { no: 23, pos: "LW", nat: "巴西", name: "桑托斯", rating: 82, height: 174, weight: 69, age: 22, cGP: 88, cG: 27, cA: 21, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 94, sho: 78, pas: 70, dri: 90, def: 30, phy: 62, men: 72, sta: 90 } },
+            { no: 19, pos: "ST", nat: "波兰", name: "雷克斯塔", rating: 82, height: 183, weight: 80, age: 21, cGP: 60, cG: 20, cA: 6, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 88, sho: 83, pas: 60, dri: 81, def: 28, phy: 76, men: 68, sta: 82 } }
         ]
     },
 
@@ -1502,8 +1550,8 @@ window.TEAMS_DATA = {
             LEAGUE: {
                 title: "联赛阵容 (3-5-2)",
                 players: {
-                    "GK": "诺伊尔", "LCB": "金载沅", "CB": "富安义一", "RCB": "金正贤",
-                    "LDM": "远藤胜", "RDM": "林南俊", "LM": "孙亦峰", "RM": "安宰旭", "CAM": "三苫健绪", "LST": "本田魁梧", "RST": "长野和人"
+                    "GK": "韩旭俊", "LCB": "金载沅", "CB": "富安义一", "RCB": "町田龙",
+                    "LDM": "远藤胜", "RDM": "德川信治", "LM": "孙亦峰", "RM": "久保雄也", "CAM": "三苫健绪", "LST": "本田魁梧", "RST": "黄大烈"
                 },
                 coords: {
                     "GK": [5, 50], "LCB": [22, 25], "CB": [18, 50], "RCB": [22, 75],
@@ -1511,10 +1559,10 @@ window.TEAMS_DATA = {
                 }
             },
             CUP: {
-                title: "杯赛阵容 (4-2-3-1)",
+                title: "杯赛精英阵容 (4-2-3-1)",
                 players: {
-                    "GK": "韩旭俊", "LB": "李在勋", "LCB": "田中筑波", "RCB": "欧克姆", "RB": "杰拉斯",
-                    "LDM": "南俊浩", "RDM": "中田健二", "CAM": "京多贝克", "LW": "黄义勋", "RW": "萨姆", "ST": "裴秀斌"
+                    "GK": "郑成民", "LB": "李在勋", "LCB": "田中筑波", "RCB": "金正贤", "RB": "金泰焕",
+                    "LDM": "林南俊", "RDM": "南俊浩", "CAM": "谷原健英", "LW": "黄义勋", "RW": "李承范", "ST": "裴秀斌"
                 },
                 coords: {
                     "GK": [5, 50], "LB": [25, 12], "LCB": [20, 38], "RCB": [20, 62], "RB": [25, 88],
@@ -1523,32 +1571,32 @@ window.TEAMS_DATA = {
             }
         },
         roster: [
-            { no: 1, pos: "GK", nat: "德国", name: "诺伊尔", rating: 86, height: 193, weight: 92, age: 39, cGP: 1035, cG: 2, cA: 12, tGP: 38, tG: 0, tA: 1, value: "ⰵ3.5M", attributes: { div: 87, han: 88, kic: 89, ref: 87, spd: 53, pos_s: 90, men: 98, sta: 79 } },
-            { no: 4, pos: "CB", nat: "日本", name: "富安义一", rating: 89, height: 188, weight: 84, age: 26, cGP: 312, cG: 8, cA: 12, tGP: 110, tG: 4, tA: 5, value: "ⰵ92M", attributes: { spd: 84, sho: 50, pas: 78, dri: 72, def: 92, phy: 88, men: 86, sta: 90 } },
-            { no: 5, pos: "CB", nat: "韩国", name: "金载沅", rating: 86, height: 186, weight: 81, age: 24, cGP: 198, cG: 12, cA: 2, tGP: 88, tG: 3, tA: 1, value: "ⰵ68M", attributes: { spd: 80, sho: 38, pas: 65, dri: 60, def: 88, phy: 91, men: 80, sta: 85 } },
-            { no: 15, pos: "CB", nat: "韩国", name: "金正贤", rating: 84, height: 185, weight: 80, age: 24, cGP: 165, cG: 5, cA: 1, tGP: 82, tG: 4, tA: 1, value: "ⰵ52M", attributes: { spd: 78, sho: 35, pas: 62, dri: 55, def: 85, phy: 86, men: 78, sta: 82 } },
-            { no: 11, pos: "LM", nat: "韩国", name: "孙亦峰", rating: 88, height: 183, weight: 77, age: 27, cGP: 385, cG: 62, cA: 128, tGP: 165, tG: 18, tA: 62, value: "ⰵ75M", attributes: { spd: 88, sho: 76, pas: 90, dri: 92, def: 52, phy: 72, men: 80, sta: 94 } },
-            { no: 7, pos: "RM", nat: "韩国", name: "安宰旭", rating: 85, height: 177, weight: 72, age: 33, cGP: 512, cG: 85, cA: 135, tGP: 112, tG: 12, tA: 31, value: "ⰵ22M", attributes: { spd: 78, sho: 82, pas: 88, dri: 84, def: 40, phy: 68, men: 92, sta: 75 } },
-            { no: 10, pos: "CAM", nat: "日本", name: "三苫健绪", rating: 87, height: 178, weight: 71, age: 25, cGP: 240, cG: 52, cA: 98, tGP: 115, tG: 22, tA: 56, value: "ⰵ105M", attributes: { spd: 91, sho: 78, pas: 86, dri: 95, def: 45, phy: 64, men: 88, sta: 90 } },
-            { no: 8, pos: "CDM", nat: "日本", name: "远藤胜", rating: 83, height: 178, weight: 75, age: 28, cGP: 345, cG: 18, cA: 42, tGP: 160, tG: 6, tA: 18, value: "ⰵ35M", attributes: { spd: 74, sho: 60, pas: 82, dri: 78, def: 85, phy: 82, men: 90, sta: 95 } },
-            { no: 6, pos: "CDM", nat: "韩国", name: "林南俊", rating: 83, height: 182, weight: 76, age: 24, cGP: 185, cG: 12, cA: 28, tGP: 45, tG: 3, tA: 6, value: "ⰵ48M", attributes: { spd: 76, sho: 58, pas: 78, dri: 72, def: 80, phy: 82, men: 76, sta: 88 } },
-            { no: 9, pos: "ST", nat: "日本", name: "本田魁梧", rating: 86, height: 184, weight: 80, age: 25, cGP: 215, cG: 105, cA: 22, tGP: 40, tG: 28, tA: 3, value: "ⰵ72M", attributes: { spd: 86, sho: 89, pas: 65, dri: 82, def: 28, phy: 88, men: 85, sta: 82 } },
-            { no: 19, pos: "ST", nat: "日本", name: "长野和人", rating: 86, height: 181, weight: 78, age: 34, cGP: 580, cG: 285, cA: 72, tGP: 35, tG: 11, tA: 9, value: "ⰵ18M", attributes: { spd: 72, sho: 90, pas: 78, dri: 80, def: 32, phy: 78, men: 98, sta: 70 } },
-            { no: 12, pos: "GK", nat: "韩国", name: "韩旭俊", rating: 84, height: 188, weight: 85, age: 23, cGP: 110, cG: 0, cA: 0, tGP: 85, tG: 0, tA: 0, value: "ⰵ32M", attributes: { div: 85, han: 82, kic: 80, ref: 88, spd: 55, pos_s: 84, men: 72, sta: 74 } },
-            { no: 14, pos: "CB", nat: "日本", name: "田中筑波", rating: 84, height: 187, weight: 83, age: 23, cGP: 125, cG: 4, cA: 1, tGP: 90, tG: 3, tA: 0, value: "ⰵ45M", attributes: { spd: 75, sho: 32, pas: 60, dri: 52, def: 86, phy: 85, men: 74, sta: 80 } },
-            { no: 20, pos: "RM", nat: "日本", name: "中田健二", rating: 84, height: 176, weight: 70, age: 23, cGP: 135, cG: 22, cA: 42, tGP: 45, tG: 5, tA: 12, value: "ⰵ42M", attributes: { spd: 88, sho: 74, pas: 82, dri: 86, def: 42, phy: 65, men: 78, sta: 88 } },
-            { no: 25, pos: "RM", nat: "日本", name: "谷原健英", rating: 84, height: 175, weight: 69, age: 22, cGP: 112, cG: 18, cA: 38, tGP: 42, tG: 6, tA: 11, value: "ⰵ78M", attributes: { spd: 90, sho: 76, pas: 80, dri: 92, def: 38, phy: 62, men: 76, sta: 85 } },
-            { no: 18, pos: "LM", nat: "韩国", name: "李在勋", rating: 84, height: 178, weight: 73, age: 25, cGP: 182, cG: 35, cA: 55, tGP: 55, tG: 7, tA: 15, value: "ⰵ48M", attributes: { spd: 85, sho: 78, pas: 84, dri: 88, def: 50, phy: 70, men: 82, sta: 84 } },
-            { no: 21, pos: "ST", nat: "韩国", name: "裴秀斌", rating: 84, height: 183, weight: 79, age: 23, cGP: 145, cG: 88, cA: 25, tGP: 108, tG: 45, tA: 4, value: "ⰵ55M", attributes: { spd: 84, sho: 86, pas: 72, dri: 80, def: 30, phy: 78, men: 75, sta: 78 } },
-            { no: 26, pos: "ST", nat: "德国", name: "京多贝克", rating: 84, height: 185, weight: 81, age: 33, cGP: 418, cG: 182, cA: 38, tGP: 240, tG: 112, tA: 13, value: "ⰵ52M", attributes: { spd: 80, sho: 88, pas: 75, dri: 78, def: 35, phy: 84, men: 80, sta: 76 } },
-            { no: 17, pos: "LW", nat: "韩国", name: "黄义勋", rating: 83, height: 177, weight: 72, age: 24, cGP: 165, cG: 32, cA: 52, tGP: 50, tG: 8, tA: 14, value: "ⰵ45M", attributes: { spd: 91, sho: 78, pas: 80, dri: 88, def: 40, phy: 68, men: 72, sta: 86 } },
-            { no: 16, pos: "CDM", nat: "韩国", name: "南俊浩", rating: 83, height: 180, weight: 75, age: 22, cGP: 122, cG: 8, cA: 22, tGP: 85, tG: 5, tA: 18, value: "ⰵ38M", attributes: { spd: 78, sho: 62, pas: 78, dri: 75, def: 82, phy: 80, men: 68, sta: 92 } },
-            { no: 24, pos: "CB", nat: "德国", name: "欧克姆", rating: 82, height: 189, weight: 86, age: 25, cGP: 140, cG: 6, cA: 1, tGP: 45, tG: 2, tA: 0, value: "ⰵ22M", attributes: { spd: 74, sho: 32, pas: 58, dri: 48, def: 83, phy: 86, men: 70, sta: 78 } },
-            { no: 27, pos: "RW", nat: "德国", name: "萨姆", rating: 82, height: 176, weight: 70, age: 21, cGP: 78, cG: 18, cA: 22, tGP: 50, tG: 12, tA: 15, value: "ⰵ52M", attributes: { spd: 92, sho: 76, pas: 75, dri: 88, def: 35, phy: 60, men: 65, sta: 82 } },
-            { no: 23, pos: "GK", nat: "阿根廷", name: "洛塞尔萨", rating: 81, height: 185, weight: 82, age: 22, cGP: 58, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ15M", attributes: { div: 82, han: 78, kic: 74, ref: 84, spd: 60, pos_s: 78, men: 65, sta: 70 } },
-            { no: 2, pos: "RB", nat: "德国", name: "杰拉斯", rating: 81, height: 178, weight: 74, age: 21, cGP: 65, cG: 2, cA: 15, tGP: 55, tG: 2, tA: 12, value: "ⰵ38M", attributes: { spd: 86, sho: 45, pas: 74, dri: 78, def: 76, phy: 62, men: 68, sta: 88 } },
-            { no: 13, pos: "CB", nat: "英格兰", name: "爱德华德", rating: 80, height: 186, weight: 83, age: 20, cGP: 42, cG: 2, cA: 0, tGP: 25, tG: 1, tA: 0, value: "ⰵ42M", attributes: { spd: 78, sho: 30, pas: 55, dri: 45, def: 81, phy: 85, men: 70, sta: 75 } },
-            { no: 22, pos: "LW", nat: "德国", name: "菲利斯", rating: 80, height: 174, weight: 68, age: 20, cGP: 38, cG: 4, cA: 12, tGP: 20, tG: 2, tA: 8, value: "ⰵ45M", attributes: { spd: 94, sho: 74, pas: 70, dri: 90, def: 30, phy: 58, men: 62, sta: 90 } }
+            { no: 22, pos: "RW", nat: "日本", name: "久保雄也", rating: 88, height: 173, weight: 67, age: 24, cGP: 220, cG: 45, cA: 78, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 88, sho: 80, pas: 88, dri: 94, def: 40, phy: 68, men: 82, sta: 85 } },
+            { no: 19, pos: "ST", nat: "韩国", name: "黄大烈", rating: 87, height: 177, weight: 77, age: 29, cGP: 310, cG: 112, cA: 35, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 91, sho: 86, pas: 72, dri: 84, def: 35, phy: 89, men: 80, sta: 82 } },
+            { no: 23, pos: "CB", nat: "日本", name: "町田龙", rating: 85, height: 190, weight: 84, age: 28, cGP: 180, cG: 5, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { spd: 78, sho: 32, pas: 68, dri: 60, def: 86, phy: 88, men: 78, sta: 82 } },
+            { no: 24, pos: "LW", nat: "韩国", name: "李承范", rating: 85, height: 178, weight: 72, age: 24, cGP: 120, cG: 28, cA: 35, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 93, sho: 78, pas: 82, dri: 88, def: 42, phy: 70, men: 76, sta: 88 } },
+            { no: 31, pos: "RB", nat: "日本", name: "林拓海", rating: 76, height: 178, weight: 70, age: 18, cGP: 0, cG: 0, cA: 0, value: "ⰵ18M", attributes: { spd: 92, sho: 55, pas: 72, dri: 78, def: 74, phy: 68, men: 65, sta: 88 } },
+            { no: 32, pos: "CAM", nat: "韩国", name: "朴俊熙", rating: 75, height: 176, weight: 68, age: 17, cGP: 0, cG: 0, cA: 0, value: "ⰵ22M", attributes: { spd: 82, sho: 70, pas: 88, dri: 84, def: 45, phy: 62, men: 72, sta: 80 } },
+            { no: 33, pos: "CB", nat: "日本", name: "高桥陆", rating: 74, height: 187, weight: 82, age: 18, cGP: 0, cG: 0, cA: 0, value: "ⰵ15M", attributes: { spd: 78, sho: 35, pas: 65, dri: 60, def: 82, phy: 84, men: 70, sta: 78 } },
+            { no: 36, pos: "GK", nat: "韩国", name: "郑成民", rating: 73, height: 189, weight: 81, age: 18, cGP: 0, cG: 0, cA: 0, value: "ⰵ10M", attributes: { div: 75, han: 72, kic: 70, ref: 85, spd: 50, pos_s: 74, men: 68, sta: 70 } },
+            { no: 28, pos: "CM", nat: "日本", name: "德川信治", rating: 92, height: 176, weight: 71, age: 32, cGP: 440, cG: 177, cA: 303, tGP: 0, tG: 0, tA: 0, value: "ⰵ165M", attributes: { spd: 85, sho: 88, pas: 97, dri: 95, def: 72, phy: 76, men: 93, sta: 95 } },
+            { no: 4, pos: "CB", nat: "日本", name: "富安义一", rating: 91, height: 188, weight: 84, age: 28, cGP: 422, cG: 12, cA: 17, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 84, sho: 50, pas: 78, dri: 72, def: 94, phy: 90, men: 88, sta: 90 } },
+            { no: 11, pos: "LM", nat: "韩国", name: "孙亦峰", rating: 90, height: 183, weight: 77, age: 29, cGP: 550, cG: 80, cA: 190, tGP: 0, tG: 0, tA: 0, value: "ⰵ82M", attributes: { spd: 88, sho: 76, pas: 92, dri: 94, def: 52, phy: 72, men: 83, sta: 94 } },
+            { no: 10, pos: "CAM", nat: "日本", name: "三苫健绪", rating: 89, height: 178, weight: 71, age: 27, cGP: 355, cG: 74, cA: 154, tGP: 0, tG: 0, tA: 0, value: "ⰵ115M", attributes: { spd: 92, sho: 78, pas: 88, dri: 97, def: 45, phy: 64, men: 90, sta: 91 } },
+            { no: 9, pos: "ST", nat: "日本", name: "本田魁梧", rating: 88, height: 184, weight: 80, age: 27, cGP: 255, cG: 133, cA: 25, tGP: 0, tG: 0, tA: 0, value: "ⰵ78M", attributes: { spd: 86, sho: 91, pas: 65, dri: 82, def: 28, phy: 89, men: 86, sta: 82 } },
+            { no: 5, pos: "CB", nat: "韩国", name: "金载沅", rating: 87, height: 186, weight: 81, age: 26, cGP: 286, cG: 15, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ70M", attributes: { spd: 80, sho: 38, pas: 65, dri: 60, def: 89, phy: 92, men: 82, sta: 85 } },
+            { no: 12, pos: "GK", nat: "韩国", name: "韩旭俊", rating: 85, height: 188, weight: 85, age: 25, cGP: 195, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { div: 86, han: 84, kic: 82, ref: 89, spd: 55, pos_s: 85, men: 76, sta: 74 } },
+            { no: 8, pos: "CDM", nat: "日本", name: "远藤胜", rating: 85, height: 178, weight: 75, age: 30, cGP: 505, cG: 24, cA: 60, tGP: 0, tG: 0, tA: 0, value: "ⰵ32M", attributes: { spd: 74, sho: 60, pas: 83, dri: 78, def: 87, phy: 82, men: 92, sta: 95 } },
+            { no: 15, pos: "CB", nat: "韩国", name: "金正贤", rating: 85, height: 185, weight: 80, age: 26, cGP: 247, cG: 9, cA: 2, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 78, sho: 35, pas: 62, dri: 55, def: 86, phy: 87, men: 78, sta: 82 } },
+            { no: 2, pos: "RB", nat: "韩国", name: "金泰焕", rating: 86, height: 177, weight: 72, age: 22, cGP: 85, cG: 4, cA: 28, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 93, sho: 60, pas: 81, dri: 83, def: 79, phy: 74, men: 82, sta: 95 } },
+            { no: 6, pos: "CDM", nat: "韩国", name: "林南俊", rating: 84, height: 182, weight: 76, age: 26, cGP: 230, cG: 15, cA: 34, tGP: 0, tG: 0, tA: 0, value: "ⰵ45M", attributes: { spd: 76, sho: 58, pas: 78, dri: 72, def: 81, phy: 83, men: 76, sta: 88 } },
+            { no: 14, pos: "CB", nat: "日本", name: "田中筑波", rating: 85, height: 187, weight: 83, age: 25, cGP: 215, cG: 7, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 75, sho: 32, pas: 60, dri: 52, def: 87, phy: 86, men: 74, sta: 80 } },
+            { no: 20, pos: "RM", nat: "日本", name: "中田健二", rating: 85, height: 176, weight: 70, age: 25, cGP: 180, cG: 27, cA: 54, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { spd: 89, sho: 74, pas: 83, dri: 87, def: 42, phy: 65, men: 78, sta: 89 } },
+            { no: 25, pos: "RM", nat: "日本", name: "谷原健英", rating: 85, height: 175, weight: 69, age: 24, cGP: 154, cG: 24, cA: 49, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 91, sho: 76, pas: 80, dri: 93, def: 38, phy: 62, men: 76, sta: 86 } },
+            { no: 18, pos: "LM", nat: "韩国", name: "李在勋", rating: 86, height: 178, weight: 73, age: 27, cGP: 237, cG: 42, cA: 70, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 85, sho: 78, pas: 86, dri: 89, def: 50, phy: 70, men: 83, sta: 84 } },
+            { no: 21, pos: "ST", nat: "韩国", name: "裴秀斌", rating: 86, height: 183, weight: 79, age: 25, cGP: 253, cG: 133, cA: 29, tGP: 0, tG: 0, tA: 0, value: "ⰵ62M", attributes: { spd: 85, sho: 88, pas: 72, dri: 82, def: 30, phy: 80, men: 76, sta: 78 } },
+            { no: 17, pos: "LW", nat: "韩国", name: "黄义勋", rating: 84, height: 177, weight: 72, age: 26, cGP: 215, cG: 40, cA: 66, tGP: 0, tG: 0, tA: 0, value: "ⰵ42M", attributes: { spd: 92, sho: 78, pas: 81, dri: 89, def: 40, phy: 68, men: 72, sta: 87 } },
+            { no: 16, pos: "CDM", nat: "韩国", name: "南俊浩", rating: 84, height: 180, weight: 75, age: 24, cGP: 207, cG: 13, cA: 40, tGP: 0, tG: 0, tA: 0, value: "ⰵ36M", attributes: { spd: 78, sho: 62, pas: 79, dri: 76, def: 83, phy: 81, men: 68, sta: 93 } }
         ]
     },
 
@@ -1630,44 +1678,55 @@ window.TEAMS_DATA = {
         ],
         coords: {
             LEAGUE: {
-                title: "联赛阵容 (4-2-3-1)",
-                players: { "GK": "川岛富康", "LB": "塞尔吉奥", "LCB": "鲁本斯", "RCB": "乌多伊", "RB": "雷谷龙", "LDM": "托内利", "RDM": "麦克提莫提", "CAM": "埃尔林", "LM": "纳尔罗斯", "RM": "帕瓦尔德", "ST": "哈希特" },
-                coords: { "GK": [5, 50], "LB": [25, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [25, 90], "LDM": [40, 35], "RDM": [40, 65], "CAM": [60, 50], "LM": [72, 15], "RM": [72, 85], "ST": [86, 50] }
+                title: "联赛最强阵容 (4-2-3-1)",
+                players: {
+                    "GK": "川岛富康", "LB": "雷谷龙", "LCB": "鲁本斯", "RCB": "德里赫", "RB": "姆西塔西",
+                    "LDM": "托内利", "RDM": "麦克提莫提", "CAM": "埃尔林", "LM": "莱昂纳多", "RM": "帕瓦尔德", "ST": "哈希特"
+                },
+                coords: {
+                    "GK": [5, 50], "LB": [25, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [25, 90],
+                    "LDM": [40, 35], "RDM": [40, 65], "CAM": [60, 50], "LM": [72, 15], "RM": [72, 85], "ST": [86, 50]
+                }
             },
             CUP: {
-                title: "杯赛阵容 (4-3-3)",
-                players: { "GK": "布雷克", "LB": "斯通斯", "LCB": "奥古斯都", "RCB": "科鲁伊曼", "RB": "姆西塔西", "CDM": "乔治", "LCM": "凯迪拉克", "RCM": "埃克森", "LW": "内罗", "ST": "恩凯狄恩", "RW": "马丁内利" },
-                coords: { "GK": [5, 50], "LB": [25, 10], "LCB": [20, 35], "RCB": [20, 65], "RB": [25, 90], "CDM": [45, 50], "LCM": [58, 28], "RCM": [58, 72], "LW": [82, 15], "ST": [86, 50], "RW": [82, 85] }
+                title: "杯赛精英阵容 (4-2-3-1)",
+                players: {
+                    "GK": "里皮", "LB": "斯通斯", "LCB": "戈登", "RCB": "科鲁伊曼", "RB": "基纳",
+                    "LDM": "乔治", "RDM": "凯迪拉克", "CAM": "埃克森", "LW": "纳尔罗斯", "RW": "托雷斯", "ST": "恩凯狄恩"
+                },
+                coords: {
+                    "GK": [5, 50], "LB": [25, 12], "LCB": [20, 38], "RCB": [20, 62], "RB": [25, 88],
+                    "LDM": [40, 35], "RDM": [40, 65], "CAM": [62, 50], "LW": [75, 15], "RW": [75, 85], "ST": [85, 50]
+                }
             }
         },
         roster: [
-            { no: 9, pos: "ST", nat: "英格兰", name: "哈希特", rating: 94, height: 188, weight: 85, age: 30, cGP: 412, cG: 315, cA: 42, tGP: 180, tG: 142, tA: 18, value: "ⰵ115M", attributes: { spd: 92, sho: 96, pas: 78, dri: 88, def: 45, phy: 91, men: 94, sta: 89 } },
-            { no: 11, pos: "CAM", nat: "挪威", name: "埃尔林", rating: 93, height: 185, weight: 86, age: 26, cGP: 320, cG: 118, cA: 142, tGP: 140, tG: 56, tA: 68, value: "ⰵ165M", attributes: { spd: 88, sho: 85, pas: 94, dri: 92, def: 70, phy: 80, men: 90, sta: 87 } },
-            { no: 7, pos: "RM", nat: "法国", name: "帕瓦尔德", rating: 92, height: 181, weight: 77, age: 27, cGP: 345, cG: 56, cA: 115, tGP: 156, tG: 24, tA: 62, value: "ⰵ135M", attributes: { spd: 94, sho: 82, pas: 89, dri: 91, def: 65, phy: 78, men: 88, sta: 92 } },
-            { no: 4, pos: "CB", nat: "葡萄牙", name: "鲁本斯", rating: 91, height: 191, weight: 89, age: 28, cGP: 388, cG: 21, cA: 5, tGP: 145, tG: 8, tA: 2, value: "ⰵ95M", attributes: { spd: 78, sho: 50, pas: 72, dri: 70, def: 94, phy: 93, men: 96, sta: 88 } },
-            { no: 10, pos: "CAM", nat: "丹麦", name: "埃克森", rating: 90, height: 184, weight: 79, age: 27, cGP: 338, cG: 52, cA: 89, tGP: 142, tG: 21, tA: 42, value: "ⰵ90M", attributes: { spd: 82, sho: 78, pas: 92, dri: 88, def: 74, phy: 76, men: 90, sta: 88 } },
-            { no: 6, pos: "CDM", nat: "意大利", name: "托内利", rating: 89, height: 183, weight: 80, age: 26, cGP: 295, cG: 18, cA: 42, tGP: 120, tG: 7, tA: 24, value: "ⰵ85M", attributes: { spd: 76, sho: 65, pas: 86, dri: 80, def: 90, phy: 88, men: 87, sta: 91 } },
-            { no: 17, pos: "LM", nat: "西班牙", name: "纳尔罗斯", rating: 89, height: 177, weight: 72, age: 25, cGP: 190, cG: 45, cA: 52, tGP: 92, tG: 21, tA: 28, value: "ⰵ105M", attributes: { spd: 91, sho: 80, pas: 84, dri: 90, def: 42, phy: 72, men: 84, sta: 88 } },
-            { no: 5, pos: "CB", nat: "意大利", name: "乌多伊", rating: 89, height: 188, weight: 84, age: 33, cGP: 195, cG: 12, cA: 4, tGP: 88, tG: 5, tA: 1, value: "ⰵ32M", attributes: { spd: 72, sho: 48, pas: 70, dri: 68, def: 92, phy: 90, men: 95, sta: 78 } },
-            { no: 3, pos: "LB", nat: "西班牙", name: "塞尔吉奥", rating: 89, height: 178, weight: 74, age: 32, cGP: 235, cG: 14, cA: 62, tGP: 112, tG: 6, tA: 28, value: "ⰵ28M", attributes: { spd: 84, sho: 68, pas: 88, dri: 85, def: 84, phy: 75, men: 89, sta: 82 } },
-            { no: 1, pos: "GK", nat: "日本", name: "川岛富康", rating: 89, height: 187, weight: 82, age: 29, cGP: 456, cG: 0, cA: 2, tGP: 180, tG: 0, tA: 1, value: "ⰵ42M", attributes: { div: 88, han: 87, kic: 82, ref: 91, spd: 58, pos_s: 90, men: 92, sta: 80 } },
-            { no: 16, pos: "CDM", nat: "苏格兰", name: "麦克提莫提", rating: 88, height: 182, weight: 81, age: 28, cGP: 310, cG: 22, cA: 56, tGP: 165, tG: 12, tA: 31, value: "ⰵ60M", attributes: { spd: 78, sho: 70, pas: 82, dri: 79, def: 88, phy: 92, men: 86, sta: 94 } },
-            { no: 27, pos: "RM", nat: "西班牙", name: "托雷斯", rating: 88, height: 176, weight: 70, age: 26, cGP: 220, cG: 48, cA: 41, tGP: 65, tG: 14, tA: 11, value: "ⰵ75M", attributes: { spd: 89, sho: 84, pas: 85, dri: 87, def: 50, phy: 74, men: 80, sta: 86 } },
-            { no: 19, pos: "ST", nat: "英格兰", name: "恩凯狄恩", rating: 87, height: 183, weight: 78, age: 23, cGP: 185, cG: 92, cA: 12, tGP: 55, tG: 31, tA: 5, value: "ⰵ80M", attributes: { spd: 90, sho: 88, pas: 72, dri: 84, def: 38, phy: 82, men: 81, sta: 84 } },
-            { no: 20, pos: "CAM", nat: "美国", name: "凯迪拉克", rating: 87, height: 180, weight: 75, age: 23, cGP: 165, cG: 32, cA: 55, tGP: 50, tG: 12, tA: 18, value: "ⰵ78M", attributes: { spd: 82, sho: 81, pas: 88, dri: 89, def: 55, phy: 74, men: 82, sta: 85 } },
-            { no: 2, pos: "RB", nat: "西班牙", name: "雷谷龙", rating: 87, height: 180, weight: 73, age: 29, cGP: 182, cG: 5, cA: 38, tGP: 60, tG: 2, tA: 15, value: "ⰵ38M", attributes: { spd: 87, sho: 60, pas: 82, dri: 81, def: 83, phy: 76, men: 82, sta: 89 } },
-            { no: 22, pos: "CB", nat: "英格兰", name: "戈登", rating: 87, height: 190, weight: 88, age: 22, cGP: 210, cG: 15, cA: 3, tGP: 50, tG: 6, tA: 1, value: "ⰵ72M", attributes: { spd: 80, sho: 42, pas: 62, dri: 65, def: 86, phy: 91, men: 78, sta: 88 } },
-            { no: 15, pos: "CB", nat: "荷兰", name: "科鲁伊曼", rating: 87, height: 189, weight: 85, age: 25, cGP: 175, cG: 11, cA: 1, tGP: 55, tG: 4, tA: 0, value: "ⰵ58M", attributes: { spd: 75, sho: 40, pas: 65, dri: 64, def: 88, phy: 90, men: 80, sta: 85 } },
-            { no: 25, pos: "CB", nat: "巴西", name: "奥古斯都", rating: 87, height: 187, weight: 84, age: 34, cGP: 160, cG: 8, cA: 2, tGP: 65, tG: 3, tA: 0, value: "ⰵ12M", attributes: { spd: 65, sho: 45, pas: 68, dri: 62, def: 89, phy: 88, men: 94, sta: 70 } },
-            { no: 26, pos: "ST", nat: "巴西", name: "马丁内利", rating: 86, height: 180, weight: 75, age: 22, cGP: 95, cG: 42, cA: 18, tGP: 40, tG: 18, tA: 9, value: "ⰵ68M", attributes: { spd: 88, sho: 85, pas: 76, dri: 84, def: 40, phy: 78, men: 79, sta: 82 } },
-            { no: 14, pos: "CDM", nat: "英格兰", name: "乔治", rating: 86, height: 182, weight: 80, age: 23, cGP: 125, cG: 9, cA: 21, tGP: 45, tG: 3, tA: 6, value: "ⰵ55M", attributes: { spd: 78, sho: 62, pas: 80, dri: 76, def: 85, phy: 84, men: 81, sta: 89 } },
-            { no: 24, pos: "RB", nat: "伊朗", name: "姆西塔西", rating: 86, height: 179, weight: 72, age: 20, cGP: 140, cG: 5, cA: 32, tGP: 42, tG: 1, tA: 12, value: "ⰵ62M", attributes: { spd: 91, sho: 58, pas: 79, dri: 82, def: 80, phy: 74, men: 75, sta: 90 } },
-            { no: 23, pos: "LB", nat: "英格兰", name: "斯通斯", rating: 86, height: 181, weight: 78, age: 23, cGP: 115, cG: 4, cA: 21, tGP: 48, tG: 1, tA: 8, value: "ⰵ48M", attributes: { spd: 85, sho: 55, pas: 80, dri: 78, def: 84, phy: 80, men: 78, sta: 86 } },
-            { no: 13, pos: "CB", nat: "葡萄牙", name: "基纳", rating: 86, height: 188, weight: 85, age: 22, cGP: 90, cG: 6, cA: 0, tGP: 90, tG: 6, tA: 0, value: "ⰵ52M", attributes: { spd: 76, sho: 40, pas: 60, dri: 62, def: 87, phy: 89, men: 82, sta: 84 } },
-            { no: 18, pos: "LM", nat: "伊朗", name: "内罗", rating: 86, height: 174, weight: 70, age: 36, cGP: 85, cG: 15, cA: 28, tGP: 85, tG: 15, tA: 28, value: "ⰵ4.5M", attributes: { spd: 75, sho: 78, pas: 86, dri: 84, def: 58, phy: 68, men: 95, sta: 70 } },
-            { no: 12, pos: "GK", nat: "科特迪瓦", name: "布雷克", rating: 86, height: 189, weight: 87, age: 36, cGP: 95, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ3M", attributes: { div: 84, han: 85, kic: 78, ref: 86, spd: 50, pos_s: 89, men: 95, sta: 72 } },
-            { no: 30, pos: "GK", nat: "意大利", name: "里皮", rating: 85, height: 186, weight: 83, age: 18, cGP: 45, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ55M", attributes: { div: 86, han: 80, kic: 84, ref: 89, spd: 65, pos_s: 82, men: 76, sta: 80 } },
-            { no: 21, pos: "CM", nat: "法国", name: "韦尔尼", rating: 81, height: 181, weight: 75, age: 18, cGP: 25, cG: 2, cA: 4, tGP: 25, tG: 2, tA: 4, value: "ⰵ40M", attributes: { spd: 80, sho: 72, pas: 82, dri: 83, def: 65, phy: 74, men: 72, sta: 85 } }
+            { no: 9, pos: "ST", nat: "英格兰", name: "哈希特", rating: 95, height: 188, weight: 85, age: 31, cGP: 592, cG: 457, cA: 60, tGP: 0, tG: 0, tA: 0, value: "ⰵ145M", attributes: { spd: 92, sho: 97, pas: 78, dri: 88, def: 45, phy: 91, men: 95, sta: 89 } },
+            { no: 11, pos: "CAM", nat: "挪威", name: "埃尔林", rating: 94, height: 185, weight: 86, age: 27, cGP: 460, cG: 174, cA: 210, tGP: 0, tG: 0, tA: 0, value: "ⰵ180M", attributes: { spd: 88, sho: 85, pas: 95, dri: 92, def: 70, phy: 80, men: 92, sta: 87 } },
+            { no: 7, pos: "RM", nat: "法国", name: "帕瓦尔德", rating: 93, height: 181, weight: 77, age: 28, cGP: 501, cG: 80, cA: 177, tGP: 0, tG: 0, tA: 0, value: "ⰵ150M", attributes: { spd: 94, sho: 83, pas: 90, dri: 92, def: 65, phy: 78, men: 89, sta: 92 } },
+            { no: 28, pos: "LW", nat: "葡萄牙", name: "莱昂纳多", rating: 92, height: 188, weight: 82, age: 26, cGP: 150, cG: 45, cA: 38, tGP: 0, tG: 0, tA: 0, value: "ⰵ115M", attributes: { spd: 96, sho: 84, pas: 82, dri: 94, def: 35, phy: 88, men: 80, sta: 86 } },
+            { no: 4, pos: "CB", nat: "葡萄牙", name: "鲁本斯", rating: 92, height: 191, weight: 89, age: 29, cGP: 533, cG: 29, cA: 7, tGP: 0, tG: 0, tA: 0, value: "ⰵ105M", attributes: { spd: 78, sho: 50, pas: 72, dri: 70, def: 95, phy: 94, men: 97, sta: 88 } },
+            { no: 33, pos: "CB", nat: "荷兰", name: "德里赫", rating: 91, height: 189, weight: 86, age: 26, cGP: 280, cG: 12, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 80, sho: 55, pas: 75, dri: 72, def: 92, phy: 93, men: 88, sta: 90 } },
+            { no: 30, pos: "GK", nat: "意大利", name: "里皮", rating: 87, height: 186, weight: 83, age: 19, cGP: 90, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { div: 88, han: 82, kic: 85, ref: 92, spd: 65, pos_s: 85, men: 80, sta: 82 } },
+            { no: 10, pos: "CAM", nat: "丹麦", name: "埃克森", rating: 91, height: 184, weight: 79, age: 28, cGP: 480, cG: 73, cA: 131, tGP: 0, tG: 0, tA: 0, value: "ⰵ95M", attributes: { spd: 82, sho: 78, pas: 93, dri: 89, def: 74, phy: 76, men: 91, sta: 88 } },
+            { no: 6, pos: "CDM", nat: "意大利", name: "托内利", rating: 90, height: 183, weight: 80, age: 27, cGP: 415, cG: 25, cA: 66, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 76, sho: 65, pas: 87, dri: 81, def: 91, phy: 89, men: 88, sta: 91 } },
+            { no: 17, pos: "LM", nat: "西班牙", name: "纳尔罗斯", rating: 90, height: 177, weight: 72, age: 26, cGP: 282, cG: 66, cA: 80, tGP: 0, tG: 0, tA: 0, value: "ⰵ110M", attributes: { spd: 92, sho: 81, pas: 85, dri: 91, def: 42, phy: 72, men: 85, sta: 88 } },
+            { no: 16, pos: "CDM", nat: "苏格兰", name: "麦克提莫提", rating: 89, height: 182, weight: 81, age: 29, cGP: 475, cG: 34, cA: 87, tGP: 0, tG: 0, tA: 0, value: "ⰵ60M", attributes: { spd: 78, sho: 71, pas: 83, dri: 80, def: 89, phy: 93, men: 87, sta: 94 } },
+            { no: 1, pos: "GK", nat: "日本", name: "川岛富康", rating: 89, height: 187, weight: 82, age: 30, cGP: 636, cG: 0, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ35M", attributes: { div: 88, han: 87, kic: 82, ref: 91, spd: 58, pos_s: 90, men: 92, sta: 80 } },
+            { no: 27, pos: "RM", nat: "西班牙", name: "托雷斯", rating: 88, height: 176, weight: 70, age: 27, cGP: 285, cG: 62, cA: 52, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 89, sho: 84, pas: 85, dri: 87, def: 50, phy: 74, men: 80, sta: 86 } },
+            { no: 19, pos: "ST", nat: "英格兰", name: "恩凯狄恩", rating: 88, height: 183, weight: 78, age: 24, cGP: 240, cG: 123, cA: 17, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 91, sho: 89, pas: 72, dri: 85, def: 38, phy: 83, men: 81, sta: 84 } },
+            { no: 20, pos: "CAM", nat: "美国", name: "凯迪拉克", rating: 88, height: 180, weight: 75, age: 24, cGP: 215, cG: 44, cA: 73, tGP: 0, tG: 0, tA: 0, value: "ⰵ78M", attributes: { spd: 82, sho: 82, pas: 89, dri: 90, def: 55, phy: 74, men: 83, sta: 85 } },
+            { no: 2, pos: "RB", nat: "西班牙", name: "雷谷龙", rating: 87, height: 180, weight: 73, age: 30, cGP: 242, cG: 7, cA: 53, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { spd: 87, sho: 60, pas: 82, dri: 81, def: 83, phy: 76, men: 82, sta: 89 } },
+            { no: 22, pos: "CB", nat: "英格兰", name: "戈登", rating: 88, height: 190, weight: 88, age: 23, cGP: 260, cG: 21, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ72M", attributes: { spd: 81, sho: 42, pas: 63, dri: 66, def: 87, phy: 92, men: 79, sta: 88 } },
+            { no: 15, pos: "CB", nat: "荷兰", name: "科鲁伊曼", rating: 88, height: 189, weight: 85, age: 26, cGP: 230, cG: 15, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ58M", attributes: { spd: 76, sho: 40, pas: 65, dri: 65, def: 89, phy: 91, men: 81, sta: 85 } },
+            { no: 26, pos: "ST", nat: "巴西", name: "马丁内利", rating: 87, height: 180, weight: 75, age: 23, cGP: 135, cG: 60, cA: 27, tGP: 0, tG: 0, tA: 0, value: "ⰵ68M", attributes: { spd: 89, sho: 86, pas: 77, dri: 85, def: 40, phy: 79, men: 80, sta: 82 } },
+            { no: 14, pos: "CDM", nat: "英格兰", name: "乔治", rating: 87, height: 182, weight: 80, age: 24, cGP: 170, cG: 12, cA: 27, tGP: 0, tG: 0, tA: 0, value: "ⰵ55M", attributes: { spd: 78, sho: 62, pas: 81, dri: 77, def: 86, phy: 85, men: 82, sta: 89 } },
+            { no: 24, pos: "RB", nat: "伊朗", name: "姆西塔西", rating: 87, height: 179, weight: 72, age: 21, cGP: 182, cG: 6, cA: 44, tGP: 0, tG: 0, tA: 0, value: "ⰵ62M", attributes: { spd: 92, sho: 58, pas: 80, dri: 83, def: 81, phy: 75, men: 76, sta: 91 } },
+            { no: 23, pos: "LB", nat: "英格兰", name: "斯通斯", rating: 87, height: 181, weight: 78, age: 24, cGP: 163, cG: 5, cA: 29, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 86, sho: 55, pas: 81, dri: 79, def: 85, phy: 81, men: 79, sta: 86 } },
+            { no: 13, pos: "CB", nat: "葡萄牙", name: "基纳", rating: 87, height: 188, weight: 85, age: 23, cGP: 180, cG: 12, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ52M", attributes: { spd: 77, sho: 40, pas: 60, dri: 63, def: 88, phy: 90, men: 83, sta: 84 } },
+            { no: 21, pos: "CM", nat: "法国", name: "韦尔尼", rating: 82, height: 181, weight: 75, age: 19, cGP: 50, cG: 4, cA: 8, tGP: 0, tG: 0, tA: 0, value: "ⰵ40M", attributes: { spd: 81, sho: 73, pas: 83, dri: 84, def: 65, phy: 75, men: 73, sta: 85 } },
+            { no: 5, pos: "CB", nat: "意大利", name: "乌多伊", rating: 88, height: 188, weight: 84, age: 34, cGP: 283, cG: 17, cA: 5, tGP: 0, tG: 0, tA: 0, value: "ⰵ15M", attributes: { spd: 71, sho: 48, pas: 70, dri: 67, def: 92, phy: 89, men: 95, sta: 76 } },
+            { no: 35, pos: "LB", nat: "葡萄牙", name: "贝尔纳多", rating: 76, height: 179, weight: 72, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ18M", attributes: { spd: 91, sho: 58, pas: 75, dri: 78, def: 72, phy: 68, men: 70, sta: 85 } }
         ]
     },
 
@@ -1761,43 +1820,55 @@ window.TEAMS_DATA = {
         ],
         coords: {
             LEAGUE: {
-                title: "联赛阵容 (4-2-3-1)",
-                players: { "GK": "塔利斯卡", "LB": "库库雷迪亚", "LCB": "迪亚斯", "RCB": "劳伦斯", "RB": "吉马伦萨", "LDM": "苏博斯洛伊", "RDM": "阿隆索", "LM": "若昂", "CAM": "德雷姆", "RM": "麦卡雷斯特", "ST": "德赫雷特" },
-                coords: { "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90], "LDM": [40, 35], "RDM": [40, 65], "LM": [65, 15], "CAM": [65, 50], "RM": [65, 85], "ST": [85, 50] }
+                title: "联赛最强阵容 (4-2-3-1)",
+                players: {
+                    "GK": "奥德拉克", "LB": "库库雷迪亚", "LCB": "迪亚斯", "RCB": "格瓦迪奥", "RB": "阿什拉夫",
+                    "LDM": "苏博斯洛伊", "RDM": "阿隆索", "LM": "拉斐尔", "CAM": "德雷姆", "RM": "麦卡雷斯特", "ST": "德赫雷特"
+                },
+                coords: {
+                    "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90],
+                    "LDM": [40, 35], "RDM": [40, 65], "LM": [65, 15], "CAM": [65, 50], "RM": [65, 85], "ST": [85, 50]
+                }
             },
             CUP: {
-                title: "杯赛阵容 (4-4-2)",
-                players: { "GK": "普斯卡诺", "LB": "京多尔尼", "LCB": "马尔基尼", "RCB": "古雷斯托", "RB": "迈克尔", "LM": "普斯雷特", "LCM": "迈凯伦", "RCM": "盖尔", "RM": "津琴科姆", "LST": "莫雷诺", "RST": "姆哈特" },
-                coords: { "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90], "LM": [50, 10], "LCM": [45, 38], "RCM": [45, 62], "RM": [50, 90], "LST": [80, 35], "RST": [80, 65] }
+                title: "杯赛精英阵容 (4-4-2)",
+                players: {
+                    "GK": "普斯卡诺", "LB": "马尔库斯", "LCB": "马尔基尼", "RCB": "古雷斯托", "RB": "吉马伦萨",
+                    "LM": "若昂", "LCM": "迈凯伦", "RCM": "盖尔", "RM": "图安泽轮", "LST": "莫雷诺", "RST": "姆哈特"
+                },
+                coords: {
+                    "GK": [5, 50], "LB": [22, 10], "LCB": [18, 35], "RCB": [18, 65], "RB": [22, 90],
+                    "LM": [50, 10], "LCM": [45, 38], "RCM": [45, 62], "RM": [50, 90], "LST": [80, 35], "RST": [80, 65]
+                }
             }
         },
         roster: [
-            { no: 4, pos: "CB", nat: "葡萄牙", name: "迪亚斯", rating: 88, height: 187, weight: 82, age: 28, cGP: 385, cG: 22, cA: 5, tGP: 150, tG: 8, tA: 2, value: "ⰵ72M", attributes: { spd: 78, sho: 55, pas: 72, dri: 68, def: 90, phy: 89, men: 92, sta: 86 } },
-            { no: 10, pos: "CAM", nat: "比利时", name: "德雷姆", rating: 87, height: 179, weight: 73, age: 26, cGP: 290, cG: 68, cA: 105, tGP: 120, tG: 28, tA: 45, value: "ⰵ95M", attributes: { spd: 84, sho: 82, pas: 91, dri: 89, def: 52, phy: 72, men: 88, sta: 85 } },
-            { no: 9, pos: "ST", nat: "荷兰", name: "德赫雷特", rating: 87, height: 184, weight: 79, age: 25, cGP: 240, cG: 128, cA: 24, tGP: 140, tG: 72, tA: 12, value: "ⰵ115M", attributes: { spd: 89, sho: 92, pas: 75, dri: 85, def: 40, phy: 84, men: 85, sta: 82 } },
-            { no: 8, pos: "CDM", nat: "匈牙利", name: "苏博斯洛伊", rating: 86, height: 186, weight: 77, age: 25, cGP: 215, cG: 38, cA: 52, tGP: 105, tG: 18, tA: 25, value: "ⰵ78M", attributes: { spd: 80, sho: 84, pas: 88, dri: 82, def: 78, phy: 81, men: 84, sta: 90 } },
-            { no: 3, pos: "LB", nat: "西班牙", name: "库库雷迪亚", rating: 86, height: 173, weight: 68, age: 27, cGP: 310, cG: 12, cA: 58, tGP: 145, tG: 6, tA: 22, value: "ⰵ58M", attributes: { spd: 86, sho: 68, pas: 84, dri: 81, def: 84, phy: 75, men: 82, sta: 94 } },
-            { no: 5, pos: "CB", nat: "英格兰", name: "劳伦斯", rating: 85, height: 188, weight: 83, age: 29, cGP: 412, cG: 18, cA: 4, tGP: 210, tG: 9, tA: 2, value: "ⰵ45M", attributes: { spd: 72, sho: 50, pas: 70, dri: 65, def: 88, phy: 91, men: 95, sta: 82 } },
-            { no: 2, pos: "RB", nat: "巴西", name: "吉马伦萨", rating: 85, height: 182, weight: 75, age: 26, cGP: 255, cG: 15, cA: 48, tGP: 112, tG: 5, tA: 15, value: "ⰵ52M", attributes: { spd: 85, sho: 62, pas: 81, dri: 80, def: 82, phy: 78, men: 80, sta: 89 } },
-            { no: 14, pos: "CDM", nat: "西班牙", name: "阿隆索", rating: 85, height: 183, weight: 78, age: 24, cGP: 185, cG: 18, cA: 38, tGP: 75, tG: 6, tA: 15, value: "ⰵ68M", attributes: { spd: 78, sho: 74, pas: 86, dri: 80, def: 82, phy: 84, men: 85, sta: 92 } },
-            { no: 7, pos: "LM", nat: "葡萄牙", name: "若昂", rating: 85, height: 176, weight: 70, age: 24, cGP: 205, cG: 45, cA: 58, tGP: 110, tG: 22, tA: 32, value: "ⰵ62M", attributes: { spd: 91, sho: 80, pas: 82, dri: 88, def: 45, phy: 74, men: 81, sta: 86 } },
-            { no: 11, pos: "RM", nat: "阿根廷", name: "麦卡雷斯特", rating: 85, height: 177, weight: 72, age: 25, cGP: 210, cG: 35, cA: 48, tGP: 95, tG: 15, tA: 22, value: "ⰵ60M", attributes: { spd: 84, sho: 82, pas: 86, dri: 85, def: 55, phy: 76, men: 84, sta: 88 } },
-            { no: 19, pos: "ST", nat: "西班牙", name: "莫雷诺", rating: 85, height: 181, weight: 74, age: 24, cGP: 165, cG: 78, cA: 18, tGP: 65, tG: 32, tA: 6, value: "ⰵ74M", attributes: { spd: 90, sho: 88, pas: 72, dri: 84, def: 35, phy: 80, men: 80, sta: 82 } },
-            { no: 17, pos: "LM", nat: "法国", name: "普斯雷特", rating: 84, height: 175, weight: 69, age: 23, cGP: 145, cG: 32, cA: 48, tGP: 115, tG: 22, tA: 38, value: "ⰵ55M", attributes: { spd: 88, sho: 78, pas: 80, dri: 85, def: 42, phy: 70, men: 78, sta: 85 } },
-            { no: 27, pos: "RM", nat: "乌克兰", name: "津琴科姆", rating: 83, height: 176, weight: 70, age: 24, cGP: 150, cG: 22, cA: 52, tGP: 65, tG: 8, tA: 22, value: "ⰵ42M", attributes: { spd: 82, sho: 74, pas: 84, dri: 81, def: 65, phy: 72, men: 80, sta: 86 } },
-            { no: 29, pos: "ST", nat: "英格兰", name: "姆哈特", rating: 83, height: 185, weight: 80, age: 22, cGP: 110, cG: 48, cA: 12, tGP: 95, tG: 42, tA: 8, value: "ⰵ52M", attributes: { spd: 85, sho: 86, pas: 68, dri: 78, def: 38, phy: 82, men: 75, sta: 80 } },
-            { no: 1, pos: "GK", nat: "巴西", name: "塔利斯卡", rating: 82, height: 189, weight: 81, age: 25, cGP: 165, cG: 0, cA: 1, tGP: 145, tG: 0, tA: 1, value: "ⰵ28M", attributes: { div: 84, han: 80, kic: 82, ref: 86, spd: 55, pos_s: 82, men: 85, sta: 78 } },
-            { no: 6, pos: "CB", nat: "巴西", name: "马尔基尼", rating: 82, height: 183, weight: 79, age: 24, cGP: 135, cG: 8, cA: 2, tGP: 95, tG: 5, tA: 1, value: "ⰵ24M", attributes: { spd: 76, sho: 45, pas: 65, dri: 62, def: 84, phy: 81, men: 79, sta: 82 } },
-            { no: 15, pos: "CB", nat: "意大利", name: "古雷斯托", rating: 82, height: 186, weight: 82, age: 23, cGP: 105, cG: 6, cA: 1, tGP: 90, tG: 4, tA: 0, value: "ⰵ26M", attributes: { spd: 72, sho: 40, pas: 62, dri: 60, def: 83, phy: 86, men: 76, sta: 80 } },
-            { no: 12, pos: "RB", nat: "英格兰", name: "迈克尔", rating: 82, height: 180, weight: 75, age: 24, cGP: 140, cG: 5, cA: 35, tGP: 60, tG: 2, tA: 18, value: "ⰵ22M", attributes: { spd: 83, sho: 58, pas: 79, dri: 78, def: 78, phy: 72, men: 75, sta: 88 } },
-            { no: 20, pos: "CM", nat: "苏格兰", name: "迈凯伦", rating: 82, height: 178, weight: 73, age: 22, cGP: 95, cG: 12, cA: 38, tGP: 85, tG: 9, tA: 31, value: "ⰵ32M", attributes: { spd: 79, sho: 70, pas: 82, dri: 83, def: 70, phy: 72, men: 76, sta: 85 } },
-            { no: 23, pos: "LB", nat: "德国", name: "京多尔尼", rating: 81, height: 174, weight: 68, age: 21, cGP: 75, cG: 3, cA: 18, tGP: 55, tG: 2, tA: 12, value: "ⰵ25M", attributes: { spd: 84, sho: 60, pas: 76, dri: 78, def: 76, phy: 68, men: 74, sta: 86 } },
-            { no: 25, pos: "LM", nat: "中国", name: "图安泽轮", rating: 81, height: 172, weight: 67, age: 20, cGP: 55, cG: 8, cA: 22, tGP: 35, tG: 4, tA: 15, value: "ⰵ38M", attributes: { spd: 91, sho: 74, pas: 78, dri: 86, def: 42, phy: 65, men: 72, sta: 88 } },
-            { no: 13, pos: "GK", nat: "匈牙利", name: "普斯卡诺", rating: 80, height: 191, weight: 88, age: 22, cGP: 65, cG: 0, cA: 0, tGP: 45, tG: 0, tA: 0, value: "ⰵ14M", attributes: { div: 82, han: 78, kic: 80, ref: 83, spd: 50, pos_s: 79, men: 74, sta: 76 } },
-            { no: 21, pos: "CB", nat: "法国", name: "特罗斯", rating: 80, height: 185, weight: 79, age: 21, cGP: 45, cG: 2, cA: 1, tGP: 25, tG: 1, tA: 0, value: "ⰵ18M", attributes: { spd: 74, sho: 42, pas: 58, dri: 55, def: 81, phy: 83, men: 72, sta: 78 } },
-            { no: 22, pos: "CM", nat: "法国", name: "萨科", rating: 80, height: 177, weight: 74, age: 20, cGP: 40, cG: 4, cA: 15, tGP: 20, tG: 1, tA: 8, value: "ⰵ24M", attributes: { spd: 78, sho: 68, pas: 80, dri: 82, def: 65, phy: 68, men: 74, sta: 84 } },
-            { no: 24, pos: "CDM", nat: "英格兰", name: "盖尔", rating: 80, height: 179, weight: 76, age: 21, cGP: 50, cG: 4, cA: 10, tGP: 30, tG: 2, tA: 5, value: "ⰵ20M", attributes: { spd: 75, sho: 60, pas: 78, dri: 72, def: 79, phy: 78, men: 72, sta: 85 } },
-            { no: 30, pos: "GK", nat: "俄罗斯", name: "尤里", rating: 77, height: 188, weight: 84, age: 19, cGP: 18, cG: 0, cA: 0, tGP: 12, tG: 0, tA: 0, value: "ⰵ12M", attributes: { div: 78, han: 75, kic: 72, ref: 80, spd: 60, pos_s: 74, men: 70, sta: 75 } }
+            { no: 1, pos: "GK", nat: "斯洛文尼亚", name: "奥德拉克", rating: 90, height: 188, weight: 87, age: 33, cGP: 450, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ65M", attributes: { div: 88, han: 91, kic: 78, ref: 92, spd: 50, pos_s: 90, men: 93, sta: 75 } },
+            { no: 33, pos: "CB", nat: "克罗地亚", name: "格瓦迪奥", rating: 89, height: 185, weight: 80, age: 24, cGP: 180, cG: 5, cA: 4, tGP: 0, tG: 0, tA: 0, value: "ⰵ92M", attributes: { spd: 85, sho: 60, pas: 78, dri: 82, def: 89, phy: 91, men: 84, sta: 90 } },
+            { no: 17, pos: "LM", nat: "葡萄牙", name: "拉斐尔", rating: 89, height: 188, weight: 82, age: 26, cGP: 145, cG: 48, cA: 35, tGP: 0, tG: 0, tA: 0, value: "ⰵ110M", attributes: { spd: 93, sho: 84, pas: 80, dri: 92, def: 35, phy: 90, men: 80, sta: 85 } },
+            { no: 2, pos: "RB", nat: "摩洛哥", name: "阿什拉夫", rating: 88, height: 181, weight: 73, age: 27, cGP: 310, cG: 18, cA: 65, tGP: 0, tG: 0, tA: 0, value: "ⰵ85M", attributes: { spd: 95, sho: 72, pas: 84, dri: 88, def: 80, phy: 78, men: 82, sta: 92 } },
+            { no: 4, pos: "CB", nat: "葡萄牙", name: "迪亚斯", rating: 89, height: 187, weight: 82, age: 29, cGP: 535, cG: 30, cA: 7, tGP: 0, tG: 0, tA: 0, value: "ⰵ82M", attributes: { spd: 78, sho: 55, pas: 72, dri: 68, def: 91, phy: 90, men: 93, sta: 86 } },
+            { no: 9, pos: "ST", nat: "荷兰", name: "德赫雷特", rating: 89, height: 184, weight: 79, age: 26, cGP: 380, cG: 200, cA: 36, tGP: 0, tG: 0, tA: 0, value: "ⰵ145M", attributes: { spd: 90, sho: 94, pas: 75, dri: 87, def: 40, phy: 85, men: 86, sta: 82 } },
+            { no: 10, pos: "CAM", nat: "比利时", name: "德雷姆", rating: 88, height: 179, weight: 73, age: 27, cGP: 410, cG: 96, cA: 150, tGP: 0, tG: 0, tA: 0, value: "ⰵ105M", attributes: { spd: 84, sho: 83, pas: 93, dri: 90, def: 52, phy: 72, men: 90, sta: 85 } },
+            { no: 8, pos: "CDM", nat: "匈牙利", name: "苏博斯洛伊", rating: 87, height: 186, weight: 77, age: 26, cGP: 320, cG: 56, cA: 77, tGP: 0, tG: 0, tA: 0, value: "ⰵ88M", attributes: { spd: 81, sho: 85, pas: 89, dri: 83, def: 78, phy: 82, men: 85, sta: 91 } },
+            { no: 3, pos: "LB", nat: "西班牙", name: "库库雷迪亚", rating: 87, height: 173, weight: 68, age: 28, cGP: 455, cG: 18, cA: 80, tGP: 0, tG: 0, tA: 0, value: "ⰵ65M", attributes: { spd: 87, sho: 68, pas: 85, dri: 82, def: 85, phy: 75, men: 83, sta: 95 } },
+            { no: 11, pos: "RM", nat: "阿根廷", name: "麦卡雷斯特", rating: 86, height: 177, weight: 72, age: 26, cGP: 305, cG: 50, cA: 70, tGP: 0, tG: 0, tA: 0, value: "ⰵ72M", attributes: { spd: 84, sho: 83, pas: 88, dri: 86, def: 55, phy: 76, men: 85, sta: 88 } },
+            { no: 7, pos: "LM", nat: "葡萄牙", name: "若昂", rating: 86, height: 176, weight: 70, age: 25, cGP: 315, cG: 67, cA: 90, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 92, sho: 81, pas: 83, dri: 89, def: 45, phy: 74, men: 82, sta: 86 } },
+            { no: 14, pos: "CDM", nat: "西班牙", name: "阿隆索", rating: 86, height: 183, weight: 78, age: 25, cGP: 260, cG: 24, cA: 53, tGP: 0, tG: 0, tA: 0, value: "ⰵ75M", attributes: { spd: 78, sho: 75, pas: 87, dri: 81, def: 83, phy: 85, men: 86, sta: 93 } },
+            { no: 5, pos: "RB", nat: "巴西", name: "吉马伦萨", rating: 86, height: 182, weight: 75, age: 27, cGP: 367, cG: 20, cA: 63, tGP: 0, tG: 0, tA: 0, value: "ⰵ60M", attributes: { spd: 86, sho: 62, pas: 82, dri: 81, def: 83, phy: 79, men: 81, sta: 90 } },
+            { no: 19, pos: "ST", nat: "西班牙", name: "莫雷诺", rating: 86, height: 181, weight: 74, age: 25, cGP: 230, cG: 110, cA: 24, tGP: 0, tG: 0, tA: 0, value: "ⰵ80M", attributes: { spd: 91, sho: 89, pas: 72, dri: 85, def: 35, phy: 81, men: 81, sta: 82 } },
+            { no: 15, pos: "LM", nat: "法国", name: "普斯雷特", rating: 85, height: 175, weight: 69, age: 24, cGP: 260, cG: 54, cA: 86, tGP: 0, tG: 0, tA: 0, value: "ⰵ65M", attributes: { spd: 89, sho: 79, pas: 81, dri: 86, def: 42, phy: 70, men: 79, sta: 85 } },
+            { no: 29, pos: "ST", nat: "英格兰", name: "姆哈特", rating: 84, height: 185, weight: 80, age: 23, cGP: 205, cG: 90, cA: 20, tGP: 0, tG: 0, tA: 0, value: "ⰵ62M", attributes: { spd: 86, sho: 87, pas: 68, dri: 79, def: 38, phy: 83, men: 76, sta: 80 } },
+            { no: 27, pos: "RM", nat: "乌克兰", name: "津琴科姆", rating: 84, height: 176, weight: 70, age: 25, cGP: 215, cG: 30, cA: 74, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 83, sho: 75, pas: 85, dri: 82, def: 65, phy: 73, men: 81, sta: 86 } },
+            { no: 20, pos: "CB", nat: "意大利", name: "古雷斯托", rating: 83, height: 186, weight: 82, age: 24, cGP: 195, cG: 10, cA: 1, tGP: 0, tG: 0, tA: 0, value: "ⰵ30M", attributes: { spd: 73, sho: 40, pas: 62, dri: 60, def: 84, phy: 87, men: 77, sta: 80 } },
+            { no: 6, pos: "CB", nat: "巴西", name: "马尔基尼", rating: 83, height: 183, weight: 79, age: 25, cGP: 230, cG: 13, cA: 3, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { spd: 77, sho: 45, pas: 65, dri: 63, def: 85, phy: 82, men: 80, sta: 82 } },
+            { no: 21, pos: "CM", nat: "苏格兰", name: "迈凯伦", rating: 83, height: 178, weight: 73, age: 23, cGP: 180, cG: 21, cA: 69, tGP: 0, tG: 0, tA: 0, value: "ⰵ38M", attributes: { spd: 80, sho: 71, pas: 83, dri: 84, def: 70, phy: 73, men: 77, sta: 85 } },
+            { no: 12, pos: "RB", nat: "英格兰", name: "迈克尔", rating: 83, height: 180, weight: 75, age: 25, cGP: 200, cG: 7, cA: 53, tGP: 0, tG: 0, tA: 0, value: "ⰵ26M", attributes: { spd: 84, sho: 58, pas: 80, dri: 79, def: 79, phy: 73, men: 76, sta: 88 } },
+            { no: 23, pos: "LB", nat: "德国", name: "京多尔尼", rating: 82, height: 174, weight: 68, age: 22, cGP: 130, cG: 5, cA: 30, tGP: 0, tG: 0, tA: 0, value: "ⰵ28M", attributes: { spd: 85, sho: 60, pas: 77, dri: 79, def: 77, phy: 69, men: 75, sta: 86 } },
+            { no: 25, pos: "LM", nat: "中国", name: "图安泽轮", rating: 83, height: 172, weight: 67, age: 21, cGP: 90, cG: 12, cA: 37, tGP: 0, tG: 0, tA: 0, value: "ⰵ48M", attributes: { spd: 92, sho: 75, pas: 79, dri: 87, def: 42, phy: 66, men: 74, sta: 88 } },
+            { no: 13, pos: "GK", nat: "匈牙利", name: "普斯卡诺", rating: 81, height: 191, weight: 88, age: 23, cGP: 110, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ16M", attributes: { div: 82, han: 78, kic: 80, ref: 83, spd: 50, pos_s: 79, men: 74, sta: 76 } },
+            { no: 24, pos: "CDM", nat: "英格兰", name: "盖尔", rating: 81, height: 179, weight: 76, age: 22, cGP: 80, cG: 6, cA: 15, tGP: 0, tG: 0, tA: 0, value: "ⰵ22M", attributes: { spd: 75, sho: 60, pas: 78, dri: 72, def: 79, phy: 78, men: 72, sta: 85 } },
+            { no: 35, pos: "LB", nat: "西班牙", name: "马尔库斯", rating: 73, height: 177, weight: 69, age: 17, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: "ⰵ15M", attributes: { spd: 88, sho: 55, pas: 72, dri: 80, def: 70, phy: 65, men: 72, sta: 84 } }
         ]
     }
 };
