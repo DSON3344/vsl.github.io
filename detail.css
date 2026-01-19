@@ -296,14 +296,14 @@ h3 {
 
 .pitch {
     position: relative;
-    width: 100%;
+    width: 95%;
     max-width: 460px;
     height: 660px;
     margin: 40px auto;
     background: #2e7d32;
     border: 5px solid #ffffff;
     border-radius: 12px;
-    overflow: hidden;
+    overflow: hidden; /* 隐藏超出边界的圆圈部分 */
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
@@ -314,6 +314,33 @@ h3 {
     background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 40px, transparent 40px, transparent 80px);
     pointer-events: none;
 }
+
+.penalty-arc {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+}
+.penalty-arc.top { top: 60px; } /* 对应顶部禁区线下沿 */
+.penalty-arc.bottom { bottom: 60px; } /* 对应底部禁区线上沿 */
+
+/* --- 四个角球区 (Corner Arcs) --- */
+.corner {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    z-index: 1;
+}
+.corner.top-left { top: -15px; left: -15px; }
+.corner.top-right { top: -15px; right: -15px; }
+.corner.bottom-left { bottom: -15px; left: -15px; }
+.corner.bottom-right { bottom: -15px; right: -15px; }
 
 .halfway-line {
     position: absolute;
@@ -390,8 +417,8 @@ h3 {
 
 .player {
     position: absolute;
-    width: 62px;         /* 稍微加宽一点点，防止内容挤压 */
-    height: 62px;
+    width: 60px;         /* 稍微加宽一点点，防止内容挤压 */
+    height: 60px;
     background: #4a1875;
     border: 2px solid #fff;
     border-radius: 50%;
@@ -409,19 +436,34 @@ h3 {
 
 /* 球员号码：居中、放大、加粗 */
 .player-no {
-    font-size: 20px;     /* 放大字号 */
-    font-weight: 800;    /* 极粗 */
-    line-height: 1.1;
-    margin-bottom: -2px; /* 紧凑排版 */
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 2px;
 }
 
 /* 下方信息条：位置 | 评分 */
 .player-meta {
-    display: flex;
-    align-items: center;
-    gap: 4px;            /* 间距 */
     font-size: 10px;
-    font-weight: 600;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 司职位置标签 (解决您提到的位置没写出来的问题) */
+.player-pos-label {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-size: 9px;
+    margin-bottom: 1px;
+}
+
+/* 球员评分文字 */
+.player-rating-val {
+    font-size: 11px;
 }
 
 .player-meta .divider {
@@ -433,11 +475,34 @@ h3 {
     text-transform: uppercase;
 }
 
+.player.dynamic-pos {
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    background: #4a1875;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    color: #fff;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    
+    /* 💥 核心修复：translate 确保图标正中心对准坐标 💥 */
+    transform: translate(-50%, 50%) !important;
+}
+
 /* 悬停效果保持一致 */
 .player:hover {
-    background: #fff;
+    background: #ffffff;
     color: #4a1875;
+    /* 缩放时也要保持偏移，否则缩放后位置会跑偏 */
+    transform: translate(-50%, 50%) scale(1.15) !important;
+    z-index: 100;
 }
+
 .player:hover .player-rating {
     color: #4a1875 !important; /* 悬停时取消评分染色，确保文字清晰 */
     text-shadow: none;
