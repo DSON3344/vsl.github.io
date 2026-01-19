@@ -110,7 +110,7 @@ const seasonData = {
             { team: "飞鹰", logo: "飞鹰.png", played: 38, win: 9, draw: 5, lose: 24, goals: 40, conceded: 95 },
             { team: "科摩多尊龙", logo: "科摩多尊龙.png", played: 38, win: 8, draw: 4, lose: 26, goals: 35, conceded: 98 },
             { team: "炎狼", logo: "炎狼.png", played: 38, win: 7, draw: 4, lose: 27, goals: 32, conceded: 105 },
-            { team: "罗洁剧院", logo: "罗杰剧院.png", played: 38, win: 6, draw: 2, lose: 30, goals: 25, conceded: 112 },
+            { team: "罗杰剧院", logo: "罗杰剧院.png", played: 38, win: 6, draw: 2, lose: 30, goals: 25, conceded: 112 },
             { team: "沃特梅兹", logo: "沃特梅兹.png", played: 38, win: 3, draw: 3, lose: 32, goals: 18, conceded: 125 }
         ]
     },
@@ -1280,7 +1280,7 @@ const teamsData = {
         { name: "飞鹰", logo: "飞鹰.png", link: "detail.html?team=飞鹰" },
         { name: "科摩多尊龙", logo: "科摩多尊龙.png", link: "detail.html?team=科摩多尊龙" },
         { name: "炎狼", logo: "炎狼.png", link: "detail.html?team=炎狼" },
-        { name: "罗洁剧院", logo: "罗杰剧院.png", link: "detail.html?team=罗洁剧院" },
+        { name: "罗杰剧院", logo: "罗杰剧院.png", link: "detail.html?team=罗杰剧院" },
         { name: "沃特梅兹", logo: "沃特梅兹.png", link: "detail.html?team=沃特梅兹" }
     ],
 
@@ -1630,172 +1630,151 @@ const teamsData = {
     ]
 };
 
-/* ================== 工具函数 ================== */
+/* ================== 1. 状态管理 ================== */
+let playerSortConfig = {
+    key: 'rating', 
+    direction: 'desc'
+};
+
+/* ================== 2. 数据处理工具 ================== */
 function formatSeasonId(s) {
-    if (s === "history") return "history";
-    return parseInt(s, 10);
+    return s === "history" ? "history" : parseInt(s, 10);
 }
 
-/**
- * 核心逻辑：动态累加历史总榜
- * 该函数会克隆一份历史基数，然后自动加上所有数字赛季的数据
- */
-function getCalculatedHistoryData() {
-    // 1. 深度克隆历史基数数据，防止多次点击导致重复累加
-    const aggregated = JSON.parse(JSON.stringify(seasonData.history));
+function getAllPlayers() {
+    return Object.entries(PLAYER_DATABASE).flatMap(([teamName, players]) => {
+        return players.map(player => ({
+            ...player,
+            team: teamName 
+        }));
+    });
+}
 
-    // 2. 遍历 seasonData 中所有赛季
+function getCalculatedHistoryData() {
+    if (!seasonData.history) return { title: "历史总榜", standings: [] };
+    const aggregated = JSON.parse(JSON.stringify(seasonData.history));
     Object.keys(seasonData).forEach(key => {
-        // 如果键名是数字（代表具体赛季），则进行累加
         if (!isNaN(key)) {
             const currentSeason = seasonData[key];
-            
             currentSeason.standings.forEach(sTeam => {
-                // 在总榜中查找对应球队
                 let hTeam = aggregated.standings.find(t => t.team === sTeam.team);
-                
                 if (hTeam) {
-                    // 核心累加：场次、胜、平、负、进球、失球
                     hTeam.played += sTeam.played;
-                    hTeam.win += sTeam.win;
-                    hTeam.draw += sTeam.draw;
-                    hTeam.lose += sTeam.lose;
-                    hTeam.goals += sTeam.goals;
-                    hTeam.conceded += sTeam.conceded;
+                    hTeam.win += sTeam.win; hTeam.draw += sTeam.draw; hTeam.lose += sTeam.lose;
+                    hTeam.goals += sTeam.goals; hTeam.conceded += sTeam.conceded;
                 } else {
-                    // 如果这支球队在历史基数里没有（比如新升级的球队），则将其作为新词条加入
                     aggregated.standings.push({ ...sTeam });
                 }
             });
         }
     });
-    
     return aggregated;
 }
 
-/* ================== 积分榜渲染 ================== */
+/* ================== 3. 核心渲染函数 ================== */
+
 function renderStandings(seasonId) {
     const sKey = formatSeasonId(seasonId);
-    let data;
-
-    // --- 自动录入判断 ---
-    if (sKey === "history") {
-        data = getCalculatedHistoryData(); // 调用自动计算逻辑
-    } else {
-        data = seasonData[sKey];
-    }
-
-    if (!data) {
-        console.error("找不到积分榜数据:", sKey);
-        return;
-    }
-
+    let data = (sKey === "history") ? getCalculatedHistoryData() : seasonData[sKey];
+    if (!data) return;
     const tbody = document.getElementById("standingsBody");
-    const titleEl = document.getElementById("standingsTitle");
-    if (titleEl) titleEl.textContent = data.title;
     if (tbody) tbody.innerHTML = "";
-
-    // 计算积分与净胜球
     const teams = data.standings.map(t => ({
         ...t,
         points: t.win * 3 + t.draw,
         diff: t.goals - t.conceded
-    }));
-
-    // 排序逻辑：积分 > 净胜球 > 进球数
-    teams.sort((a, b) => b.points - a.points || b.diff - a.diff || b.goals - a.goals);
-
+    })).sort((a, b) => b.points - a.points || b.diff - a.diff || b.goals - a.goals);
+    
     teams.forEach((t, i) => {
         const tr = document.createElement("tr");
         const rank = i + 1;
-
-        // 历史总榜通常不需要冠军/降级区着色，仅普通赛季需要
         if (sKey !== "history") {
             if (rank <= 4) tr.classList.add("rank-champion");
             else if (rank <= 6) tr.classList.add("rank-cup");
             else if (rank === 7) tr.classList.add("rank-continental");
             else if (rank >= 18) tr.classList.add("rank-relegation");
         }
-
-        tr.innerHTML = `
-            <td>${rank}</td>
-            <td><img src="Image/Team Logo/${t.logo}" class="small-team-logo" onerror="this.src='Image/Team Logo/default.png'"> ${t.team}</td>
-            <td>${t.played}</td>
-            <td>${t.win}</td>
-            <td>${t.draw}</td>
-            <td>${t.lose}</td>
-            <td>${t.goals}/${t.conceded}</td>
-            <td>${t.diff > 0 ? "+" : ""}${t.diff}</td>
-            <td><strong>${t.points}</strong></td>
-        `;
+        tr.innerHTML = `<td>${rank}</td><td><img src="Image/Team Logo/${t.logo}" class="small-team-logo" onerror="this.src='Image/Team Logo/default.png'"> ${t.team}</td><td>${t.played}</td><td>${t.win}</td><td>${t.draw}</td><td>${t.lose}</td><td>${t.goals}</td><td>${t.conceded}</td><td>${t.diff > 0 ? "+" : ""}${t.diff}</td><td><strong>${t.points}</strong></td>`;
         tbody.appendChild(tr);
     });
 }
 
-/* ================== 个人数据统计 ================== */
+window.sortPlayersBy = function(key) {
+    if (playerSortConfig.key === key) {
+        playerSortConfig.direction = playerSortConfig.direction === 'desc' ? 'asc' : 'desc';
+    } else {
+        playerSortConfig.key = key;
+        playerSortConfig.direction = 'desc';
+    }
+    renderPlayerDatabase(); 
+};
+
+function renderPlayerDatabase() {
+    const gkBody = document.getElementById("gkBody");
+    const outfieldBody = document.getElementById("outfieldBody");
+    const allPlayers = getAllPlayers();
+    if (!gkBody || !outfieldBody || !allPlayers) return;
+
+    gkBody.innerHTML = ""; 
+    outfieldBody.innerHTML = "";
+
+    const attrKeys = ['spd', 'sho', 'pas', 'dri', 'def', 'phy', 'div', 'han', 'kic', 'ref', 'pos_s'];
+    const sorted = [...allPlayers].sort((a, b) => {
+        const key = playerSortConfig.key;
+        const getVal = (obj) => {
+            let v = attrKeys.includes(key) ? (obj.attributes ? obj.attributes[key] : 0) : obj[key];
+            if (v === undefined || v === null) return 0;
+            if (typeof v === 'string' && /\d/.test(v)) {
+                return parseFloat(v.replace(/[^\d.]/g, '')) || v;
+            }
+            return v;
+        };
+        let valA = getVal(a), valB = getVal(b);
+        if (typeof valA === 'string' || typeof valB === 'string') {
+            return playerSortConfig.direction === 'asc' ? String(valA).localeCompare(String(valB), 'zh-Hans') : String(valB).localeCompare(String(valA), 'zh-Hans');
+        }
+        return playerSortConfig.direction === 'asc' ? valA - valB : valB - valA;
+    });
+
+    sorted.forEach(p => {
+        const tr = document.createElement("tr");
+        const attr = p.attributes || {};
+        const content = p.pos === "GK" ? `
+            <td><span class="pos-badge pos-GK">GK</span></td><td><strong>${p.name || '未知'}</strong></td><td>${p.nat || '-'}</td><td>${p.team || '自由球员'}</td><td><span class="rating-box">${p.rating || 0}</span></td><td class="value-text">${p.value || '-'}</td><td>${p.height || '-'}</td><td>${p.weight || '-'}</td><td>${p.age || '-'}</td><td>${p.cGP || 0}</td><td>${p.cG || 0}</td><td>${p.cA || 0}</td><td>${attr.div || 0}</td><td>${attr.han || 0}</td><td>${attr.kic || 0}</td><td>${attr.ref || 0}</td><td>${attr.spd || 0}</td><td>${attr.pos_s || 0}</td>
+        ` : `
+            <td><span class="pos-badge pos-${p.pos}">${p.pos || '??'}</span></td><td><strong>${p.name || '未知'}</strong></td><td>${p.nat || '-'}</td><td>${p.team || '自由球员'}</td><td><span class="rating-box">${p.rating || 0}</span></td><td class="value-text">${p.value || '-'}</td><td>${p.height || '-'}</td><td>${p.weight || '-'}</td><td>${p.age || '-'}</td><td>${p.cGP || 0}</td><td>${p.cG || 0}</td><td>${p.cA || 0}</td><td>${attr.spd || 0}</td><td>${attr.sho || 0}</td><td>${attr.pas || 0}</td><td>${attr.dri || 0}</td><td>${attr.def || 0}</td><td>${attr.phy || 0}</td>
+        `;
+        tr.innerHTML = content;
+        p.pos === "GK" ? gkBody.appendChild(tr) : outfieldBody.appendChild(tr);
+    });
+}
+
 function renderStats(seasonId) {
     const sKey = formatSeasonId(seasonId);
     const data = statsData[sKey];
-
-    const gBody = document.getElementById("goalsBody");
-    const aBody = document.getElementById("assistsBody");
-    const yBody = document.querySelector("#yellow-cards tbody");
-    const rBody = document.querySelector("#red-cards tbody");
-
-    if (gBody) gBody.innerHTML = "";
-    if (aBody) aBody.innerHTML = "";
-    if (yBody) yBody.innerHTML = "";
-    if (rBody) rBody.innerHTML = "";
-
+    const bodies = { goals: document.getElementById("goalsBody"), assists: document.getElementById("assistsBody"), yellow: document.querySelector("#yellow-cards tbody"), red: document.querySelector("#red-cards tbody") };
+    Object.values(bodies).forEach(b => { if(b) b.innerHTML = ""; });
     if (!data) return;
-
-    const renderPlayerRow = (p, i, type) => {
-        let teamDisplay = "";
-        if (sKey === "history") {
-            teamDisplay = p.team;
-        } else {
-            teamDisplay = `<img src="Image/Team Logo/${p.logo}" class="small-team-logo"> ${p.team}`;
-        }
-        return `<tr><td>${i + 1}</td><td>${p.player}</td><td>${teamDisplay}</td><td>${p.played}</td><td>${p[type]}</td></tr>`;
+    const renderRow = (p, i, type) => {
+        let teamInfo = sKey === "history" ? p.team : `<img src="Image/Team Logo/${p.logo}" class="small-team-logo"> ${p.team}`;
+        return `<tr><td>${i + 1}</td><td><strong>${p.player}</strong></td><td>${teamInfo}</td><td>${p.played || p.cGP || '-'}</td><td style="font-weight:bold; color:#00ffcc;">${p[type] || p.value || 0}</td></tr>`;
     };
-
-    data.goals?.forEach((p, i) => { if (gBody) gBody.innerHTML += renderPlayerRow(p, i, 'goals'); });
-    data.assists?.forEach((p, i) => { if (aBody) aBody.innerHTML += renderPlayerRow(p, i, 'assists'); });
-
-    data.cards?.filter(p => p.yellow > 0).sort((a, b) => b.yellow - a.yellow).forEach((p, i) => {
-        let teamDisplay = sKey === "history" ? p.team : `<img src="Image/Team Logo/${p.logo}" class="small-team-logo"> ${p.team}`;
-        if (yBody) yBody.innerHTML += `<tr><td>${i + 1}</td><td>${p.player}</td><td>${teamDisplay}</td><td>${p.yellow}</td></tr>`;
-    });
-
-    data.cards?.filter(p => p.red > 0).sort((a, b) => b.red - a.red).forEach((p, i) => {
-        let teamDisplay = sKey === "history" ? p.team : `<img src="Image/Team Logo/${p.logo}" class="small-team-logo"> ${p.team}`;
-        if (rBody) rBody.innerHTML += `<tr><td>${i + 1}</td><td>${p.player}</td><td>${teamDisplay}</td><td>${p.red}</td></tr>`;
-    });
+    if (data.goals) data.goals.forEach((p, i) => bodies.goals.innerHTML += renderRow(p, i, 'goals'));
+    if (data.assists) data.assists.forEach((p, i) => bodies.assists.innerHTML += renderRow(p, i, 'assists'));
+    if (data.cards) {
+        data.cards.filter(p => p.yellow > 0).sort((a,b) => b.yellow - a.yellow).forEach((p, i) => bodies.yellow.innerHTML += renderRow(p, i, 'yellow'));
+        data.cards.filter(p => p.red > 0).sort((a,b) => b.red - a.red).forEach((p, i) => bodies.red.innerHTML += renderRow(p, i, 'red'));
+    }
 }
 
-/* ================== 球队网格 ================== */
 function renderTeams(seasonId) {
     const sKey = formatSeasonId(seasonId);
     const grid = document.querySelector(".teams-grid");
-    const title = document.getElementById("teamsTitle");
-
     if (!grid || !teamsData[sKey]) return;
-
-    title.textContent = sKey === "history" ? "威超联赛常驻球队" : `${sKey} 赛季参赛球队`;
-    grid.innerHTML = "";
-
-    teamsData[sKey].forEach(t => {
-        grid.innerHTML += `
-        <div class="team-card">
-            <a href="${t.link}">
-                <img src="Image/Team Logo/${t.logo}" onerror="this.src='Image/Team Logo/default.png'">
-                <div class="overlay">${t.name}</div>
-            </a>
-        </div>`;
-    });
+    grid.innerHTML = teamsData[sKey].map(t => `<div class="team-card"><a href="${t.link}"><img src="Image/Team Logo/${t.logo}" onerror="this.src='Image/Team Logo/default.png'"><div class="overlay">${t.name}</div></a></div>`).join('');
 }
 
-/* ================== Tab 切换功能 ================== */
+/* ================== 4. 初始化 ================== */
 window.showTab = function (tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1803,60 +1782,41 @@ window.showTab = function (tabId) {
     if (event) event.currentTarget.classList.add('active');
 }
 
-/* ================== 事件监听初始化 ================== */
 document.addEventListener("DOMContentLoaded", () => {
-    const seasonSelector = document.getElementById("seasonSelector");
-    const btnHistory = document.getElementById("btn-history");
-    const btnSeasons = document.getElementById("btn-seasons");
+    const btnHistory = document.getElementById("btn-history"), btnSeasons = document.getElementById("btn-seasons"), btnPlayers = document.getElementById("btn-players");
+    const seasonSelector = document.getElementById("seasonSelector"), standingsContainer = document.getElementById("standingsContainer"), playersContainer = document.getElementById("playersContainer");
+    
+    // 获取需要控制显示的区块
+    const statsSection = document.getElementById("stats");
+    const teamsSection = document.getElementById("teams");
 
-    btnHistory.addEventListener("click", () => {
-        btnSeasons.classList.remove("active");
-        btnHistory.classList.add("active");
-        seasonSelector.style.display = "none";
-        renderStandings("history");
-        renderStats("history");
-        renderTeams("history");
-    });
+    function updateView(view) {
+        // 控制上方主容器
+        seasonSelector.style.display = (view === "seasons") ? "flex" : "none";
+        standingsContainer.style.display = (view === "players") ? "none" : "block";
+        playersContainer.style.display = (view === "players") ? "block" : "none";
 
-    btnSeasons.addEventListener("click", () => {
-        btnHistory.classList.remove("active");
-        btnSeasons.classList.add("active");
-        seasonSelector.style.display = "flex";
-        const latest = document.querySelector(".season-item");
-        if (latest) latest.click();
-    });
+        // --- 核心修改：控制统计榜和球队网格的显示 ---
+        if (statsSection) statsSection.style.display = (view === "players") ? "none" : "block";
+        if (teamsSection) teamsSection.style.display = (view === "players") ? "none" : "block";
 
-    document.querySelectorAll(".season-item").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".season-item").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            const s = btn.dataset.season;
-            renderStandings(s);
-            renderStats(s);
-            renderTeams(s);
-        });
-    });
-
-    // 默认初始化显示最新的 18 赛季
-    renderStandings(18);
-    renderStats(18);
-    renderTeams(18);
-});
-
-/* ================== 移动端菜单 ================== */
-document.addEventListener('DOMContentLoaded', function () {
-    const menuToggle = document.getElementById('mobile-menu');
-    const navLinks = document.getElementById('nav-list');
-
-    if (menuToggle) {
-        menuToggle.addEventListener('click', function () {
-            navLinks.classList.toggle('active');
-            const icon = menuToggle.querySelector('i');
-            if (navLinks.classList.contains('active')) {
-                icon.classList.replace('fa-bars', 'fa-times');
-            } else {
-                icon.classList.replace('fa-times', 'fa-bars');
-            }
-        });
+        [btnSeasons, btnHistory, btnPlayers].forEach(btn => btn.classList.remove("active"));
+        if (view === "seasons") btnSeasons.classList.add("active");
+        else if (view === "history") btnHistory.classList.add("active");
+        else if (view === "players") btnPlayers.classList.add("active");
     }
+
+    btnHistory.addEventListener("click", () => { updateView("history"); renderAll("history"); });
+    btnSeasons.addEventListener("click", () => { updateView("seasons"); renderAll(document.querySelector(".season-item.active")?.getAttribute("data-season") || "18"); });
+    btnPlayers.addEventListener("click", () => { updateView("players"); document.getElementById("standingsTitle").textContent = "全联盟球员总榜 (27支球队)"; renderPlayerDatabase(); });
+
+    document.querySelectorAll('.season-item').forEach(item => {
+        item.addEventListener('click', function () {
+            document.querySelectorAll('.season-item').forEach(i => i.classList.remove('active'));
+            this.classList.add('active'); renderAll(this.getAttribute('data-season'));
+        });
+    });
+
+    function renderAll(s) { renderStandings(s); renderStats(s); renderTeams(s); }
+    renderAll("18");
 });
