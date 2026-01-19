@@ -1870,20 +1870,37 @@ window.TEAMS_DATA = {
     }
 };
 
-// --- 2. 数据库补全引擎 (将简易名单转化为全功能对象) ---
+/* ===================================================
+   VES League 球队详情页核心引擎 - 2026 终极集成版
+   =================================================== */
+
+// --- 1. 状态管理 ---
 const leagueDatabase = {};
+let radarChartInstance = null;
+let currentMode = "LEAGUE"; 
+let sortOrder = {};
+let currentTeam = null;
+
+// --- 2. 数据库补全引擎 ---
 function initializeDatabase() {
+    if (!window.TEAMS_DATA) {
+        console.error("未找到数据源：请确保 TEAMS_DATA 已在 detail.js 之前定义或加载。");
+        return false;
+    }
+
     Object.keys(window.TEAMS_DATA).forEach(id => {
         const raw = window.TEAMS_DATA[id];
+        const sourceRoster = raw.roster || raw.players || [];
+        
         leagueDatabase[id] = {
             name: id,
-            logo: `Image/Team Logo/${id}.png`,
+            logo: raw.logo || `Image/Team Logo/${id}.png`,
             style: raw.style || "战术均衡",
             stadium: raw.stadium || "VES 官方球场",
             coach: raw.coach || { name: "待定", gp: 0, w: 0, d: 0, l: 0, rate: "0%" },
             status: raw.status || { best: "未知", worst: "未知", injury: "0", tactic: "平衡" },
             honors: raw.honors || [],
-            players: raw.roster.map(p => ({
+            players: sourceRoster.map(p => ({
                 ...p,
                 nat: p.nat || "未知",
                 height: p.height || 180,
@@ -1894,50 +1911,115 @@ function initializeDatabase() {
                 value: p.value || "ⰵ1.0M",
                 attributes: p.attributes || {}
             })),
-            coords: raw.coords
+            coords: raw.coords || {}
         };
     });
+    return true;
 }
 
-// 2. 页面载入逻辑
-const urlParams = new URLSearchParams(window.location.search);
-const teamKey = urlParams.get('team') || "阿尔法骑士";
-initializeDatabase();
-const currentTeam = leagueDatabase[teamKey] || leagueDatabase["阿尔法骑士"];
-
-let radarChartInstance = null;
-let currentMode = "LEAGUE";
-let sortOrder = {};
-
+// --- 3. 页面初始化 ---
 document.addEventListener("DOMContentLoaded", () => {
-    if (!currentTeam) return;
-    document.getElementById("dynamic-team-name").innerText = currentTeam.name;
-    document.getElementById("dynamic-logo").src = currentTeam.logo;
-    document.getElementById("dynamic-style").innerText = `风格：${currentTeam.style}`;
-    document.getElementById("dynamic-stadium").innerText = `主场：${currentTeam.stadium}`;
-    renderAll();
+    if (!initializeDatabase()) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const teamKey = urlParams.get('team') || "阿尔法骑士";
+    currentTeam = leagueDatabase[teamKey] || Object.values(leagueDatabase)[0];
+
+    if (currentTeam) {
+        // 渲染基础文字
+        document.getElementById("dynamic-team-name").innerText = currentTeam.name;
+        document.getElementById("dynamic-logo").src = currentTeam.logo;
+        document.getElementById("dynamic-style").innerText = `风格：${currentTeam.style}`;
+        document.getElementById("dynamic-stadium").innerText = `主场：${currentTeam.stadium}`;
+        renderAll();
+    }
 });
 
-// 3. 渲染核心
+// --- 4. 渲染核心控制 ---
 function renderAll() {
-    const config = currentTeam.coords[currentMode];
-    const xiNames = Object.values(config.players);
+    if (!currentTeam) return;
+
+    // 获取当前阵型配置
+    const config = currentTeam.coords[currentMode] || Object.values(currentTeam.coords)[0];
+    if (!config) return;
+
+    const xiNames = Object.values(config.players || {});
     const xi = currentTeam.players.filter(p => xiNames.includes(p.name));
     const subs = currentTeam.players.filter(p => !xiNames.includes(p.name));
 
-    document.getElementById("currentLineupText").textContent = `阵型：${config.title}`;
+    // 1. 阵型文本
+    document.getElementById("currentLineupText").textContent = `阵容：${config.title}`;
 
+    // 2. 依次渲染所有模块
     renderTable(xi, "#mainPlayerTable");
     renderTable(subs, "#subsTable");
-    syncPitch(config);
-    renderStrength(xi);
-    renderStatus(currentTeam.status);
-    renderHonors(currentTeam.honors);
-    renderCoach(currentTeam.coach);
-    renderBottomStats();
+    syncPitch(config); 
+    renderStrength(xi);     
+    renderStatus(currentTeam.status); 
+    renderHonors(currentTeam.honors); 
+    renderCoach(currentTeam.coach);   
+    renderBottomStats();              
 }
 
-// 4. 表格渲染 (确保 openPlayerModal 挂载到 window)
+// --- 5. 渲染子函数 ---
+
+function renderHonors(honors) {
+    const el = document.getElementById("teamHonors");
+    if (!el) return;
+    el.innerHTML = honors.length ? honors.map(h => `
+        <div class="honor-card ${h.level}">
+            <div class="honor-icon-wrapper">
+                <i class="${h.icon}"></i>
+                <span class="honor-count">${h.count}</span>
+            </div>
+            <div class="honor-info">
+                <div style="font-weight:bold; color:#fff;">${h.name}</div>
+                <div style="font-size:10px; opacity:0.6;">${h.seasons}</div>
+            </div>
+        </div>`).join('') : '<p style="color:#64748b; padding-left:15px;">暂无荣誉记录</p>';
+}
+
+function renderStrength(xi) {
+    const el = document.getElementById("strengthStats");
+    if (!el) return;
+    const avgXi = (xi.reduce((m, n) => m + n.rating, 0) / (xi.length || 1)).toFixed(1);
+    const avgAll = (currentTeam.players.reduce((m, n) => m + n.rating, 0) / currentTeam.players.length).toFixed(1);
+    el.innerHTML = `
+        <div class="stat-card"><span>首发评分</span><strong>${avgXi}</strong></div>
+        <div class="stat-card"><span>全队评分</span><strong>${avgAll}</strong></div>
+    `;
+}
+
+function renderStatus(status) {
+    const el = document.getElementById("teamStatusGrid");
+    if (!el) return;
+    const labels = { best: "最佳环境", worst: "最差环境", injury: "伤情禁赛", tactic: "战术倾向" };
+    el.innerHTML = Object.entries(status).map(([k, v]) => `
+        <div class="stat-card"><span>${labels[k] || k}</span><strong>${v}</strong></div>
+    `).join('');
+}
+
+function renderCoach(c) {
+    const el = document.getElementById("coachInfoBody");
+    if (!el) return;
+    el.innerHTML = `
+        <tr>
+            <td style="font-weight:bold; color:#fff;">${c.name}</td>
+            <td>${c.gp}</td><td>${c.w}</td><td>${c.d}</td><td>${c.l}</td>
+            <td style="color:#00f5ff; font-weight:bold;">${c.rate}</td>
+        </tr>`;
+}
+
+function renderBottomStats() {
+    const el = document.getElementById("teamStats");
+    if (!el) return;
+    const totalV = currentTeam.players.reduce((s, p) => s + (parseFloat(p.value.replace(/[^\d.]/g, '')) || 0), 0);
+    el.innerHTML = `
+        <div class="stat-card"><span>身价总值</span><strong>ⰵ${totalV.toFixed(1)}M</strong></div>
+        <div class="stat-card"><span>注册人数</span><strong>${currentTeam.players.length} 名</strong></div>
+    `;
+}
+
 function renderTable(players, selector) {
     const tbody = document.querySelector(`${selector} tbody`);
     if (!tbody) return;
@@ -1948,174 +2030,167 @@ function renderTable(players, selector) {
             <td>${p.nat}</td>
             <td style="text-align:left; padding-left:15px; font-weight:bold;">${p.name}</td>
             <td><strong class="${getRatingClass(p.rating)}">${p.rating}</strong></td>
-            <td>${p.height}cm</td>
-            <td>${p.weight}kg</td>
-            <td>${p.age}</td>
+            <td>${p.height}cm</td><td>${p.weight}kg</td><td>${p.age}</td>
             <td>${p.cGP}</td><td>${p.cG}</td><td>${p.cA}</td>
             <td>${p.tGP}</td><td>${p.tG}</td><td>${p.tA}</td>
-            <td>${p.value}</td>
+            <td class="value-text">${p.value}</td>
         </tr>`).join('');
 }
 
-// 5. 交互功能：筛选位置 (修复：支持 LCB/RDM 等复杂简写)
-window.applyFilter = function () {
-    const val = document.querySelector(".positionFilter").value;
+// --- 6. 阵型逻辑 (修复偏移问题) ---
+function syncPitch(config) {
+    const pitch = document.getElementById('pitchContainer');
+    if (!pitch) return;
 
-    // 增强的位置识别逻辑
-    const getGroup = (pos) => {
-        if (pos.includes("GK")) return "GK";
-        if (pos.includes("CB") || pos.includes("LB") || pos.includes("RB") || pos.includes("WB")) return "DF";
-        if (pos.includes("CM") || pos.includes("DM") || pos.includes("AM") || pos.includes("LM") || pos.includes("RM")) return "MF";
-        if (pos.includes("ST") || pos.includes("CF") || pos.includes("LW") || pos.includes("RW")) return "FW";
-        return "OTHER";
-    };
+    // 清除旧标签
+    document.querySelectorAll('.player.dynamic-pos').forEach(el => el.remove());
 
-    document.querySelectorAll(".player-table tbody tr").forEach(r => {
-        const rawPos = r.getAttribute("data-pos");
-        const group = getGroup(rawPos);
-        r.style.display = (val === "all" || group === val) ? "" : "none";
-    });
-};
+    // 遍历阵型配置
+    for (const [tag, name] of Object.entries(config.players)) {
+        const p = currentTeam.players.find(x => x.name === name);
+        if (!p) continue;
+        
+        const coords = config.coords[tag];
+        if (!coords) continue;
 
-// 6. 交互功能：排序 (修复：确保数值提取逻辑鲁棒)
-window.sortByColumn = function (tableId, col) {
-    const tbody = document.querySelector(`#${tableId} tbody`);
-    const rows = Array.from(tbody.querySelectorAll("tr"));
-    const key = `${tableId}-${col}`;
-    sortOrder[key] = !sortOrder[key];
+        const el = document.createElement('div');
+        el.className = 'player dynamic-pos';
+        
+        // 关键：JS 只传百分比位置，居中由 CSS transform 负责
+        el.style.bottom = coords[0] + '%';
+        el.style.left = coords[1] + '%';
+        
+        el.innerHTML = `
+            <div class="player-no">${p.no}</div>
+            <div class="player-meta">
+                <div class="player-pos-label">${tag}</div> <div class="${getRatingClass(p.rating)}">${p.rating}</div>
+            </div>
+        `;
+        
+        el.onclick = (e) => { 
+            e.stopPropagation(); 
+            highlightRow(p.name); 
+        };
+        pitch.appendChild(el);
+    }
+}
 
-    rows.sort((a, b) => {
-        let tA = a.cells[col].innerText.trim();
-        let tB = b.cells[col].innerText.trim();
-
-        // 提取纯数字对比
-        let vA = parseFloat(tA.replace(/[^\d.-]/g, ''));
-        let vB = parseFloat(tB.replace(/[^\d.-]/g, ''));
-
-        if (isNaN(vA) || isNaN(vB)) {
-            return sortOrder[key] ? tA.localeCompare(tB, 'zh-CN') : tB.localeCompare(tA, 'zh-CN');
-        }
-        return sortOrder[key] ? vA - vB : vB - vA;
-    });
-    rows.forEach(r => tbody.appendChild(r));
-};
-
-// 7. 交互功能：弹窗展示 (修复：确保全局访问及 Chart 检查)
+// --- 7. 交互 & 弹窗逻辑 ---
 window.openPlayerModal = function (row) {
     const name = row.getAttribute("data-name");
     const p = currentTeam.players.find(x => x.name === name);
     if (!p) return;
 
-    // 1. 定义属性映射
-    const labelMap = p.pos.includes("GK") ?
+    const isGK = p.pos.includes("GK");
+    const labelMap = isGK ?
         { div: "下潜", han: "手持", kic: "脚力", ref: "反应", spd: "速度", pos_s: "站位", men: "心理", sta: "体能" } :
         { spd: "速度", sho: "射门", pas: "传球", dri: "盘带", def: "拦截", phy: "身体", men: "心理", sta: "体能" };
 
-    // 2. 生成右侧能力条 HTML (稍微紧凑一点以适配高度)
     const attrHtml = Object.entries(p.attributes).map(([key, val]) => {
         const rClass = getRatingClass(val);
-        const bgClass = rClass.replace('rating', 'bg-rating');
         return `
             <div style="margin-bottom: 10px;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2px;">
-                    <span style="color:#94a3b8; font-size:11px; font-weight:bold;">${labelMap[key] || key}</span>
-                    <strong class="${rClass}" style="font-size:13px;">${val}</strong>
+                <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                    <span style="color:#94a3b8;">${labelMap[key] || key}</span>
+                    <strong class="${rClass}">${val}</strong>
                 </div>
-                <div class="attr-bar-container" style="background:rgba(255,255,255,0.05); height:5px; border-radius:3px; overflow:hidden;">
-                    <div class="attr-bar-fill ${bgClass}" style="width:${val}%; height:100%; transition: width 0.8s ease;"></div>
+                <div class="attr-bar-container">
+                    <div class="attr-bar-fill ${rClass.replace('rating', 'bg-rating')}" style="width:${val}%;"></div>
                 </div>
             </div>`;
     }).join('');
 
-    // 3. 构建布局
     document.getElementById("modalBody").innerHTML = `
-        <div style="text-align:center; margin-bottom:20px; border-bottom:1px solid rgba(0,245,255,0.15); padding-bottom:15px;">
-            <h2 class="${getRatingClass(p.rating)}" style="margin:0; font-size:30px; letter-spacing:1px;">[${p.no}] ${p.name}</h2>
-            <div style="margin-top:8px; color:#94a3b8; font-size:13px; display:flex; justify-content:center; gap:12px;">
-                <span>${p.nat}</span> | <span>${p.pos}</span> | <span>${p.height}cm / ${p.weight}kg</span> | <span>${p.age}岁</span>
-                <span style="color:#00f5ff; font-weight:bold; margin-left:10px;">${p.value}</span>
-            </div>
+        <div style="text-align:center; padding-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:15px;">
+            <h2 class="${getRatingClass(p.rating)}" style="margin:0; font-size:24px;">[${p.no}] ${p.name}</h2>
+            <p style="color:#94a3b8; font-size:12px; margin:5px 0;">${p.nat} | ${p.pos} | ${p.height}cm / ${p.weight}kg | ${p.age}岁</p>
+            <p style="color:#00f5ff; font-weight:bold; margin:0;">估值：${p.value}</p>
         </div>
-
-        <div style="display: grid; grid-template-columns: 2fr 1.2fr; gap: 20px; align-items: stretch;">
-            
-            <div style="display: flex; flex-direction: column; justify-content: space-between;">
-                <div style="background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                    <h4 style="color:#00f5ff; margin:0 0 10px 0; font-size:14px;"><i class="fas fa-chart-bar"></i> 数据统计</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div style="background:rgba(0,0,0,0.2); padding:8px; border-radius:6px; font-size:12px;">
-                            <div style="color:#94a3b8; margin-bottom:2px;">生涯总计</div>
-                            <div>出场 ${p.cGP} / 进球 ${p.cG} / 助攻 ${p.cA}</div>
-                        </div>
-                        <div style="background:rgba(0,245,255,0.05); padding:8px; border-radius:6px; font-size:12px;">
-                            <div style="color:#00f5ff; margin-bottom:2px;">赛季表现</div>
-                            <div>出场 ${p.tGP} / 进球 ${p.tG} / 助攻 ${p.tA}</div>
-                        </div>
-                    </div>
+        <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:20px;">
+            <div>
+                <div style="background:rgba(255,255,255,0.02); padding:12px; border-radius:10px; font-size:12px;">
+                    <h4 style="color:#00f5ff; margin:0 0 5px 0;">生涯概览</h4>
+                    出场 ${p.cGP} | 进球 ${p.cG} | 助攻 ${p.cA}
                 </div>
-
-                <div style="height: 200px; position: relative; margin-top: 10px; display: flex; justify-content: center; align-items: center;">
-                    <canvas id="playerRadarCanvas"></canvas>
-                </div>
+                <div style="height:180px; margin-top:15px;"><canvas id="playerRadarCanvas"></canvas></div>
             </div>
-
-            <div style="background: rgba(255,255,255,0.03); padding: 18px; border-radius: 12px; border: 1px solid rgba(0,245,255,0.1); display: flex; flex-direction: column; justify-content: center;">
-                <h4 style="color:#94a3b8; margin:0 0 15px 0; font-size:12px; text-align:center; letter-spacing:1px;">球员能力值</h4>
-                ${attrHtml}
-            </div>
+            <div>${attrHtml}</div>
         </div>
     `;
 
-    // 4. 初始化
     document.getElementById("playerModal").style.display = "flex";
-    if (typeof Chart !== 'undefined') {
-        setTimeout(() => initRadar(p, labelMap), 50);
-    }
+    if (window.Chart) setTimeout(() => initRadar(p, labelMap), 50);
 };
 
-// 雷达图初始化
 function initRadar(p, labels) {
-    const canvas = document.getElementById('playerRadarCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = document.getElementById('playerRadarCanvas').getContext('2d');
     if (radarChartInstance) radarChartInstance.destroy();
     radarChartInstance = new Chart(ctx, {
         type: 'radar',
         data: {
             labels: Object.values(labels),
-            datasets: [{ data: Object.values(p.attributes), backgroundColor: 'rgba(0, 245, 255, 0.2)', borderColor: '#00f5ff', borderWidth: 2 }]
+            datasets: [{
+                data: Object.values(p.attributes),
+                backgroundColor: 'rgba(0, 245, 255, 0.2)',
+                borderColor: '#00f5ff',
+                borderWidth: 2,
+                pointRadius: 0
+            }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.1)' } } }, plugins: { legend: { display: false } } }
+        options: { 
+            scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(255,255,255,0.1)' } } },
+            plugins: { legend: { display: false } },
+            responsive: true,
+            maintainAspectRatio: false
+        }
     });
 }
 
-// 辅助渲染模块
-function syncPitch(config) {
-    const pitch = document.getElementById('pitchContainer');
-    document.querySelectorAll('.player.dynamic-pos').forEach(el => el.remove());
+// --- 8. 工具功能 ---
+window.switchLineup = (mode) => {
+    currentMode = mode;
+    document.querySelectorAll('.lineup-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`btn-${mode}`).classList.add('active');
+    renderAll();
+};
 
-    for (const [tag, name] of Object.entries(config.players)) {
-        const p = currentTeam.players.find(x => x.name === name);
-        if (!p) continue;
-        const coords = config.coords[tag];
-        const el = document.createElement('div');
-        el.className = 'player dynamic-pos';
-        el.style.bottom = `${coords[0]}%`;
-        el.style.left = `${coords[1]}%`;
-        el.style.transform = "translateX(-50%)";
+window.applyFilter = () => {
+    const val = document.querySelector(".positionFilter").value;
+    document.querySelectorAll(".player-table tbody tr").forEach(r => {
+        const pos = r.getAttribute("data-pos");
+        let group = "OTHER";
+        if (pos.includes("GK")) group = "GK";
+        else if (pos.includes("CB") || pos.includes("LB") || pos.includes("RB")) group = "DF";
+        else if (pos.includes("M")) group = "MF";
+        else if (pos.includes("ST") || pos.includes("LW") || pos.includes("RW")) group = "FW";
+        r.style.display = (val === "all" || group === val) ? "" : "none";
+    });
+};
 
-        // --- 核心修改：重新排版内部结构 ---
-        el.innerHTML = `
-            <div class="player-no">${p.no}</div>
-            <div class="player-meta">
-                <span class="player-pos">${p.pos}</span>
-                <span class="divider">|</span>
-                <span class="player-rating ${getRatingClass(p.rating)}">${p.rating}</span>
-            </div>
-        `;
+window.sortByColumn = (tableId, col) => {
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const key = `${tableId}-${col}`;
+    sortOrder[key] = !sortOrder[key];
+    rows.sort((a, b) => {
+        let vA = a.cells[col].innerText.trim();
+        let vB = b.cells[col].innerText.trim();
+        let nA = parseFloat(vA.replace(/[^\d.-]/g, ''));
+        let nB = parseFloat(vB.replace(/[^\d.-]/g, ''));
+        if (!isNaN(nA) && !isNaN(nB)) return sortOrder[key] ? nA - nB : nB - nA;
+        return sortOrder[key] ? vA.localeCompare(vB, 'zh-CN') : vB.localeCompare(vA, 'zh-CN');
+    });
+    rows.forEach(r => tbody.appendChild(r));
+};
 
-        el.onclick = (e) => { e.stopPropagation(); highlightRow(p.name); };
-        pitch.appendChild(el);
+window.closeModal = () => document.getElementById("playerModal").style.display = "none";
+
+function highlightRow(name) {
+    document.querySelectorAll("tr").forEach(r => r.classList.remove("active-player-row"));
+    const t = document.querySelector(`tr[data-name="${name}"]`);
+    if (t) {
+        t.classList.add("active-player-row");
+        t.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 }
 
@@ -2123,52 +2198,12 @@ function getRatingClass(r) {
     if (r >= 90) return 'rating-elite';
     if (r >= 85) return 'rating-excellent';
     if (r >= 80) return 'rating-good';
-    if (r >= 75) return 'rating-average';
-    return 'rating-below';
+    return 'rating-average';
 }
 
-function renderStatus(status) {
-    document.getElementById("teamStatusGrid").innerHTML = `
-        <div class="stat-card"><span>最佳环境</span><strong>${status.best}</strong></div>
-        <div class="stat-card"><span>最差环境</span><strong>${status.worst}</strong></div>
-        <div class="stat-card"><span>伤病禁赛</span><strong>${status.injury}</strong></div>
-        <div class="stat-card"><span>球队风格</span><strong>${status.tactic}</strong></div>
-    `;
-}
-
-function renderHonors(honors) {
-    document.getElementById("teamHonors").innerHTML = honors.map(h => `
-        <div class="honor-card ${h.level}">
-            <div class="honor-icon-wrapper"><i class="${h.icon}"></i><span class="honor-count">${h.count}</span></div>
-            <div class="honor-info"><div>${h.name}</div><div style="font-size:10px; opacity:0.6;">${h.seasons}</div></div>
-        </div>`).join('');
-}
-
-function renderCoach(c) {
-    document.getElementById("coachInfoBody").innerHTML = `<tr><td>${c.name}</td><td>${c.gp}</td><td>${c.w}</td><td>${c.d}</td><td>${c.l}</td><td>${c.rate}</td></tr>`;
-}
-
-function renderStrength(xi) {
-    const avgXi = (xi.reduce((m, n) => m + n.rating, 0) / xi.length).toFixed(2);
-    const avgAll = (currentTeam.players.reduce((m, n) => m + n.rating, 0) / currentTeam.players.length).toFixed(2);
-    document.getElementById("strengthStats").innerHTML = `<div class="stat-card"><span>首发平均</span><strong>${avgXi}</strong></div><div class="stat-card"><span>全队平均</span><strong>${avgAll}</strong></div>`;
-}
-
-function renderBottomStats() {
-    const totalV = currentTeam.players.reduce((s, p) => s + (parseFloat(p.value.replace(/[^\d.]/g, '')) || 0), 0);
-    document.getElementById("teamStats").innerHTML = `<div class="stats-grid"><div class="stat-card"><span>总身价</span><strong>ⰵ${totalV.toFixed(1)}M</strong></div><div class="stat-card"><span>注册</span><strong>${currentTeam.players.length}名</strong></div></div>`;
-}
-
-window.switchLineup = function (mode) {
-    currentMode = mode;
-    document.querySelectorAll('.lineup-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`btn-${mode}`).classList.add('active');
-    renderAll();
-};
-
-window.closeModal = function () { document.getElementById("playerModal").style.display = "none"; };
-function highlightRow(name) {
-    document.querySelectorAll("tr").forEach(r => r.classList.remove("active-player-row"));
-    const t = document.querySelector(`tr[data-name="${name}"]`);
-    if (t) { t.classList.add("active-player-row"); t.scrollIntoView({ behavior: "smooth", block: "center" }); }
+function getPositionClass(pos) {
+    if (pos.includes("GK")) return "pos-GK";
+    if (pos.includes("CB") || pos.includes("LB") || pos.includes("RB")) return "pos-DF";
+    if (pos.includes("ST") || pos.includes("LW") || pos.includes("RW")) return "pos-FW";
+    return "pos-MF";
 }
