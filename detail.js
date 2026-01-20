@@ -50,7 +50,7 @@ window.TEAMS_DATA = {
         },
         roster: [
             { no: 4, pos: "CB", nat: "荷兰", name: "范博梅尔", rating: 91, height: 191, weight: 89, age: 31, cGP: 512, cG: 38, cA: 12, tGP: 180, tG: 12, tA: 2, value: "ⰵ85M", attributes: { spd: 75, sho: 60, pas: 82, dri: 75, def: 94, phy: 91, men: 96, sta: 84 } },
-            { no: 1, pos: "GK", nat: "英国", name: "阿利布克", rating: 89, height: 189, weight: 85, age: 29, cGP: 385, cG: 0, cA: 5, tGP: 156, tG: 0, tA: 1, value: "ⰵ68M", attributes: { div: 88, han: 87, kic: 82, ref: 91, spd: 58, pos_s: 90, men: 89, sta: 84 } },
+            { no: 1, pos: "GK", nat: "英格兰", name: "阿利布克", rating: 89, height: 189, weight: 85, age: 29, cGP: 385, cG: 0, cA: 5, tGP: 156, tG: 0, tA: 1, value: "ⰵ68M", attributes: { div: 88, han: 87, kic: 82, ref: 91, spd: 58, pos_s: 90, men: 89, sta: 84 } },
             { no: 8, pos: "CDM", nat: "德国", name: "卡尔", rating: 90, height: 184, weight: 80, age: 23, cGP: 125, cG: 18, cA: 32, tGP: 65, tG: 8, tA: 15, value: "ⰵ125M", attributes: { spd: 85, sho: 78, pas: 91, dri: 88, def: 86, phy: 84, men: 84, sta: 94 } },
             { no: 11, pos: "ST", nat: "葡萄牙", name: "安德烈", rating: 86, height: 182, weight: 77, age: 27, cGP: 280, cG: 142, cA: 35, tGP: 125, tG: 56, tA: 15, value: "ⰵ62M", attributes: { spd: 85, sho: 90, pas: 78, dri: 84, def: 38, phy: 80, men: 86, sta: 82 } },
             { no: 16, pos: "CDM", nat: "巴西", name: "卢卡斯", rating: 86, height: 183, weight: 79, age: 25, cGP: 185, cG: 15, cA: 28, tGP: 90, tG: 6, tA: 12, value: "ⰵ58M", attributes: { spd: 80, sho: 70, pas: 85, dri: 82, def: 85, phy: 86, men: 80, sta: 90 } },
@@ -2207,3 +2207,4 @@ function getPositionClass(pos) {
     if (pos.includes("ST") || pos.includes("LW") || pos.includes("RW")) return "pos-FW";
     return "pos-MF";
 }
+
