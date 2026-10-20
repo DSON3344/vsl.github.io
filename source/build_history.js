@@ -177,6 +177,7 @@ const NG = {
 const FIRST = { es: ['何塞', '迭戈', '卡洛斯', '哈维', '路易斯', '巴勃罗', '塞尔吉', '安德烈斯', '马里奥', '劳尔'], pt: ['若昂', '佩德罗', '蒂亚戈', '拉斐尔', '布鲁诺', '安德烈', '若泽', '达尼洛', '维克多', '卡约'], it: ['马尔科', '卢卡', '安德烈亚', '费德里科', '洛伦佐', '达维德', '西蒙内', '朱塞佩', '马泰奥', '里卡多'], de: ['托马斯', '马蒂亚斯', '尤利安', '斯特凡', '菲利普', '扬', '蒂莫', '约纳斯', '本', '马克斯'], nl: ['扬', '彼得', '蒂姆', '巴斯', '斯泰恩', '达安', '约里', '基斯', '维姆', '赫斯'], en: ['杰克', '哈里', '詹姆斯', '汤姆', '乔', '丹尼', '卢克', '萨姆', '威尔', '康纳'], fr: ['让', '皮埃尔', '吕卡', '安托万', '马蒂斯', '朱尔', '泰奥', '雨果', '克莱芒', '巴蒂斯特'], nord: ['拉斯穆斯', '奥勒', '马格努斯', '埃米尔', '托比亚斯', '克里斯蒂安', '安东', '弗雷德里克', '西蒙', '约纳斯'], slav: ['伊万', '马尔科', '尼古拉', '斯特凡', '德扬', '米兰', '约西普', '达里奥', '鲁卡', '亚当'], afr: ['穆萨', '易卜拉欣', '萨迪奥', '维克托', '伊德里萨', '恩戈洛', '埃马纽埃尔', '奥马尔', '塞库', '阿马杜'] };
 const NAT_GROUP = { 西班牙: 'es', 阿根廷: 'es', 墨西哥: 'es', 哥伦比亚: 'es', 乌拉圭: 'es', 葡萄牙: 'pt', 巴西: 'pt', 意大利: 'it', 德国: 'de', 奥地利: 'de', 瑞士: 'de', 荷兰: 'nl', 比利时: 'nl', 英格兰: 'en', 美国: 'en', 苏格兰: 'en', 法国: 'fr', 丹麦: 'nord', 瑞典: 'nord', 挪威: 'nord', 克罗地亚: 'slav', 塞尔维亚: 'slav', 波兰: 'slav', 尼日利亚: 'afr', 塞内加尔: 'afr', 科特迪瓦: 'afr' };
 const NATS = Object.keys(NAT_GROUP);
+const MID = { es: ['里', '德', '尔', '维', '拉', '塔'], pt: ['里', '维', '拉', '德', '托'], it: ['尼', '里', '莱', '蒂', '卡'], de: ['尔', '林', '德', '克'], nl: ['德', '尔', '斯', '林'], en: ['林', '德', '顿', '尔'], fr: ['尔', '蒂', '拉', '维'], nord: ['德', '尔', '林', '斯'], slav: ['尔', '诺', '科', '达'], afr: ['巴', '杜', '拉', '科'] };
 const KR = [['金', '朴', '李', '崔', '郑', '韩', '吴', '黄', '孙', '安', '赵', '姜'], ['民', '俊', '成', '在', '泰', '东', '浩', '智', '贤', '秀', '永', '承'], ['勋', '宇', '镇', '洙', '赫', '焕', '锡', '浩', '民', '俊']];
 const JP = [['田中', '佐藤', '山本', '小林', '中岛', '高桥', '松井', '渡边', '铃木', '伊藤', '中村', '加藤', '森田', '冈崎'], ['翔太', '健太', '大辉', '拓海', '悠斗', '和也', '直树', '隼人', '达也', '圭佑', '亮太', '优马']];
 const usedNames = new Set([...Object.keys(byName), ...Object.values(TD).flatMap(t => t.roster.map(r => clean(r.name))), '马尔蒂尼', '马歇尔', '贝内特', '诺伊尔']);
@@ -189,7 +190,7 @@ function genPerson(team) {
     let n;
     if (nat === '韩国') n = one(KR[0]) + one(KR[1]) + one(KR[2]);
     else if (nat === '日本') n = one(JP[0]) + one(JP[1]);
-    else { const gk = NAT_GROUP[nat], g = NG[gk]; n = one(g[0]) + one(g[1]); if (k > 60) n = one(FIRST[gk]) + '·' + n; }
+    else { const gk = NAT_GROUP[nat], g = NG[gk]; n = k < 60 ? one(g[0]) + one(g[1]) : one(g[0]) + one(MID[gk]) + one(g[1]); }
     if (!usedNames.has(n)) { usedNames.add(n); return { name: n, nat }; }
   }
   throw new Error('name');
@@ -479,7 +480,11 @@ const lr = (() => { let x = 4242; return () => { x |= 0; x = x + 0x6D2B79F5 | 0;
 const lshuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(lr() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 function lorePid(key, span) {
   const [name, team] = key.split('@');
-  return (byName[clean(name)] || []).find(i => { for (let s = span[0]; s <= span[1]; s++) if (PS[s] && PS[s][i] && PS[s][i].team === team) return true; return false; });
+  const ids = byName[clean(name)] || [];
+  const inSpan = ids.find(i => { for (let s = span[0]; s <= span[1]; s++) if (PS[s] && PS[s][i] && PS[s][i].team === team) return true; return false; });
+  if (inSpan != null) return inSpan;
+  const played = ids.filter(i => P[i].kind !== 'gen' && Object.keys(PS).some(s => PS[s][i]));
+  return played.find(i => Object.keys(PS).some(s => PS[s][i] && PS[s][i].team === team)) ?? played[0];
 }
 const LOCK = new Set(), LORE_PID = {};
 function loreTeamGoal(s, e, k) { const T = OUT.seasons[s].table, tm = OUT.seasons[s].teams; e[k ? 3 : 2]++; const H = T.find(r => r.team === tm[e[0]]), A = T.find(r => r.team === tm[e[1]]); if (k) { A.gf++; H.ga++; } else { H.gf++; A.ga++; } }
