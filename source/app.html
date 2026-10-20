@@ -563,7 +563,7 @@ const FDB0 = {};
   EXT_LEAGUES.forEach(L => L.clubs.forEach(([club, str]) => {
     const rnd = seeded('squad|' + club), list = [];
     const real = (typeof EXT_REAL !== 'undefined' && EXT_REAL[club]) || [];
-    real.filter(r => !EXT_SKIP.has(r[0])).forEach(([n, pos, nat, age, r]) => list.push({ real: n, pos, nat, age, r }));
+    real.filter(r => !EXT_SKIP.has(r[0])).forEach(([n, pos, nat, age, r, ht, wt]) => list.push({ real: n, pos, nat, age, r, ht, wt }));
     const nats = STYLE_NATS[L.style] || STYLE_NATS.nord;
     const POS = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST', 'GK', 'CB', 'CM', 'ST', 'LB', 'CM', 'RW'];
     const have = l => list.filter(x => ENGINE.LINE(x.pos) === l).length, want = { GK: 2, DF: 6, MF: 6, FW: 4 };
@@ -574,7 +574,7 @@ const FDB0 = {};
     FDB0[club] = list.map(x => {
       const rating = Math.max(60, Math.min(96, Math.round(x.r != null ? x.r + shift : str + OFF[gi++ % OFF.length] + (rnd() - 0.5) * 2)));
       const name = x.real ? fakeName(x.real) : nameFor(x.nat, rnd);
-      const o = extPlayer(club, name, x.pos, x.nat, x.age, rating, rnd); if (x.real) o.proto = 1; return o;
+      const o = extPlayer(club, name, x.pos, x.nat, x.age, rating, rnd); if (x.real) o.proto = 1; if (x.ht) { o.height = x.ht; o.weight = x.wt; } return o;
     });
   }));
 })();
