@@ -1,0 +1,1238 @@
+<title>威超联赛中心</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: 控制室仪表盘 — 近黑底、等宽字体数字、细线发光图表、玻璃面板；联赛金只留给冠军与奖杯 */
+:root{
+  --bg:#06080c; --bg-2:#0a0e15; --panel:rgba(150,180,235,.035); --panel-2:rgba(150,180,235,.07);
+  --line:rgba(150,180,235,.11); --line-2:rgba(150,180,235,.22);
+  --fg:#e3e9f2; --fg-2:#9ba7b9; --fg-3:#5c687a;
+  --accent:#9cc2ff; --accent-2:#d6e5ff; --accent-dim:rgba(156,194,255,.14);
+  --gold:#d8b45f; --gold-dim:rgba(216,180,95,.14);
+  --win:#4fd18b; --draw:#8b95a6; --loss:#ff6767;
+  --z1:#6ea8ff; --z2:#50cfe0; --z3:#3fb39b; --zr:#ff6767;
+  --pitch:#0c1712; --pitch-line:rgba(190,230,205,.16);
+  --mono:"Martian Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans:"Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:14px;line-height:1.55;min-height:100vh;
+  background-image:radial-gradient(rgba(150,180,235,.07) 1px,transparent 1px);background-size:22px 22px;background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--fg-2)} .dim{color:var(--fg-3)}
+
+/* ---------- Top bar ---------- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(6,8,12,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:20px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;flex-shrink:0}
+.brand img{width:30px;height:auto}
+.brand b{font-weight:900;font-size:15px;letter-spacing:.02em;display:block;line-height:1.1}
+.brand small{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--fg-3)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{background:none;border:0;padding:8px 12px;border-radius:4px;color:var(--fg-2);white-space:nowrap;font-weight:500;font-size:13.5px;position:relative}
+nav.tabs button:hover{color:var(--fg);background:var(--panel)}
+nav.tabs button[aria-current="page"]{color:var(--accent-2)}
+nav.tabs button[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:-11px;height:2px;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.roundchip{font-family:var(--mono);font-size:11px;color:var(--fg-2);border:1px solid var(--line-2);padding:5px 9px;border-radius:3px;white-space:nowrap;flex-shrink:0}
+.roundchip b{color:var(--accent-2);font-weight:500}
+@media (max-width:760px){.top-in{flex-wrap:wrap;gap:8px 12px}.brand small{display:none}nav.tabs{order:3;flex-basis:100%}nav.tabs button[aria-current="page"]::after{bottom:-3px}}
+
+/* ---------- Page ---------- */
+main{max-width:1280px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.view{display:grid;gap:18px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-3)}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font-weight:900;font-size:clamp(26px,3.6vw,40px);letter-spacing:-.01em;line-height:1.1}
+h2{font-weight:700;font-size:16px;letter-spacing:.01em}
+.panel{background:linear-gradient(180deg,rgba(150,180,235,.045),rgba(150,180,235,.015));border:1px solid var(--line);border-radius:6px;padding:18px;min-width:0}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.ph .eyebrow{margin-bottom:2px}
+.grid{display:grid;gap:18px}
+.g-main{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);align-items:start}
+.g-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:980px){.g-main,.g-3{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.g-2{grid-template-columns:minmax(0,1fr)}}
+
+.btn{border:1px solid var(--line-2);background:var(--panel);padding:8px 14px;border-radius:4px;font-weight:500;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:background .15s,border-color .15s}
+.btn:hover{background:var(--panel-2);border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#06101f;border-color:var(--accent);font-weight:700}
+.btn.primary:hover{background:var(--accent-2)}
+.btn.ghost{background:none;border-color:transparent;color:var(--fg-2)}
+.btn.ghost:hover{color:var(--fg);border-color:var(--line-2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 8px;border-radius:3px;border:1px solid var(--line-2);color:var(--fg-2);white-space:nowrap}
+button.chip.lnk{border:1px solid rgba(156,194,255,.4);padding:3px 8px;color:var(--accent-2);font-size:11.5px}
+button.chip.lnk:hover{background:var(--accent-dim)}
+.chip.gold{color:var(--gold);border-color:rgba(216,180,95,.4);background:var(--gold-dim)}
+.chip.good{color:var(--win);border-color:rgba(79,209,139,.35)}
+.chip.bad{color:var(--loss);border-color:rgba(255,103,103,.35)}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:4px;overflow:hidden;flex-wrap:wrap}
+.seg button{background:none;border:0;padding:6px 11px;font-size:12.5px;color:var(--fg-2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-dim);color:var(--accent-2)}
+select,input[type=search]{background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:7px 10px;font-size:13px;max-width:100%}
+.crest{object-fit:contain;flex-shrink:0;display:block}
+.tname{display:flex;align-items:center;gap:9px;min-width:0}
+.tname span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+a.lnk,button.lnk{background:none;border:0;padding:0;color:inherit;text-align:left;cursor:pointer}
+button.lnk:hover span,a.lnk:hover{color:var(--accent-2)}
+
+/* tables */
+.tw{overflow-x:auto;margin-inline:-4px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.12em;color:var(--fg-3);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid rgba(150,180,235,.06);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+th.l,td.l{text-align:left;font-family:var(--sans)}
+tbody tr:hover{background:rgba(150,180,235,.04)}
+td.pos{width:34px;position:relative;color:var(--fg-2)}
+td.pos::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--zc,transparent)}
+tr.z1{--zc:var(--z1)} tr.z2{--zc:var(--z2)} tr.z3{--zc:var(--z3)} tr.zr{--zc:var(--zr)}
+td.pts{color:var(--accent-2);font-weight:500}
+.form{display:inline-flex;gap:3px}
+.form i{width:16px;height:16px;border-radius:2px;font-style:normal;font-size:9px;display:grid;place-items:center;font-weight:700;color:#06080c}
+.form i.W{background:var(--win)} .form i.D{background:var(--draw)} .form i.L{background:var(--loss)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--fg-2);margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend span::before{content:"";width:10px;height:2px;background:var(--c)}
+
+/* fixtures */
+.fx{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid rgba(150,180,235,.06);cursor:pointer;border-radius:3px}
+.fx:hover{background:rgba(150,180,235,.04)}
+.fx .h{justify-content:flex-end;text-align:right}
+.fx .h span{order:-1}
+.fx .sc{font-family:var(--mono);font-size:15px;min-width:76px;text-align:center;display:grid;gap:1px}
+.fx .sc small{font-size:9.5px;color:var(--fg-3);letter-spacing:.04em;font-family:var(--sans)}
+.fx .sc b{font-weight:500}
+.fx .sc .vs{color:var(--fg-3);font-size:12px}
+.fx.played .sc b{color:var(--fg)}
+.fx .win span{color:var(--fg);font-weight:700}
+.fx .lose span{color:var(--fg-2)}
+
+/* hero overview */
+.ovhero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:22px;align-items:center}
+.ovhero .big{font-family:var(--mono);font-size:clamp(48px,7vw,84px);line-height:.9;font-weight:300;letter-spacing:-.04em;color:var(--accent-2);text-shadow:0 0 30px rgba(156,194,255,.35)}
+.ovhero .big small{font-size:.32em;letter-spacing:0;color:var(--fg-3);margin-left:6px}
+@media (max-width:760px){.ovhero{grid-template-columns:minmax(0,1fr)}}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+
+.recap{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center}
+.champ{position:relative;display:grid;place-items:center;width:118px;height:118px}
+.champ::before{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(closest-side,rgba(216,180,95,.28),transparent)}
+.cups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cup{display:flex;gap:10px;align-items:center;padding:9px 10px;border:1px solid var(--line);border-radius:4px;min-width:0}
+.cup b{font-size:13px} .cup small{display:block;color:var(--fg-3);font-size:11px;line-height:1.35;white-space:normal}
+@media (max-width:520px){.recap{grid-template-columns:minmax(0,1fr)}.cups{grid-template-columns:minmax(0,1fr)}}
+
+.rank-list{display:grid;gap:2px}
+.rk{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 4px;font-size:13px;border-radius:3px}
+.rk:hover{background:rgba(150,180,235,.04)}
+.rk .n{font-family:var(--mono);font-size:11px;color:var(--fg-3)}
+.rk .v{font-family:var(--mono);color:var(--accent-2)}
+.rk .sub{font-size:11px;color:var(--fg-3)}
+
+/* chart */
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.chart text{font-family:var(--mono);font-size:9px;fill:var(--fg-3)}
+.chart .gl{stroke:rgba(150,180,235,.08)}
+.chart .ln{fill:none;stroke-width:1.6;filter:url(#glow)}
+.chart .champ-halo{animation:champPulse 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes champPulse{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
+.empty{border:1px dashed var(--line-2);border-radius:4px;padding:22px;text-align:center;color:var(--fg-3);font-size:13px}
+
+/* match center */
+.setup{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.setup label{display:grid;gap:5px;font-size:11px;color:var(--fg-3);font-family:var(--mono);letter-spacing:.08em}
+.board{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:16px;align-items:center;text-align:center}
+.side{display:grid;justify-items:center;gap:8px;min-width:0}
+.side .glow{position:relative;display:grid;place-items:center;width:120px;height:120px}
+.side .glow::before{content:"";position:absolute;inset:-10px;border-radius:50%;background:radial-gradient(closest-side,var(--tc),transparent);opacity:.32}
+.side h3{font-weight:900;font-size:clamp(18px,2.4vw,26px)}
+.side .en{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--fg-3);text-transform:uppercase}
+.score{font-family:var(--mono);font-weight:300;font-size:clamp(46px,8vw,92px);line-height:1;letter-spacing:-.04em;color:var(--fg);white-space:nowrap}
+.score .sep{color:var(--fg-3);margin-inline:.12em}
+.clock{font-family:var(--mono);font-size:13px;color:var(--accent-2);margin-top:6px;letter-spacing:.1em}
+.clock.ft{color:var(--gold)}
+@media (max-width:560px){.board{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 10px;align-items:start}.board>.side:first-child{grid-column:1;grid-row:1}.board>.side:last-child{grid-column:2;grid-row:1}.board>div:nth-child(2){grid-column:1/-1;grid-row:2}.condrow .chip{font-size:10.5px;padding:2px 6px}.side .glow{width:72px;height:72px}.side .glow img{width:64px!important;height:64px!important}}
+.prob{display:grid;gap:6px}
+.prob .track{display:flex;height:8px;border-radius:2px;overflow:hidden;gap:2px}
+.prob .track i{display:block;height:100%}
+.prob .lbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--fg-2)}
+.cmp{display:grid;gap:9px}
+.cmp .row{display:grid;grid-template-columns:44px minmax(0,1fr) 72px minmax(0,1fr) 44px;gap:8px;align-items:center;font-family:var(--mono);font-size:12px}
+.cmp .row .k{text-align:center;font-family:var(--sans);font-size:11.5px;color:var(--fg-2)}
+.cmp .row .l{display:flex;justify-content:flex-end}
+.cmp .row b{font-weight:500}
+.cmp .row .r{text-align:right}
+.cmp .hb{height:5px;border-radius:1px}
+.timeline{position:relative;height:30px;margin-top:6px}
+.timeline .rail{position:absolute;left:0;right:0;top:14px;height:2px;background:var(--line)}
+.timeline .prog{position:absolute;left:0;top:14px;height:2px;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.timeline .ht{position:absolute;left:50%;top:8px;width:1px;height:14px;background:var(--line-2)}
+.timeline .mk{position:absolute;top:6px;width:8px;height:8px;margin-left:-4px;border-radius:50%}
+.timeline .mk.a{top:18px}
+.timeline .mk.goal{background:var(--fg);box-shadow:0 0 8px var(--fg)}
+.timeline .mk.yellow{background:#e8c547;border-radius:1px;width:6px;margin-left:-3px}
+.timeline .mk.red{background:var(--loss);border-radius:1px;width:6px;margin-left:-3px}
+.timeline .ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--fg-3);position:absolute;top:30px;left:0;right:0}
+.feed{display:grid;gap:0;max-height:420px;overflow-y:auto}
+.ev{display:grid;grid-template-columns:48px 22px minmax(0,1fr);gap:10px;align-items:start;padding:9px 4px;border-bottom:1px solid rgba(150,180,235,.06);font-size:13px}
+.ev .m{font-family:var(--mono);color:var(--fg-3);font-size:12px;padding-top:1px}
+.ev.goal .m{color:var(--accent-2)}
+.ev.goal .t b{font-weight:700}
+.ev .ic{width:18px;height:18px;display:grid;place-items:center}
+.ev .ic .card{width:10px;height:14px;border-radius:1.5px}
+.ev.new{animation:evin .5s ease-out}
+@keyframes evin{from{background:rgba(156,194,255,.16)}to{background:transparent}}
+.ev.div{grid-template-columns:1fr;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--fg-3);padding:7px}
+.condrow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:24px}
+.reels{display:flex;gap:10px;justify-content:center;margin-top:14px}
+.reel{display:grid;gap:5px;justify-items:center}
+.reel-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--fg-3)}
+.reel-win{width:86px;height:42px;overflow:hidden;border:1px solid var(--line-2);border-radius:4px;background:var(--bg-2);position:relative;box-shadow:inset 0 0 14px rgba(0,0,0,.7);transition:border-color .3s,box-shadow .3s}
+.reel-win::before,.reel-win::after{content:"";position:absolute;left:0;right:0;height:12px;z-index:1;pointer-events:none}
+.reel-win::before{top:0;background:linear-gradient(var(--bg-2),transparent)}
+.reel-win::after{bottom:0;background:linear-gradient(transparent,var(--bg-2))}
+.reel-strip div{height:42px;display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--fg)}
+.reel-strip .q{color:var(--fg-3);font-family:var(--mono)}
+.reel.done .reel-win{border-color:var(--accent);box-shadow:0 0 16px rgba(156,194,255,.35),inset 0 0 14px rgba(0,0,0,.7)}
+.reel.done .reel-strip div{color:var(--accent-2)}
+.chip.pop{animation:pop .45s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
+.rollmsg{font-family:var(--mono);font-size:12px;color:var(--fg-2);text-align:center;letter-spacing:.06em}
+.prob .lbl b{color:var(--fg);font-weight:500}
+
+/* pitch */
+.pitch svg{width:100%;max-width:860px;margin:0 auto;height:auto;display:block}
+[hidden]{display:none!important}
+.pitch .p-bg{fill:var(--pitch)}
+.pitch .p-ln{fill:none;stroke:var(--pitch-line);stroke-width:.3}
+.pitch .p-stripe{fill:rgba(255,255,255,.012)}
+.pitch text{font-family:var(--mono);text-anchor:middle;dominant-baseline:central}
+.pitch .rt{font-size:1.75px;font-weight:700;fill:#05080c}
+.pitch .nm{font-family:var(--sans);font-size:1.7px;fill:var(--fg);paint-order:stroke;stroke:var(--pitch);stroke-width:.5px}
+.pitch g.pl{cursor:pointer}
+.pitch g.pl:hover circle{stroke:#fff;stroke-width:.35}
+@media (max-width:560px){.pitch .nm{display:none}}
+
+/* teams */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tcard{display:grid;justify-items:center;gap:8px;padding:16px 10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);text-align:center;transition:border-color .15s,transform .15s;position:relative;overflow:hidden}
+.tcard::before{content:"";position:absolute;inset:auto 0 0 0;height:2px;background:var(--tc);opacity:.6}
+.tcard:hover{border-color:var(--line-2);transform:translateY(-2px)}
+.tcard b{font-size:14px;font-weight:700}
+.tcard small{font-family:var(--mono);font-size:10px;color:var(--fg-3)}
+.thero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:center;position:relative}
+.thero .glow{position:relative;width:180px;height:180px;display:grid;place-items:center}
+.thero .glow::before{content:"";position:absolute;inset:-30px;border-radius:50%;background:radial-gradient(closest-side,var(--tc),transparent);opacity:.3}
+.thero h1{font-size:clamp(32px,5vw,56px)}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:16px}
+.facts div{background:var(--bg-2);padding:10px 12px;min-width:0}
+.facts dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--fg-3)}
+.facts dd{margin:2px 0 0;font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:640px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.thero{grid-template-columns:minmax(0,1fr);justify-items:start}.thero .glow{width:120px;height:120px}.thero .glow img{width:110px!important;height:110px!important}}
+.troph{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.troph div{background:var(--bg-2);padding:12px;text-align:left}
+.troph b{font-family:var(--mono);font-weight:300;font-size:28px;line-height:1;display:block}
+.troph div.on b{color:var(--gold);text-shadow:0 0 18px rgba(216,180,95,.35)}
+.troph div.zero b{color:var(--fg-3)}
+.troph span{font-size:11.5px;color:var(--fg-2)}
+@media (max-width:520px){.troph{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tier{font-family:var(--mono);font-size:10.5px;padding:1px 5px;border-radius:2px;border:1px solid var(--line-2)}
+.tier.S{color:var(--gold);border-color:rgba(216,180,95,.45)}
+
+/* players */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.filters input[type=search]{flex:1;min-width:180px}
+.rt-pill{display:inline-block;min-width:30px;text-align:center;padding:1px 5px;border-radius:2px;font-weight:700;font-size:12px;color:#05080c}
+dialog{border:1px solid var(--line-2);background:var(--bg-2);color:var(--fg);border-radius:8px;padding:0;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog::backdrop{background:rgba(2,4,8,.7);backdrop-filter:blur(3px)}
+.dlg{padding:22px;display:grid;gap:18px}
+.dlg-x{position:absolute;top:10px;right:10px}
+.pcard{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+.pcard .ovr{font-family:var(--mono);font-size:54px;font-weight:300;line-height:1;letter-spacing:-.04em}
+.pcard h3{font-size:24px;font-weight:900}
+.attrs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 22px}
+.attr{display:grid;grid-template-columns:52px minmax(0,1fr) 28px;gap:8px;align-items:center;font-size:12px}
+.attr .bar>i{background:var(--c,var(--accent));box-shadow:0 0 6px var(--c,var(--accent))}
+.attr b{font-family:var(--mono);font-weight:500;text-align:right}
+.stats3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.stats3 div{background:var(--bg);padding:10px 12px}
+.stats3 b{font-family:var(--mono);font-size:18px;font-weight:400;display:block}
+.stats3 span{font-size:11px;color:var(--fg-3)}
+.stats3.s4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:460px){.stats3.s4{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.lcard{display:grid;gap:10px;align-content:start}
+.lead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:4px;background:linear-gradient(120deg,var(--tcd),transparent 70%);border:1px solid var(--line)}
+.lead .v{font-family:var(--mono);font-size:34px;font-weight:300;line-height:1;color:var(--accent-2);text-shadow:0 0 18px rgba(156,194,255,.3)}
+.lead b{font-size:16px;font-weight:900;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lead small{font-size:11.5px;color:var(--fg-2)}
+td.hl{color:var(--accent-2);font-weight:500;background:rgba(156,194,255,.05)}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) repeat(4,30px) 44px;gap:8px;align-items:center;font-size:12.5px;padding:4px 2px;border-bottom:1px solid rgba(150,180,235,.06)}
+.prow .rt{font-family:var(--mono);text-align:right}
+.prow .meta{font-family:var(--mono);font-size:10.5px;color:var(--fg-3);text-align:right;white-space:nowrap}
+@media (max-width:460px){.attrs{grid-template-columns:minmax(0,1fr)}}
+
+/* history */
+.champs{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.champs div{border:1px solid var(--line);border-radius:4px;padding:10px 6px;display:grid;justify-items:center;gap:6px;text-align:center;background:var(--panel)}
+.champs div.last{border-color:rgba(216,180,95,.45);background:var(--gold-dim)}
+.champs small{font-family:var(--mono);font-size:10px;color:var(--fg-3)}
+.champs b{font-size:12px;font-weight:500}
+th.sort{cursor:pointer;user-select:none}
+th.sort:hover{color:var(--fg)}
+th.sorted{color:var(--accent-2)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--bg-2);border:1px solid var(--line-2);padding:9px 16px;border-radius:4px;font-size:13px;z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.note{font-size:12px;color:var(--fg-3)}
+.split{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#overview" data-go="overview"><img id="brandLogo" alt="威超联赛"><span><b>威伊士超联赛</b><small>VES LEAGUE</small></span></a>
+    <nav class="tabs" aria-label="页面">
+      <button data-go="overview">总览</button>
+      <button data-go="table">积分榜</button>
+      <button data-go="stats">数据榜</button>
+      <button data-go="match">比赛模拟</button>
+      <button data-go="teams">球队</button>
+      <button data-go="players">球员</button>
+      <button data-go="history">历史总榜</button>
+    </nav>
+    <div class="roundchip" id="roundChip"></div>
+  </div>
+</header>
+<main id="app"></main>
+<dialog id="dlg"></dialog>
+
+<script>/*__DATA__*/</script>
+<script>/*__ENGINE__*/</script>
+<script>
+(() => {
+'use strict';
+const H = HISTORY, PDB = PLAYER_DATABASE, TD = TEAMS_DATA;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ALL_TEAMS = Object.keys(TD);
+const SEASON = 18;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- logos: base64 → blob URL ---------- */
+const LOGO = {};
+for (const [k, b64] of Object.entries(LOGOS_B64)) {
+  const bin = atob(b64), u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  LOGO[k] = URL.createObjectURL(new Blob([u], { type: 'image/webp' }));
+}
+$('#brandLogo').src = LOGO['ves-league-logo'];
+const crest = (t, s = 28) => `<img class="crest" src="${LOGO[t] || ''}" width="${s}" height="${s}" alt="">`;
+const tlink = (t, s = 24) => `<button class="lnk tname" data-team="${esc(t)}">${crest(t, s)}<span>${esc(t)}</span></button>`;
+const en = t => (H.profiles[t] && H.profiles[t].en) || '';
+function vis(c) { // 让过暗/过亮的队色在深色底上可见
+  const h = c.replace('#', ''); const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+  const L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  if (L < 0.28) { const f = 0.45; return `rgb(${Math.round(r + (255 - r) * f)},${Math.round(g + (255 - g) * f)},${Math.round(b + (255 - b) * f)})`; }
+  return c;
+}
+const tcol = t => vis((TD[t] && TD[t].color) || '#9cc2ff');
+const rtColor = r => r >= 90 ? '#d8b45f' : r >= 85 ? '#9cc2ff' : r >= 80 ? '#7fd6b4' : r >= 75 ? '#a9b4c4' : '#6f7b8c';
+const pct = x => Math.round(x * 100) + '%';
+
+/* ---------- 赛季状态 ---------- */
+const KEY = 'ves-league-s18-v4';
+let S;
+function newSeason() {
+  const teams = HIST.s18.slice();
+  const promoted = teams.filter(t => !HIST.seasons[17].teams.includes(t));
+  const fx = ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null })));
+  return { season: SEASON, teams, promoted, fx, demo: false };
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.fx && s.teams) return s; } catch (e) {} return null; }
+const compact = res => ({ hg: res.hg, ag: res.ag, ev: res.events.filter(e => e.type !== 'chance').map(e => [e.m, e.type, e.side, e.player, e.assist || 0]), motm: [res.motm.name, res.motm.team, res.motm.r], st: [res.stats.poss[0], res.stats.shots[0], res.stats.shots[1], res.stats.onTarget[0], res.stats.onTarget[1], res.stats.corners[0], res.stats.corners[1], res.stats.tackles[0], res.stats.tackles[1], res.stats.saves[0], res.stats.saves[1]], pl: ['h', 'a'].map(k => res.players[k].map(r => [r.sh, r.ot, r.tk, r.sv, Math.round(r.r * 10), r.min])) });
+function playRound(i) { S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); m.r = compact(ENGINE.simulate(m.h, m.a, m.c)); } }); }
+const nextRound = () => S.fx.findIndex(r => r.some(m => !m.r));
+const playedRounds = () => S.fx.filter(r => r.every(m => m.r)).length;
+
+S = load();
+if (!S) { S = newSeason(); save(); }
+
+/* ---------- 统计 ---------- */
+function table(upto = 38) {
+  const T = {}; S.teams.forEach(t => T[t] = { team: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: [], race: [] });
+  S.fx.forEach((r, ri) => {
+    if (ri < upto) r.forEach(m => {
+      if (!m.r) return; const h = T[m.h], a = T[m.a], { hg, ag } = m.r;
+      h.p++; a.p++; h.gf += hg; h.ga += ag; a.gf += ag; a.ga += hg;
+      if (hg > ag) { h.w++; a.l++; h.pts += 3; h.form.push('W'); a.form.push('L'); }
+      else if (hg < ag) { a.w++; h.l++; a.pts += 3; h.form.push('L'); a.form.push('W'); }
+      else { h.d++; a.d++; h.pts++; a.pts++; h.form.push('D'); a.form.push('D'); }
+    });
+    S.teams.forEach(t => T[t].race.push(T[t].pts));
+  });
+  return Object.values(T).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || a.team.localeCompare(b.team));
+}
+function playerStats() {
+  const P = {};
+  const get = (n, t) => P[t + '|' + n] || (P[t + '|' + n] = { name: n, team: t, g: 0, a: 0, y: 0, r: 0, apps: 0, min: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, line: '', pos: '' });
+  S.fx.forEach(rd => rd.forEach(m => {
+    if (!m.r) return;
+    [[m.h, 0, m.r.ag], [m.a, 1, m.r.hg]].forEach(([t, i, conc]) => ENGINE.lineup(t).xi.forEach((x, k) => {
+      const q = get(x.name, t); q.apps++; q.line = x.line; q.pos = (x.p && x.p.pos) || x.slot;
+      const row = m.r.pl && m.r.pl[i][k];
+      if (row) { q.sh += row[0]; q.ot += row[1]; q.tk += row[2]; q.sv += row[3]; q.rs += row[4] / 10; q.min += row[5]; if (conc === 0 && row[5] >= 60 && (x.line === 'GK' || x.line === 'DF')) q.cs++; }
+      else q.min += 90;
+    }));
+    m.r.ev.forEach(([min, type, side, pl, as]) => {
+      const t = side === 'h' ? m.h : m.a;
+      if (type === 'goal') { get(pl, t).g++; if (as) get(as, t).a++; }
+      if (type === 'yellow') get(pl, t).y++;
+      if (type === 'red') get(pl, t).r++;
+    });
+    get(m.r.motm[0], m.r.motm[1]).motm++;
+  }));
+  return Object.values(P).map(q => ({ ...q, ga: q.g + q.a, avg: q.apps ? q.rs / q.apps : 0 }));
+}
+function clubStats() {
+  const C = {};
+  table().forEach(r => C[r.team] = { ...r, gd: r.gf - r.ga, cs: 0, poss: 0, sh: 0, ot: 0, tk: 0, sv: 0, y: 0, rc: 0, cor: 0, hp: 0, ap: 0 });
+  S.fx.forEach(rd => rd.forEach(m => {
+    if (!m.r) return; const st = m.r.st, h = C[m.h], a = C[m.a], { hg, ag } = m.r;
+    h.poss += st[0]; a.poss += 100 - st[0]; h.sh += st[1]; a.sh += st[2];
+    if (st.length > 3) { h.ot += st[3]; a.ot += st[4]; h.cor += st[5]; a.cor += st[6]; h.tk += st[7]; a.tk += st[8]; h.sv += st[9]; a.sv += st[10]; }
+    if (ag === 0) h.cs++; if (hg === 0) a.cs++;
+    h.hp += hg > ag ? 3 : hg === ag ? 1 : 0; a.ap += ag > hg ? 3 : hg === ag ? 1 : 0;
+    m.r.ev.forEach(([, type, side]) => { const t = side === 'h' ? h : a; if (type === 'yellow') t.y++; if (type === 'red') t.rc++; });
+  }));
+  return Object.values(C).map(c => ({ ...c, possAvg: c.p ? c.poss / c.p : 0 }));
+}
+
+/* ---------- 历史数据（S01–S17 还原） ---------- */
+const HS = HIST.seasons, PL = HIST.players, HIST_LAST = 17;
+const SEASONS = [...Array(HIST_LAST)].map((_, i) => i + 1);
+const ranking = s => HS[s].table.map(r => r.team);
+const CUR_PID = {}; PL.forEach((p, i) => { if (p && p[3]) CUR_PID[p[3] + '|' + p[0]] = i; }); Object.entries(HIST.rosterLinks || {}).forEach(([k, i]) => CUR_PID[k] = i);
+const CUR_TEAM_OF = {}; Object.entries(HIST.rosterLinks || {}).forEach(([k, i]) => CUR_TEAM_OF[i] = k.split('|')[0]); PL.forEach((p, i) => { if (p && p[6]) CUR_TEAM_OF[i] = p[6]; });
+const FATHER_OF = {}, CHILDREN_OF = {}; (HIST.family || []).forEach(([f, c]) => { (FATHER_OF[c] = FATHER_OF[c] || []).push(f); (CHILDREN_OF[f] = CHILDREN_OF[f] || []).push(c); });
+const spanOf = pid => { const ss = (PSEASONS[pid] || []).map(x => x[0]); return ss.length ? [Math.min(...ss), Math.max(...ss)] : null; };
+const teamsOfPid = pid => [...new Set((PSEASONS[pid] || []).map(x => x[1].team))];
+function familyChips(pid) {
+  const f = (FATHER_OF[pid] || []).map(id => { const sp = spanOf(id); return `<button class="chip lnk" data-pid="${id}" style="cursor:pointer">父亲 · ${esc(PL[id][0])}${sp ? `（${SN(sp[0])}–${SN(sp[1])} ${esc(teamsOfPid(id).join('、'))}）` : ''}</button>`; });
+  const c = (CHILDREN_OF[pid] || []).map(id => `<button class="chip lnk" data-pid="${id}" style="cursor:pointer">儿子 · ${esc(PL[id][0])}（现效力 ${esc(PL[id][3])}）</button>`);
+  return f.concat(c).join('');
+}
+const pidOf = (team, name) => CUR_PID[team + '|' + name];
+const plink = (team, name, pid) => { const id = pid != null ? pid : pidOf(team, name); return id != null ? `data-pid="${id}"` : `data-player="${esc(team)}|${esc(name)}"`; };
+const SN = s => 'S' + String(s).padStart(2, '0');
+function rowObj(r) { const [pid, team, apps, min, g, a, y, rc, sh, ot, tk, sv, cs, motm, rs10] = r; const p = PL[pid]; return { pid, name: p[0], pos: p[1], line: ENGINE.LINE(p[1]), team, apps, min, g, a, y, r: rc, sh, ot, tk, sv, cs, motm, rs: rs10 / 10, avg: apps ? rs10 / 10 / apps : 0, ga: g + a }; }
+const HPS = {}; SEASONS.forEach(s => HPS[s] = HIST.pstats[s].map(rowObj));
+const liveStats = () => playerStats().map(p => ({ ...p, pid: pidOf(p.team, p.name) }));
+const SUMF = ['apps', 'min', 'g', 'a', 'y', 'r', 'sh', 'ot', 'tk', 'sv', 'cs', 'motm', 'rs'];
+function statsFor(season) {
+  if (season === 'live') return liveStats();
+  if (season === 'all') {
+    const A = {};
+    const add = (p, s) => { const k = p.pid != null ? 'p' + p.pid : p.team + '|' + p.name; const o = A[k] || (A[k] = { ...p, teams: [], last: 0, seasons: 0 }); if (o.last) SUMF.forEach(f => o[f] += p[f] || 0); o.seasons++; if (!o.teams.includes(p.team)) o.teams.push(p.team); if (s >= o.last) { o.team = p.team; o.last = s; } };
+    SEASONS.forEach(s => HPS[s].forEach(p => add(p, s))); liveStats().forEach(p => add(p, 18));
+    return Object.values(A).map(o => ({ ...o, ga: o.g + o.a, avg: o.apps ? o.rs / o.apps : 0 }));
+  }
+  return HPS[season];
+}
+function histClubs(s) { const C = HS[s].club; return HS[s].table.map(r => ({ ...r, ...C[r.team], team: r.team, p: r.w + r.d + r.l, gd: r.gf - r.ga, possAvg: C[r.team].poss / 38 })); }
+function clubsFor(season) {
+  if (season === 'live') return clubStats();
+  if (season === 'all') {
+    const A = {}; const F = ['p', 'w', 'd', 'l', 'gf', 'ga', 'pts', 'cs', 'poss', 'sh', 'ot', 'tk', 'sv', 'cor', 'y', 'rc', 'hp', 'ap'];
+    const add = c => { const o = A[c.team] || (A[c.team] = { team: c.team, seasons: 0, titles: 0, ...Object.fromEntries(F.map(f => [f, 0])) }); F.forEach(f => o[f] += c[f] || 0); o.seasons++; };
+    SEASONS.forEach(s => { histClubs(s).forEach(add); A[ranking(s)[0]].titles++; });
+    if (playedRounds()) clubStats().forEach(add);
+    return Object.values(A).map(o => ({ ...o, gd: o.gf - o.ga, possAvg: o.p ? o.poss / o.p : 0 }));
+  }
+  return histClubs(season);
+}
+const PSEASONS = {}; SEASONS.forEach(s => HPS[s].forEach(p => (PSEASONS[p.pid] = PSEASONS[p.pid] || []).push([s, p])));
+function personSeasons(pid) { const l = (PSEASONS[pid] || []).slice(); const lv = liveStats().find(x => x.pid === pid); if (lv) l.push([18, lv]); return l; }
+function peakRating(pid) { let m = 0; SEASONS.forEach(s => Object.values(HS[s].xi).forEach(x => x.forEach(([id, , r]) => { if (id === pid && r > m) m = r; }))); return m || null; }
+const isActive = pid => !!(PL[pid] && PL[pid][5]);
+const statusChips = (pid, small) => { const st = small ? ' style="font-size:10.5px"' : ''; return `<span class="chip ${isActive(pid) ? 'good' : ''}"${st}>${isActive(pid) ? '现役球员' : '退役球员'}</span>${PL[pid] && PL[pid][4] === 'l' ? `<span class="chip gold"${st}>传奇球员</span>` : ''}`; };
+function zone(i, n = 20) { return i < 4 ? 'z1' : i < 6 ? 'z2' : i < 7 ? 'z3' : i >= n - 3 ? 'zr' : ''; }
+const ZONE_LEGEND = `<div class="legend"><span style="--c:var(--z1)">全联冠</span><span style="--c:var(--z2)">全联杯</span><span style="--c:var(--z3)">全协联</span><span style="--c:var(--zr)">降级</span></div>`;
+
+/* ---------- Router ---------- */
+const VIEWS = ['overview', 'table', 'stats', 'match', 'teams', 'players', 'history'];
+let view = 'overview', viewArg = null;
+function go(v, arg = null, push = true) {
+  if (!VIEWS.includes(v)) v = 'overview';
+  stopLive();
+  view = v; viewArg = arg;
+  if (push) { try { history.replaceState(null, '', '#' + v); } catch (e) {} }
+  document.querySelectorAll('nav.tabs button').forEach(b => { if (b.dataset.go === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  render(); window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+function render() {
+  const app = $('#app');
+  const nr = nextRound();
+  $('#roundChip').innerHTML = nr < 0 ? `S${SEASON} · <b>已完赛</b>` : `S${SEASON} · 第 <b>${String(nr + 1).padStart(2, '0')}</b> / 38 轮`;
+  app.innerHTML = ({ overview: vOverview, table: vTable, stats: vStats, match: vMatch, teams: vTeams, players: vPlayers, history: vHistory })[view]();
+  after[view] && after[view]();
+}
+const after = {};
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+
+/* ---------- Charts ---------- */
+function raceChart(rows, rounds) {
+  const W = 600, Hh = 220, pl = 28, pr = 70, pt = 12, pb = 24;
+  const max = Math.max(3, ...rows.map(r => r.race[rounds - 1] || 0));
+  const top = Math.ceil(max / 10) * 10;
+  const x = i => pl + (rounds <= 1 ? 0 : i / (rounds - 1)) * (W - pl - pr);
+  const y = v => pt + (1 - v / top) * (Hh - pt - pb);
+  let g = '';
+  for (let v = 0; v <= top; v += top / 4) g += `<line class="gl" x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 6}" y="${y(v) + 3}" text-anchor="end">${v}</text>`;
+  const step = Math.max(1, Math.ceil(rounds / 8));
+  for (let i = 0; i < rounds; i += step) g += `<text x="${x(i)}" y="${Hh - 6}" text-anchor="middle">R${i + 1}</text>`;
+  const lab = rows.map(r => ({ t: r.team, y: y(r.race[rounds - 1]) })).sort((p, q) => p.y - q.y);
+  for (let i = 1; i < lab.length; i++) if (lab[i].y - lab[i - 1].y < 11) lab[i].y = lab[i - 1].y + 11;
+  const ly2 = Object.fromEntries(lab.map(l => [l.t, l.y]));
+  const lines = rows.map(r => {
+    const pts = r.race.slice(0, rounds).map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const lx = x(rounds - 1), ly = y(r.race[rounds - 1]);
+    return `<polyline class="ln" points="${pts}" stroke="${tcol(r.team)}"/><circle cx="${lx}" cy="${ly}" r="3" fill="${tcol(r.team)}"/><text x="${lx + 7}" y="${ly2[r.team] + 3}" style="fill:var(--fg-2);font-family:var(--sans);font-size:10px">${esc(r.team)} ${r.race[rounds - 1]}</text>`;
+  }).join('');
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="积分走势"><defs><filter id="glow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${g}${lines}</svg></div>`;
+}
+function rankChart(team) {
+  const W = 640, Hh = 200, pl = 30, pr = 16, pt = 14, pb = 26;
+  const pos = SEASONS.map(s => { const i = ranking(s).indexOf(team); return i < 0 ? null : i + 1; });
+  const live = S.teams.includes(team) && playedRounds() > 0 ? table().findIndex(r => r.team === team) + 1 : null;
+  const all = live ? [...pos, live] : pos;
+  const n = all.length;
+  const x = i => pl + i / (n - 1) * (W - pl - pr);
+  const y = v => pt + (v - 1) / 19 * (Hh - pt - pb);
+  let g = '';
+  [1, 4, 7, 10, 17, 20].forEach(v => g += `<line class="gl" x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 8}" y="${y(v) + 3}" text-anchor="end">${v}</text>`);
+  g += `<rect x="${pl}" y="${y(17.5)}" width="${W - pl - pr}" height="${y(20.5) - y(17.5)}" fill="rgba(255,103,103,.05)"/>`;
+  all.forEach((v, i) => g += `<text x="${x(i)}" y="${Hh - 8}" text-anchor="middle">${i === 17 ? 'S18*' : 'S' + (i + 1)}</text>`);
+  let segs = [], cur = [];
+  all.forEach((v, i) => { if (v == null) { if (cur.length) segs.push(cur); cur = []; } else cur.push([x(i), y(v), v, i]); });
+  if (cur.length) segs.push(cur);
+  const c = tcol(team);
+  const lines = segs.map(sg => `<polyline class="ln" points="${sg.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" stroke="${c}"/>` + sg.map(p => (p[2] === 1 && p[3] !== 17 ? `<circle class="champ-halo" cx="${p[0]}" cy="${p[1]}" r="9" fill="url(#champHalo)"/>` : '') + `<circle cx="${p[0]}" cy="${p[1]}" r="${p[2] === 1 ? 4.6 : 2.6}" fill="${p[2] === 1 ? 'var(--gold)' : p[3] === 17 ? 'var(--bg)' : c}" stroke="${p[2] === 1 ? '#fff4d1' : p[3] === 17 ? c : 'none'}" stroke-width="${p[2] === 1 ? 1.6 : 1.4}" ${p[2] === 1 ? 'filter="url(#champGlow)"' : ''}><title>${p[3] === 17 ? 'S18 当前' : 'S' + (p[3] + 1)}：第 ${p[2]} 名</title></circle>`).join('')).join('');
+  const miss = all.map((v, i) => v == null ? `<text x="${x(i)}" y="${y(10.5)}" text-anchor="middle" style="fill:var(--fg-3)">—</text>` : '').join('');
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="历年联赛排名"><defs><filter id="glow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="champGlow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><radialGradient id="champHalo"><stop offset="0" stop-color="#ffe9a8" stop-opacity=".75"/><stop offset=".55" stop-color="#d8b45f" stop-opacity=".28"/><stop offset="1" stop-color="#d8b45f" stop-opacity="0"/></radialGradient></defs>${g}${lines}${miss}</svg></div>`;
+}
+
+/* ---------- Overview ---------- */
+function fxRow(m, ri, mi) {
+  const r = m.r, cls = r ? 'fx played' : 'fx';
+  const hw = r && r.hg > r.ag, aw = r && r.ag > r.hg;
+  return `<div class="${cls}" data-fx="${ri}:${mi}" role="button" tabindex="0">
+    <div class="tname h ${r ? (hw ? 'win' : 'lose') : ''}">${crest(m.h, 24)}<span>${esc(m.h)}</span></div>
+    <div class="sc">${r ? `<b>${r.hg} – ${r.ag}</b>` : `<span class="vs">VS</span>`}<small>${r && m.c ? `${m.c.weather} · ${m.c.slot}` : '天气待定'}</small></div>
+    <div class="tname ${r ? (aw ? 'win' : 'lose') : ''}">${crest(m.a, 24)}<span>${esc(m.a)}</span></div></div>`;
+}
+let ovRound = null;
+function vOverview() {
+  const nr = nextRound(), played = playedRounds();
+  const showR = ovRound != null ? ovRound : (nr < 0 ? 37 : nr);
+  const T = table(), ps = playerStats();
+  const scorers = ps.filter(p => p.g).sort((a, b) => b.g - a.g || a.apps - b.apps).slice(0, 6);
+  const assists = ps.filter(p => p.a).sort((a, b) => b.a - a.a).slice(0, 5);
+  const champ = ranking(17)[0];
+  const rnd = S.fx[showR];
+  return `<section class="view">
+  ${S.demo ? `<div class="panel split" style="padding:12px 16px"><span class="note">为了让你直接看到效果，已经先模拟了前 5 轮。想从第 1 轮自己开始，可以重置赛季。</span><span class="btns"><button class="btn ghost" data-act="reset">重置赛季</button><button class="btn ghost" data-act="dismissDemo">知道了</button></span></div>` : ''}
+  <div class="panel ovhero">
+    <div><div class="eyebrow">第 ${SEASON} 赛季 · 比赛日</div><div class="big">R${String(showR + 1).padStart(2, '0')}<small>/38</small></div></div>
+    <div style="min-width:0"><h1>${nr < 0 ? `第 ${SEASON} 赛季结束，${esc(T[0].team)} 夺冠` : `第 ${nr + 1} 轮待开赛`}</h1>
+      <p class="muted" style="margin:6px 0 12px">已完成 ${played} 轮，共 ${played * 10} 场比赛 · 新加入：${S.promoted.map(esc).join('、')}</p>
+      <div class="bar"><i style="width:${played / 38 * 100}%"></i></div></div>
+    <div class="btns" style="justify-content:flex-end">
+      <button class="btn primary" data-act="round" ${nr < 0 ? 'disabled' : ''}>模拟本轮</button>
+      <button class="btn" data-act="watch" ${nr < 0 ? 'disabled' : ''}>逐场观看</button>
+      <button class="btn" data-act="rest" ${nr < 0 ? 'disabled' : ''}>模拟剩余赛季</button>
+    </div>
+  </div>
+  <div class="grid g-main">
+    <div class="panel">
+      <div class="ph"><div><div class="eyebrow">Fixtures</div><h2>第 ${showR + 1} 轮赛程</h2></div>
+        <div class="btns"><button class="btn ghost" data-act="prevR" ${showR <= 0 ? 'disabled' : ''} aria-label="上一轮">←</button><button class="btn ghost" data-act="nextR" ${showR >= 37 ? 'disabled' : ''} aria-label="下一轮">→</button></div></div>
+      ${rnd.map((m, i) => fxRow(m, showR, i)).join('')}
+      <p class="note" style="margin:10px 0 0">天气和时段在开球前随机抽出，会给双方带来加成或减益。点任意一场进入比赛模拟。</p>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="panel"><div class="ph"><div><div class="eyebrow">Standings</div><h2>积分榜</h2></div><button class="btn ghost" data-go="table">完整榜单 →</button></div>
+        <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>净</th><th>积分</th></tr></thead><tbody>
+        ${T.map((r, i) => (i < 7 || i >= 17) ? `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 20)}</td><td>${r.p}</td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="pts">${r.pts}</td></tr>` + (i === 6 ? `<tr><td colspan="5" class="dim" style="text-align:center;font-size:10px">⋯ 第 8–17 名 ⋯</td></tr>` : '') : '').join('')}
+        </tbody></table></div></div>
+      <div class="panel"><div class="ph"><div><div class="eyebrow">Golden Boot</div><h2>射手榜</h2></div></div>
+        ${scorers.length ? `<div class="rank-list">${scorers.map((p, i) => `<div class="rk"><span class="n">${i + 1}</span><button class="lnk tname" data-player="${esc(p.team)}|${esc(p.name)}">${crest(p.team, 20)}<span>${esc(p.name)} <span class="sub">${esc(p.team)}</span></span></button><span class="v">${p.g}</span></div>`).join('')}</div>` : `<div class="empty">开赛后更新。上赛季金靴：杰拉尔（猛龙）31 球</div>`}
+        ${assists.length ? `<p class="note" style="margin:12px 0 0">助攻王：${assists.slice(0, 3).map(p => `${esc(p.name)} ${p.a}`).join(' · ')}</p>` : ''}
+      </div>
+    </div>
+  </div>
+  <div class="grid g-2">
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Title race</div><h2>前五名积分走势</h2></div></div>
+      ${played ? raceChart(T.slice(0, 5), played) : `<div class="empty">第 1 轮结束后开始绘制</div>`}</div>
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Season 17 recap</div><h2>上赛季回顾</h2></div></div>
+      <div class="recap"><div class="champ">${crest(champ, 92)}</div>
+        <div><div class="chip gold">S17 威超冠军</div><h2 style="font-size:22px;font-weight:900;margin:6px 0 2px">${esc(champ)}</h2>
+        <p class="muted" style="margin:0 0 12px;font-size:13px">27 胜 8 平 3 负 · 89 分 · 进 89 失 32</p></div></div>
+      <div class="cups">${H.cups17.map(c => `<div class="cup">${c.ext ? '<span style="width:32px;height:32px;display:grid;place-items:center;border:1px dashed var(--line-2);border-radius:50%;font-size:10px;color:var(--fg-3)">外</span>' : crest(c.winner, 32)}<div style="min-width:0"><b>${esc(c.cup)} · ${esc(c.winner)}</b><small>${esc(c.detail)}</small></div></div>`).join('')}</div>
+      <p class="note" style="margin:12px 0 0">降级：${ranking(17).slice(-3).map(esc).join('、')}</p>
+    </div>
+  </div>
+  <div class="split"><span class="note">赛季进度只保存在这个浏览器里。</span><span class="btns"><button class="btn ghost" data-act="reset">重置赛季</button></span></div>
+  </section>`;
+}
+
+/* ---------- Table ---------- */
+let tblSeason = 'live', tblMode = 'recon', tblRound = 0;
+function scorerBlock(list, label, unit) {
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">${label[1]}</div><h2>${label[0]}</h2></div></div>${list.length ? `<div class="rank-list">${list.map((p, i) => `<div class="rk"><span class="n">${p.rk || i + 1}</span><button class="lnk tname" ${plink(p.team, p.name, p.pid)}>${crest(p.team, 20)}<span>${esc(p.name)} <span class="sub">${esc(p.team)}</span></span></button><span class="v">${p.n}${unit}</span></div>`).join('')}</div>` : `<div class="empty">暂无数据</div>`}</div>`;
+}
+const seasonSelect = (id, val, extra = []) => `<select id="${id}" aria-label="赛季">${[['live', `S${SEASON} 进行中`], ...extra, ...SEASONS.slice().reverse().map(s => [String(s), SN(s) + ' 赛季'])].map(([k, l]) => `<option value="${k}" ${String(val) === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+const top10 = (list, k) => list.filter(p => p[k] > 0).sort((a, b) => b[k] - a[k] || a.min - b.min).slice(0, 10).map(p => ({ ...p, n: p[k] }));
+function histFxRow(s, ri, mi) {
+  const m = HS[s].rounds[ri][mi], T = HS[s].teams;
+  const h = T[m[0]], a = T[m[1]], hg = m[2], ag = m[3];
+  return `<div class="fx played" data-hm="${s}:${ri}:${mi}" role="button" tabindex="0">
+    <div class="tname h ${hg > ag ? 'win' : 'lose'}">${crest(h, 24)}<span>${esc(h)}</span></div>
+    <div class="sc"><b>${hg} – ${ag}</b><small>${m[4]} · ${m[5]}</small></div>
+    <div class="tname ${ag > hg ? 'win' : 'lose'}">${crest(a, 24)}<span>${esc(a)}</span></div></div>`;
+}
+function vTable() {
+  const live = tblSeason === 'live';
+  const head = `<div class="split"><div><div class="eyebrow">League table</div><h1>积分榜</h1></div><div class="btns">${seasonSelect('tblSel', tblSeason)}</div></div>`;
+  let body = '';
+  if (live) {
+    const rows = table();
+    body = `<div class="panel"><div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净胜</th><th>积分</th><th class="l">近 5 场</th></tr></thead><tbody>
+      ${rows.map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="pts">${r.pts}</td><td class="l"><span class="form">${r.form.slice(-5).map(f => `<i class="${f}">${{ W: '胜', D: '平', L: '负' }[f]}</i>`).join('')}</span></td></tr>`).join('')}
+      </tbody></table></div>${ZONE_LEGEND}</div>`;
+    const ps = liveStats();
+    body += `<div class="grid g-2">${scorerBlock(top10(ps, 'g'), ['射手榜', 'Top scorers'], ' 球')}${scorerBlock(top10(ps, 'a'), ['助攻榜', 'Top assists'], ' 次')}</div>
+      <div style="text-align:center"><button class="btn" data-statsgo="live">查看本赛季全部数据榜 →</button></div>`;
+  } else {
+    const s = +tblSeason, H2 = HS[s];
+    const rows = tblMode === 'official' ? H2.official : H2.table;
+    body = `<div class="panel"><div class="ph"><div><div class="eyebrow">${SN(s)} · ${tblMode === 'official' ? '官网记录' : '还原数据'}</div><h2>${SN(s)} 赛季最终排名</h2></div>
+      <div class="seg" role="group" aria-label="数据来源"><button data-tmode="recon" aria-pressed="${tblMode === 'recon'}">还原数据</button><button data-tmode="official" aria-pressed="${tblMode === 'official'}">官网记录</button></div></div>
+      <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净胜</th><th>积分</th></tr></thead><tbody>
+      ${rows.map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.w + r.d + r.l}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="pts">${r.pts}</td></tr>`).join('')}
+      </tbody></table></div>${ZONE_LEGEND}
+      <p class="note" style="margin:10px 0 0">${tblMode === 'official' ? '官网原始数据。这份数据的总胜场和总负场、总进球和总失球对不上，所以没法逐场还原到完全一致。' : '由 380 场逐场比分累加而成，名次与官网完全一致，胜平负和进失球尽量贴近官网。'}</p></div>`;
+    const R = H2.rounds[tblRound];
+    body += `<div class="panel"><div class="ph"><div><div class="eyebrow">Results</div><h2>第 ${tblRound + 1} 轮赛果</h2></div>
+      <div class="btns"><button class="btn ghost" data-act="tPrev" ${tblRound <= 0 ? 'disabled' : ''} aria-label="上一轮">←</button><select id="tblRnd" aria-label="轮次">${H2.rounds.map((_, i) => `<option value="${i}" ${i === tblRound ? 'selected' : ''}>第 ${i + 1} 轮</option>`).join('')}</select><button class="btn ghost" data-act="tNext" ${tblRound >= 37 ? 'disabled' : ''} aria-label="下一轮">→</button></div></div>
+      ${R.map((m, mi) => histFxRow(s, tblRound, mi)).join('')}<p class="note" style="margin:10px 0 0">点比赛查看进球、助攻和红黄牌。</p></div>`;
+    const ps = HPS[s];
+    body += `<div class="grid g-2">${scorerBlock(top10(ps, 'g'), ['射手榜', 'Top scorers'], ' 球')}${scorerBlock(top10(ps, 'a'), ['助攻榜', 'Top assists'], ' 次')}</div>
+      <div style="text-align:center"><button class="btn" data-statsgo="${s}">查看 ${SN(s)} 全部数据榜 →</button></div>`;
+  }
+  return `<section class="view">${head}${body}</section>`;
+}
+after.table = () => {
+  $('#tblSel').addEventListener('change', e => { tblSeason = e.target.value; tblRound = 0; render(); });
+  const r = $('#tblRnd'); r && r.addEventListener('change', e => { tblRound = +e.target.value; render(); });
+};
+function openHistMatch(s, ri, mi) {
+  const m = HS[s].rounds[ri][mi], T = HS[s].teams, h = T[m[0]], a = T[m[1]];
+  const evs = [...m[6].map(g => ({ min: g[0], side: g[1], type: 'goal', pid: g[2], ap: g[3] })), ...m[7].map(c => ({ min: c[0], side: c[1], type: c[2] ? 'red' : 'yellow', pid: c[3] }))].sort((x, y) => x.min - y.min);
+  const nm = id => id >= 0 && PL[id] ? PL[id][0] : '';
+  const row = e => { const t = e.side ? a : h; const ic = e.type === 'goal' ? `<svg viewBox="0 0 20 20" width="16" height="16"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 5.5l3.4 2.5-1.3 4h-4.2l-1.3-4z" fill="currentColor"/></svg>` : `<span class="card" style="background:${e.type === 'red' ? 'var(--loss)' : '#e8c547'}"></span>`;
+    return `<div class="ev ${e.type}"><span class="m">${e.min > 90 ? '90+' + (e.min - 90) : e.min}'</span><span class="ic" style="color:${tcol(t)}">${ic}</span><span class="t">${crest(t, 16).replace('class="crest"', 'class="crest" style="display:inline-block;vertical-align:-3px;margin-right:6px"')}<button class="lnk" data-pid="${e.pid}"><b>${esc(nm(e.pid))}</b></button>${e.type === 'goal' ? (e.ap >= 0 ? ` <span class="muted">· 助攻 <button class="lnk" data-pid="${e.ap}">${esc(nm(e.ap))}</button></span>` : ' <span class="dim">· 个人突破</span>') : e.type === 'red' ? ' <span class="muted">· 红牌</span>' : ' <span class="muted">· 黄牌</span>'}</span></div>`; };
+  const d = $('#dlg');
+  d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div class="eyebrow">${SN(s)} · 第 ${ri + 1} 轮 · ${m[4]} · ${m[5]}</div>
+    <div class="board" style="gap:10px"><div class="side">${crest(h, 56)}<b>${esc(h)}</b></div><div class="score" style="font-size:52px">${m[2]}<span class="sep">:</span>${m[3]}</div><div class="side">${crest(a, 56)}<b>${esc(a)}</b></div></div>
+    <div class="cmp"><div class="row"><b class="r">${m[9]}%</b><div class="l"><div class="hb" style="width:${m[9]}%;background:${tcol(h)}"></div></div><span class="k">控球率</span><div><div class="hb" style="width:${100 - m[9]}%;background:${tcol(a)}"></div></div><b>${100 - m[9]}%</b></div>
+    <div class="row"><b class="r">${m[10]}</b><div class="l"><div class="hb" style="width:${m[10] / (m[10] + m[11]) * 100}%;background:${tcol(h)}"></div></div><span class="k">射门</span><div><div class="hb" style="width:${m[11] / (m[10] + m[11]) * 100}%;background:${tcol(a)}"></div></div><b>${m[11]}</b></div></div>
+    <div class="feed" style="max-height:none">${evs.length ? evs.map(row).join('') : '<div class="empty">本场没有进球和红黄牌</div>'}</div>
+    <p class="note" style="margin:0">全场最佳：<button class="lnk" data-pid="${m[8]}"><b>${esc(nm(m[8]))}</b></button></p></div>`;
+  if (!d.open) d.showModal();
+}
+
+/* ---------- Match center ---------- */
+let M = null; // {h,a,weather,slot,neutral,fx:[ri,mi]|null,res,phase}
+let live = null;
+let rollToken = 0;
+function stopLive() { rollToken++; if (live && live.raf) cancelAnimationFrame(live.raf); live = null; }
+function initMatch(fxRef) {
+  if (fxRef) { const [ri, mi] = fxRef; const m = S.fx[ri][mi]; M = { h: m.h, a: m.a, weather: null, slot: null, neutral: false, fx: fxRef, res: null, phase: 'pre' }; if (m.r) M.stored = true; }
+  else if (!M) { const nr = nextRound(); if (nr >= 0) { const mi = S.fx[nr].findIndex(m => !m.r); initMatch([nr, mi]); } else M = { h: '猛龙', a: '威龙', weather: null, slot: null, neutral: false, fx: null, res: null, phase: 'pre' }; }
+}
+function pitchSVG(home, away) {
+  const one = !away;
+  const L = t => ENGINE.lineup(t).xi;
+  const dot = (s, t, side) => {
+    const xx = s.x < 8 ? 0 : 6 + (s.x - 12) * 0.95; let x = one ? 4 + xx : (side === 'h' ? 3.5 + xx * 0.5 : 96.5 - xx * 0.5);
+    const y = 3 + s.y / 100 * 58;
+    const c = tcol(t);
+    return `<g class="pl" data-player="${esc(t)}|${esc(s.name)}" tabindex="0"><circle cx="${x}" cy="${y}" r="2.15" fill="${c}"/><text class="rt" x="${x}" y="${y + .1}" ${luma(c) < .5 ? 'style="fill:#fff"' : ''}>${s.rating}</text><text class="nm" x="${x}" y="${y + 3.9}">${esc(s.name)}</text></g>`;
+  };
+  return `<div class="pitch"><svg viewBox="0 0 100 64" role="img" aria-label="首发阵容">
+    <rect class="p-bg" x="0" y="0" width="100" height="64" rx="1"/>
+    ${[...Array(10)].map((_, i) => i % 2 ? `<rect class="p-stripe" x="${i * 10}" y="0" width="10" height="64"/>` : '').join('')}
+    <rect class="p-ln" x="1" y="1" width="98" height="62"/><line class="p-ln" x1="50" y1="1" x2="50" y2="63"/><circle class="p-ln" cx="50" cy="32" r="8"/>
+    <rect class="p-ln" x="1" y="16" width="14" height="32"/><rect class="p-ln" x="85" y="16" width="14" height="32"/>
+    <rect class="p-ln" x="1" y="25" width="5" height="14"/><rect class="p-ln" x="94" y="25" width="5" height="14"/>
+    ${L(home).map(s => dot(s, home, 'h')).join('')}${away ? L(away).map(s => dot(s, away, 'a')).join('') : ''}
+  </svg></div>`;
+}
+function luma(c) { const m = c.match(/\d+/g); let r, g, b; if (c[0] === '#') { const h = c.slice(1); r = parseInt(h.substr(0, 2), 16); g = parseInt(h.substr(2, 2), 16); b = parseInt(h.substr(4, 2), 16); } else[r, g, b] = m.map(Number); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; }
+function condChips(t, c) {
+  const cls = c.level === '最佳' || c.level === '良好' ? 'good' : c.level === '最差' || c.level === '低迷' ? 'bad' : '';
+  return `<div class="condrow"><span class="chip ${cls}">状态 · ${c.level}</span>${c.tags.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>`;
+}
+function teamOptions(sel) {
+  const lg = S.teams.slice().sort((a, b) => a.localeCompare(b, 'zh'));
+  const other = ALL_TEAMS.filter(t => !S.teams.includes(t));
+  return `<optgroup label="威超 S${SEASON}">${lg.map(t => `<option ${t === sel ? 'selected' : ''}>${esc(t)}</option>`).join('')}</optgroup><optgroup label="其他球队">${other.map(t => `<option ${t === sel ? 'selected' : ''}>${esc(t)}</option>`).join('')}</optgroup>`;
+}
+function vMatch() {
+  initMatch();
+  const { h, a } = M; const opt = { weather: M.weather, slot: M.slot, neutral: M.neutral };
+  const e = ENGINE.expected(h, a, opt), pr = ENGINE.probabilities(h, a, opt);
+  const sh = ENGINE.strength(h), sa = ENGINE.strength(a);
+  const fxm = M.fx ? S.fx[M.fx[0]][M.fx[1]] : null;
+  const isLeague = !!fxm;
+  const cmpRow = (k, x, y, lo = 70, hi = 95) => { const n = v => Math.max(4, (v - lo) / (hi - lo) * 100); return `<div class="row"><b class="r">${x.toFixed(1)}</b><div class="l"><div class="hb" style="width:${n(x)}%;background:${tcol(h)}"></div></div><span class="k">${k}</span><div><div class="hb" style="width:${n(y)}%;background:${tcol(a)}"></div></div><b>${y.toFixed(1)}</b></div>`; };
+  const P = t => H.profiles[t] || {};
+  return `<section class="view">
+  <div class="split"><div><div class="eyebrow">${isLeague ? `S${SEASON} · 第 ${M.fx[0] + 1} 轮` : '友谊赛 / 自定义对阵'}</div><h1>比赛模拟</h1></div>
+    ${isLeague && !M.stored ? `<span class="chip">结果会计入联赛</span>` : isLeague ? `<span class="chip">已赛 · 重新模拟不改变联赛结果</span>` : ''}</div>
+  <div class="panel"><div class="setup">
+    <label for="selH">主队<select id="selH">${teamOptions(h)}</select></label>
+    <label for="selA">客队<select id="selA">${teamOptions(a)}</select></label>
+    <label>场地<div class="seg" role="group"><button data-neutral="0" aria-pressed="${!M.neutral}">主场</button><button data-neutral="1" aria-pressed="${M.neutral}">中立</button></div></label>
+    <button class="btn ghost" data-act="swap">⇄ 交换主客</button>
+  </div><p class="note" style="margin:10px 0 0">天气和时段不能手动选，开球前随机抽出。</p></div>
+
+  <div class="panel" id="matchPanel">
+    <div class="board">
+      <div class="side" style="--tc:${tcol(h)}"><div class="glow">${crest(h, 104)}</div><div><h3>${esc(h)}</h3><div class="en">${esc(en(h))}</div></div><div id="buffH">${condPrefs(h)}</div></div>
+      <div><div class="score" id="score">${M.res && M.phase !== 'pre' ? '' : '<span class="dim">–</span><span class="sep">:</span><span class="dim">–</span>'}</div><div class="clock" id="clock">${M.neutral ? '中立场' : esc((TD[h] || {}).stadium || '')}</div>
+        <div class="reels"><div class="reel" id="reelW"><span class="reel-lbl">天气</span><div class="reel-win"><div class="reel-strip" id="rw"><div class="q">?</div></div></div></div><div class="reel" id="reelS"><span class="reel-lbl">时段</span><div class="reel-win"><div class="reel-strip" id="rs"><div class="q">?</div></div></div></div></div></div>
+      <div class="side" style="--tc:${tcol(a)}"><div class="glow">${crest(a, 104)}</div><div><h3>${esc(a)}</h3><div class="en">${esc(en(a))}</div></div><div id="buffA">${condPrefs(a)}</div></div>
+    </div>
+    <div id="liveZone" style="margin-top:22px"></div>
+    <div id="preZone" style="margin-top:22px;display:grid;gap:22px">
+      <div id="probZone">${probHTML(pr, e)}</div>
+      <div class="cmp">${cmpRow('进攻', sh.atk, sa.atk)}${cmpRow('中场控制', sh.ctl, sa.ctl)}${cmpRow('防守', sh.def, sa.def)}${cmpRow('板凳深度', sh.depth, sa.depth)}</div>
+      <div class="cmp"><div class="row" style="font-family:var(--sans)"><span></span><span class="l muted" style="font-size:12px">${esc(P(h).style || TD[h].style)} · ${esc(P(h).formation || '')}</span><span class="k">风格</span><span class="muted" style="font-size:12px">${esc(P(a).style || TD[a].style)} · ${esc(P(a).formation || '')}</span><span></span></div>
+      <div class="row" style="font-family:var(--sans)"><span></span><span class="l muted" style="font-size:12px">${esc(P(h).coach || '—')}</span><span class="k">主教练</span><span class="muted" style="font-size:12px">${esc(P(a).coach || '—')}</span><span></span></div></div>
+      <div class="btns" id="kickBtns" style="justify-content:center"><button class="btn primary" data-act="kick">▶ 抽天气并开赛</button><button class="btn" data-act="instant">直接出结果</button></div>
+      <div class="rollmsg" id="rollMsg" hidden></div>
+    </div>
+  </div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Starting XI</div><h2>首发阵容</h2></div><span class="note">点球员查看资料</span></div>${pitchSVG(h, a)}</div>
+  </section>`;
+}
+after.match = () => {
+  $('#selH').addEventListener('change', e => { M = { ...M, h: e.target.value, fx: null, res: null, phase: 'pre', stored: false }; render(); });
+  $('#selA').addEventListener('change', e => { M = { ...M, a: e.target.value, fx: null, res: null, phase: 'pre', stored: false }; render(); });
+};
+function evRow(ev, h, a, isNew) {
+  const side = ev.side === 'h' ? h : a;
+  const ic = ev.type === 'goal' ? `<svg viewBox="0 0 20 20" width="16" height="16"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 5.5l3.4 2.5-1.3 4h-4.2l-1.3-4z" fill="currentColor"/></svg>` : ev.type === 'yellow' ? `<span class="card" style="background:#e8c547"></span>` : ev.type === 'red' ? `<span class="card" style="background:var(--loss)"></span>` : `<span style="width:6px;height:6px;border-radius:50%;background:var(--fg-3)"></span>`;
+  const min = ev.m > 90 ? `90+${Math.round(ev.m - 90)}'` : ev.m > 45 && ev.m < 46 ? `45+1'` : `${Math.floor(ev.m)}'`;
+  const txt = ev.type === 'goal' ? `<b>进球！${esc(side)}</b> · ${esc(ev.txt)}` : esc(ev.txt);
+  return `<div class="ev ${ev.type} ${isNew ? 'new' : ''}"><span class="m">${min}</span><span class="ic" style="color:${tcol(side)}">${ic}</span><span class="t">${crest(side, 16).replace('class="crest"', 'class="crest" style="display:inline-block;vertical-align:-3px;margin-right:6px"')}${txt}</span></div>`;
+}
+
+function condPrefs(t) {
+  const P = H.profiles[t] || {}, f = x => (x || '—').replace('；', ' · ');
+  return `<div class="condrow"><span class="chip">喜欢 ${esc(f(P.best))}</span><span class="chip">怕 ${esc(f(P.worst))}</span></div>`;
+}
+function buffChips(c) {
+  if (!c.mods.length) return `<div class="condrow"><span class="chip pop">不受影响 ±0%</span></div>`;
+  const tot = Math.round((c.m - 1) * 1000) / 10;
+  const head = tot > 0 ? `<span class="chip good pop" style="font-weight:700">▲ BUFF +${tot}%</span>` : tot < 0 ? `<span class="chip bad pop" style="font-weight:700">▼ DEBUFF ${tot}%</span>` : `<span class="chip pop" style="font-weight:700">加减抵消 ±0%</span>`;
+  return `<div class="condrow">${head}${c.mods.map((x, i) => `<span class="chip ${x.d > 0 ? 'good' : 'bad'} pop" style="animation-delay:${(i + 1) * .18}s">${esc(x.txt)} ${x.d > 0 ? '+' : '−'}${Math.abs(x.d)}%</span>`).join('')}</div>`;
+}
+function probHTML(pr, e, prev) {
+  const v = (k) => prev ? `${pct(prev[k])} → <b>${pct(pr[k])}</b>` : pct(pr[k]);
+  const { h, a } = M;
+  return `<div class="prob"><div class="lbl"><span>主胜 ${v('w')}</span><span>平局 ${v('d')}</span><span>客胜 ${v('l')}</span></div>
+    <div class="track"><i style="width:${pr.w * 100}%;background:${tcol(h)};transition:width .6s"></i><i style="width:${pr.d * 100}%;background:var(--draw);transition:width .6s"></i><i style="width:${pr.l * 100}%;background:${tcol(a)};transition:width .6s"></i></div>
+    <div class="lbl dim"><span>预期进球 ${e.lh.toFixed(2)}</span><span>${prev ? '已计入天气和时段' : '未计天气影响 · 1500 次模拟'}</span><span>预期进球 ${e.la.toFixed(2)}</span></div></div>`;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function spin(id, items, final, dur) {
+  const strip = $('#' + id); if (!strip) return Promise.resolve();
+  const seq = []; for (let i = 0; i < 16 + Math.floor(dur / 200); i++) seq.push(items[Math.floor(Math.random() * items.length)]);
+  seq.push(final);
+  strip.innerHTML = seq.map(x => `<div>${esc(x)}</div>`).join('');
+  strip.style.transition = 'none'; strip.style.transform = 'translateY(0)';
+  void strip.offsetHeight;
+  strip.style.transition = `transform ${dur}ms cubic-bezier(.15,.65,.2,1)`;
+  strip.style.transform = `translateY(-${(seq.length - 1) * 42}px)`;
+  return sleep(dur).then(() => strip.closest('.reel').classList.add('done'));
+}
+function setReel(id, v) { const s = $('#' + id); if (!s) return; s.style.transition = 'none'; s.style.transform = 'none'; s.innerHTML = `<div>${esc(v)}</div>`; s.closest('.reel').classList.add('done'); }
+async function kickoff(instant) {
+  if (M.phase !== 'pre') return;
+  const tok = ++rollToken; M.phase = 'rolling';
+  const { h, a } = M;
+  const before = ENGINE.probabilities(h, a, { neutral: M.neutral });
+  const c = ENGINE.randomConditions(); M.weather = c.weather; M.slot = c.slot;
+  $('#kickBtns').hidden = true;
+  const msg = $('#rollMsg'); msg.hidden = false;
+  const fast = instant || REDUCED;
+  if (fast) { setReel('rw', c.weather); setReel('rs', c.slot); }
+  else { msg.textContent = '正在抽取天气和时段…'; await Promise.all([spin('rw', ENGINE.WEATHERS, c.weather, 1500), spin('rs', ENGINE.SLOTS, c.slot, 2300)]); }
+  if (tok !== rollToken) return;
+  const opt = { weather: M.weather, slot: M.slot, neutral: M.neutral };
+  const e = ENGINE.expected(h, a, opt);
+  $('#buffH').innerHTML = buffChips(e.ch); $('#buffA').innerHTML = buffChips(e.ca);
+  $('#probZone').innerHTML = probHTML(ENGINE.probabilities(h, a, opt), e, before);
+  if (fast) { msg.hidden = true; return startLive(true); }
+  for (let n = 3; n > 0; n--) { msg.textContent = `${M.weather} · ${M.slot}　${n} 秒后开球`; await sleep(1000); if (tok !== rollToken) return; }
+  msg.hidden = true;
+  startLive(false);
+}
+function startLive(instant) {
+  if (live && live.raf) cancelAnimationFrame(live.raf); live = null;
+  const { h, a } = M; const opt = { weather: M.weather, slot: M.slot, neutral: M.neutral };
+  const res = ENGINE.simulate(h, a, opt);
+  M.res = res; M.phase = 'live';
+  const lz = $('#liveZone'); $('#preZone').hidden = true;
+  lz.innerHTML = `<div class="timeline" aria-hidden="true"><div class="rail"></div><div class="ht"></div><div class="prog" id="prog" style="width:0"></div><div id="mks"></div><div class="ticks"><span>0'</span><span>15'</span><span>30'</span><span>HT</span><span>60'</span><span>75'</span><span>90'</span></div></div>
+    <div class="btns" style="justify-content:center;margin-top:30px" id="liveCtl"><button class="btn" data-speed="1" aria-pressed="true">×1</button><button class="btn" data-speed="4">×4</button><button class="btn ghost" data-act="skip">跳到终场</button></div>
+    <div class="feed" id="feed" style="margin-top:12px" aria-live="polite"></div><div id="post"></div>`;
+  const endM = Math.max(90, ...res.events.map(e => e.m)) + 0.5;
+  live = { res, t: 0, speed: 1, shown: 0, last: performance.now(), endM, ht: false };
+  const tick = now => {
+    if (!live) return;
+    const dt = (now - live.last) / 1000; live.last = now;
+    live.t = Math.min(live.endM, live.t + dt * 7.5 * live.speed);
+    paint();
+    if (live.t >= live.endM) return finish();
+    live.raf = requestAnimationFrame(tick);
+  };
+  if (instant || REDUCED) { live.t = endM; paint(); finish(); }
+  else live.raf = requestAnimationFrame(tick);
+}
+function paint() {
+  const { res, t } = live; const { h, a } = M;
+  const vis = res.events.filter(e => e.m <= t);
+  const hg = vis.filter(e => e.type === 'goal' && e.side === 'h').length, ag = vis.filter(e => e.type === 'goal' && e.side === 'a').length;
+  $('#score').innerHTML = `${hg}<span class="sep">:</span>${ag}`;
+  const min = Math.min(90, Math.floor(t));
+  $('#clock').textContent = t >= live.endM ? '全场结束' : t > 90 ? `90+${Math.ceil(t - 90)}'` : (min >= 45 && min < 46 ? `45' · 半场` : `${min}'`);
+  $('#clock').classList.toggle('ft', t >= live.endM);
+  $('#prog').style.width = Math.min(100, t / 90 * 100) + '%';
+  if (vis.length > live.shown) {
+    const feed = $('#feed');
+    for (let i = live.shown; i < vis.length; i++) {
+      const ev = vis[i];
+      if (!live.ht && ev.m > 46) { feed.insertAdjacentHTML('afterbegin', `<div class="ev div">— 下半场 —</div>`); live.ht = true; }
+      feed.insertAdjacentHTML('afterbegin', evRow(ev, h, a, true));
+      if (ev.type !== 'chance') $('#mks').insertAdjacentHTML('beforeend', `<span class="mk ${ev.type} ${ev.side}" style="left:${Math.min(100, ev.m / 90 * 100)}%" title="${Math.floor(ev.m)}' ${esc(ev.player)}"></span>`);
+    }
+    live.shown = vis.length;
+  }
+  if (!live.ht && t > 46) { $('#feed').insertAdjacentHTML('afterbegin', `<div class="ev div">— 下半场 —</div>`); live.ht = true; }
+}
+function finish() {
+  const res = live.res; live.raf = null; M.phase = 'ft';
+  const { h, a } = M;
+  $('#feed').insertAdjacentHTML('afterbegin', `<div class="ev div" style="color:var(--gold)">— 全场结束 ${res.hg} : ${res.ag} —</div>`);
+  $('#liveCtl').innerHTML = '';
+  const fxm = M.fx ? S.fx[M.fx[0]][M.fx[1]] : null;
+  let saved = '';
+  if (fxm && !fxm.r) { fxm.c = { weather: M.weather, slot: M.slot }; fxm.r = compact(res); M.stored = true; S.demo = false; save(); saved = `<span class="chip good">已计入第 ${M.fx[0] + 1} 轮</span>`; }
+  const st = res.stats, n = (x, y) => [x / (x + y || 1) * 100, y / (x + y || 1) * 100];
+  const srow = (k, x, y, fmt = v => v) => { const [p, q] = n(x, y); return `<div class="row"><b class="r">${fmt(x)}</b><div class="l"><div class="hb" style="width:${p}%;background:${tcol(h)}"></div></div><span class="k">${k}</span><div><div class="hb" style="width:${q}%;background:${tcol(a)}"></div></div><b>${fmt(y)}</b></div>`; };
+  const nxt = findNextFixture();
+  $('#post').innerHTML = `<div class="grid g-2" style="margin-top:22px;align-items:start">
+    <div class="cmp">${srow('控球率', st.poss[0], st.poss[1], v => v + '%')}${srow('射门', st.shots[0], st.shots[1])}${srow('射正', st.onTarget[0], st.onTarget[1])}${srow('角球', st.corners[0], st.corners[1])}${srow('抢断', st.tackles[0], st.tackles[1])}${srow('扑救', st.saves[0], st.saves[1])}${srow('xG', st.xg[0], st.xg[1], v => v.toFixed(2))}</div>
+    <div style="display:grid;gap:12px;justify-items:start"><div class="eyebrow">全场最佳</div>
+      <div class="tname">${crest(res.motm.team, 40)}<div><b style="font-size:18px">${esc(res.motm.name)}</b><div class="muted mono" style="font-size:12px">${esc(res.motm.team)} · 评分 ${res.motm.r}</div></div></div>
+      <p class="muted" style="margin:0;font-size:13px">${headline(res)}</p>
+      <div class="btns">${saved}<button class="btn" data-act="again">再模拟一次</button>${nxt ? `<button class="btn primary" data-act="nextfx">下一场 →</button>` : ''}</div></div></div>
+    <div style="margin-top:22px"><div class="eyebrow" style="margin-bottom:10px">球员评分${res.players ? '' : ''}</div>
+    <div class="grid g-2">${[['h', h], ['a', a]].map(([k, t]) => `<div><div class="tname" style="margin-bottom:6px">${crest(t, 18)}<b style="font-size:13px">${esc(t)}</b></div><div class="prow" style="color:var(--fg-3);font-size:10.5px"><span>球员</span><span class="meta">射门</span><span class="meta">射正</span><span class="meta">抢断</span><span class="meta">扑救</span><span class="meta">评分</span></div>${res.players[k].slice().sort((x, y) => y.r - x.r).map(r => { const gl = res.events.filter(e => e.type === 'goal' && e.player === r.name && e.team === t).length, as = res.events.filter(e => e.type === 'goal' && e.assist === r.name && e.team === t).length; return `<div class="prow"><button class="lnk" data-player="${esc(t)}|${esc(r.name)}"><span>${esc(r.name)}</span> <span class="dim mono" style="font-size:10.5px">${esc(r.slot)}</span>${gl ? ` <span style="color:var(--accent-2)">⚽${gl > 1 ? '×' + gl : ''}</span>` : ''}${as ? ` <span class="dim">A${as > 1 ? '×' + as : ''}</span>` : ''}</button><span class="meta">${r.sh}</span><span class="meta">${r.ot}</span><span class="meta">${r.tk}</span><span class="meta">${r.sv || '–'}</span><span class="rt"><span class="rt-pill" style="background:${r.r >= 8 ? 'var(--gold)' : r.r >= 7 ? '#9cc2ff' : r.r >= 6 ? '#a9b4c4' : '#ff8a8a'}">${r.r.toFixed(1)}</span></span></div>`; }).join('')}</div>`).join('')}</div></div>`;
+  updateChip();
+}
+function updateChip() { const nr = nextRound(); $('#roundChip').innerHTML = nr < 0 ? `S${SEASON} · <b>已完赛</b>` : `S${SEASON} · 第 <b>${String(nr + 1).padStart(2, '0')}</b> / 38 轮`; }
+function findNextFixture() { for (let ri = 0; ri < 38; ri++) for (let mi = 0; mi < 10; mi++) if (!S.fx[ri][mi].r) return [ri, mi]; return null; }
+function headline(r) {
+  const d = r.hg - r.ag, w = d > 0 ? r.home : r.away, l = d > 0 ? r.away : r.home, ad = Math.abs(d);
+  const late = r.events.filter(e => e.type === 'goal' && e.m >= 85).pop();
+  if (d === 0) return r.hg === 0 ? `${r.home} 与 ${r.away} 互交白卷，双方防线都没给对手机会。` : `${r.home} 与 ${r.away} ${r.hg}:${r.ag} 握手言和${late ? `，${late.player} 在 ${Math.floor(late.m)} 分钟扳平` : ''}。`;
+  if (late && ad === 1) return `${late.player} ${Math.floor(Math.min(late.m, 90))}${late.m > 90 ? '+' : ''} 分钟绝杀，${w} 1 球小胜 ${l}。`;
+  if (ad >= 3) return `${w} 大胜 ${l}，${ad} 球的分差几乎没有悬念。`;
+  return `${w} ${Math.max(r.hg, r.ag)}:${Math.min(r.hg, r.ag)} 击败 ${l}。`;
+}
+
+/* ---------- Teams ---------- */
+let teamSel = null;
+function vTeams() {
+  if (teamSel) return teamDetail(teamSel);
+  const lg = S.teams, other = ALL_TEAMS.filter(t => !lg.includes(t));
+  const card = t => `<button class="tcard" data-team="${esc(t)}" style="--tc:${tcol(t)}">${crest(t, 72)}<b>${esc(t)}</b><small>OVR ${ENGINE.strength(t).ovr.toFixed(1)}</small></button>`;
+  return `<section class="view"><div><div class="eyebrow">Clubs</div><h1>球队</h1></div>
+    <div class="panel"><div class="ph"><h2>威超 S${SEASON} · 20 队</h2><span class="note">按综合实力排序</span></div><div class="tgrid">${lg.slice().sort((a, b) => ENGINE.strength(b).ovr - ENGINE.strength(a).ovr).map(card).join('')}</div></div>
+    <div class="panel"><div class="ph"><h2>其他球队</h2><span class="note">上赛季降级及低级别联赛</span></div><div class="tgrid">${other.sort((a, b) => ENGINE.strength(b).ovr - ENGINE.strength(a).ovr).map(card).join('')}</div></div></section>`;
+}
+
+function teamSeasons(t) {
+  const rows = SEASONS.map(s => { const i = ranking(s).indexOf(t); if (i < 0) return null; const r = HS[s].table[i]; const top = HPS[s].filter(p => p.team === t).sort((a, b) => b.g - a.g)[0]; return { s, pos: i + 1, ...r, top }; }).filter(Boolean);
+  if (playedRounds() && S.teams.includes(t)) { const T = table(); const i = T.findIndex(r => r.team === t); const top = liveStats().filter(p => p.team === t).sort((a, b) => b.g - a.g)[0]; rows.push({ s: 18, pos: i + 1, ...T[i], top, live: true }); }
+  if (!rows.length) return '';
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Season by season</div><h2>历年威超战绩 · ${rows.filter(r => !r.live).length} 个赛季</h2></div></div>
+    <div class="tw"><table><thead><tr><th class="l">赛季</th><th>名次</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>积分</th><th class="l">队内最佳射手</th></tr></thead><tbody>
+    ${rows.slice().reverse().map(r => `<tr class="${zone(r.pos - 1)}"><td class="l mono">${SN(r.s)}${r.live ? '*' : ''}</td><td class="pos" style="text-align:right">${r.pos === 1 && !r.live ? '<span style="color:var(--gold)">冠军</span>' : r.pos}</td><td>${r.w + r.d + r.l}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td class="pts">${r.pts}</td><td class="l">${r.top && r.top.g ? `<button class="lnk" ${plink(t, r.top.name, r.top.pid)}><span>${esc(r.top.name)}</span></button> <span class="dim mono">${r.top.g}</span>` : '<span class="dim">–</span>'}</td></tr>`).join('')}
+    </tbody></table></div>${rows.some(r => r.live) ? '<p class="note" style="margin:8px 0 0">S18* 为本赛季进行中</p>' : ''}</div>`;
+}
+const TROPHIES = ['威超冠军', '世联赛冠军', '全联冠', '全联杯', '全协联', '威联赛冠军', '威联赛杯', '社区杯'];
+function teamDetail(t) {
+  const P = H.profiles[t] || {}, D = TD[t], st = ENGINE.strength(t), hon = H.honours[t] || {};
+  const squad = (PDB[t] || []).slice().sort((a, b) => b.rating - a.rating);
+  const ps = playerStats().filter(p => p.team === t); const pmap = Object.fromEntries(ps.map(p => [p.name, p]));
+  const inLeague = S.teams.includes(t); const tb = inLeague ? table() : null; const posNow = tb ? tb.findIndex(r => r.team === t) + 1 : null;
+  const car = P.career; const legends = H.legends[t] || [];
+  return `<section class="view">
+  <div><button class="btn ghost" data-act="backTeams">← 所有球队</button></div>
+  <div class="panel thero" style="--tc:${tcol(t)}">
+    <div class="glow">${crest(t, 168)}</div>
+    <div style="min-width:0"><div class="eyebrow">${esc(P.en || '')}${inLeague ? ` · 威超 S${SEASON}${posNow && playedRounds() ? ' 第 ' + posNow + ' 名' : ''}` : ' · 非威超'}</div><h1>${esc(t)}</h1>
+      <div class="btns" style="margin-top:10px"><span class="chip">${esc(P.style || D.style)}</span><span class="chip">${esc(P.formation || '')}</span>${hon['威超冠军'] ? `<span class="chip gold">威超冠军 ×${hon['威超冠军']}</span>` : ''}</div>
+      <dl class="facts">
+        <div><dt>主教练</dt><dd>${esc(P.coach || '—')}</dd></div>
+        <div><dt>执教战绩</dt><dd class="mono" style="font-size:12px">${car ? `${car[1]}胜 ${car[2]}平 ${car[3]}负` : '—'}</dd></div>
+        <div><dt>队长</dt><dd>${esc(P.captain || '—')}</dd></div>
+        <div><dt>主场</dt><dd>${esc(D.stadium)}</dd></div>
+        <div><dt>最佳状态</dt><dd>${esc((P.best || '—').replace('；', ' · '))}</dd></div>
+        <div><dt>最差状态</dt><dd>${esc((P.worst || '—').replace('；', ' · '))}</dd></div>
+        <div><dt>首发均分</dt><dd class="mono">${st.xiAvg.toFixed(2)}</dd></div>
+        <div><dt>替补均分</dt><dd class="mono">${st.depth.toFixed(2)}</dd></div>
+      </dl></div>
+  </div>
+  <div class="grid g-2">
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Starting XI</div><h2>首发阵容</h2></div><span class="note mono">ATK ${st.atk.toFixed(1)} · CTL ${st.ctl.toFixed(1)} · DEF ${st.def.toFixed(1)}</span></div>${pitchSVG(t)}</div>
+    <div class="panel"><div class="ph"><div><div class="eyebrow">League position</div><h2>历年威超排名</h2></div><span class="note">金点为夺冠 · — 为未参加威超</span></div>${rankChart(t)}</div>
+  </div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Honours</div><h2>荣誉</h2></div></div>
+    <div class="troph">${TROPHIES.map(k => `<div class="${hon[k] ? (k === '威超冠军' || k === '世联赛冠军' ? 'on' : '') : 'zero'}"><b>${hon[k] || 0}</b><span>${k}</span></div>`).join('')}</div></div>
+  ${teamSeasons(t)}
+  <div class="grid ${legends.length ? 'g-main' : ''}">
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>球员名单 · ${squad.length} 人</h2></div></div>
+      <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>身价</th><th>S${SEASON} 出场</th><th>S${SEASON} 进球</th><th>S${SEASON} 助攻</th><th>S${SEASON} 评分</th></tr></thead><tbody>
+      ${squad.map(p => { const s = pmap[p.name]; return `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" ${plink(t, p.name)}><span>${esc(p.name)}</span></button></td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td class="muted">${esc(p.value)}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
+      </tbody></table></div></div>
+    ${legends.length ? `<div class="panel" style="align-self:start"><div class="ph"><div><div class="eyebrow">Club legends</div><h2>核心球员时期</h2></div><span class="note">S++ > S+ > S > A+ > A</span></div>
+      <div class="rank-list">${legends.map(l => `<div class="rk" style="grid-template-columns:40px minmax(0,1fr) auto"><span class="n">${esc(l.pos)}</span><span>${esc(l.name)} <span class="sub mono">S${l.start}–${l.end ? 'S' + l.end : '至今'}</span></span><span class="tier ${l.tier.startsWith('S') ? 'S' : ''}">${esc(l.tier)}</span></div>`).join('')}</div></div>` : ''}
+  </div></section>`;
+}
+
+/* ---------- Players ---------- */
+let PF = { mode: 'cur', q: '', team: '', line: '', sort: 'rating', limit: 60 };
+const ALL_PLAYERS = Object.entries(PDB).flatMap(([t, l]) => l.map(p => ({ ...p, team: t, line: ENGINE.LINE(p.pos) })));
+Object.keys(TD).forEach(t => ENGINE.lineup(t).xi.forEach(x => { if (!(PDB[t] || []).some(p => p.name === x.name)) { const pid = CUR_PID[t + '|' + x.name]; ALL_PLAYERS.push({ extra: true, name: x.name, team: t, pos: x.slot.replace(/-.*/, ''), line: x.line, nat: pid != null ? (PL[pid][2] || '—') : '—', age: '—', rating: x.rating, value: '—', cGP: 0, cG: 0, cA: 0, attributes: {} }); } }));
+const valNum = v => parseFloat(String(v).replace(/[^\d.]/g, '')) || 0;
+function vPlayers() {
+  const allT = statsFor('all'); const at = {}; allT.forEach(p => { if (p.pid != null) at[p.pid] = p; });
+  const ps = liveStats(); const pm = {}; ps.forEach(p => pm[p.team + '|' + p.name] = p);
+  const seg = `<div class="seg" role="group" aria-label="球员范围">${[['cur', '现役球员'], ['hist', '退役球员']].map(([k, l]) => `<button data-pmode="${k}" aria-pressed="${PF.mode === k}">${l}</button>`).join('')}</div>`;
+  const lineSeg = `<div class="seg" role="group" aria-label="位置">${[['', '全部'], ['GK', '门将'], ['DF', '后卫'], ['MF', '中场'], ['FW', '前锋']].map(([k, l]) => `<button data-line="${k}" aria-pressed="${PF.line === k}">${l}</button>`).join('')}</div>`;
+  if (PF.mode === 'hist') {
+    let list = allT.filter(p => p.pid != null && PL[p.pid] && !PL[p.pid][3] && !isActive(p.pid));
+    list = list.filter(p => (!PF.q || p.name.includes(PF.q) || (PL[p.pid][2] || '').includes(PF.q)) && (!PF.team || p.teams.includes(PF.team)) && (!PF.line || p.line === PF.line));
+    const key = { rating: p => -(peakCache(p.pid) || 0), goals: p => -p.g, assists: p => -p.a, apps: p => -p.apps }[PF.sort] || (p => -p.g);
+    list.sort((a, b) => key(a) - key(b) || b.apps - a.apps);
+    const total = list.length; list = list.slice(0, PF.limit);
+    return `<section class="view"><div class="split"><div><div class="eyebrow">Player database</div><h1>球员</h1></div>${seg}</div>
+    <div class="panel"><div class="filters">
+      <input type="search" id="pq" placeholder="搜索球员或国籍" value="${esc(PF.q)}" aria-label="搜索球员">
+      <select id="pt" aria-label="球队"><option value="">全部球队</option>${ALL_TEAMS.map(t => `<option ${PF.team === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>${lineSeg}
+      <select id="ps" aria-label="排序">${[['goals', '按威超进球'], ['assists', '按威超助攻'], ['apps', '按威超出场'], ['rating', '按巅峰评分']].map(([k, l]) => `<option value="${k}" ${PF.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <p class="note" style="margin:12px 0 4px">球员资料库以外、有威超出场记录的退役球员，共 ${total} 人。</p>
+    <div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">类型</th><th class="l">位置</th><th class="l">国籍</th><th class="l">效力球队</th><th>赛季</th><th>巅峰评分</th><th>出场</th><th>进球</th><th>助攻</th></tr></thead><tbody>
+    ${list.map(p => { const span = (PSEASONS[p.pid] || []).map(x => x[0]); return `<tr><td class="l"><button class="lnk" data-pid="${p.pid}"><span>${esc(p.name)}</span></button></td><td class="l"><span class="btns" style="gap:4px;flex-wrap:nowrap">${statusChips(p.pid, true)}</span></td><td class="l mono" style="font-size:12px">${esc(p.pos)}</td><td class="l muted">${esc(PL[p.pid][2] || '—')}</td><td class="l"><span class="tname" style="gap:4px">${p.teams.map(t => crest(t, 18)).join('')}</span></td><td class="muted">${span.length ? SN(Math.min(...span)) + '–' + SN(Math.max(...span)) : ''}</td><td>${peakCache(p.pid) ? `<span class="rt-pill" style="background:${rtColor(peakCache(p.pid))}">${peakCache(p.pid)}</span>` : '–'}</td><td>${p.apps}</td><td>${p.g}</td><td>${p.a}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    ${total > PF.limit ? `<div style="text-align:center;margin-top:14px"><button class="btn" data-act="more">再显示 60 名</button></div>` : ''}</div></section>`;
+  }
+  let list = ALL_PLAYERS.filter(p => (!PF.q || p.name.includes(PF.q) || p.nat.includes(PF.q)) && (!PF.team || p.team === PF.team) && (!PF.line || p.line === PF.line));
+  const A = p => at[pidOf(p.team, p.name)] || {};
+  const key = { rating: p => -p.rating, value: p => -valNum(p.value), age: p => typeof p.age === 'number' ? p.age : 99, goals: p => -((pm[p.team + '|' + p.name] || {}).g || 0) - p.rating / 1000, assists: p => -((pm[p.team + '|' + p.name] || {}).a || 0) - p.rating / 1000, avg: p => -((pm[p.team + '|' + p.name] || {}).avg || 0) - p.rating / 10000, vg: p => -(A(p).g || 0), vapps: p => -(A(p).apps || 0) }[PF.sort] || (p => -p.rating);
+  list.sort((a, b) => key(a) - key(b));
+  const total = list.length; list = list.slice(0, PF.limit);
+  return `<section class="view"><div class="split"><div><div class="eyebrow">Player database</div><h1>球员</h1></div>${seg}</div>
+  <div class="panel"><div class="filters">
+    <input type="search" id="pq" placeholder="搜索球员或国籍" value="${esc(PF.q)}" aria-label="搜索球员">
+    <select id="pt" aria-label="球队"><option value="">全部球队</option>${ALL_TEAMS.map(t => `<option ${PF.team === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>${lineSeg}
+    <select id="ps" aria-label="排序">${[['rating', '按评分'], ['value', '按身价'], ['age', '按年龄（小→大）'], ['vg', '按威超生涯进球'], ['vapps', '按威超生涯出场'], ['goals', `按 S${SEASON} 进球`], ['assists', `按 S${SEASON} 助攻`], ['avg', `按 S${SEASON} 评分`]].map(([k, l]) => `<option value="${k}" ${PF.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+  </div>
+  <p class="note" style="margin:12px 0 4px">共 ${total} 名现役球员</p>
+  <div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">球队</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>身价</th><th>威超出场</th><th>威超进球</th><th>威超助攻</th><th>S${SEASON} 出场</th><th>S${SEASON} 进球</th><th>S${SEASON} 助攻</th><th>S${SEASON} 评分</th></tr></thead><tbody>
+  ${list.map(p => { const s = pm[p.team + '|' + p.name], a = A(p); return `<tr><td class="l"><button class="lnk" ${plink(p.team, p.name)}><span>${esc(p.name)}</span></button>${FATHER_OF[pidOf(p.team, p.name)] ? ' <span class="chip" style="font-size:10px;padding:0 5px">二代</span>' : ''}</td><td class="l"><span class="tname">${crest(p.team, 18)}<span class="muted">${esc(p.team)}</span></span></td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td class="muted">${esc(p.value)}</td><td class="muted">${a.apps ? a.apps : '<span class="dim">–</span>'}</td><td class="muted">${a.apps ? a.g : '<span class="dim">–</span>'}</td><td class="muted">${a.apps ? a.a : '<span class="dim">–</span>'}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
+  </tbody></table></div>
+  ${total > PF.limit ? `<div style="text-align:center;margin-top:14px"><button class="btn" data-act="more">再显示 60 名</button></div>` : ''}</div></section>`;
+}
+const _peak = {}; const peakCache = pid => pid in _peak ? _peak[pid] : (_peak[pid] = peakRating(pid));
+after.players = () => {
+  let tm; $('#pq').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => { PF.q = e.target.value.trim(); PF.limit = 60; render(); const i = $('#pq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 220); });
+  $('#pt').addEventListener('change', e => { PF.team = e.target.value; PF.limit = 60; render(); });
+  $('#ps').addEventListener('change', e => { PF.sort = e.target.value; render(); });
+};
+const ATTR = { spd: '速度', sho: '射门', pas: '传球', dri: '盘带', def: '防守', phy: '身体', men: '心理', sta: '体能', div: '扑救', han: '手型', kic: '开球', ref: '反应', pos_s: '站位' };
+function careerHTML(pid) {
+  if (pid == null) return '';
+  const rows = personSeasons(pid);
+  if (!rows.length) return `<div><div class="eyebrow" style="margin-bottom:8px">威超生涯</div><div class="empty">还没有威超出场记录</div></div>`;
+  const tot = rows.reduce((a, [, r]) => { ['apps', 'g', 'a', 'y', 'r', 'motm', 'rs'].forEach(f => a[f] += r[f] || 0); return a; }, { apps: 0, g: 0, a: 0, y: 0, r: 0, motm: 0, rs: 0 });
+  return `<div><div class="eyebrow" style="margin-bottom:8px">威超生涯 · ${rows.length} 个赛季</div>
+    <div class="stats3 s4" style="margin-bottom:10px">${[[tot.apps, '出场'], [tot.g, '进球'], [tot.a, '助攻'], [tot.apps ? (tot.rs / tot.apps).toFixed(2) : '–', '场均评分']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
+    <div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">球队</th><th>出场</th><th>进球</th><th>助攻</th><th>黄牌</th><th>红牌</th><th>评分</th></tr></thead><tbody>
+    ${rows.map(([s, r]) => `<tr><td class="l mono">${SN(s)}${s === 18 ? '*' : ''}</td><td class="l"><span class="tname">${crest(r.team, 16)}<span>${esc(r.team)}</span></span></td><td>${r.apps}</td><td>${r.g}</td><td>${r.a}</td><td class="muted">${r.y}</td><td class="muted">${r.r}</td><td>${r.avg.toFixed(2)}</td></tr>`).join('')}
+    </tbody></table></div>${rows.some(x => x[0] === 18) ? '<p class="note" style="margin:6px 0 0">S18* 为本赛季模拟进度。S01–S17 由官网排名和榜单还原。</p>' : '<p class="note" style="margin:6px 0 0">S01–S17 由官网排名和榜单还原。</p>'}</div>`;
+}
+function openPerson(pid) {
+  const pp = PL[pid]; if (!pp) return;
+  const [name, pos, nat, cur, kind] = pp;
+  if (cur) return openPlayer(cur, name);
+  const rows = personSeasons(pid); const teams = [...new Set(rows.map(r => r[1].team))];
+  const pk = peakCache(pid);
+  const d = $('#dlg');
+  d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(pos)}</span></div>
+      <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(name)}</h3>
+      <div class="btns" style="margin-top:8px">${statusChips(pid)}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${CUR_TEAM_OF[pid] ? `<span class="chip">现效力 ${esc(CUR_TEAM_OF[pid])}</span>` : (() => { const sp = spanOf(pid); return sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span><span class="chip">${SN(sp[1])} 赛季后退役</span>` : ''; })()}${familyChips(pid)}</div></div></div>
+    ${careerHTML(pid)}</div>`;
+  if (!d.open) d.showModal();
+}
+function openPlayer(team, name) {
+  const p = (PDB[team] || []).find(x => x.name === name) || ALL_PLAYERS.find(x => x.name === name && x.team === team);
+  const s = liveStats().find(x => x.team === team && x.name === name);
+  const pid = pidOf(team, name);
+  const d = $('#dlg');
+  if ((!p || p.extra) && pid != null) return openPerson(pid);
+  if (!p || p.extra) {
+    const xi = ENGINE.lineup(team).xi.find(x => x.name === name);
+    d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="pcard"><div class="ovr" style="color:${rtColor(xi ? xi.rating : 75)}">${xi ? xi.rating : '–'}</div><div><div class="eyebrow">${esc(team)} · ${esc(xi ? xi.slot : '')}</div><h3>${esc(name)}</h3></div></div><p class="note" style="margin:0">球员资料库里没有这名球员的详细数据，只有球队阵容中的评分。</p>
+      ${s ? `<div class="stats3 s4">${[[s.apps, '出场'], [s.g, '进球'], [s.a, '助攻'], [s.avg.toFixed(2), '场均评分']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>` : ''}</div>`;
+    if (!d.open) d.showModal(); return;
+  }
+  const attrs = Object.entries(p.attributes || {});
+  d.innerHTML = `<div class="dlg" style="position:relative">
+    <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
+      <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${crest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}</span></div><h3>${esc(p.name)}</h3>
+      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span>${pid != null ? familyChips(pid) : ''}</div></div></div>
+    <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
+    <div><div class="eyebrow" style="margin-bottom:8px">S${SEASON} 本赛季（模拟）</div>
+      ${s ? `<div class="stats3 s4">${[[s.apps, '出场'], [s.min, '出场分钟'], [s.avg.toFixed(2), '场均评分'], [s.motm, '全场最佳'], [s.g, '进球'], [s.a, '助攻'], [s.sh, '射门'], [s.ot, '射正'], [s.tk, '抢断'], ...(s.line === 'GK' ? [[s.sv, '扑救']] : []), ...(s.line === 'GK' || s.line === 'DF' ? [[s.cs, '零封']] : []), [s.y, '黄牌'], [s.r, '红牌']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>` : `<div class="empty">本赛季还没有首发出场</div>`}</div>
+    ${careerHTML(pid)}
+    <div><div class="eyebrow" style="margin-bottom:8px">资料库记录（含威超以外的比赛）</div><div class="stats3"><div><b>${p.cGP}</b><span>生涯出场</span></div><div><b>${p.cG}</b><span>生涯进球</span></div><div><b>${p.cA}</b><span>生涯助攻</span></div>
+      <div><b>${p.tGP}</b><span>本队出场</span></div><div><b>${p.tG}</b><span>本队进球</span></div><div><b>${p.tA}</b><span>本队助攻</span></div></div></div>
+  </div>`;
+  if (!d.open) d.showModal();
+}
+
+/* ---------- Stats centre ---------- */
+const PCATS = [
+  { k: 'g', zh: '进球', en: 'Goals', ctx: [['sh', '射门'], ['ot', '射正']] },
+  { k: 'a', zh: '助攻', en: 'Assists', ctx: [['g', '进球']] },
+  { k: 'ga', zh: '进球 + 助攻', en: 'Goal involvements', ctx: [['g', '进球'], ['a', '助攻']] },
+  { k: 'cs', zh: '零封', en: 'Clean sheets', only: 'GK', ctx: [['sv', '扑救']] },
+  { k: 'sv', zh: '扑救', en: 'Saves', only: 'GK', ctx: [['cs', '零封']] },
+  { k: 'avg', zh: '场均评分', en: 'Average rating', fmt: v => v.toFixed(2), minApps: true, ctx: [['motm', '全场最佳']] },
+  { k: 'sh', zh: '射门', en: 'Shots', ctx: [['ot', '射正'], ['g', '进球']] },
+  { k: 'ot', zh: '射正', en: 'Shots on target', ctx: [['sh', '射门'], ['g', '进球']] },
+  { k: 'tk', zh: '抢断', en: 'Tackles', ctx: [['y', '黄牌']] },
+  { k: 'motm', zh: '全场最佳', en: 'Player of the match', ctx: [['avg', '评分']] },
+  { k: 'y', zh: '黄牌', en: 'Yellow cards', ctx: [['r', '红牌'], ['tk', '抢断']] },
+  { k: 'r', zh: '红牌', en: 'Red cards', ctx: [['y', '黄牌']] },
+  { k: 'apps', zh: '出场', en: 'Appearances', ctx: [['min', '分钟']] },
+  { k: 'min', zh: '出场时间', en: 'Minutes played', ctx: [['apps', '出场']] },
+];
+const CCATS = [
+  { k: 'gf', zh: '进球', en: 'Goals' },
+  { k: 'ga', zh: '失球', en: 'Goals conceded', asc: true },
+  { k: 'cs', zh: '零封', en: 'Clean sheets' },
+  { k: 'gd', zh: '净胜球', en: 'Goal difference', fmt: v => (v > 0 ? '+' : '') + v },
+  { k: 'possAvg', zh: '场均控球率', en: 'Possession', fmt: v => v.toFixed(1) + '%' },
+  { k: 'sh', zh: '射门', en: 'Shots' },
+  { k: 'ot', zh: '射正', en: 'Shots on target' },
+  { k: 'tk', zh: '抢断', en: 'Tackles' },
+  { k: 'sv', zh: '扑救', en: 'Saves' },
+  { k: 'cor', zh: '角球', en: 'Corners' },
+  { k: 'hp', zh: '主场积分', en: 'Home points' },
+  { k: 'ap', zh: '客场积分', en: 'Away points' },
+  { k: 'y', zh: '黄牌', en: 'Yellow cards' },
+  { k: 'rc', zh: '红牌', en: 'Red cards' },
+];
+const PINFO = {}; ALL_PLAYERS.forEach(p => PINFO[p.team + '|' + p.name] = p);
+let SM = { mode: 'player', season: 'live', cat: null, team: '', line: '', limit: 50 };
+function minAppsFor(season) { return season === 'live' ? Math.max(1, Math.ceil(playedRounds() * 0.4)) : season === 'all' ? 60 : 15; }
+function rankPlayers(cat, ps, f = {}) {
+  const minApps = minAppsFor(SM.season);
+  let l = ps.filter(p => (!cat.only || p.line === cat.only) && (!f.team || p.team === f.team || (p.teams && p.teams.includes(f.team))) && (!f.line || p.line === f.line) && (cat.minApps ? p.apps >= minApps : p[cat.k] > 0));
+  l.sort((x, y) => y[cat.k] - x[cat.k] || x.min - y.min || x.name.localeCompare(y.name, 'zh'));
+  let rk = 0; l.forEach((p, i) => { if (i === 0 || p[cat.k] !== l[i - 1][cat.k]) rk = i + 1; p.rk = rk; });
+  return l;
+}
+function rankClubs(cat, cs) {
+  const l = cs.slice().sort((x, y) => cat.asc ? x[cat.k] - y[cat.k] || x.p - y.p : y[cat.k] - x[cat.k] || x.team.localeCompare(y.team, 'zh'));
+  let rk = 0; l.forEach((c, i) => { if (i === 0 || c[cat.k] !== l[i - 1][cat.k]) rk = i + 1; c.rk = rk; });
+  return l;
+}
+const seasonLabel = s => s === 'live' ? `S${SEASON} 进行中` : s === 'all' ? '历史总计 S01–S18' : SN(s) + ' 赛季';
+const natOf = p => p.pid != null && PL[p.pid] ? (PL[p.pid][2] || '—') : ((PINFO[p.team + '|' + p.name] || {}).nat || '—');
+function vStats() {
+  const se = SM.season;
+  const played = playedRounds();
+  const sub = se === 'live' ? (played ? `第 1–${played} 轮 · 联赛比赛数据，友谊赛不计入` : '本赛季还没有比赛数据') : se === 'all' ? 'S01–S17 还原数据 + S18 已模拟场次' : `${SN(se)} 赛季 38 轮 · 由官网排名和榜单还原`;
+  const head = `<div class="split"><div><div class="eyebrow">Stats centre · ${seasonLabel(se)}</div><h1>数据榜</h1><p class="muted" style="margin:6px 0 0;font-size:13px">${sub}</p></div>
+    <div class="btns">${seasonSelect('smSeason', se, [['all', '历史总计']])}<div class="seg" role="group" aria-label="榜单类型"><button data-sm="player" aria-pressed="${SM.mode === 'player'}">球员</button><button data-sm="club" aria-pressed="${SM.mode === 'club'}">球队</button></div></div></div>`;
+  if (se === 'live' && !played) return `<section class="view">${head}<div class="empty">模拟第 1 轮后生成本赛季数据榜，也可以在右上角切换到往届赛季或历史总计</div></section>`;
+  const fmtOf = c => c.fmt || (v => v);
+  const teamsOf = se === 'live' ? S.teams : se === 'all' ? ALL_TEAMS : HS[se].teams;
+  const sub2 = p => p.teams && p.teams.length > 1 ? p.teams.join('、') : p.team;
+  if (SM.mode === 'player') {
+    const ps = statsFor(se);
+    if (!SM.cat) {
+      return `<section class="view">${head}<div class="lgrid">${PCATS.map(c => {
+        const l = rankPlayers(c, ps); const f = fmtOf(c);
+        if (!l.length) return `<div class="panel lcard"><div><div class="eyebrow">${c.en}</div><h2>${c.zh}</h2></div><div class="empty">暂无</div></div>`;
+        const t = l[0];
+        return `<div class="panel lcard"><div class="split"><div><div class="eyebrow">${c.en}</div><h2>${c.zh}</h2></div></div>
+          <button class="lnk lead" style="--tcd:${tcol(t.team)}22" ${plink(t.team, t.name, t.pid)}>${crest(t.team, 40)}<span style="min-width:0"><b>${esc(t.name)}</b><small>${esc(sub2(t))} · ${esc(t.pos)}</small></span><span class="v">${f(t[c.k])}</span></button>
+          <div class="rank-list">${l.slice(1, 5).map(p => `<div class="rk"><span class="n">${p.rk}</span><button class="lnk tname" ${plink(p.team, p.name, p.pid)}>${crest(p.team, 18)}<span>${esc(p.name)} <span class="sub">${esc(p.team)}</span></span></button><span class="v">${f(p[c.k])}</span></div>`).join('')}</div>
+          <button class="btn ghost" data-scat="${c.k}" style="justify-self:start">完整榜单 · ${l.length} 人 →</button></div>`;
+      }).join('')}</div></section>`;
+    }
+    const c = PCATS.find(x => x.k === SM.cat), f = fmtOf(c);
+    const l = rankPlayers(c, ps, SM), shown = l.slice(0, SM.limit);
+    return `<section class="view">${head}
+      <div class="panel"><div class="ph"><div><button class="btn ghost" data-scat="" style="margin:-6px 0 6px -10px">← 所有榜单</button><div class="eyebrow">${c.en}</div><h2 style="font-size:22px;font-weight:900">${c.zh}</h2></div>
+        <div class="filters"><select id="smCat" aria-label="榜单">${PCATS.map(x => `<option value="${x.k}" ${x.k === c.k ? 'selected' : ''}>${x.zh}</option>`).join('')}</select>
+        <select id="smTeam" aria-label="球队"><option value="">全部球队</option>${teamsOf.map(t => `<option ${SM.team === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+        ${c.only ? '' : `<div class="seg" role="group" aria-label="位置">${[['', '全部'], ['GK', '门将'], ['DF', '后卫'], ['MF', '中场'], ['FW', '前锋']].map(([k, n]) => `<button data-sline="${k}" aria-pressed="${SM.line === k}">${n}</button>`).join('')}</div>`}</div></div>
+        ${c.minApps ? `<p class="note" style="margin:0 0 10px">至少首发 ${minAppsFor(se)} 场才进入评分榜</p>` : ''}
+        ${l.length ? `<div class="tw"><table><thead><tr><th>排名</th><th class="l">球员</th><th class="l">球队</th><th class="l">位置</th><th class="l">国籍</th>${se === 'all' ? '<th>赛季数</th>' : ''}<th>出场</th>${c.ctx.map(([k, n]) => `<th>${n}</th>`).join('')}<th>${c.zh}</th></tr></thead><tbody>
+        ${shown.map(p => `<tr><td class="pos">${p.rk}</td><td class="l"><button class="lnk" ${plink(p.team, p.name, p.pid)}><span>${esc(p.name)}</span></button></td><td class="l"><span class="tname" style="gap:4px">${(p.teams || [p.team]).map(t => crest(t, 18)).join('')}<span class="muted">${esc(sub2(p))}</span></span></td><td class="l mono" style="font-size:12px">${esc(p.pos)}</td><td class="l muted">${esc(natOf(p))}</td>${se === 'all' ? `<td class="muted">${p.seasons}</td>` : ''}<td>${p.apps}</td>${c.ctx.map(([k]) => `<td class="muted">${k === 'avg' ? p.avg.toFixed(2) : p[k]}</td>`).join('')}<td class="hl">${f(p[c.k])}</td></tr>`).join('')}
+        </tbody></table></div>` : `<div class="empty">没有符合条件的球员</div>`}
+        ${l.length > SM.limit ? `<div style="text-align:center;margin-top:14px"><button class="btn" data-act="smMore">再显示 50 名（共 ${l.length} 人）</button></div>` : ''}</div></section>`;
+  }
+  const cs = clubsFor(se);
+  if (!SM.cat) {
+    return `<section class="view">${head}<div class="lgrid">${CCATS.map(c => {
+      const l = rankClubs(c, cs), f = fmtOf(c), t = l[0];
+      return `<div class="panel lcard"><div><div class="eyebrow">${c.en}</div><h2>${c.zh}${c.asc ? ' <span class="note">（最少）</span>' : ''}</h2></div>
+        <button class="lnk lead" style="--tcd:${tcol(t.team)}22" data-team="${esc(t.team)}">${crest(t.team, 40)}<span style="min-width:0"><b>${esc(t.team)}</b><small>${t.p} 场${t.seasons ? ' · ' + t.seasons + ' 个赛季' : ''}</small></span><span class="v">${f(t[c.k])}</span></button>
+        <div class="rank-list">${l.slice(1, 5).map(x => `<div class="rk"><span class="n">${x.rk}</span>${tlink(x.team, 18)}<span class="v">${f(x[c.k])}</span></div>`).join('')}</div>
+        <button class="btn ghost" data-scat="${c.k}" style="justify-self:start">完整榜单 · ${l.length} 队 →</button></div>`;
+    }).join('')}</div></section>`;
+  }
+  const c = CCATS.find(x => x.k === SM.cat) || CCATS[0];
+  const l = rankClubs(c, cs);
+  return `<section class="view">${head}<div class="panel"><div class="ph"><div><button class="btn ghost" data-scat="" style="margin:-6px 0 6px -10px">← 所有榜单</button><div class="eyebrow">${c.en}</div><h2 style="font-size:22px;font-weight:900">球队${c.zh}榜</h2></div><span class="note">点表头切换排序</span></div>
+    <div class="tw"><table><thead><tr><th>排名</th><th class="l">球队</th><th>赛</th>${CCATS.map(x => `<th class="sort ${x.k === c.k ? 'sorted' : ''}" data-scat="${x.k}">${x.zh}</th>`).join('')}</tr></thead><tbody>
+    ${l.map(r => `<tr><td class="pos">${r.rk}</td><td class="l">${tlink(r.team, 20)}</td><td>${r.p}</td>${CCATS.map(x => `<td class="${x.k === c.k ? 'hl' : 'muted'}">${fmtOf(x)(r[x.k])}</td>`).join('')}</tr>`).join('')}
+    </tbody></table></div></div></section>`;
+}
+after.stats = () => {
+  $('#smSeason').addEventListener('change', e => { const v = e.target.value; SM.season = /^\d+$/.test(v) ? +v : v; SM.team = ''; SM.limit = 50; render(); });
+  const c = $('#smCat'); c && c.addEventListener('change', e => { SM.cat = e.target.value; SM.limit = 50; render(); });
+  const t = $('#smTeam'); t && t.addEventListener('change', e => { SM.team = e.target.value; SM.limit = 50; render(); });
+};
+
+/* ---------- History ---------- */
+let histSort = '威超冠军';
+function vHistory() {
+  const champs = SEASONS.map(s => ({ s, t: ranking(s)[0], pts: HS[s].table[0].pts }));
+  const allTime = clubsFor('all').sort((a, b) => b.pts - a.pts || b.gd - a.gd);
+  const hon = ALL_TEAMS.map(t => ({ team: t, ...(H.honours[t] || {}) })).sort((a, b) => (b[histSort] || 0) - (a[histSort] || 0) || TROPHIES.reduce((s, k) => s + (b[k] || 0) - (a[k] || 0), 0));
+  const ps = statsFor('all');
+  const top = k => ps.filter(p => p[k] > 0).sort((a, b) => b[k] - a[k]).slice(0, 10).map((p, i) => ({ ...p, n: p[k], team: p.team }));
+  return `<section class="view"><div><div class="eyebrow">Since season 01</div><h1>历史总榜</h1><p class="muted" style="margin:6px 0 0;font-size:13px">S01–S17 由官网排名和榜单逐场还原${playedRounds() ? `，并计入 S18 已模拟的 ${playedRounds()} 轮` : ''}</p></div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Champions</div><h2>历届威超冠军</h2></div></div>
+    <div class="champs">${champs.map(c => `<div class="${c.s === 17 ? 'last' : ''}">${crest(c.t, 44)}<b>${esc(c.t)}</b><small>${SN(c.s)} · ${c.pts} 分</small></div>`).join('')}</div></div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">All-time table</div><h2>历史总积分榜</h2></div></div>
+    <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛季</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净胜</th><th>积分</th><th>冠军</th></tr></thead><tbody>
+    ${allTime.map((r, i) => `<tr><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.seasons}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd > 0 ? '+' : ''}${r.gd}</td><td class="pts">${r.pts}</td><td>${r.titles ? `<span style="color:var(--gold)">${r.titles}</span>` : '<span class="dim">0</span>'}</td></tr>`).join('')}
+    </tbody></table></div></div>
+  <div class="grid g-2">${scorerBlock(top('g'), ['历史射手榜', 'All-time goals'], ' 球')}${scorerBlock(top('a'), ['历史助攻榜', 'All-time assists'], ' 次')}</div>
+  <div style="text-align:center"><button class="btn" data-statsgo="all">查看全部历史球员与球队数据榜 →</button></div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Trophy cabinet</div><h2>各队荣誉</h2></div><span class="note">来自 PDF · 点表头排序</span></div>
+    <div class="tw"><table><thead><tr><th class="l">球队</th>${TROPHIES.map(k => `<th class="sort ${histSort === k ? 'sorted' : ''}" data-hs="${k}">${k}</th>`).join('')}</tr></thead><tbody>
+    ${hon.map(r => `<tr><td class="l">${tlink(r.team, 20)}</td>${TROPHIES.map(k => `<td class="${r[k] ? '' : 'dim'}" ${r[k] && k === histSort ? 'style="color:var(--accent-2)"' : ''}>${r[k] || 0}</td>`).join('')}</tr>`).join('')}
+    </tbody></table></div></div>
+  </section>`;
+}
+
+function confirmReset() {
+  const d = $('#dlg');
+  d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">重置第 ${SEASON} 赛季？</h2><p class="muted" style="margin:0">已模拟的 ${playedRounds()} 轮比赛结果会清空，赛程重新抽签。升级球队保持不变。</p><div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="doReset">重置赛季</button></div></div>`;
+  if (!d.open) d.showModal();
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-pid],[data-hm],[data-statsgo],[data-tmode],[data-pmode],[data-go],[data-act],[data-team],[data-player],[data-fx],[data-tbl],[data-w],[data-neutral],[data-line],[data-speed],[data-hs],[data-sm],[data-scat],[data-sline]');
+  if (!el) { if (e.target === $('#dlg')) $('#dlg').close(); return; }
+  if (el.dataset.go) { e.preventDefault(); if (el.dataset.go === 'teams') teamSel = null; return go(el.dataset.go); }
+  if (el.dataset.pid != null && el.dataset.pid !== '') { const id = +el.dataset.pid; if (id >= 0) openPerson(id); return; }
+  if (el.dataset.hm) { const [s, ri, mi] = el.dataset.hm.split(':').map(Number); return openHistMatch(s, ri, mi); }
+  if (el.dataset.statsgo) { const v = el.dataset.statsgo; SM = { mode: 'player', season: /^\d+$/.test(v) ? +v : v, cat: null, team: '', line: '', limit: 50 }; $('#dlg').open && $('#dlg').close(); return go('stats'); }
+  if (el.dataset.tmode) { tblMode = el.dataset.tmode; return render(); }
+  if (el.dataset.pmode) { PF = { ...PF, mode: el.dataset.pmode, team: '', limit: 60, sort: el.dataset.pmode === 'hist' ? 'goals' : 'rating' }; return render(); }
+  if (el.dataset.player) { const [t, n] = el.dataset.player.split('|'); return openPlayer(t, n); }
+  if (el.dataset.team) { if (el.tagName === 'LABEL') return; teamSel = el.dataset.team; $('#dlg').open && $('#dlg').close(); return go('teams'); }
+  if (el.dataset.fx) { const [ri, mi] = el.dataset.fx.split(':').map(Number); M = null; initMatch([ri, mi]); return go('match'); }
+  if (el.dataset.tbl) { tblSeason = el.dataset.tbl; return render(); }
+  if (el.dataset.w) { M.weather = el.dataset.w; M.fx = null; M.stored = false; return render(); }
+  if (el.dataset.neutral) { M.neutral = el.dataset.neutral === '1'; M.fx = null; M.stored = false; return render(); }
+  if (el.dataset.line != null && el.closest('.filters')) { PF.line = el.dataset.line; PF.limit = 60; return render(); }
+  if (el.dataset.speed) { if (live) live.speed = +el.dataset.speed; document.querySelectorAll('[data-speed]').forEach(b => b.setAttribute('aria-pressed', b === el)); return; }
+  if (el.dataset.hs) { histSort = el.dataset.hs; return render(); }
+  if (el.dataset.sm) { SM = { ...SM, mode: el.dataset.sm, cat: null, team: '', line: '', limit: 50 }; return render(); }
+  if (el.dataset.scat != null) { SM.cat = el.dataset.scat || null; SM.limit = 50; if (!SM.cat) { SM.team = ''; SM.line = ''; } render(); return window.scrollTo(0, 0); }
+  if (el.dataset.sline != null) { SM.line = el.dataset.sline; SM.limit = 50; return render(); }
+  const act = el.dataset.act;
+  if (act === 'round') { const nr = nextRound(); playRound(nr); S.demo = false; save(); ovRound = null; render(); toast(`第 ${nr + 1} 轮已模拟`); }
+  if (act === 'rest') { let n = 0; while (nextRound() >= 0) { playRound(nextRound()); n++; } S.demo = false; save(); ovRound = null; render(); toast(`已模拟剩余 ${n} 轮`); }
+  if (act === 'watch') { M = null; initMatch(); go('match'); }
+  if (act === 'prevR') { ovRound = Math.max(0, (ovRound ?? Math.max(0, nextRound())) - 1); render(); }
+  if (act === 'nextR') { ovRound = Math.min(37, (ovRound ?? Math.max(0, nextRound())) + 1); render(); }
+  if (act === 'reset') confirmReset();
+  if (act === 'doReset') { S = newSeason(S.promoted); M = null; ovRound = null; save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
+  if (act === 'dismissDemo') { S.demo = false; save(); render(); }
+  if (act === 'close') $('#dlg').close();
+  if (act === 'swap') { M = { ...M, h: M.a, a: M.h, fx: null, stored: false, res: null, phase: 'pre' }; render(); }
+  if (act === 'kick') kickoff(false);
+  if (act === 'instant') kickoff(true);
+  if (act === 'skip') { if (live) { cancelAnimationFrame(live.raf); live.t = live.endM; paint(); finish(); } }
+  if (act === 'again') { M.res = null; M.phase = 'pre'; M.weather = null; M.slot = null; render(); }
+  if (act === 'nextfx') { const n = findNextFixture(); M = null; initMatch(n); render(); window.scrollTo(0, 0); }
+  if (act === 'backTeams') { teamSel = null; render(); }
+  if (act === 'more') { PF.limit += 60; render(); }
+  if (act === 'smMore') { SM.limit += 50; render(); }
+  if (act === 'tPrev') { tblRound = Math.max(0, tblRound - 1); render(); }
+  if (act === 'tNext') { tblRound = Math.min(37, tblRound + 1); render(); }
+});
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-fx],[data-hm],g.pl')) { e.preventDefault(); e.target.click ? e.target.click() : e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
+
+window.addEventListener('hashchange', () => { const h = (location.hash || '').slice(1); if (VIEWS.includes(h) && h !== view) { if (h === 'teams') teamSel = null; go(h, null, false); } });
+const h0 = (location.hash || '').slice(1);
+go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
+})();
+</script>
