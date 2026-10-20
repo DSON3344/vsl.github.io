@@ -149,7 +149,10 @@ function arc(s, c0, c1) {
   if (len >= 5) d += [2, 1][back] || 0;
   return d;
 }
+// 第一代银河战舰：巅峰在威联赛时代，S01 起是生涯末段，能力逐季下滑
+const TWILIGHT = new Set(Object.entries(JSON.parse(fs.readFileSync(D + 'lore.json', 'utf8')).players).filter(([k, v]) => v.pre && v.span[0] === 1).map(([k]) => k.split('@')[0]));
 function ratingAt(p, s) {
+  if (p.kind === 'legend' && TWILIGHT.has(p.name) && p.stints.some(st => st.start === 1 && st.team === '威龙')) return Math.round((p.peak || 88) - 0.6 - 1.4 * (s - 1));
   if (p.kind === 'db' && s >= proSeason(p)) return Math.round(p.dbr + ageCurve(p.age - (18 - s)) - ageCurve(p.age));
   const ss = Object.keys(assign[P.indexOf(p)] || {}).map(Number);
   const c0 = p.kind === 'gen' ? p.born : (ss.length ? Math.min(...ss) : s), c1 = p.kind === 'gen' ? p.until : (ss.length ? Math.max(...ss) : s);
@@ -375,7 +378,7 @@ function simulateSeason(s) {
 }
 
 /* ---------- 比赛事件与球员数据 ---------- */
-const PS = {}, CS = {}, OUT = { seasons: {} };
+const PS = {}, CS = {}, OUT = { seasons: {} }, PLAYED = {};
 const stat = (s, pid, team) => { const o = (PS[s] = PS[s] || {}); return o[pid] || (o[pid] = { team, apps: 0, min: 0, g: 0, a: 0, y: 0, r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, starts: 0 }); };
 const attrOf = pid => (P[pid].kind === 'db' && (PDB[P[pid].cur] || []).find(q => q.name === P[pid].name) || {}).attributes;
 const report = [];
@@ -461,12 +464,109 @@ for (let s = 1; s <= LAST; s++) {
     });
     stat(s, motm.pid, teams[rows[0].includes(motm) ? m.h : m.a]).motm++;
     const w = WEATHERS[Math.floor(rnd() * 3)], sl = SLOTS[Math.floor(rnd() * 8)];
-    (rounds[m.ri] = rounds[m.ri] || []).push([m.h, m.a, m.hg, m.ag, w, sl, ev.goals.map(g => [g[0], g[1] === m.h ? 0 : 1, g[2], g[3], g[4]]), ev.cards.map(c => [c[0], c[1] === m.h ? 0 : 1, c[2], c[3]]), motm.pid, poss, shots[0], shots[1]]);
+    const entry = [m.h, m.a, m.hg, m.ag, w, sl, ev.goals.map(g => [g[0], g[1] === m.h ? 0 : 1, g[2], g[3], g[4]]), ev.cards.map(c => [c[0], c[1] === m.h ? 0 : 1, c[2], c[3]]), motm.pid, poss, shots[0], shots[1]];
+    (rounds[m.ri] = rounds[m.ri] || []).push(entry);
+    (PLAYED[s] = PLAYED[s] || []).push({ entry, side: [rows[0].map(x => x.pid), rows[1].map(x => x.pid)] });
   });
   CS[s] = csT;
   const table = R.table.map(r => ({ team: r.t, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.pts }));
   OUT.seasons[s] = { teams, table, official: OFFICIAL[s].map(r => ({ team: r.team, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.w * 3 + r.d })), rounds, xi: Object.fromEntries(teams.map(t => [t, XI[s][t].map(x => [x.pid, x.slot, x.r])])), club: csT };
 }
+
+/* ---------- 传奇设定（lore.json）：威超联赛生涯出场/进球/助攻按设定 ---------- */
+const LORE = JSON.parse(fs.readFileSync(D + 'lore.json', 'utf8'));
+const lr = (() => { let x = 4242; return () => { x |= 0; x = x + 0x6D2B79F5 | 0; let t = Math.imul(x ^ x >>> 15, 1 | x); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();
+const lshuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(lr() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function lorePid(key, span) {
+  const [name, team] = key.split('@');
+  return (byName[clean(name)] || []).find(i => { for (let s = span[0]; s <= span[1]; s++) if (PS[s] && PS[s][i] && PS[s][i].team === team) return true; return false; });
+}
+const LOCK = new Set(), LORE_PID = {};
+function loreTeamGoal(s, e, k) { const T = OUT.seasons[s].table, tm = OUT.seasons[s].teams; e[k ? 3 : 2]++; const H = T.find(r => r.team === tm[e[0]]), A = T.find(r => r.team === tm[e[1]]); if (k) { A.gf++; H.ga++; } else { H.gf++; A.ga++; } }
+function loreMine(s, pid) { const t = PS[s][pid].team, tm = OUT.seasons[s].teams; return PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === t ? 0 : 1 })).filter(({ m, k }) => m.side[k].includes(pid)); }
+function loreMate(side, pid, wfn) { const c = side.filter(i => i !== pid && !LOCK.has(i)); if (!c.length) return -1; const w = c.map(wfn); let t = w.reduce((a, b) => a + b, 0); if (t <= 0) return c[Math.floor(lr() * c.length)]; let r = lr() * t; for (let i = 0; i < c.length; i++) { r -= w[i]; if (r <= 0) return c[i]; } return c[c.length - 1]; }
+const scW = i => ({ FW: 3, MF: 1.4, DF: 0.35, GK: 0 })[P[i].line] ?? 1, asW = i => ({ FW: 1.6, MF: 2.4, DF: 0.8, GK: 0.05 })[P[i].line] ?? 1;
+function loreAddGoal(s, mine, pid, role) {
+  const wins = mine.filter(({ m, k }) => (k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3]) > 0);
+  const pool = wins.length ? wins : mine; const { m, k } = pool[Math.floor(lr() * pool.length)];
+  const team = PS[s][pid].team; let sc, as;
+  if (role === 'g') { sc = pid; as = lr() < 0.75 ? loreMate(m.side[k], pid, asW) : -1; }
+  else { sc = loreMate(m.side[k], pid, scW); as = pid; if (sc < 0) return false; }
+  let mn = 1 + Math.floor(lr() * 90); m.entry[6].push([mn, k, sc, as, 0]); m.entry[6].sort((a, b) => a[0] - b[0]);
+  loreTeamGoal(s, m.entry, k);
+  const S = PS[s][sc]; S.g++; S.sh++; S.ot++; S.rs += 0.5; if (as >= 0) { PS[s][as].a++; PS[s][as].rs += 0.3; }
+  if (k) m.entry[11]++; else m.entry[10]++;
+  return true;
+}
+function loreEnforce(key, info) {
+  const pid = lorePid(key, info.span); if (pid == null) { console.warn('lore 找不到', key); return; }
+  LORE_PID[key] = pid; if (!info.league) return;
+  const [TA, TG, TAS] = info.league;
+  const ss = Object.keys(PS).map(Number).filter(s => PS[s][pid]).sort((a, b) => a - b);
+  // 出场：不够就补替补出场
+  let apps = ss.reduce((a, s) => a + PS[s][pid].apps, 0);
+  for (let guard = 0; apps < TA && guard < 2000; guard++) {
+    const s = ss.slice().sort((a, b) => PS[a][pid].apps - PS[b][pid].apps)[0]; const o = PS[s][pid]; if (o.apps >= 38) break;
+    const t = o.team, tm = OUT.seasons[s].teams;
+    const free = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === t ? 0 : 1 })).filter(({ m, k }) => (tm[m.entry[0]] === t || tm[m.entry[1]] === t) && !m.side[k].includes(pid));
+    if (!free.length) break; const { m, k } = free[Math.floor(lr() * free.length)];
+    m.side[k].push(pid); o.apps++; o.min += 20 + Math.floor(lr() * 30); o.ps += 14; o.pc += 12; o.rs += 6.7; apps++;
+  }
+  const wt = ss.map(s => Math.pow(PS[s][pid].min, 0.75) * (0.88 + lr() * 0.24)), W = wt.reduce((a, b) => a + b, 0);
+  const split = tot => { const raw = wt.map(w => tot * w / W), fl = raw.map(Math.floor); let r = tot - fl.reduce((a, b) => a + b, 0); raw.map((x, i) => [x - fl[i], i]).sort((a, b) => b[0] - a[0]).slice(0, r).forEach(([, i]) => fl[i]++); return fl; };
+  const tg = split(TG), ta = split(TAS);
+  ss.forEach((s, j) => {
+    const o = PS[s][pid], mine = loreMine(s, pid);
+    const evs = () => lshuffle(mine.flatMap(({ m, k }) => m.entry[6].filter(g => g[1] === k).map(g => ({ g, m, k }))));
+    // 进球
+    let need = tg[j] - o.g;
+    if (need > 0) for (const { g } of evs()) { if (need <= 0) break; if (g[2] === pid || LOCK.has(g[2])) continue; const old = g[2]; if (g[3] === pid) { g[3] = old; o.a--; PS[s][old].a++; } PS[s][old].g--; PS[s][old].rs -= 0.5; g[2] = pid; o.g++; o.sh++; o.ot++; o.rs += 0.5; need--; }
+    for (let guard = 0; need > 0 && guard < 500; guard++) if (loreAddGoal(s, mine, pid, 'g')) need--;
+    if (need < 0) for (const { g, m, k } of evs()) { if (need >= 0) break; if (g[2] !== pid) continue; const nw = loreMate(m.side[k], pid, scW); if (nw < 0) continue; if (g[3] === nw) g[3] = -1, PS[s][nw].a--; g[2] = nw; PS[s][nw].g++; o.g--; o.rs -= 0.5; need++; }
+    // 助攻
+    need = ta[j] - o.a;
+    if (need > 0) for (const { g } of evs()) { if (need <= 0) break; if (g[2] === pid || g[3] === pid || g[4] || LOCK.has(g[2]) || (g[3] >= 0 && LOCK.has(g[3]))) continue; if (g[3] >= 0) PS[s][g[3]].a--; g[3] = pid; o.a++; o.rs += 0.3; need--; }
+    for (let guard = 0; need > 0 && guard < 500; guard++) if (loreAddGoal(s, mine, pid, 'a')) need--;
+    if (need < 0) for (const { g, m, k } of evs()) { if (need >= 0) break; if (g[3] !== pid) continue; const nw = lr() < 0.6 ? loreMate(m.side[k].filter(i => i !== g[2]), pid, asW) : -1; g[3] = nw; if (nw >= 0) PS[s][nw].a++; o.a--; need++; }
+  });
+  LOCK.add(pid);
+}
+const LORE_ORDER = ['哈雷斯@威尔福特', '李奥纳@狂蜂', '基尔吉斯@威龙', '罗梅欧@威龙', '范特西@威龙', '沃夫伦@威尔福特', '萨科@威尔福特', '马尔科姆@威尔福特', '德隆@罗联', '范文西@威龙', '基尔特斯@威龙', '罗纳德@威龙', '雷欧@罗联', '维拉@威龙', '安利克@威龙', '李仁炫@威龙', '门德利奇@威龙', '亚当斯@威龙', '范德容@威龙'];
+LORE_ORDER.concat(Object.keys(LORE.players).filter(k => !LORE_ORDER.includes(k))).forEach(k => loreEnforce(k, LORE.players[k]));
+// 改动进球后核对名次（积分 > 净胜球 > 进球）：同分时把下方球队大胜里的一个进球去掉，或给上方球队加一个
+const tieBadAt = T => { for (let i = 0; i < T.length - 1; i++) { const a = T[i], b = T[i + 1]; if (a.pts === b.pts && ((b.gf - b.ga) > (a.gf - a.ga) || ((b.gf - b.ga) === (a.gf - a.ga) && b.gf >= a.gf))) return i; } return -1; };
+for (let s = 1; s <= LAST; s++) {
+  const T = OUT.seasons[s].table, tm = OUT.seasons[s].teams;
+  for (let guard = 0; guard < 3000; guard++) {
+    const i = tieBadAt(T); if (i < 0) break;
+    const a = T[i], b = T[i + 1];
+    const bm = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === b.team ? 0 : tm[m.entry[1]] === b.team ? 1 : -1 })).filter(({ m, k }) => k >= 0 && (k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3]) >= 2);
+    let done = false;
+    // 净胜球差太大：把下方球队一场一球小胜改成平局（对手多进一球），让积分拉开
+    if ((b.gf - b.ga) - (a.gf - a.ga) > 4) {
+      const c2 = T[i + 2];
+      const cand = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === b.team ? 0 : tm[m.entry[1]] === b.team ? 1 : -1 })).filter(({ m, k }) => k >= 0 && (k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3]) >= 1);
+      const mg = ({ m, k }) => k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3];
+      for (const { m, k } of lshuffle(cand).sort((x, y) => mg(x) - mg(y))) {
+        const o = T.find(r => r.team === tm[m.entry[1 - k]]), j = T.indexOf(o);
+        if (c2 && b.pts - 2 < c2.pts) continue;
+        if (j > 0 && T[j - 1] !== b && T[j - 1].pts <= o.pts + 1) continue;
+        if (j > 0 && T[j - 1] === b && b.pts - 2 <= o.pts + 1) continue;
+        const n = mg({ m, k }); let okk = true;
+        for (let q = 0; q < n; q++) { const sc = loreMate(m.side[1 - k], -1, scW); if (sc < 0) { okk = false; break; } m.entry[6].push([46 + Math.floor(lr() * 48), 1 - k, sc, -1, 0]); loreTeamGoal(s, m.entry, 1 - k); PS[s][sc].g++; }
+        m.entry[6].sort((x, y) => x[0] - y[0]); if (!okk) continue;
+        b.w--; b.d++; b.pts -= 2; o.l--; o.d++; o.pts += 1; done = true; if (process.env.DBG2) console.log("tweak", s, guard, b.team, o.team); break;
+      }
+      if (done) continue;
+    }
+    const c = T[i + 2], okBelow = () => !c || c.pts !== b.pts || (b.gf - b.ga) - 1 > (c.gf - c.ga) || ((b.gf - b.ga) - 1 === (c.gf - c.ga) && b.gf - 1 > c.gf);
+    if (okBelow()) for (const { m, k } of lshuffle(bm)) { const gi = m.entry[6].findIndex(g => g[1] === k && !LOCK.has(g[2]) && (g[3] < 0 || !LOCK.has(g[3]))); if (gi < 0) continue; const g = m.entry[6].splice(gi, 1)[0]; PS[s][g[2]].g--; if (g[3] >= 0) PS[s][g[3]].a--; m.entry[k ? 3 : 2]--; const H = T.find(r => r.team === tm[m.entry[0]]), A = T.find(r => r.team === tm[m.entry[1]]); if (k) { A.gf--; H.ga--; } else { H.gf--; A.ga--; } done = true; break; }
+    if (!done && okBelow()) for (const { m, k } of lshuffle(bm)) { const opp = 1 - k; const sc = loreMate(m.side[opp], -1, scW); if (sc < 0) continue; m.entry[6].push([1 + Math.floor(lr() * 90), opp, sc, -1, 0]); m.entry[6].sort((x, y) => x[0] - y[0]); loreTeamGoal(s, m.entry, opp); PS[s][sc].g++; done = true; break; }
+    if (!done) { const am = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === a.team ? 0 : tm[m.entry[1]] === a.team ? 1 : -1 })).filter(({ m, k }) => k >= 0 && (k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3]) > 0); if (!am.length) break; const { m, k } = am[Math.floor(lr() * am.length)]; const sc = loreMate(m.side[k], -1, scW); if (sc < 0) continue; m.entry[6].push([1 + Math.floor(lr() * 90), k, sc, -1, 0]); m.entry[6].sort((x, y) => x[0] - y[0]); loreTeamGoal(s, m.entry, k); PS[s][sc].g++; }
+  }
+}
+for (let s = 1; s <= LAST; s++) { const T = OUT.seasons[s].table; for (let i = 0; i < T.length - 1; i++) { const a = T[i], b = T[i + 1]; if (a.pts === b.pts && ((b.gf - b.ga) > (a.gf - a.ga) || ((b.gf - b.ga) === (a.gf - a.ga) && b.gf > a.gf))) report.push(`S${s} 传奇进球改动后 ${a.team}/${b.team} 同分排序需注意`); } }
+OUT.lorePid = LORE_PID;
 
 /* ---------- 输出 ---------- */
 const used = new Set();

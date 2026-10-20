@@ -1549,6 +1549,42 @@ function foreignCareerHTML(p) {
     <div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">球队</th><th>出场</th><th>进球</th><th>助攻</th><th>评分</th></tr></thead><tbody>${rows.map(([s, r]) => `<tr><td class="l mono">${SN(s)}</td><td class="l">${clubCell(r.team, 16)}</td><td>${r.apps}</td><td>${r.g}</td><td>${r.a}</td><td>${r.avg.toFixed(2)}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
 const akey = p => p.pid != null ? 'p' + p.pid : 'u' + p.uid;
+/* ---------- 传奇设定（lore.json）：威联赛时代、银河战舰、GOAT ---------- */
+const LORE_PID = (HIST.lorePid || {}), LORE_KEY_OF = {}; Object.entries(LORE_PID).forEach(([k, pid]) => LORE_KEY_OF[pid] = k);
+const loreOf = pid => pid != null && LORE_KEY_OF[pid] ? LORE.players[LORE_KEY_OF[pid]] : null;
+const loreAward = (k, s) => { const key = s <= 17 && LORE[k] && LORE[k][s]; return key ? LORE_PID[key] : null; };
+function loreHTML(pid) {
+  const L = loreOf(pid); if (!L || !(L.pre || L.career)) return '';
+  const rows = personSeasons(pid), lg = sumRows(rows.map(r => r[1])), lg17 = sumRows(rows.filter(r => r[0] <= 17).map(r => r[1])), after = sumRows(rows.filter(r => r[0] > 17).map(r => r[1]));
+  const pre = L.pre || {}, C = L.career || {}, cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
+  const aw = awardsOfPid(pid); const nB = aw.filter(x => x[0] === '金球奖').length, nG = aw.filter(x => x[0] === '威超金手套').length;
+  const parts = [];
+  if (pre.apps) parts.push(`<div><div class="eyebrow" style="margin-bottom:6px">威联赛时代（S01 之前）</div><div class="stats3">${cell(pre.apps, '出场')}${cell(pre.g ?? '–', '进球')}${cell(pre.a ?? '–', '助攻')}</div></div>`);
+  parts.push(`<div><div class="eyebrow" style="margin-bottom:6px">威超联赛</div><div class="stats3">${cell(lg.apps, '出场')}${cell(lg.g, '进球')}${cell(lg.a, '助攻')}</div></div>`);
+  if (C.g != null || C.a != null) { const cg = C.g != null ? Math.max(0, C.g - lg17.g - (pre.g || 0)) : null, ca = C.a != null ? Math.max(0, C.a - lg17.a - (pre.a || 0)) : null;
+    parts.push(`<div><div class="eyebrow" style="margin-bottom:6px">杯赛 · 洲际赛 · 其他</div><div class="stats3">${cell('–', '出场')}${cell(cg ?? '–', '进球')}${cell(ca ?? '–', '助攻')}</div></div>`);
+    parts.push(`<div><div class="eyebrow" style="margin-bottom:6px">全部赛事生涯${after.apps ? '（含 S18 起联赛）' : ''}</div><div class="stats3">${cell(C.g != null ? C.g + after.g : '–', '总进球')}${cell(C.a != null ? C.a + after.a : '–', '总助攻')}${cell(C.ballon != null || pre.ballon ? (pre.ballon || 0) + nB : (C.glove != null ? (pre.glove || 0) + nG : '–'), C.ballon != null || pre.ballon ? '金球奖' : '金手套')}</div></div>`); }
+  const hon = [pre.ballon ? `<span class="chip gold">威联赛时代金球奖 ×${pre.ballon}</span>` : '', pre.glove ? `<span class="chip">威联赛时代金手套 ×${pre.glove}</span>` : '', nB || pre.ballon ? `<span class="chip gold">金球奖合计 ${nB + (pre.ballon || 0)} 座</span>` : '', (C.glove || pre.glove) ? `<span class="chip">金手套合计 ${nG + (pre.glove || 0)} 座</span>` : ''].filter(Boolean).join('');
+  const gal = (LORE.galactico || []).find(G => G.squad.some(([n]) => n === LORE_KEY_OF[pid].split('@')[0]) && (LORE_KEY_OF[pid].endsWith('@威龙') || LORE_KEY_OF[pid] === '法拉第@罗联'));
+  const goat = (LORE.goat || []).indexOf(LORE_KEY_OF[pid]);
+  return `<div><div class="eyebrow" style="margin-bottom:8px">传奇档案</div><div class="btns" style="gap:6px;margin-bottom:10px">${gal ? `<span class="chip gold">威龙${esc(gal.title)}</span>` : ''}${goat >= 0 ? `<span class="chip gold">威超历史 GOAT 榜第 ${goat + 1}</span>` : ''}${hon}</div><div class="grid g-2" style="gap:12px">${parts.join('')}</div><p class="note" style="margin:8px 0 0">“杯赛 · 洲际赛 · 其他”= 设定的生涯总数减去威联赛时代和威超联赛的数字。</p></div>`;
+}
+function goatHTML() {
+  const rows = (LORE.goat || []).map(k => { const pid = LORE_PID[k]; if (pid == null) return null; const rs = personSeasons(pid), t = sumRows(rs.map(r => r[1])); const teams = [...new Set(rs.map(r => r[1].team))]; const L = LORE.players[k] || {}; const nB = awardsOfPid(pid).filter(x => x[0] === '金球奖').length + ((L.pre || {}).ballon || 0); return { pid, name: k.split('@')[0], teams, sp: spanOf(pid), ...t, nB }; }).filter(Boolean);
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Greatest of all time</div><h2>威超 GOAT 榜</h2></div><span class="note">李奥纳与哈雷斯并列 GOAT；数字为威超联赛生涯</span></div>
+    <div class="tw"><table><thead><tr><th>#</th><th class="l">球员</th><th class="l">效力</th><th>威超赛季</th><th>出场</th><th>进球</th><th>助攻</th><th>金球奖</th></tr></thead><tbody>
+    ${rows.map((r, i) => `<tr><td class="pos" style="${i < 2 ? 'color:var(--gold)' : ''}">${i < 2 ? 'GOAT' : i + 1}</td><td class="l"><button class="lnk" data-pid="${r.pid}"><b>${esc(r.name)}</b></button></td><td class="l"><span class="tname" style="gap:4px">${r.teams.map(t => crest(t, 16)).join('')}<span class="muted" style="font-size:12px">${r.teams.map(esc).join(' · ')}</span></span></td><td class="mono muted">${r.sp ? SN(r.sp[0]) + '–' + SN(r.sp[1]) : ''}</td><td>${r.apps}</td><td><b>${r.g}</b></td><td>${r.a}</td><td>${r.nB ? `<span style="color:var(--gold)">${r.nB}</span>` : '<span class="dim">0</span>'}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+function galacticoHTML() {
+  const keyOf = n => Object.keys(LORE.players).find(k => k.split('@')[0] === n);
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Galácticos</div><h2>威龙银河战舰</h2></div><span class="note">点名字看传奇档案</span></div><div class="grid g-2" style="align-items:start">
+    ${(LORE.galactico || []).map(G => `<div><div class="eyebrow" style="margin-bottom:4px">${esc(G.title)} · ${esc(G.era)}</div><p class="muted" style="margin:0 0 8px;font-size:12.5px">${esc(G.note)}</p><div class="rank-list">${G.squad.map(([n, pos]) => { const k = keyOf(n), L = (k && LORE.players[k]) || {}, pid = k ? LORE_PID[k] : null, C = L.career || {}, pre = L.pre || {};
+      const nB = pid != null ? awardsOfPid(pid).filter(x => x[0] === '金球奖').length + (pre.ballon || 0) : 0, nG = pid != null ? awardsOfPid(pid).filter(x => x[0] === '威超金手套').length + (pre.glove || 0) : 0;
+      const bits = [C.g != null ? `生涯 ${C.g} 球` : '', C.a != null && (C.a >= 300 || C.g == null) ? `${C.a} 助攻` : '', nB ? `金球奖 ×${nB}` : '', nG ? `金手套 ×${nG}` : ''].filter(Boolean).join(' · ');
+      return `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(pos)}</span>${pid != null ? `<button class="lnk" data-pid="${pid}"><b>${esc(n)}</b></button>` : `<b>${esc(n)}</b>`}<span class="v mono" style="font-size:11.5px">${bits}</span></div>`; }).join('')}</div></div>`).join('')}
+  </div></div>`;
+}
 function awardsOf(s) {
   if (AWARD_CACHE[s]) return AWARD_CACHE[s];
   const rows = (HPS[s] || []).filter(p => p.apps >= 20);
@@ -1559,11 +1595,13 @@ function awardsOf(s) {
   const pick = (l, f) => l.slice().sort((a, b) => f(b) - f(a));
   const extLeagueChamp = {}; EXT_LEAGUES.forEach(L => { if (L.short !== '其他') extLeagueChamp[extTable(L, s)[0]] = 1; });
   const ext = extRowsFor(s).filter(p => p.apps >= 20).map(p => ({ ...p, _sc: base(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + bonus(p.team) - (p.team === champ ? 6 : 0) + (extLeagueChamp[p.team] ? 5 : 0) }));
-  const ballon = rows.map(p => ({ ...p, _sc: base(p) + bonus(p.team) })).concat(ext).sort((a, b) => b._sc - a._sc).slice(0, 3);
+  let ballon = rows.map(p => ({ ...p, _sc: base(p) + bonus(p.team) })).concat(ext).sort((a, b) => b._sc - a._sc);
+  { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
+  ballon = ballon.slice(0, 3);
   const mvp = pick(rows, base)[0];
   const boot = pick((HPS[s] || []), p => p.g * 1000 - p.apps)[0];
   const assist = pick((HPS[s] || []), p => p.a * 1000 - p.apps)[0];
-  const glove = pick(rows.filter(p => p.line === 'GK'), p => p.cs * 100 + p.avg)[0];
+  const fg = loreAward('glove', s); const glove = (fg != null && rows.find(p => p.pid === fg)) || pick(rows.filter(p => p.line === 'GK'), p => p.cs * 100 + p.avg)[0];
   const young = pick(rows.filter(p => { const a = ageAtSeason(p.pid, s); return a != null && a <= 21; }), base)[0] || null;
   const used = new Set(), xi = [];
   const take = (f, n) => pick(rows.filter(p => !used.has(p.pid) && f(p)), base).slice(0, n).forEach(p => { used.add(p.pid); xi.push(p); });
@@ -1806,7 +1844,8 @@ function personProfile(pid) {
   const uid = PID_UID[pid], base = uid && PDB0_BY_UID[uid];
   const sp = spanOf(pid), pk = peakCache(pid) || 80;
   let ret = null; Object.entries(RET_LOG).forEach(([s, L]) => L.retired.forEach(x => { if (x.uid === uid) ret = { s: +s, age: x.age }; }));
-  const debutAge = base ? (sp ? base.age0 - (18 - sp[0]) : null) : 18 + Math.floor(h('a') * 4);
+  const preEra = !base && loreOf(pid) && loreOf(pid).pre;
+  const debutAge = base ? (sp ? base.age0 - (18 - sp[0]) : null) : preEra ? 30 + Math.floor(h('a') * 3) : 18 + Math.floor(h('a') * 4);
   const endAge = ret ? ret.age : base ? null : sp ? debutAge + (sp[1] - sp[0]) : null;
   const ht = base ? base.height : Math.round(line === 'GK' ? 186 + h('h') * 10 : line === 'DF' ? 180 + h('h') * 12 : line === 'MF' ? 172 + h('h') * 14 : 175 + h('h') * 14);
   const wt = base ? base.weight : Math.round(ht - 105 + h('w') * 12);
@@ -1814,7 +1853,7 @@ function personProfile(pid) {
   const no = base ? base.no : nos[Math.floor(h('n') * nos.length)];
   let attrs = base ? base.attributes : null;
   if (!attrs) { attrs = {}; const tpl = { ...ATTR_TPL[line] }; if (/W|AM/.test(pos)) { tpl.dri = (tpl.dri || 0) + 3; tpl.spd = (tpl.spd || 0) + 3; } Object.entries(tpl).forEach(([k, d]) => attrs[k] = Math.max(30, Math.min(99, Math.round(pk + d + (h('at' + k) - 0.5) * 8)))); }
-  return { no, ht, wt, attrs, debutAge, endAge, ret, peakValue: valueM(pk, 27), nat: nat || (base && base.nat) || '' };
+  return { no, ht, wt, attrs, debutAge, endAge, ret, preEra: !!preEra, peakValue: valueM(pk, 27), nat: nat || (base && base.nat) || '' };
 }
 function openPerson(pid) {
   const pp = PL[pid]; if (!pp) return;
@@ -1828,10 +1867,10 @@ function openPerson(pid) {
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(pos)}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(name)}</h3>
       <div class="btns" style="margin-top:8px">${statusChips(pid)}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const sp = spanOf(pid); return sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span><span class="chip">${SN(sp[1])} 赛季后退役</span>` : ''; })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
-    ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, sp && pf.debutAge ? `${SN(sp[0])} 出道 · ${pf.debutAge} 岁` : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : sp ? SN(sp[1]) : ''} 退役 · ${pf.endAge} 岁` : '', `巅峰身价 ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
+    ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, sp && pf.debutAge ? (pf.preEra ? `威联赛时代出道 · ${SN(sp[0])} 时 ${pf.debutAge} 岁` : `${SN(sp[0])} 出道 · ${pf.debutAge} 岁`) : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : sp ? SN(sp[1]) : ''} 退役 · ${pf.endAge} 岁` : '', `巅峰身价 ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
       <div><div class="eyebrow" style="margin-bottom:8px">巅峰能力</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div></div>`; })()}
     ${(() => { const rows = personSeasons(pid); if (!rows.length) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; return scopeTabs('pp', [{ label: '威超生涯', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...byT.map(t => ({ label: t, note: `效力 ${esc(t)} 期间`, html: statGrid(sumRows(rows.filter(r => r[1].team === t).map(r => r[1])), ENGINE.LINE(pos)) }))]); })()}
-    ${awardChips(pid)}${growthHTML(pid, null)}${careerHTML(pid)}${transferHTML(pid)}</div>`;
+    ${awardChips(pid)}${loreHTML(pid)}${growthHTML(pid, null)}${careerHTML(pid)}${transferHTML(pid)}</div>`;
   if (!d.open) d.showModal();
   bindScopes(d);
 }
@@ -1855,6 +1894,7 @@ function openPlayer(team, name) {
       <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${awardChips(pid, p.uid)}
+    ${loreHTML(pid)}
     ${growthHTML(pid, p)}
     ${foreignCareerHTML(p)}
     ${(() => {
@@ -1871,7 +1911,7 @@ function openPlayer(team, name) {
     })()}
     ${careerHTML(pid)}
     ${pid != null ? transferHTML(pid) : ''}
-    ${(() => { const rows = pid != null ? personSeasons(pid) : (s ? [[SEASON, s]] : []); const car = sumRows(rows.map(r => r[1])), club = sumRows(rows.filter(r => r[1].team === team).map(r => r[1]));
+    ${loreOf(pid) && (loreOf(pid).career || loreOf(pid).pre) ? '' : (() => { const rows = pid != null ? personSeasons(pid) : (s ? [[SEASON, s]] : []); const car = sumRows(rows.map(r => r[1])), club = sumRows(rows.filter(r => r[1].team === team).map(r => r[1]));
       const cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
       return `<div><div class="eyebrow" style="margin-bottom:8px">生涯总计（含威超以外的比赛）</div><div class="stats3">${cell(Math.max(p.cGP || 0, car.apps), '生涯出场')}${cell(Math.max(p.cG || 0, car.g), '生涯进球')}${cell(Math.max(p.cA || 0, car.a), '生涯助攻')}${cell(Math.max(p.tGP || 0, club.apps), '本队出场')}${cell(Math.max(p.tG || 0, club.g), '本队进球')}${cell(Math.max(p.tA || 0, club.a), '本队助攻')}</div></div>`; })()}
   </div>`;
@@ -2129,6 +2169,8 @@ function vHistory() {
     <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛季</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净胜</th><th>积分</th><th>冠军</th></tr></thead><tbody>
     ${allTime.map((r, i) => `<tr><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.seasons}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd > 0 ? '+' : ''}${r.gd}</td><td class="pts">${r.pts}</td><td>${r.titles ? `<span style="color:var(--gold)">${r.titles}</span>` : '<span class="dim">0</span>'}</td></tr>`).join('')}
     </tbody></table></div></div>
+  ${goatHTML()}
+  ${galacticoHTML()}
   <div class="grid g-2">${scorerBlock(top('g'), ['历史射手榜', 'All-time goals'], ' 球')}${scorerBlock(top('a'), ['历史助攻榜', 'All-time assists'], ' 次')}</div>
   <div style="text-align:center"><button class="btn" data-statsgo="all">查看全部历史球员与球队数据榜 →</button></div>
   <div class="panel split" style="padding:14px 18px"><span class="note">历年转会、合同到期和潜在新星都移到了「转会窗」。</span><button class="btn ghost" data-go="transfers">打开转会窗 →</button></div>
