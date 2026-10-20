@@ -514,7 +514,7 @@ function loreEnforce(key, info) {
   }
   const wt = ss.map(s => Math.pow(PS[s][pid].min, 0.75) * (0.88 + lr() * 0.24)), W = wt.reduce((a, b) => a + b, 0);
   const split = tot => { const raw = wt.map(w => tot * w / W), fl = raw.map(Math.floor); let r = tot - fl.reduce((a, b) => a + b, 0); raw.map((x, i) => [x - fl[i], i]).sort((a, b) => b[0] - a[0]).slice(0, r).forEach(([, i]) => fl[i]++); return fl; };
-  const tg = split(TG), ta = split(TAS);
+  const tg = split(TG), ta = TAS == null ? null : split(TAS);
   ss.forEach((s, j) => {
     const o = PS[s][pid], mine = loreMine(s, pid);
     const evs = () => lshuffle(mine.flatMap(({ m, k }) => m.entry[6].filter(g => g[1] === k).map(g => ({ g, m, k }))));
@@ -524,14 +524,14 @@ function loreEnforce(key, info) {
     for (let guard = 0; need > 0 && guard < 500; guard++) if (loreAddGoal(s, mine, pid, 'g')) need--;
     if (need < 0) for (const { g, m, k } of evs()) { if (need >= 0) break; if (g[2] !== pid) continue; const nw = loreMate(m.side[k], pid, scW); if (nw < 0) continue; if (g[3] === nw) g[3] = -1, PS[s][nw].a--; g[2] = nw; PS[s][nw].g++; o.g--; o.rs -= 0.5; need++; }
     // 助攻
-    need = ta[j] - o.a;
+    need = ta ? ta[j] - o.a : 0;
     if (need > 0) for (const { g } of evs()) { if (need <= 0) break; if (g[2] === pid || g[3] === pid || g[4] || LOCK.has(g[2]) || (g[3] >= 0 && LOCK.has(g[3]))) continue; if (g[3] >= 0) PS[s][g[3]].a--; g[3] = pid; o.a++; o.rs += 0.3; need--; }
     for (let guard = 0; need > 0 && guard < 500; guard++) if (loreAddGoal(s, mine, pid, 'a')) need--;
     if (need < 0) for (const { g, m, k } of evs()) { if (need >= 0) break; if (g[3] !== pid) continue; const nw = lr() < 0.6 ? loreMate(m.side[k].filter(i => i !== g[2]), pid, asW) : -1; g[3] = nw; if (nw >= 0) PS[s][nw].a++; o.a--; need++; }
   });
   LOCK.add(pid);
 }
-const LORE_ORDER = ['哈雷斯@威尔福特', '李奥纳@狂蜂', '基尔吉斯@威龙', '罗梅欧@威龙', '范特西@威龙', '沃夫伦@威尔福特', '萨科@威尔福特', '马尔科姆@威尔福特', '德隆@罗联', '范文西@威龙', '基尔特斯@威龙', '罗纳德@威龙', '雷欧@罗联', '维拉@威龙', '安利克@威龙', '李仁炫@威龙', '门德利奇@威龙', '亚当斯@威龙', '范德容@威龙'];
+const LORE_ORDER = [...LORE.tiers.T0, ...LORE.tiers.T1, ...LORE.tiers.T2, '维拉@威龙', '安利克@威龙', '李仁炫@威龙', '门德利奇@威龙', '亚当斯@威龙', '范德容@威龙'];
 LORE_ORDER.concat(Object.keys(LORE.players).filter(k => !LORE_ORDER.includes(k))).forEach(k => loreEnforce(k, LORE.players[k]));
 // 改动进球后核对名次（积分 > 净胜球 > 进球）：同分时把下方球队大胜里的一个进球去掉，或给上方球队加一个
 const tieBadAt = T => { for (let i = 0; i < T.length - 1; i++) { const a = T[i], b = T[i + 1]; if (a.pts === b.pts && ((b.gf - b.ga) > (a.gf - a.ga) || ((b.gf - b.ga) === (a.gf - a.ga) && b.gf >= a.gf))) return i; } return -1; };

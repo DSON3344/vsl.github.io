@@ -1554,7 +1554,11 @@ const LORE_PID = (HIST.lorePid || {}), LORE_KEY_OF = {}; Object.entries(LORE_PID
 const loreOf = pid => pid != null && LORE_KEY_OF[pid] ? LORE.players[LORE_KEY_OF[pid]] : null;
 const loreAward = (k, s) => { const key = s <= 17 && LORE[k] && LORE[k][s]; return key ? LORE_PID[key] : null; };
 function loreHTML(pid) {
-  const L = loreOf(pid); if (!L || !(L.pre || L.career)) return '';
+  const L = loreOf(pid); if (!L) return '';
+  const tierOf = k => Object.entries(LORE.tiers || {}).find(([t, l]) => Array.isArray(l) && l.includes(k)), tr = tierOf(LORE_KEY_OF[pid]);
+  const tierChip = (LORE.goat || []).includes(LORE_KEY_OF[pid]) ? '<span class="chip gold">威超 GOAT</span>' : '';
+  const tierChip2 = tr ? `<span class="chip ${tr[0] === 'T0' ? 'gold' : ''}">威超前锋梯队 ${tr[0]}</span>` : '';
+  if (!(L.pre || L.career)) return tr ? `<div><div class="eyebrow" style="margin-bottom:8px">威超定位</div><div class="btns" style="gap:6px">${tierChip}${tierChip2}</div></div>` : '';
   const rows = personSeasons(pid), lg = sumRows(rows.map(r => r[1])), lg17 = sumRows(rows.filter(r => r[0] <= 17).map(r => r[1])), after = sumRows(rows.filter(r => r[0] > 17).map(r => r[1]));
   const pre = L.pre || {}, C = L.career || {}, cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
   const aw = awardsOfPid(pid); const nB = aw.filter(x => x[0] === '金球奖').length, nG = aw.filter(x => x[0] === '威超金手套').length;
@@ -1566,14 +1570,17 @@ function loreHTML(pid) {
     parts.push(`<div><div class="eyebrow" style="margin-bottom:6px">全部赛事生涯${after.apps ? '（含 S18 起联赛）' : ''}</div><div class="stats3">${cell(C.g != null ? C.g + after.g : '–', '总进球')}${cell(C.a != null ? C.a + after.a : '–', '总助攻')}${cell(C.ballon != null || pre.ballon ? (pre.ballon || 0) + nB : (C.glove != null ? (pre.glove || 0) + nG : '–'), C.ballon != null || pre.ballon ? '金球奖' : '金手套')}</div></div>`); }
   const hon = [pre.ballon ? `<span class="chip gold">威联赛时代金球奖 ×${pre.ballon}</span>` : '', pre.glove ? `<span class="chip">威联赛时代金手套 ×${pre.glove}</span>` : '', nB || pre.ballon ? `<span class="chip gold">金球奖合计 ${nB + (pre.ballon || 0)} 座</span>` : '', (C.glove || pre.glove) ? `<span class="chip">金手套合计 ${nG + (pre.glove || 0)} 座</span>` : ''].filter(Boolean).join('');
   const gal = (LORE.galactico || []).find(G => G.squad.some(([n]) => n === LORE_KEY_OF[pid].split('@')[0]) && (LORE_KEY_OF[pid].endsWith('@威龙') || LORE_KEY_OF[pid] === '法拉第@罗联'));
-  const goat = (LORE.goat || []).indexOf(LORE_KEY_OF[pid]);
-  return `<div><div class="eyebrow" style="margin-bottom:8px">传奇档案</div><div class="btns" style="gap:6px;margin-bottom:10px">${gal ? `<span class="chip gold">威龙${esc(gal.title)}</span>` : ''}${goat >= 0 ? `<span class="chip gold">威超历史 GOAT 榜第 ${goat + 1}</span>` : ''}${hon}</div><div class="grid g-2" style="gap:12px">${parts.join('')}</div><p class="note" style="margin:8px 0 0">“杯赛 · 洲际赛 · 其他”= 设定的生涯总数减去威联赛时代和威超联赛的数字。</p></div>`;
+
+  return `<div><div class="eyebrow" style="margin-bottom:8px">传奇档案</div><div class="btns" style="gap:6px;margin-bottom:10px">${gal ? `<span class="chip gold">威龙${esc(gal.title)}</span>` : ''}${tierChip}${tierChip2}${hon}</div><div class="grid g-2" style="gap:12px">${parts.join('')}</div><p class="note" style="margin:8px 0 0">“杯赛 · 洲际赛 · 其他”= 设定的生涯总数减去威联赛时代和威超联赛的数字。</p></div>`;
 }
 function goatHTML() {
-  const rows = (LORE.goat || []).map(k => { const pid = LORE_PID[k]; if (pid == null) return null; const rs = personSeasons(pid), t = sumRows(rs.map(r => r[1])); const teams = [...new Set(rs.map(r => r[1].team))]; const L = LORE.players[k] || {}; const nB = awardsOfPid(pid).filter(x => x[0] === '金球奖').length + ((L.pre || {}).ballon || 0); return { pid, name: k.split('@')[0], teams, sp: spanOf(pid), ...t, nB }; }).filter(Boolean);
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Greatest of all time</div><h2>威超 GOAT 榜</h2></div><span class="note">李奥纳与哈雷斯并列 GOAT；数字为威超联赛生涯</span></div>
-    <div class="tw"><table><thead><tr><th>#</th><th class="l">球员</th><th class="l">效力</th><th>威超赛季</th><th>出场</th><th>进球</th><th>助攻</th><th>金球奖</th></tr></thead><tbody>
-    ${rows.map((r, i) => `<tr><td class="pos" style="${i < 2 ? 'color:var(--gold)' : ''}">${i < 2 ? 'GOAT' : i + 1}</td><td class="l"><button class="lnk" data-pid="${r.pid}"><b>${esc(r.name)}</b></button></td><td class="l"><span class="tname" style="gap:4px">${r.teams.map(t => crest(t, 16)).join('')}<span class="muted" style="font-size:12px">${r.teams.map(esc).join(' · ')}</span></span></td><td class="mono muted">${r.sp ? SN(r.sp[0]) + '–' + SN(r.sp[1]) : ''}</td><td>${r.apps}</td><td><b>${r.g}</b></td><td>${r.a}</td><td>${r.nB ? `<span style="color:var(--gold)">${r.nB}</span>` : '<span class="dim">0</span>'}</td></tr>`).join('')}
+  const row = k => { const pid = LORE_PID[k]; if (pid == null) return null; const rs = personSeasons(pid), t = sumRows(rs.map(r => r[1])); const teams = [...new Set(rs.map(r => r[1].team))]; const L = LORE.players[k] || {}; const nB = awardsOfPid(pid).filter(x => x[0] === '金球奖').length + ((L.pre || {}).ballon || 0); return { k, pid, name: k.split('@')[0], teams, sp: spanOf(pid), ...t, nB }; };
+  const T = LORE.tiers || {};
+  const tierRows = ['T0', 'T1', 'T2'].map(t => ({ t, rows: (T[t] || []).map(row).filter(Boolean).sort((a, b) => (LORE.goat || []).includes(b.k) - (LORE.goat || []).includes(a.k) || b.g / Math.max(1, b.apps) - a.g / Math.max(1, a.apps)) }));
+  const lab = { T0: '顶级', T1: '一线', T2: '二线' };
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Strikers tier list</div><h2>威超前锋梯队</h2></div><span class="note">只看威超联赛 · 李奥纳、哈雷斯为 GOAT · 梯队内按场均进球排</span></div>
+    <div class="tw"><table><thead><tr><th>梯队</th><th class="l">球员</th><th class="l">效力</th><th>威超赛季</th><th>出场</th><th>进球</th><th>场均</th><th>助攻</th><th>金球奖</th></tr></thead><tbody>
+    ${tierRows.map(({ t, rows }) => rows.map((r, i) => `<tr${i === 0 && t !== 'T0' ? ' style="border-top:2px solid var(--line)"' : ''}><td class="pos" style="${t === 'T0' ? 'color:var(--gold)' : ''}">${i === 0 ? `${t}<div class="dim" style="font-size:10px;font-weight:400">${lab[t]}</div>` : ''}</td><td class="l"><button class="lnk" data-pid="${r.pid}"><b>${esc(r.name)}</b></button>${(LORE.goat || []).includes(r.k) ? ' <span class="chip gold" style="font-size:10px;padding:1px 6px">GOAT</span>' : ''}</td><td class="l"><span class="tname" style="gap:4px">${r.teams.map(x => crest(x, 16)).join('')}<span class="muted" style="font-size:12px">${r.teams.map(esc).join(' · ')}</span></span></td><td class="mono muted">${r.sp ? SN(r.sp[0]) + '–' + SN(r.sp[1]) : ''}</td><td>${r.apps}</td><td><b>${r.g}</b></td><td class="mono">${(r.g / Math.max(1, r.apps)).toFixed(2)}</td><td>${r.a}</td><td>${r.nB ? `<span style="color:var(--gold)">${r.nB}</span>` : '<span class="dim">0</span>'}</td></tr>`).join('')).join('')}
     </tbody></table></div></div>`;
 }
 function galacticoHTML() {
