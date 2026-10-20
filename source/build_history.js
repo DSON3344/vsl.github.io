@@ -1,5 +1,5 @@
-/* 还原威超 S01–S17：阵容 + 每场比赛 + 球员数据
-   输入：player_data.js, teams_data.js, history.json (PDF), site_data.json (官网)
+/* 推演威超 S01–S17：按官网最终名次推演每场比赛，球员数据、转会自然产生
+   输入：player_data.js, teams_data.js, history.json (PDF), site_data.json (官网名次)
    输出：hist.json */
 const fs = require('fs'), vm = require('vm');
 const D = __dirname + '/';
@@ -67,48 +67,41 @@ for (const [team, list] of Object.entries(PDF.legends)) list.forEach(l => {
   P[id].stints.push({ team, start: l.start, end: l.end || LAST, ongoing: !l.end, tier: TIER[l.tier.replace(/[^SA+]/g, '')] || 85, pos: l.pos.split('/')[0] });
   if (P[id].kind !== 'db') P[id].kind = 'legend';
 });
-// 官网榜单球员
-const QUOTA = {}; // s -> team -> pid -> {g,a,y,r}
+// 官网榜单上、资料库里没有的早期球员：只记录他们在哪个赛季效力哪支球队（数据不再按榜单）
 for (let s = 1; s <= LAST; s++) {
   const inLeague = new Set(SITE.standings[s].map(r => r.team));
-  QUOTA[s] = {};
-  for (const [cat, key] of [['goals', 'g'], ['assists', 'a'], ['cards', 'c']]) SITE.stats[s][cat].forEach((r, rank) => {
+  for (const cat of ['goals', 'assists', 'cards']) SITE.stats[s][cat].forEach((r, rank) => {
     if (!inLeague.has(r.team)) return;
     let id = findPerson(r.player, r.team, s);
+    if (id != null && P[id].kind === 'db') return;
     if (id == null) id = newPerson({ name: r.player, pos: cat === 'goals' ? 'ST' : cat === 'assists' ? 'CAM' : 'CDM', line: cat === 'goals' ? 'FW' : cat === 'assists' ? 'MF' : 'DF', nat: NATMAP[clean(r.player)] || null, kind: 'site' });
-    const p = P[id];
-    p.site.push({ s, team: r.team, cat, rank });
-    const q = ((QUOTA[s][r.team] = QUOTA[s][r.team] || {})[id] = QUOTA[s][r.team][id] || {});
-    if (key === 'g') q.g = +r.goals; if (key === 'a') q.a = +r.assists; if (key === 'c') { q.y = +r.yellow || 0; q.r = +r.red || 0; }
-    if (p.kind === 'site' && cat === 'goals') { p.pos = 'ST'; p.line = 'FW'; }
+    P[id].site.push({ s, team: r.team, cat, rank });
+    if (P[id].kind === 'site' && cat === 'goals') { P[id].pos = 'ST'; P[id].line = 'FW'; }
   });
 }
 
-/* ---------- 每人每季所属球队 ---------- */
+/* ---------- 固定的效力关系（传奇时期、早期球员、现役球员在现队的年份） ---------- */
 const teamsIn = s => SITE.standings[s].map(r => r.team);
-const assign = P.map(() => ({})); // pid -> {s: {team, prio}}
+const rankIn = (s, t) => teamsIn(s).indexOf(t);
+const assign = P.map(() => ({}));
 const put = (id, s, team, prio) => { if (s < 1 || s > LAST || !teamsIn(s).includes(team)) return; const cur = assign[id][s]; if (!cur || cur.prio < prio) assign[id][s] = { team, prio }; };
 P.forEach((p, id) => {
   p.stints.forEach(st => { for (let s = st.start; s <= st.end; s++) put(id, s, st.team, 3); });
   const byTeam = {};
   p.site.forEach(x => (byTeam[x.team] = byTeam[x.team] || []).push(x.s));
-  for (const [team, ss] of Object.entries(byTeam)) {
-    const lo = Math.min(...ss), hi = Math.max(...ss);
-    for (let s = lo; s <= hi; s++) put(id, s, team, 2.5);
-    ss.forEach(s => put(id, s, team, 4)); // 明确上榜的赛季优先级最高
-    if (!p.stints.length) { put(id, lo - 1, team, 1.5); put(id, hi + 1, team, 1.5); }
-  }
+  for (const [team, ss] of Object.entries(byTeam)) { for (let s = Math.min(...ss); s <= Math.max(...ss); s++) put(id, s, team, 2.5); }
   if (p.kind === 'db') {
     const leg = p.stints.find(st => st.team === p.cur);
-    let join = leg ? leg.start : (p.tgp > 0 ? Math.max(1, 18 - Math.ceil(p.tgp / 42)) : 18);
+    // 资料库没写本队出场数的，视为 1–3 季前加盟；用户指定 S18 才转会的除外
+    const S18_MOVES = ['皮尔萨'];
+    let join = leg ? leg.start : (p.tgp > 0 ? Math.max(1, 18 - Math.ceil(p.tgp / 42)) : S18_MOVES.includes(p.name) ? 18 : 17 - Math.floor(rnd() * 3));
     const other = p.stints.filter(st => st.team !== p.cur).map(st => st.end);
     if (other.length) join = Math.max(join, Math.max(...other) + 1);
-    const pro = 18 - (p.age - 17);
-    for (let s = Math.max(join, pro); s <= LAST; s++) put(id, s, p.cur, 2);
+    p.join = join;
+    for (let s = Math.max(join, proSeason(p)); s <= LAST; s++) put(id, s, p.cur, 2);
   }
 });
-// 年龄可推算的球员，退役前不早于 17 岁出道
-P.forEach((p, id) => { if (p.kind === 'db') { const pro = 18 - (p.age - 17); Object.keys(assign[id]).forEach(s => { if (+s < pro && assign[id][s].prio <= 2) delete assign[id][s]; }); } });
+P.forEach((p, id) => { if (p.kind === 'db') Object.keys(assign[id]).forEach(s => { if (+s < proSeason(p) && assign[id][s].prio <= 2) delete assign[id][s]; }); });
 
 /* ---------- 评分 ---------- */
 const ageCurve = a => -1.1 * Math.max(0, 27 - a) - 0.8 * Math.max(0, a - 31);
@@ -176,71 +169,81 @@ function genPerson(team) {
   }
   throw new Error('name');
 }
-const fillerState = {}; // team -> slotIdx -> {pid, until}
-const teamTarget = (s, team) => { const r = SITE.standings[s].find(x => x.team === team); const pts = r.w * 3 + r.d; return 71 + pts / 38 * 7; };
 
-/* ---------- 每季首发 ---------- */
-const XI = {}; // s -> team -> [{pid, slot, line, r}]
+/* ---------- 每季阵容 + 转会市场 ----------
+   固定效力的球员先上；空位从自由球员里挑（资料库球员在加盟现队之前的年份、往季的补充球员），
+   豪门先挑，评分贴近球队水平者优先，留队有加分 → 自然出现转会；仍空缺就补新球员。 */
+const XI = {};
+const prevTeam = {};           // pid -> 上一季效力的球队
+const genPool = [];            // 补充球员
+const target = (s, t) => clubBase(t) + (10.5 - rankIn(s, t)) * 0.3;
+const lineOf = sl => LINE(sl.replace(/-.*/, ''));
 for (let s = 1; s <= LAST; s++) {
   XI[s] = {};
-  const usedSeason = new Set();
-  // 先放有榜单配额的球员
-  const teamCands = {};
-  teamsIn(s).forEach(t => teamCands[t] = []);
-  P.forEach((p, id) => { const a = assign[id][s]; if (a) teamCands[a.team].push(id); });
+  const used = new Set();
+  const pinned = {}; teamsIn(s).forEach(t => pinned[t] = []);
+  P.forEach((p, id) => { const a = assign[id][s]; if (a && a.prio >= 2) pinned[a.team].push(id); });
+  // 自由球员
+  const free = [];
+  P.forEach((p, id) => {
+    if (assign[id][s] && assign[id][s].prio >= 2) return;
+    if (p.kind === 'db') { if (s >= proSeason(p) && s < (p.join || 18)) free.push(id); }
+    else if (p.kind === 'gen' && s >= p.born && s <= p.until) free.push(id);
+  });
+  const slotsOf = {};
   for (const team of teamsIn(s)) {
-    const slots = TD[team].roster.map(r => ({ slot: r.pos, line: LINE(r.pos), pid: null }));
-    const quota = QUOTA[s][team] || {};
-    const cands = teamCands[team].filter(id => !usedSeason.has(id)).map(id => ({ id, q: quota[id] ? 1 : 0, r: ratingAt(P[id], s), line: P[id].line, pos: P[id].pos }));
-    cands.sort((a, b) => b.q - a.q || b.r - a.r);
+    const slots = TD[team].roster.map(r => ({ slot: r.pos, line: lineOf(r.pos), pid: null }));
+    const cands = pinned[team].map(id => ({ id, pr: assign[id][s].prio >= 3 ? 1 : 0, r: ratingAt(P[id], s), line: P[id].line, pos: P[id].pos })).sort((a, b) => b.pr - a.pr || b.r - a.r);
     for (const c of cands) {
-      let sl = slots.find(x => !x.pid && x.line === c.line && clean(x.slot).replace(/-.*/, '') === c.pos) || slots.find(x => !x.pid && x.line === c.line);
-      if (!sl && c.q && c.line !== 'GK') sl = slots.find(x => !x.pid && x.line !== 'GK');
-      if (sl) { sl.pid = c.id; sl.r = c.r; usedSeason.add(c.id); }
+      const sl = slots.find(x => !x.pid && x.line === c.line && clean(x.slot).replace(/-.*/, '') === c.pos) || slots.find(x => !x.pid && x.line === c.line);
+      if (sl) { sl.pid = c.id; sl.r = c.r; used.add(c.id); }
     }
-    // 空位补虚构球员
-    const fs_ = fillerState[team] = fillerState[team] || {};
-    const tgt = teamTarget(s, team);
-    slots.forEach((sl, i) => {
+    slotsOf[team] = slots;
+  }
+  for (const team of teamsIn(s)) {
+    const tgt = target(s, team);
+    slotsOf[team].forEach(sl => {
       if (sl.pid != null) return;
-      let f = fs_[i];
-      if (!f || s > f.until || usedSeason.has(f.pid)) {
-        const pos = sl.slot.replace(/-.*/, '').replace(/^(L|R)(?=CB$)/, '');
-        const gp = genPerson(team); const id = newPerson({ name: gp.name, pos, line: sl.line, nat: gp.nat, kind: 'gen', born: s, peak: Math.round(Math.min(clubBase(team) + 3, clubBase(team) + gauss() * 1.8)) });
-        f = fs_[i] = { pid: id, until: s + 3 + Math.floor(rnd() * 5) }; P[id].until = f.until;
+      let best = null, bestScore = -7;
+      for (const id of free) {
+        if (used.has(id) || P[id].line !== sl.line) continue;
+        const r = ratingAt(P[id], s);
+        const sc = -Math.abs(r - tgt) - (r < tgt - 5 ? 4 : 0) + (prevTeam[id] === team ? 4 : 0) + gauss() * 0.8;
+        if (sc > bestScore) { bestScore = sc; best = id; }
       }
-      const p = P[f.pid];
-      const yrs = s - p.born;
-      sl.pid = f.pid; sl.r = ratingAt(p, s); usedSeason.add(f.pid);
-      (assign[f.pid] = assign[f.pid] || {})[s] = { team, prio: 0 };
+      if (best == null) {
+        const pos = sl.slot.replace(/-.*/, '').replace(/^(L|R)(?=CB$)/, '');
+        const gp = genPerson(team);
+        const born = s - Math.floor(rnd() * 3);
+        best = newPerson({ name: gp.name, pos, line: sl.line, nat: gp.nat, kind: 'gen', born, until: born + 7 + Math.floor(rnd() * 6), peak: Math.round(tgt + 1 + gauss() * 1.5) });
+        assign[best] = {};
+        free.push(best);
+      }
+      sl.pid = best; sl.r = ratingAt(P[best], s); used.add(best);
+      assign[best][s] = assign[best][s] || { team, prio: 0 };
     });
-    XI[s][team] = slots.map(x => ({ pid: x.pid, slot: x.slot, line: x.line, r: x.r }));
+    XI[s][team] = slotsOf[team].map(x => ({ pid: x.pid, slot: x.slot, line: x.line, r: x.r }));
+    XI[s][team].forEach(x => prevTeam[x.pid] = team);
   }
 }
 
-/* ---------- 官网历史总榜：把总数分摊到未上榜的赛季 ---------- */
-const XIS = {}; for (let s = 1; s <= LAST; s++) for (const [team, X] of Object.entries(XI[s])) X.forEach(x => (XIS[x.pid] = XIS[x.pid] || []).push([s, team]));
-const capOf = (s, cat, key) => { const l = SITE.stats[s][cat].filter(x => +x[key] > 0); return l.length >= 10 ? Math.max(0, +l[9][key] - 1) : 15; };
-function allTimeQuota(list, key, field, capFn) {
-  list.forEach(e => {
-    const cands = P.map((_, i) => i).filter(i => clean(P[i].name) === clean(e.player) && XIS[i]);
-    if (!cands.length) return;
-    const id = cands.sort((a, b) => XIS[b].length - XIS[a].length)[0];
-    let listed = 0; const free = [];
-    XIS[id].forEach(([s, team]) => { const q = QUOTA[s][team] && QUOTA[s][team][id]; if (q && q[field] != null) listed += q[field]; else free.push([s, team]); });
-    let rem = Math.max(0, +e[key] - listed);
-    const alloc = free.map(() => 0), caps = free.map(([s]) => capFn(s));
-    const ord = shuffle(free.map((_, i) => i));
-    while (rem > 0) { let moved = false; for (const i of ord) { if (rem <= 0) break; if (alloc[i] < caps[i]) { alloc[i]++; rem--; moved = true; } } if (!moved) break; }
-    free.forEach(([s, team], i) => { const Q = (QUOTA[s][team] = QUOTA[s][team] || {}); (Q[id] = Q[id] || {})[field] = alloc[i]; });
-  });
+/* ---------- 转会记录 ---------- */
+const valueOf = (r, age) => { const base = 15 * Math.exp(0.17 * (r - 80)); const af = age == null ? 1 : age < 24 ? 1.4 : age <= 28 ? 1.15 : age <= 30 ? 0.95 : 0.75; return Math.max(1, Math.round(base * af)); };
+const ageAt = (p, s) => p.kind === 'db' ? p.age - (18 - s) : null;
+const seasonTeam = {}; // pid -> {s: team}
+for (let s = 1; s <= LAST; s++) for (const [t, X] of Object.entries(XI[s])) X.forEach(x => (seasonTeam[x.pid] = seasonTeam[x.pid] || {})[s] = t);
+// 在名单上但没首发的赛季也算效力（板凳）
+P.forEach((p, id) => { for (const [s, a] of Object.entries(assign[id] || {})) if (a.prio >= 2) (seasonTeam[id] = seasonTeam[id] || {})[s] = a.team; });
+const transfers = [];
+for (const [id, m] of Object.entries(seasonTeam)) {
+  const ss = Object.keys(m).map(Number).sort((a, b) => a - b);
+  for (let i = 1; i < ss.length; i++) if (m[ss[i]] !== m[ss[i - 1]]) { const p = P[id]; const r = ratingAt(p, ss[i]); transfers.push([ss[i], +id, m[ss[i - 1]], m[ss[i]], valueOf(r, ageAt(p, ss[i]))]); }
 }
-allTimeQuota(SITE.stats.history.goals, 'goals', 'g', s => capOf(s, 'goals', 'goals'));
-allTimeQuota(SITE.stats.history.assists, 'assists', 'a', s => capOf(s, 'assists', 'assists'));
-allTimeQuota(SITE.stats.history.cards, 'yellow', 'y', s => capOf(s, 'cards', 'yellow'));
-allTimeQuota(SITE.stats.history.cards, 'red', 'r', () => 3);
+// S18：资料库现队与 S17 球队不同
+P.forEach((p, id) => { if (p.kind !== 'db' || !seasonTeam[id]) return; const ss = Object.keys(seasonTeam[id]).map(Number); const last = Math.max(...ss); const from = seasonTeam[id][last]; if (from !== p.cur) transfers.push([18, id, from, p.cur, valueOf(p.dbr, p.age)]); });
+transfers.sort((a, b) => a[0] - b[0] || b[4] - a[4]);
 
-/* ---------- 还原比赛 ---------- */
+/* ---------- 推演比赛：结果服从官网名次，比分和球员数据自然产生 ---------- */
 function fixtures(teams) {
   const n = teams.length, arr = teams.slice(1), rounds = [];
   for (let r = 0; r < n - 1; r++) {
@@ -252,166 +255,115 @@ function fixtures(teams) {
 }
 const WEATHERS = ['晴天', '阴天', '雨天'], SLOTS = ['早上', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '凌晨'];
 
-function reconstruct(s) {
-  const off = SITE.standings[s];
-  const teams = off.map(r => r.team), N = teams.length;
-  const qsum = t => Object.values(QUOTA[s][t] || {}).reduce((a, q) => a + (q.g || 0), 0);
-  const tgt = off.map(r => ({ w: r.w, d: r.d, l: r.l, gf: Math.max(r.gf, Math.ceil(qsum(r.team) / 0.95), Math.ceil(Object.values(QUOTA[s][r.team] || {}).reduce((x, q) => x + (q.a || 0), 0) / 0.9)), ga: r.ga, pts: r.w * 3 + r.d }));
+
+const pois = (l, k) => { let p = Math.exp(-l); for (let i = 1; i <= k; i++) p *= l / i; return p; };
+function outcomeProbs(lh, la) { let H = 0, Dw = 0, A = 0; for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) { const q = pois(lh, i) * pois(la, j); if (i > j) H += q; else if (i === j) Dw += q; else A += q; } return { 1: H, 0: Dw, '-1': A }; }
+function poissonSample(l) { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= rnd(); } while (p > L); return k - 1; }
+function simulateSeason(s) {
+  const teams = teamsIn(s), N = teams.length;
+  const str = teams.map(t => XI[s][t].reduce((a, x) => a + x.r, 0) / 11);
   const order = shuffle(teams.map((_, i) => i));
-  const rounds = fixtures(order);
-  const M = []; rounds.forEach((ms, ri) => ms.forEach(([h, a]) => M.push({ ri, h, a, o: 0, hg: 0, ag: 0 })));
-  const byTeam = teams.map(() => []); M.forEach((m, i) => { byTeam[m.h].push(i); byTeam[m.a].push(i); });
-  // --- 胜平负 ---
+  const M = []; fixtures(order).forEach((ms, ri) => ms.forEach(([h, a]) => {
+    const d = str[h] - str[a];
+    const lh = 1.3 * Math.exp(0.034 * d) * 1.08, la = 1.3 * Math.exp(-0.034 * d) * 0.93;
+    const pr = outcomeProbs(lh, la);
+    M.push({ ri, h, a, lh, la, lp: { 1: Math.log(pr[1]), 0: Math.log(pr[0]), '-1': Math.log(pr[-1]) }, o: 0, hg: 0, ag: 0 });
+  }));
   const W = new Array(N).fill(0), Dd = new Array(N).fill(0), L = new Array(N).fill(0);
-  const apply = (m, sign) => { if (m.o === 1) { W[m.h] += sign; L[m.a] += sign; } else if (m.o === 0) { Dd[m.h] += sign; Dd[m.a] += sign; } else { L[m.h] += sign; W[m.a] += sign; } };
-  M.forEach(m => { const d = tgt[m.h].pts - tgt[m.a].pts; const ph = 1 / (1 + Math.exp(-(d / 12 + 0.3))); const r = rnd(); m.o = r < ph * 0.78 ? 1 : r < 0.78 ? -1 : 0; apply(m, 1); });
+  const apply = (m, sg) => { if (m.o === 1) { W[m.h] += sg; L[m.a] += sg; } else if (m.o === 0) { Dd[m.h] += sg; Dd[m.a] += sg; } else { L[m.h] += sg; W[m.a] += sg; } };
+  M.forEach(m => { const r = rnd(), pH = Math.exp(m.lp[1]), pD = Math.exp(m.lp[0]); m.o = r < pH ? 1 : r < pH + pD ? 0 : -1; apply(m, 1); });
   const pts = i => W[i] * 3 + Dd[i];
-  const tcost = i => Math.abs(W[i] - tgt[i].w) + Math.abs(Dd[i] - tgt[i].d) + Math.abs(L[i] - tgt[i].l) + 0.6 * Math.abs(pts(i) - tgt[i].pts);
-  const ocost = () => { let c = 0; for (let i = 0; i < N - 1; i++) { const d = pts(i + 1) - pts(i); if (d > 0) c += 6 * d + 6; } return c; };
-  let cost = teams.reduce((a, _, i) => a + tcost(i), 0) + ocost();
-  const IT = 400000;
-  for (let it = 0; it < IT; it++) {
-    const T = 2.5 * Math.pow(0.002, it / IT);
+  const viol = () => { let c = 0; for (let i = 0; i < N - 1; i++) { const d = pts(i + 1) - pts(i); if (d > 0) c += d + 1; else if (d === 0) c += 0.3; } return c; };
+  const hard = () => { for (let i = 0; i < N - 1; i++) if (pts(i + 1) > pts(i)) return true; return false; };
+  // 以 T=1 采样（保持比赛结果的随机性），名次约束的权重逐步加大，满足后变成硬约束
+  const ties = () => { let c = 0; for (let i = 0; i < N - 1; i++) if (pts(i) === pts(i + 1)) c++; return c; };
+  let v = viol();
+  const IT = 300000;
+  for (let it = 0; it < IT * 4; it++) {
     const m = M[Math.floor(rnd() * M.length)];
     const old = m.o, nw = [1, 0, -1].filter(x => x !== old)[Math.floor(rnd() * 2)];
-    const before = tcost(m.h) + tcost(m.a) + ocost();
     apply(m, -1); m.o = nw; apply(m, 1);
-    const after = tcost(m.h) + tcost(m.a) + ocost();
-    const dc = after - before;
-    if (dc <= 0 || rnd() < Math.exp(-dc / T)) cost += dc; else { apply(m, -1); m.o = old; apply(m, 1); }
+    let dc = m.lp[old] - m.lp[nw];
+    if (it < IT) { const v2 = viol(); dc += (0.5 + 30 * it / IT) * (v2 - v); if (dc <= 0 || rnd() < Math.exp(-dc)) { v = v2; continue; } }
+    else { if (hard()) { const v2 = viol(); dc += 40 * (v2 - v); if (dc <= 0 || rnd() < Math.exp(-dc)) { v = v2; continue; } }
+      else { const okNow = !hard(); if (okNow) { const t2 = ties(); dc += 1.0 * t2; if (dc <= 0 || rnd() < Math.exp(-dc)) { v = viol(); continue; } } } }
+    apply(m, -1); m.o = old; apply(m, 1);
   }
-  // --- 比分 ---
-  const GF = new Array(N).fill(0), GA = new Array(N).fill(0);
-  const setG = (m, hg, ag, sign) => { GF[m.h] += sign * hg; GA[m.h] += sign * ag; GF[m.a] += sign * ag; GA[m.a] += sign * hg; };
-  M.forEach(m => {
-    if (m.o === 0) { m.hg = m.ag = rnd() < 0.55 ? 1 : rnd() < 0.6 ? 0 : 2; }
-    else { const w = 1 + Math.floor(rnd() * 2.2), l = Math.floor(rnd() * Math.min(w, 2)); if (m.o === 1) { m.hg = w; m.ag = l; } else { m.hg = l; m.ag = w; } }
-    setG(m, m.hg, m.ag, 1);
-  });
-  const gd = i => GF[i] - GA[i];
-  const gcost = i => Math.abs(GF[i] - tgt[i].gf) + Math.abs(GA[i] - tgt[i].ga);
-  const tie = () => { let c = 0; for (let i = 0; i < N - 1; i++) if (pts(i) === pts(i + 1)) { const d = gd(i + 1) - gd(i); if (d > 0 || (d === 0 && GF[i + 1] > GF[i])) c += 5 + 3 * Math.max(0, d); } return c; };
-  const big = m => Math.max(0, m.hg + m.ag - 7) ** 2 * 0.5;
-  const IT2 = 400000;
-  for (let it = 0; it < IT2; it++) {
-    const T = 2 * Math.pow(0.003, it / IT2);
+  // 若仍有名次冲突，用贪心修正
+  for (let k = 0; k < 200000 && hard(); k++) {
     const m = M[Math.floor(rnd() * M.length)];
-    const oh = m.hg, oa = m.ag;
-    let nh = oh, na = oa;
-    const up = rnd() < 0.5 ? 1 : -1;
-    if (m.o === 0) { nh = oh + up; na = oa + up; }
-    else if (rnd() < 0.5) nh = oh + up; else na = oa + up;
-    if (nh < 0 || na < 0 || nh > 10 || na > 10) continue;
-    if ((m.o === 1 && nh <= na) || (m.o === -1 && nh >= na)) continue;
-    const before = gcost(m.h) + gcost(m.a) + tie() + big(m);
-    setG(m, oh, oa, -1); m.hg = nh; m.ag = na; setG(m, nh, na, 1);
-    const after = gcost(m.h) + gcost(m.a) + tie() + big(m);
-    const dc = after - before;
-    if (!(dc <= 0 || rnd() < Math.exp(-dc / T))) { setG(m, nh, na, -1); m.hg = oh; m.ag = oa; setG(m, oh, oa, 1); }
+    const old = m.o, nw = [1, 0, -1].filter(x => x !== old)[Math.floor(rnd() * 2)];
+    const v0 = viol(); apply(m, -1); m.o = nw; apply(m, 1);
+    if (viol() > v0) { apply(m, -1); m.o = old; apply(m, 1); }
   }
-  // 检查名次
+  // 比分：按期望进球抽样，并与胜平负一致
+  const sampleScore = m => { for (let k = 0; k < 400; k++) { const h = poissonSample(m.lh), a = poissonSample(m.la); if ((m.o === 1 && h > a) || (m.o === 0 && h === a) || (m.o === -1 && h < a)) return [h, a]; } return m.o === 1 ? [1, 0] : m.o === 0 ? [1, 1] : [0, 1]; };
+  M.forEach(m => { [m.hg, m.ag] = sampleScore(m); });
+  const GF = new Array(N).fill(0), GA = new Array(N).fill(0);
+  const recount = () => { GF.fill(0); GA.fill(0); M.forEach(m => { GF[m.h] += m.hg; GA[m.h] += m.ag; GF[m.a] += m.ag; GA[m.a] += m.hg; }); };
+  recount();
+  const tieBad = () => { const bad = []; for (let i = 0; i < N - 1; i++) if (pts(i) === pts(i + 1)) { const a = GF[i] - GA[i], b = GF[i + 1] - GA[i + 1]; if (b > a || (b === a && GF[i + 1] >= GF[i])) bad.push(i); } return bad; };
+  for (let k = 0; k < 20000; k++) {
+    const bad = tieBad(); if (!bad.length) break;
+    const i = bad[Math.floor(rnd() * bad.length)], t = rnd() < 0.5 ? i : i + 1;
+    const ms = M.filter(m => m.h === t || m.a === t); const m = ms[Math.floor(rnd() * ms.length)];
+    const old = [m.hg, m.ag]; [m.hg, m.ag] = sampleScore(m); recount();
+    if (tieBad().length > bad.length) { [m.hg, m.ag] = old; recount(); }
+  }
   const table = teams.map((t, i) => ({ t, i, w: W[i], d: Dd[i], l: L[i], gf: GF[i], ga: GA[i], pts: pts(i) }));
   const sorted = table.slice().sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
-  const orderOk = sorted.every((r, k) => r.i === k);
-  return { teams, M, table, orderOk, tgt };
+  const exp = teams.map((_, i) => M.reduce((a, m) => a + (m.h === i ? 3 * Math.exp(m.lp[1]) + Math.exp(m.lp[0]) : m.a === i ? 3 * Math.exp(m.lp[-1]) + Math.exp(m.lp[0]) : 0), 0));
+  if (process.env.DBG) console.log('S' + s, 'str', str.map(x => x.toFixed(0)).join(','), '| exp', exp.map(x => x.toFixed(0)).join(','), '| got', table.map(r => r.pts).join(','));
+  return { teams, M, table, orderOk: sorted.every((r, k) => r.i === k) };
 }
 
 /* ---------- 比赛事件与球员数据 ---------- */
-const PS = {}; // s -> pid -> stats
-const CS = {}; // s -> team -> stats
-const OUT = { seasons: {} };
+const PS = {}, CS = {}, OUT = { seasons: {} };
 const stat = (s, pid, team) => { const o = (PS[s] = PS[s] || {}); return o[pid] || (o[pid] = { team, apps: 0, min: 0, g: 0, a: 0, y: 0, r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0 }); };
+const attrOf = pid => (P[pid].kind === 'db' && (PDB[P[pid].cur] || []).find(q => q.name === P[pid].name) || {}).attributes;
 const report = [];
 for (let s = 1; s <= LAST; s++) {
-  const R = reconstruct(s);
+  const R = simulateSeason(s);
   const { teams, M } = R;
-  report.push(`S${s} 名次${R.orderOk ? '一致' : '不一致'} · 胜平负误差 ${R.table.reduce((a, r, i) => a + Math.abs(r.w - R.tgt[i].w) + Math.abs(r.d - R.tgt[i].d) + Math.abs(r.l - R.tgt[i].l), 0)} · 进失球误差 ${R.table.reduce((a, r, i) => a + Math.abs(r.gf - R.tgt[i].gf) + Math.abs(r.ga - R.tgt[i].ga), 0)} · 积分误差 ${R.table.reduce((a, r, i) => a + Math.abs(r.pts - R.tgt[i].pts), 0)}`);
+  const goals = M.reduce((a, m) => a + m.hg + m.ag, 0);
+  report.push(`S${s} 名次${R.orderOk ? '一致' : '不一致'} · 冠军 ${R.table[0].pts} 分 · 场均进球 ${(goals / M.length).toFixed(2)}`);
   const xi = teams.map(t => XI[s][t]);
-  // 每队进球槽位
-  const capFrom = (list, key) => list.length >= 10 ? Math.max(1, +list[list.length - 1][key] - 1) : 99;
-  const capG = capFrom(SITE.stats[s].goals, 'goals'), capA = capFrom(SITE.stats[s].assists, 'assists');
-  const cards = SITE.stats[s].cards.filter(c => +c.yellow > 0);
-  const capY = cards.length >= 10 ? Math.max(1, +cards[9].yellow - 1) : 99;
-  const matchEv = M.map(() => ({ goals: [], cards: [] }));
-  teams.forEach((team, ti) => {
-    const X = xi[ti]; const quota = QUOTA[s][team] || {};
-    const slotsG = []; M.forEach((m, mi) => { const g = m.h === ti ? m.hg : m.a === ti ? m.ag : 0; for (let k = 0; k < g; k++) slotsG.push(mi); });
-    shuffle(slotsG);
-    const GF = slotsG.length;
-    const inXI = id => X.some(x => x.pid === id);
-    let qg = Object.entries(quota).filter(([id, q]) => q.g != null && inXI(+id)).map(([id, q]) => [+id, q.g]);
-    const totQ = qg.reduce((a, x) => a + x[1], 0), maxQ = Math.floor(GF * 0.95);
-    if (totQ > maxQ) qg = qg.map(([id, g]) => [id, Math.floor(g * maxQ / totQ)]);
-    const goalOwners = new Array(slotsG.length).fill(null);
-    let k = 0; qg.forEach(([id, g]) => { for (let j = 0; j < g && k < slotsG.length; j++) goalOwners[k++] = id; });
-    const cnt = {}; qg.forEach(([id]) => cnt[id] = 99);
-    const wG = X.map(x => POS_GOAL(x.slot) * Math.pow(x.r / 85, 3));
-    for (; k < slotsG.length; k++) {
-      const w = X.map((x, i) => (cnt[x.pid] || 0) >= capG ? 0 : wG[i]);
-      const x = pick(X, w); goalOwners[k] = x.pid; cnt[x.pid] = (cnt[x.pid] || 0) + 1;
-    }
-    // 助攻
-    const assistOwners = new Array(slotsG.length).fill(-1);
-    const assisted = slotsG.map(() => rnd() < 0.78);
-    let qa = Object.entries(quota).filter(([id, q]) => q.a != null && inXI(+id)).map(([id, q]) => [+id, q.a]);
-    const totA = qa.reduce((a, x) => a + x[1], 0), maxA = Math.floor(GF * 0.93);
-    if (totA > maxA) qa = qa.map(([id, a]) => [id, Math.floor(a * maxA / totA)]);
-    const order = shuffle(slotsG.map((_, i) => i));
-    qa.forEach(([id, a]) => { let left = a; for (const i of order) { if (!left) break; if (assistOwners[i] === -1 && goalOwners[i] !== id) { assistOwners[i] = id; assisted[i] = true; left--; } } });
-    const acnt = {}; qa.forEach(([id]) => acnt[id] = 99);
-    const wA = X.map(x => POS_AST(x.slot) * Math.pow(x.r / 85, 3));
-    slotsG.forEach((mi, i) => {
-      if (assistOwners[i] !== -1 || !assisted[i]) return;
-      const w = X.map((x, j) => x.pid === goalOwners[i] || (acnt[x.pid] || 0) >= capA ? 0 : wA[j]);
-      if (w.every(v => !v)) return;
-      const x = pick(X, w); assistOwners[i] = x.pid; acnt[x.pid] = (acnt[x.pid] || 0) + 1;
-    });
-    slotsG.forEach((mi, i) => matchEv[mi].goals.push([1 + Math.floor(rnd() * 93), ti, goalOwners[i], assistOwners[i]]));
-    // 牌
-    const myM = M.map((m, mi) => [m, mi]).filter(([m]) => m.h === ti || m.a === ti).map(x => x[1]);
-    const st = TD[team].style || '';
-    const ySlots = [], rSlots = [];
-    myM.forEach(mi => { const n = Math.round(Math.max(0, 1.6 + (/逼抢|压制|对抗|防守/.test(st) ? 0.4 : 0) + gauss() * 1.1)); for (let j = 0; j < n; j++) ySlots.push(mi); if (rnd() < 0.05) rSlots.push(mi); });
-    const qy = Object.entries(quota).filter(([id, q]) => (q.y != null || q.r != null) && inXI(+id)).map(([id, q]) => [+id, q.y || 0, q.r || 0, q.y != null, q.r != null]);
-    const needY = qy.reduce((a, x) => a + x[1], 0), needR = qy.reduce((a, x) => a + x[2], 0);
-    while (ySlots.length < needY + 4) ySlots.push(myM[Math.floor(rnd() * myM.length)]);
-    while (rSlots.length < needR) rSlots.push(myM[Math.floor(rnd() * myM.length)]);
-    shuffle(ySlots); shuffle(rSlots);
-    const yOwn = [], rOwn = [];
-    let yi = 0, ri = 0;
-    qy.forEach(([id, y, r]) => { for (let j = 0; j < y && yi < ySlots.length; j++) yOwn.push([ySlots[yi++], id]); for (let j = 0; j < r && ri < rSlots.length; j++) rOwn.push([rSlots[ri++], id]); });
-    const ycnt = {}; qy.forEach(([id, , , hy]) => { if (hy) ycnt[id] = 99; });
-    const wC = X.map(x => (x.line === 'DF' ? 2 : /DM/.test(x.slot) ? 2.6 : x.line === 'MF' ? 1.3 : x.line === 'GK' ? 0.15 : 0.8));
-    for (; yi < ySlots.length; yi++) {
-      const w = X.map((x, j) => (ycnt[x.pid] || 0) >= capY ? 0 : wC[j]);
-      if (w.every(v => !v)) continue;
-      const x = pick(X, w); yOwn.push([ySlots[yi], x.pid]); ycnt[x.pid] = (ycnt[x.pid] || 0) + 1;
-    }
-    const capR = 2;
-    const rcnt = {}; qy.forEach(([id, , , , hr]) => { if (hr) rcnt[id] = 99; });
-    for (; ri < rSlots.length; ri++) { const w = X.map((x, j) => (rcnt[x.pid] || 0) >= capR ? 0 : wC[j]); if (w.every(v => !v)) continue; const x = pick(X, w); rOwn.push([rSlots[ri], x.pid]); rcnt[x.pid] = (rcnt[x.pid] || 0) + 1; }
-    yOwn.forEach(([mi, id]) => matchEv[mi].cards.push([5 + Math.floor(rnd() * 88), ti, 0, id]));
-    rOwn.forEach(([mi, id]) => matchEv[mi].cards.push([10 + Math.floor(rnd() * 82), ti, 1, id]));
-  });
-  // 每场球员数据
   const csT = {}; teams.forEach(t => csT[t] = { poss: 0, sh: 0, ot: 0, tk: 0, sv: 0, cor: 0, y: 0, rc: 0, cs: 0, hp: 0, ap: 0 });
   const rounds = [];
-  M.forEach((m, mi) => {
-    const ev = matchEv[mi]; ev.goals.sort((a, b) => a[0] - b[0]); ev.cards.sort((a, b) => a[0] - b[0]);
+  M.forEach(m => {
+    const ev = { goals: [], cards: [] };
+    [[m.h, m.hg], [m.a, m.ag]].forEach(([ti, g]) => {
+      const X = xi[ti];
+      const wG = X.map(x => POS_GOAL(x.slot) * Math.pow(x.r / 85, 3) * Math.pow(((attrOf(x.pid) || {}).sho || x.r) / 80, 2));
+      const wA = X.map(x => POS_AST(x.slot) * Math.pow(x.r / 85, 3) * Math.pow(((attrOf(x.pid) || {}).pas || x.r) / 80, 2));
+      for (let k = 0; k < g; k++) {
+        const sc = pick(X, wG);
+        let as = -1;
+        if (rnd() < 0.78) { const w = X.map((x, j) => x === sc ? 0 : wA[j]); as = pick(X, w).pid; }
+        let mn = 1 + Math.floor(rnd() * 90); if (mn === 90 && rnd() < 0.6) mn = 91 + Math.floor(rnd() * 4);
+        ev.goals.push([mn, ti, sc.pid, as]);
+      }
+      const press = /逼抢|压制|对抗|防守/.test(TD[teams[ti]].style || '');
+      const wC = X.map(x => (x.line === 'DF' ? 2 : /DM/.test(x.slot) ? 2.6 : x.line === 'MF' ? 1.3 : x.line === 'GK' ? 0.15 : 0.8));
+      const ny = poissonSample(1.6 + (press ? 0.4 : 0));
+      const yc = {};
+      for (let k = 0; k < ny; k++) { const x = pick(X, wC); const mn = 5 + Math.floor(rnd() * 88); yc[x.pid] = (yc[x.pid] || 0) + 1; ev.cards.push([mn, ti, yc[x.pid] === 2 ? 1 : 0, x.pid]); }
+      if (rnd() < 0.04) { const x = pick(X, wC); ev.cards.push([10 + Math.floor(rnd() * 80), ti, 1, x.pid]); }
+    });
+    ev.goals.sort((a, b) => a[0] - b[0]); ev.cards.sort((a, b) => a[0] - b[0]);
     const sides = [[m.h, m.hg, m.ag], [m.a, m.ag, m.hg]];
     const avg = ti => xi[ti].reduce((a, x) => a + x.r, 0) / 11;
-    let poss = Math.round(Math.max(30, Math.min(70, 51.5 + (avg(m.h) - avg(m.a)) * 1.6 + gauss() * 5)));
-    const shots = sides.map(([ti, g]) => Math.max(g + 1, Math.round(9 + g * 1.8 + gauss() * 2.5)));
-    const ots = sides.map(([ti, g], k) => Math.max(g, Math.min(shots[k], Math.round(shots[k] * (0.34 + rnd() * 0.14)))));
+    const poss = Math.round(Math.max(30, Math.min(70, 51.5 + (avg(m.h) - avg(m.a)) * 1.6 + gauss() * 5)));
+    const shots = [Math.max(m.hg + 1, Math.round(m.lh * 4.2 + 6 + gauss() * 2.5)), Math.max(m.ag + 1, Math.round(m.la * 4.2 + 6 + gauss() * 2.5))];
+    const ots = shots.map((sh, k) => { const g = k ? m.ag : m.hg; return Math.max(g, Math.min(sh, Math.round(sh * (0.34 + rnd() * 0.14)))); });
     const rows = sides.map(([ti, gf, ga], k) => {
       const X = xi[ti];
       const idx = id => X.findIndex(x => x.pid === id);
-      const st = ENGINE.sideStats(X.map(x => ({ slot: x.slot, line: x.line, r: x.r, attr: (P[x.pid].kind === 'db' && (PDB[P[x.pid].cur] || []).find(q => q.name === P[x.pid].name) || {}).attributes })), {
+      return ENGINE.sideStats(X.map(x => ({ slot: x.slot, line: x.line, r: x.r, attr: attrOf(x.pid) })), {
         goals: ev.goals.filter(g => g[1] === ti).map(g => [idx(g[2]), g[3] >= 0 ? idx(g[3]) : -1]),
         cards: ev.cards.filter(c => c[1] === ti).map(c => [idx(c[3]), c[2], c[0]]),
         shots: shots[k], ot: ots[k], oppOt: ots[1 - k], gf, ga, poss: k ? 100 - poss : poss, press: /防守|逼抢|压制|摆大巴|对抗/.test(TD[teams[ti]].style || ''),
-      });
-      return st.map((r, q) => ({ ...r, pid: X[q].pid, rt: r.r }));
+      }).map((r, q) => ({ ...r, pid: X[q].pid, rt: r.r }));
     });
     const all = rows.flat(); const motm = all.reduce((a, b) => b.rt > a.rt ? b : a);
     sides.forEach(([ti, gf, ga], k) => {
@@ -463,12 +415,10 @@ OUT.players = P.map((p, i) => used.has(i) ? [p.name, p.pos, p.nat || '', p.kind 
 OUT.pstats = {};
 for (const s in PS) OUT.pstats[s] = Object.entries(PS[s]).map(([id, o]) => [+id, o.team, o.apps, o.min, o.g, o.a, o.y, o.r, o.sh, o.ot, o.tk, o.sv, o.cs, o.motm, Math.round(o.rs * 10), o.kp, o.int]);
 OUT.officialStats = SITE.stats;
+OUT.transfers = transfers;
 OUT.officialAllTime = SITE.standings.history;
 fs.writeFileSync(D + 'hist.json', JSON.stringify(OUT));
 console.log(report.join('\n'));
 console.log('players', OUT.players.filter(Boolean).length, 'generated', P.filter(p => p.kind === 'gen').length, 'size', (fs.statSync(D + 'hist.json').size / 1e6).toFixed(2) + 'MB');
-// 抽查：官网射手 vs 还原
-for (const s of [1, 8, 17]) {
-  const top = Object.entries(PS[s]).map(([id, o]) => [P[id].name, o.team, o.g]).sort((a, b) => b[2] - a[2]).slice(0, 6);
-  console.log('S' + s, 'official', SITE.stats[s].goals.slice(0, 6).map(r => r.player + r.goals).join(' '), '| recon', top.map(x => x[0] + x[2]).join(' '));
-}
+for (const s of [1, 9, 17]) console.log('S' + s, Object.entries(PS[s]).map(([id, o]) => [P[id].name, o.team, o.g]).sort((a, b) => b[2] - a[2]).slice(0, 6).map(x => x.join(' ')).join(' | '));
+console.log('transfers', transfers.length);

@@ -45,6 +45,8 @@ nav.tabs button[aria-current="page"]{color:var(--accent-2)}
 nav.tabs button[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:-11px;height:2px;background:var(--accent);box-shadow:0 0 10px var(--accent)}
 .roundchip{font-family:var(--mono);font-size:11px;color:var(--fg-2);border:1px solid var(--line-2);padding:5px 9px;border-radius:3px;white-space:nowrap;flex-shrink:0}
 .roundchip b{color:var(--accent-2);font-weight:500}
+button.roundchip{background:none;cursor:pointer;font-family:var(--mono)}
+button.roundchip:hover{border-color:var(--accent);color:var(--fg)}
 @media (max-width:760px){.top-in{flex-wrap:wrap;gap:8px 12px}.brand small{display:none}nav.tabs{order:3;flex-basis:100%}nav.tabs button[aria-current="page"]::after{bottom:-3px}}
 
 /* ---------- Page ---------- */
@@ -315,6 +317,7 @@ th.sorted{color:var(--accent-2)}
       <button data-go="history">历史总榜</button>
     </nav>
     <div class="roundchip" id="roundChip"></div>
+    <button class="roundchip" id="syncChip" data-act="sync" title="进度同步">仅本机</button>
   </div>
 </header>
 <main id="app"></main>
@@ -362,15 +365,16 @@ function newSeason() {
   const fx = ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null })));
   return { season: SEASON, teams, promoted, fx, demo: false };
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+const DIRTY = new Set();
+function save() { S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} cloudQueue(); }
 function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.fx && s.teams) return s; } catch (e) {} return null; }
 const compact = res => ({ hg: res.hg, ag: res.ag, ev: res.events.filter(e => e.type !== 'chance').map(e => [e.m, e.type, e.side, e.player, e.assist || 0]), motm: [res.motm.name, res.motm.team, res.motm.r], st: [res.stats.poss[0], res.stats.shots[0], res.stats.shots[1], res.stats.onTarget[0], res.stats.onTarget[1], res.stats.corners[0], res.stats.corners[1], res.stats.tackles[0], res.stats.tackles[1], res.stats.saves[0], res.stats.saves[1]], pl: ['h', 'a'].map(k => res.players[k].map(r => [r.sh, r.ot, r.tk, r.sv, Math.round(r.r * 10), r.min, r.kp, r.int])) });
-function playRound(i) { S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); m.r = compact(ENGINE.simulate(m.h, m.a, m.c)); } }); }
+function playRound(i) { DIRTY.add(i); S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); m.r = compact(ENGINE.simulate(m.h, m.a, m.c)); } }); }
 const nextRound = () => S.fx.findIndex(r => r.some(m => !m.r));
 const playedRounds = () => S.fx.filter(r => r.every(m => m.r)).length;
 
 S = load();
-if (!S) { S = newSeason(); save(); }
+if (!S) { S = newSeason(); S.updated = 0; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
 /* ---------- 统计 ---------- */
 function table(upto = 38) {
@@ -422,7 +426,7 @@ function clubStats() {
   return Object.values(C).map(c => ({ ...c, possAvg: c.p ? c.poss / c.p : 0 }));
 }
 
-/* ---------- 历史数据（S01–S17 还原） ---------- */
+/* ---------- 历史数据（S01–S17 推演） ---------- */
 const HS = HIST.seasons, PL = HIST.players, HIST_LAST = 17;
 const SEASONS = [...Array(HIST_LAST)].map((_, i) => i + 1);
 const ranking = s => HS[s].table.map(r => r.team);
@@ -630,12 +634,12 @@ function vTable() {
   } else {
     const s = +tblSeason, H2 = HS[s];
     const rows = tblMode === 'official' ? H2.official : H2.table;
-    body = `<div class="panel"><div class="ph"><div><div class="eyebrow">${SN(s)} · ${tblMode === 'official' ? '官网记录' : '还原数据'}</div><h2>${SN(s)} 赛季最终排名</h2></div>
-      <div class="seg" role="group" aria-label="数据来源"><button data-tmode="recon" aria-pressed="${tblMode === 'recon'}">还原数据</button><button data-tmode="official" aria-pressed="${tblMode === 'official'}">官网记录</button></div></div>
+    body = `<div class="panel"><div class="ph"><div><div class="eyebrow">${SN(s)} · ${tblMode === 'official' ? '官网记录' : '推演数据'}</div><h2>${SN(s)} 赛季最终排名</h2></div>
+      <div class="seg" role="group" aria-label="数据来源"><button data-tmode="recon" aria-pressed="${tblMode === 'recon'}">推演数据</button><button data-tmode="official" aria-pressed="${tblMode === 'official'}">官网记录</button></div></div>
       <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净胜</th><th>积分</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.w + r.d + r.l}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="pts">${r.pts}</td></tr>`).join('')}
       </tbody></table></div>${ZONE_LEGEND}
-      <p class="note" style="margin:10px 0 0">${tblMode === 'official' ? '官网原始数据。这份数据的总胜场和总负场、总进球和总失球对不上，所以没法逐场还原到完全一致。' : '由 380 场逐场比分累加而成，名次与官网完全一致，胜平负和进失球尽量贴近官网。'}</p></div>`;
+      <p class="note" style="margin:10px 0 0">${tblMode === 'official' ? '官网原始的积分榜数据，仅供对照。' : '380 场比赛逐场推演而成。名次与官网完全一致，比分、胜平负和球员数据由推演自然产生，不再照搬官网的榜单。'}</p></div>`;
     const R = H2.rounds[tblRound];
     body += `<div class="panel"><div class="ph"><div><div class="eyebrow">Results</div><h2>第 ${tblRound + 1} 轮赛果</h2></div>
       <div class="btns"><button class="btn ghost" data-act="tPrev" ${tblRound <= 0 ? 'disabled' : ''} aria-label="上一轮">←</button><select id="tblRnd" aria-label="轮次">${H2.rounds.map((_, i) => `<option value="${i}" ${i === tblRound ? 'selected' : ''}>第 ${i + 1} 轮</option>`).join('')}</select><button class="btn ghost" data-act="tNext" ${tblRound >= 37 ? 'disabled' : ''} aria-label="下一轮">→</button></div></div>
@@ -856,7 +860,7 @@ function finish() {
   $('#liveCtl').innerHTML = '';
   const fxm = M.fx ? S.fx[M.fx[0]][M.fx[1]] : null;
   let saved = '';
-  if (fxm && !fxm.r) { fxm.c = { weather: M.weather, slot: M.slot }; fxm.r = compact(res); M.stored = true; S.demo = false; save(); saved = `<span class="chip good">已计入第 ${M.fx[0] + 1} 轮</span>`; }
+  if (fxm && !fxm.r) { fxm.c = { weather: M.weather, slot: M.slot }; fxm.r = compact(res); M.stored = true; S.demo = false; DIRTY.add(M.fx[0]); save(); saved = `<span class="chip good">已计入第 ${M.fx[0] + 1} 轮</span>`; }
   const st = res.stats, n = (x, y) => [x / (x + y || 1) * 100, y / (x + y || 1) * 100];
   const srow = (k, x, y, fmt = v => v) => { const [p, q] = n(x, y); return `<div class="row"><b class="r">${fmt(x)}</b><div class="l"><div class="hb" style="width:${p}%;background:${tcol(h)}"></div></div><span class="k">${k}</span><div><div class="hb" style="width:${q}%;background:${tcol(a)}"></div></div><b>${fmt(y)}</b></div>`; };
   const nxt = findNextFixture();
@@ -1002,7 +1006,7 @@ function careerHTML(pid) {
     <div class="stats3 s4" style="margin-bottom:10px">${[[tot.apps, '出场'], [tot.g, '进球'], [tot.a, '助攻'], [tot.apps ? (tot.rs / tot.apps).toFixed(2) : '–', '场均评分']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
     <div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">球队</th><th>出场</th><th>进球</th><th>助攻</th><th>黄牌</th><th>红牌</th><th>评分</th></tr></thead><tbody>
     ${rows.map(([s, r]) => `<tr><td class="l mono">${SN(s)}${s === 18 ? '*' : ''}</td><td class="l"><span class="tname">${crest(r.team, 16)}<span>${esc(r.team)}</span></span></td><td>${r.apps}</td><td>${r.g}</td><td>${r.a}</td><td class="muted">${r.y}</td><td class="muted">${r.r}</td><td>${r.avg.toFixed(2)}</td></tr>`).join('')}
-    </tbody></table></div>${rows.some(x => x[0] === 18) ? '<p class="note" style="margin:6px 0 0">S18* 为本赛季模拟进度。S01–S17 由官网排名和榜单还原。</p>' : '<p class="note" style="margin:6px 0 0">S01–S17 由官网排名和榜单还原。</p>'}</div>`;
+    </tbody></table></div>${rows.some(x => x[0] === 18) ? '<p class="note" style="margin:6px 0 0">S18* 为本赛季模拟进度。S01–S17 按官网最终名次推演。</p>' : '<p class="note" style="margin:6px 0 0">S01–S17 按官网最终名次推演。</p>'}</div>`;
 }
 function openPerson(pid) {
   const pp = PL[pid]; if (!pp) return;
@@ -1015,7 +1019,7 @@ function openPerson(pid) {
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(pos)}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(name)}</h3>
       <div class="btns" style="margin-top:8px">${statusChips(pid)}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${CUR_TEAM_OF[pid] ? `<span class="chip">现效力 ${esc(CUR_TEAM_OF[pid])}</span>` : (() => { const sp = spanOf(pid); return sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span><span class="chip">${SN(sp[1])} 赛季后退役</span>` : ''; })()}${familyChips(pid)}</div></div></div>
-    ${careerHTML(pid)}</div>`;
+    ${careerHTML(pid)}${transferHTML(pid)}</div>`;
   if (!d.open) d.showModal();
 }
 function openPlayer(team, name) {
@@ -1040,6 +1044,7 @@ function openPlayer(team, name) {
     <div><div class="eyebrow" style="margin-bottom:8px">S${SEASON} 本赛季（模拟）</div>
       ${s ? `<div class="stats3 s4">${[[s.apps, '出场'], [s.min, '出场分钟'], [s.avg.toFixed(2), '场均评分'], [s.motm, '全场最佳'], [s.g, '进球'], [s.a, '助攻'], [s.sh, '射门'], [s.ot, '射正'], [s.kp || 0, '关键传球'], [s.tk, '抢断'], [s.int || 0, '拦截'], ...(s.line === 'GK' ? [[s.sv, '扑救']] : []), ...(s.line === 'GK' || s.line === 'DF' ? [[s.cs, '零封']] : []), [s.y, '黄牌'], [s.r, '红牌']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>` : `<div class="empty">本赛季还没有首发出场</div>`}</div>
     ${careerHTML(pid)}
+    ${pid != null ? transferHTML(pid) : ''}
     <div><div class="eyebrow" style="margin-bottom:8px">资料库记录（含威超以外的比赛）</div><div class="stats3"><div><b>${p.cGP}</b><span>生涯出场</span></div><div><b>${p.cG}</b><span>生涯进球</span></div><div><b>${p.cA}</b><span>生涯助攻</span></div>
       <div><b>${p.tGP}</b><span>本队出场</span></div><div><b>${p.tG}</b><span>本队进球</span></div><div><b>${p.tA}</b><span>本队助攻</span></div></div></div>
   </div>`;
@@ -1101,7 +1106,7 @@ const natOf = p => p.pid != null && PL[p.pid] ? (PL[p.pid][2] || '—') : ((PINF
 function vStats() {
   const se = SM.season;
   const played = playedRounds();
-  const sub = se === 'live' ? (played ? `第 1–${played} 轮 · 联赛比赛数据，友谊赛不计入` : '本赛季还没有比赛数据') : se === 'all' ? 'S01–S17 还原数据 + S18 已模拟场次' : `${SN(se)} 赛季 38 轮 · 由官网排名和榜单还原`;
+  const sub = se === 'live' ? (played ? `第 1–${played} 轮 · 联赛比赛数据，友谊赛不计入` : '本赛季还没有比赛数据') : se === 'all' ? 'S01–S17 推演数据 + S18 已模拟场次' : `${SN(se)} 赛季 38 轮 · 按官网最终名次推演`;
   const head = `<div class="split"><div><div class="eyebrow">Stats centre · ${seasonLabel(se)}</div><h1>数据榜</h1><p class="muted" style="margin:6px 0 0;font-size:13px">${sub}</p></div>
     <div class="btns">${seasonSelect('smSeason', se, [['all', '历史总计']])}<div class="seg" role="group" aria-label="榜单类型"><button data-sm="player" aria-pressed="${SM.mode === 'player'}">球员</button><button data-sm="club" aria-pressed="${SM.mode === 'club'}">球队</button></div></div></div>`;
   if (se === 'live' && !played) return `<section class="view">${head}<div class="empty">模拟第 1 轮后生成本赛季数据榜，也可以在右上角切换到往届赛季或历史总计</div></section>`;
@@ -1157,15 +1162,39 @@ after.stats = () => {
   const t = $('#smTeam'); t && t.addEventListener('change', e => { SM.team = e.target.value; SM.limit = 50; render(); });
 };
 
+
+/* ---------- 转会 ---------- */
+const TRANSFERS = (HIST.transfers || []).map(([s, pid, from, to, fee]) => ({ s, pid, from, to, fee }));
+const TR_BY_PID = {}; TRANSFERS.forEach(t => (TR_BY_PID[t.pid] = TR_BY_PID[t.pid] || []).push(t));
+const feeTxt = f => 'ⰵ' + f + 'M';
+function transferRow(t, showName = true) {
+  return `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n">${SN(t.s)}</span><span class="tname" style="gap:6px;flex-wrap:wrap">${showName ? `<button class="lnk" data-pid="${t.pid}"><b>${esc(PL[t.pid] ? PL[t.pid][0] : '')}</b></button>` : ''}${crest(t.from, 18)}<span class="dim">${esc(t.from)}</span><span class="dim">→</span>${crest(t.to, 18)}<span>${esc(t.to)}</span></span><span class="v">${feeTxt(t.fee)}</span></div>`;
+}
+function transferHTML(pid) {
+  const l = TR_BY_PID[pid]; if (!l || !l.length) return '';
+  return `<div><div class="eyebrow" style="margin-bottom:8px">转会记录 · ${l.length} 次</div><div class="rank-list">${l.map(t => transferRow(t, false)).join('')}</div><p class="note" style="margin:6px 0 0">转会费为推演时按当季能力值和年龄估算的身价</p></div>`;
+}
+let trSeason = 18;
+function transferPanel() {
+  const seasons = [...new Set(TRANSFERS.map(t => t.s))].sort((a, b) => b - a);
+  const list = TRANSFERS.filter(t => t.s === trSeason).sort((a, b) => b.fee - a.fee);
+  const total = list.reduce((a, t) => a + t.fee, 0);
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer market</div><h2>转会市场</h2></div>
+    <select id="trSel" aria-label="转会窗口">${seasons.map(x => `<option value="${x}" ${x === trSeason ? 'selected' : ''}>${SN(x)} 赛季前</option>`).join('')}</select></div>
+    <p class="note" style="margin:0 0 10px">${SN(trSeason)} 赛季前共 ${list.length} 笔转会，总额 ${feeTxt(total)}。只统计威超球队之间的转会。</p>
+    <div class="rank-list">${list.slice(0, 30).map(t => transferRow(t)).join('')}</div>${list.length > 30 ? `<p class="note" style="margin:8px 0 0">只显示金额最高的 30 笔</p>` : ''}</div>`;
+}
+
 /* ---------- History ---------- */
 let histSort = '威超冠军';
+after.history = () => { const t = $('#trSel'); t && t.addEventListener('change', e => { trSeason = +e.target.value; render(); }); };
 function vHistory() {
   const champs = SEASONS.map(s => ({ s, t: ranking(s)[0], pts: HS[s].table[0].pts }));
   const allTime = clubsFor('all').sort((a, b) => b.pts - a.pts || b.gd - a.gd);
   const hon = ALL_TEAMS.map(t => ({ team: t, ...(H.honours[t] || {}) })).sort((a, b) => (b[histSort] || 0) - (a[histSort] || 0) || TROPHIES.reduce((s, k) => s + (b[k] || 0) - (a[k] || 0), 0));
   const ps = statsFor('all');
   const top = k => ps.filter(p => p[k] > 0).sort((a, b) => b[k] - a[k]).slice(0, 10).map((p, i) => ({ ...p, n: p[k], team: p.team }));
-  return `<section class="view"><div><div class="eyebrow">Since season 01</div><h1>历史总榜</h1><p class="muted" style="margin:6px 0 0;font-size:13px">S01–S17 由官网排名和榜单逐场还原${playedRounds() ? `，并计入 S18 已模拟的 ${playedRounds()} 轮` : ''}</p></div>
+  return `<section class="view"><div><div class="eyebrow">Since season 01</div><h1>历史总榜</h1><p class="muted" style="margin:6px 0 0;font-size:13px">S01–S17 按官网最终名次逐场推演${playedRounds() ? `，并计入 S18 已模拟的 ${playedRounds()} 轮` : ''}</p></div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">Champions</div><h2>历届威超冠军</h2></div></div>
     <div class="champs">${champs.map(c => `<div class="${c.s === 17 ? 'last' : ''}">${crest(c.t, 44)}<b>${esc(c.t)}</b><small>${SN(c.s)} · ${c.pts} 分</small></div>`).join('')}</div></div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">All-time table</div><h2>历史总积分榜</h2></div></div>
@@ -1174,6 +1203,7 @@ function vHistory() {
     </tbody></table></div></div>
   <div class="grid g-2">${scorerBlock(top('g'), ['历史射手榜', 'All-time goals'], ' 球')}${scorerBlock(top('a'), ['历史助攻榜', 'All-time assists'], ' 次')}</div>
   <div style="text-align:center"><button class="btn" data-statsgo="all">查看全部历史球员与球队数据榜 →</button></div>
+  ${transferPanel()}
   <div class="panel"><div class="ph"><div><div class="eyebrow">Trophy cabinet</div><h2>各队荣誉</h2></div><span class="note">来自 PDF · 点表头排序</span></div>
     <div class="tw"><table><thead><tr><th class="l">球队</th>${TROPHIES.map(k => `<th class="sort ${histSort === k ? 'sorted' : ''}" data-hs="${k}">${k}</th>`).join('')}</tr></thead><tbody>
     ${hon.map(r => `<tr><td class="l">${tlink(r.team, 20)}</td>${TROPHIES.map(k => `<td class="${r[k] ? '' : 'dim'}" ${r[k] && k === histSort ? 'style="color:var(--accent-2)"' : ''}>${r[k] || 0}</td>`).join('')}</tr>`).join('')}
@@ -1216,8 +1246,10 @@ document.addEventListener('click', e => {
   if (act === 'prevR') { ovRound = Math.max(0, (ovRound ?? Math.max(0, nextRound())) - 1); render(); }
   if (act === 'nextR') { ovRound = Math.min(37, (ovRound ?? Math.max(0, nextRound())) + 1); render(); }
   if (act === 'reset') confirmReset();
-  if (act === 'doReset') { S = newSeason(S.promoted); M = null; ovRound = null; save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
+  if (act === 'doReset') { S = newSeason(S.promoted); M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
+  if (act === 'sync') openSync();
+  if (act === 'exportSave') exportSave();
   if (act === 'close') $('#dlg').close();
   if (act === 'swap') { M = { ...M, h: M.a, a: M.h, fx: null, stored: false, res: null, phase: 'pre' }; render(); }
   if (act === 'kick') kickoff(false);
@@ -1234,7 +1266,89 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-fx],[data-hm],g.pl')) { e.preventDefault(); e.target.click ? e.target.click() : e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
 
 window.addEventListener('hashchange', () => { const h = (location.hash || '').slice(1); if (VIEWS.includes(h) && h !== view) { if (h === 'teams') teamSel = null; go(h, null, false); } });
+
+/* ---------- 跨设备同步 ----------
+   在 Claude 里打开时：进度存进你账号下的私人数据（data/users/<你>/...），手机和电脑自动同步。
+   在 GitHub 网站打开时：只能存在本机浏览器，可以用「导出 / 导入进度」手动搬。 */
+const CLOUD = { db: null, meta: null, busy: false, status: 'local', ready: false };
+function setSync(st) {
+  CLOUD.status = st;
+  const el = $('#syncChip'); if (!el) return;
+  el.textContent = { local: '仅本机', cloud: '☁ 已同步', saving: '☁ 同步中…', error: '☁ 同步失败', connecting: '☁ 连接中…' }[st] || st;
+  el.style.color = st === 'cloud' ? 'var(--win)' : st === 'error' ? 'var(--loss)' : '';
+}
+function cloudQueue() { if (!CLOUD.db) return; cloudFlush(); }
+async function cloudFlush() {
+  if (!CLOUD.db || CLOUD.busy) return;
+  CLOUD.busy = true; setSync('saving');
+  try {
+    while (DIRTY.size) {
+      const i = DIRTY.values().next().value; DIRTY.delete(i);
+      await CLOUD.meta.collection('rounds').doc('r' + String(i + 1).padStart(2, '0')).set({ fx: S.fx[i] });
+    }
+    await CLOUD.meta.set({ key: KEY, season: S.season, teams: S.teams, promoted: S.promoted || [], updated: S.updated || Date.now() });
+    setSync('cloud');
+  } catch (e) { setSync('error'); }
+  CLOUD.busy = false;
+  if (DIRTY.size) cloudFlush();
+}
+async function cloudPull(meta) {
+  const q = await CLOUD.meta.collection('rounds').get();
+  const rounds = new Array(38);
+  q.docs.forEach(d => { const i = parseInt(d.id.slice(1), 10) - 1; const b = d.data(); if (i >= 0 && i < 38 && b) rounds[i] = b.fx; });
+  if (rounds.filter(Boolean).length !== 38) return false;
+  S = { season: meta.season, teams: meta.teams, promoted: meta.promoted, demo: false, updated: meta.updated, fx: JSON.parse(JSON.stringify(rounds)) };
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  return true;
+}
+async function cloudInit() {
+  if (!window.claude || typeof window.claude.use !== 'function') { setSync('local'); return; }
+  setSync('connecting');
+  try {
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    const uid = user ? await user.id() : null;
+    if (!db || !uid) { setSync('local'); return; }
+    CLOUD.db = db; CLOUD.meta = db.doc('data/users/' + uid + '/s18meta');
+    const snap = await CLOUD.meta.get();
+    const remote = snap.exists ? snap.data() : null;
+    if (remote && remote.key === KEY && (remote.updated || 0) > (S.updated || 0)) {
+      if (await cloudPull(remote)) { if (!live) render(); toast('已载入其他设备的进度'); }
+      setSync('cloud');
+    } else { for (let i = 0; i < 38; i++) DIRTY.add(i); await cloudFlush(); }
+    CLOUD.meta.onSnapshot(sn => {
+      if (!sn.exists || sn.metadata.hasPendingWrites || CLOUD.busy) return;
+      const d = sn.data();
+      if (d && d.key === KEY && (d.updated || 0) > (S.updated || 0)) cloudPull(d).then(ok => { if (ok && !live) { render(); toast('已同步其他设备的进度'); } });
+    }, () => setSync('error'));
+  } catch (e) { setSync('local'); }
+}
+function openSync() {
+  const d = $('#dlg');
+  const cloud = CLOUD.status !== 'local';
+  d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div><div class="eyebrow">Season ${SEASON} progress</div><h2 style="font-size:20px;font-weight:900;margin-top:4px">进度同步</h2></div>
+    ${cloud ? `<p class="muted" style="margin:0">这个页面在 Claude 里打开，S${SEASON} 进度会自动存到你的账号，用同一个账号在手机或电脑打开这个页面，进度会自动同步。</p>`
+      : `<p class="muted" style="margin:0">现在打开的网站只能把进度存在这台设备的浏览器里，换设备不会自动同步。可以在这里导出进度文件，到另一台设备上导入。</p>`}
+    <div class="btns"><button class="btn" data-act="exportSave">导出进度文件</button><label class="btn" style="cursor:pointer">导入进度文件<input type="file" id="importSave" accept="application/json,.json" hidden></label></div>
+    <p class="note" style="margin:0" id="syncMsg">已模拟 ${playedRounds()} 轮 · 上次保存 ${S.updated ? new Date(S.updated).toLocaleString('zh-CN') : '—'}</p></div>`;
+  if (!d.open) d.showModal();
+  $('#importSave').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { try { const o = JSON.parse(rd.result); if (o.key !== KEY || !o.state || !Array.isArray(o.state.fx) || o.state.fx.length !== 38) throw 0; S = o.state; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); d.close(); M = null; render(); toast('进度已导入'); } catch (err) { $('#syncMsg').textContent = '这个文件不是威超 S18 的进度文件，请重新选择。'; } };
+    rd.readAsText(f);
+  });
+}
+async function exportSave() {
+  const blob = new Blob([JSON.stringify({ key: KEY, exported: new Date().toISOString(), state: S })], { type: 'application/json' });
+  const fname = `威超S${SEASON}进度_第${playedRounds()}轮.json`;
+  try { const dl = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('downloads') : null; if (dl) { await dl.save({ filename: fname, data: blob }); const m = $('#syncMsg'); if (m) m.textContent = '已导出进度文件。'; return; } } catch (e) { const m = $('#syncMsg'); if (m) m.textContent = '没有导出。'; return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `威超S${SEASON}进度_第${playedRounds()}轮.json`; document.body.appendChild(a); a.click(); a.remove();
+  const m = $('#syncMsg'); if (m) m.textContent = '已导出。若没有开始下载，说明当前页面不允许下载文件。';
+}
+
 const h0 = (location.hash || '').slice(1);
 go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
+setSync('local'); cloudInit();
 })();
 </script>
