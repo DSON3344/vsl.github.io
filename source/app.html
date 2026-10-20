@@ -251,6 +251,7 @@ td.pts{color:var(--accent-2);font-weight:500}
 .troph div.on b{color:var(--gold);text-shadow:0 0 18px rgba(216,180,95,.35)}
 .troph div.zero b{color:var(--fg-3)}
 .troph span{font-size:11.5px;color:var(--fg-2)}
+.troph.recs b{font-size:19px;font-family:var(--sans);font-weight:700;margin-bottom:4px}
 @media (max-width:520px){.troph{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .tier{font-family:var(--mono);font-size:10.5px;padding:1px 5px;border-radius:2px;border:1px solid var(--line-2)}
 .tier.S{color:var(--gold);border-color:rgba(216,180,95,.45)}
@@ -316,6 +317,7 @@ th.sorted{color:var(--accent-2)}
       <button data-go="match">比赛模拟</button>
       <button data-go="teams">球队</button>
       <button data-go="players">球员</button>
+      <button data-go="transfers">转会窗</button>
       <button data-go="history">历史总榜</button>
     </nav>
     <div class="roundchip" id="roundChip"></div>
@@ -409,7 +411,15 @@ const playedRounds = () => S.fx.filter(r => r.every(m => m.r)).length;
 
 S = load();
 if (!S) { S = newSeason(); S.updated = 0; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
-function applyState() { if (!S.archive) S.archive = []; SEASON = S.season || 18; S.archive.forEach(A => { if (!HS[A.s] || HS[A.s].sim) registerArchive(A); }); }
+// S18 参赛名单改过（泽尼联回到威超、飞鹰不升级）：旧名单的 S18 进度作废，重新开始
+const sameTeams = (a, b) => a && b && a.length === b.length && a.slice().sort().join() === b.slice().sort().join();
+function migrateState() {
+  const a18 = (S.archive || []).find(A => A.s === 18);
+  if ((S.season === 18 && !sameTeams(S.teams, HIST.s18)) || (a18 && !sameTeams(a18.teams, HIST.s18))) { S = newSeason(); S.updated = Date.now(); for (let i = 0; i < 38; i++) DIRTY.add(i); S.migrated = 1; return true; }
+  return false;
+}
+function applyState() { if (migrateState()) { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} setTimeout(() => cloudQueue(), 0); } if (!S.archive) S.archive = []; SEASON = S.season || 18; S.archive.forEach(A => { if (!HS[A.s] || HS[A.s].sim) registerArchive(A); }); }
+const MIGRATED = migrateState(); if (MIGRATED) { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 if (!S.archive) S.archive = [];
 SEASON = S.season || 18;
 
@@ -608,7 +618,7 @@ function zone(i, n = 20) { return i < 4 ? 'z1' : i < 6 ? 'z2' : i < 7 ? 'z3' : i
 const ZONE_LEGEND = `<div class="legend"><span style="--c:var(--z1)">全联冠</span><span style="--c:var(--z2)">全联杯</span><span style="--c:var(--z3)">全协联</span><span style="--c:var(--zr)">降级</span></div>`;
 
 /* ---------- Router ---------- */
-const VIEWS = ['overview', 'table', 'stats', 'match', 'teams', 'players', 'history'];
+const VIEWS = ['overview', 'table', 'stats', 'match', 'teams', 'players', 'transfers', 'history'];
 let view = 'overview', viewArg = null;
 function go(v, arg = null, push = true) {
   if (!VIEWS.includes(v)) v = 'overview';
@@ -622,7 +632,7 @@ function render() {
   const app = $('#app');
   const nr = nextRound();
   $('#roundChip').innerHTML = nr < 0 ? `S${SEASON} · <b>已完赛</b>` : `S${SEASON} · 第 <b>${String(nr + 1).padStart(2, '0')}</b> / 38 轮`;
-  app.innerHTML = ({ overview: vOverview, table: vTable, stats: vStats, match: vMatch, teams: vTeams, players: vPlayers, history: vHistory })[view]();
+  app.innerHTML = ({ overview: vOverview, table: vTable, stats: vStats, match: vMatch, teams: vTeams, players: vPlayers, transfers: vTransfers, history: vHistory })[view]();
   after[view] && after[view]();
 }
 const after = {};
@@ -1216,7 +1226,7 @@ function openPlayer(team, name) {
     <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${crest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}</span></div><h3>${esc(p.name)}</h3>
-      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span>${pid != null ? familyChips(pid) : ''}</div></div></div>
+      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${(() => {
       const rows = pid != null ? personSeasons(pid) : (s ? [[SEASON, s]] : []);
@@ -1374,13 +1384,72 @@ function transferPanel() {
   const total = list.reduce((a, t) => a + t.fee, 0);
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer market</div><h2>转会市场</h2></div>
     <select id="trSel" aria-label="转会窗口">${seasons.map(x => `<option value="${x}" ${x === trSeason ? 'selected' : ''}>${SN(x)} 赛季前</option>`).join('')}</select></div>
-    <p class="note" style="margin:0 0 10px">${SN(trSeason)} 赛季前共 ${list.length} 笔转会，总额 ${feeTxt(total)}。只统计威超球队之间的转会。</p>
+    <p class="note" style="margin:0 0 10px">${SN(trSeason)} 赛季前共 ${list.length} 笔转会，总额 ${feeTxt(total)}。威超球队之间，以及卖到威超以外球队的转会。</p>
     <div class="rank-list">${list.slice(0, 30).map(t => transferRow(t)).join('')}</div>${list.length > 30 ? `<p class="note" style="margin:8px 0 0">只显示金额最高的 30 笔</p>` : ''}</div>`;
 }
 
 /* ---------- History ---------- */
+/* ---------- 转会窗：合同到期、潜在新星、历史重磅转会 ---------- */
+const hashOf = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+// 合同到期赛季：按年龄和名字固定生成；到期后若还在队里，视为续约 2–4 年
+function contractEnd(p, team) {
+  const h = hashOf(team + '|' + p.name), age = typeof p.age === 'number' ? p.age : 27;
+  let e = 18 + (age >= 33 ? (h < 0.7 ? 0 : 1) : age >= 30 ? Math.floor(h * 4) : age <= 21 ? 2 + Math.floor(h * 3) : Math.floor(h * 6));
+  let k = 0; while (e < SEASON) e += 2 + Math.floor(hashOf(p.name + k++) * 3);
+  return e;
+}
+const ageNow = p => typeof p.age === 'number' ? p.age + (SEASON - 18) : null;
+function potentialOf(p) { const a = ageNow(p); if (a == null) return p.rating; const h = hashOf('pot|' + p.team + p.name); return Math.min(97, p.rating + Math.round(Math.max(0, 25 - a) * (0.5 + h * 0.9))); }
+// 有意的球队：实力更强、该位置首发不如他的威超球队
+function suitorsOf(p, n = 2) {
+  const myOvr = ENGINE.strength(p.team).ovr, line = ENGINE.LINE(p.pos);
+  return S.teams.filter(t => t !== p.team && ENGINE.strength(t).ovr > myOvr - 1 && ENGINE.lineup(t).xi.some(x => x.line === line && x.rating < potentialOf(p) - 1))
+    .sort((a, b) => hashOf(p.name + a) - hashOf(p.name + b)).slice(0, n);
+}
+let TW = { exp: 20, kid: 20 };
+function vTransfers() {
+  const ps = liveStats(); const pm = {}; ps.forEach(x => pm[x.team + '|' + x.name] = x);
+  const cur = ALL_PLAYERS.filter(p => !p.extra && S.teams.includes(p.team) && typeof p.age === 'number');
+  const expiring = cur.filter(p => contractEnd(p, p.team) === SEASON).sort((a, b) => valNum(b.value) - valNum(a.value) || b.rating - a.rating);
+  const kids = cur.filter(p => ageNow(p) <= 21).map(p => ({ ...p, pot: potentialOf(p) })).sort((a, b) => b.pot - a.pot || b.rating - a.rating);
+  const stLine = p => { const x = pm[p.team + '|' + p.name]; return x ? `${x.apps} 场 · ${x.g} 球 · ${x.avg.toFixed(2)}` : '<span class="dim">本季未出场</span>'; };
+  const mood = p => { const a = ageNow(p), su = suitorsOf(p); if (a >= 33) return '<span class="muted">考虑退役，或只续约一年</span>'; if (su.length && p.rating >= 84) return `<span style="color:var(--accent-2)">${su.map(esc).join('、')} 有意</span>`; if (a >= 30) return '<span class="muted">俱乐部只肯给短约</span>'; return '<span class="muted">续约谈判中</span>'; };
+  // 历史重磅转会
+  const top = TRANSFERS.slice().sort((a, b) => b.fee - a.fee || b.s - a.s).slice(0, 15);
+  const nm = id => PL[id] ? PL[id][0] : '';
+  const cnt = {}; TRANSFERS.forEach(t => cnt[t.pid] = (cnt[t.pid] || 0) + 1);
+  const jour = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  const spend = {}, earn = {}; TRANSFERS.forEach(t => { spend[t.to] = (spend[t.to] || 0) + t.fee; earn[t.from] = (earn[t.from] || 0) + t.fee; });
+  const topSp = Object.entries(spend).sort((a, b) => b[1] - a[1])[0], topEa = Object.entries(earn).sort((a, b) => b[1] - a[1])[0];
+  const bySeason = {}; TRANSFERS.forEach(t => bySeason[t.s] = (bySeason[t.s] || 0) + t.fee);
+  const busiest = Object.entries(bySeason).sort((a, b) => b[1] - a[1])[0];
+  const th = (cols) => `<thead><tr>${cols.map(([c, l]) => `<th class="${l ? 'l' : ''}">${c}</th>`).join('')}</tr></thead>`;
+  return `<section class="view"><div class="split"><div><div class="eyebrow">Transfer window</div><h1>转会窗</h1><p class="muted" style="margin:6px 0 0;font-size:13px">${SN(SEASON)} 赛季结束后开窗 · 合同、新星和传闻按目前阵容生成</p></div></div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Expiring contracts</div><h2>合同即将到期 · ${expiring.length} 人</h2></div><span class="note">${SN(SEASON)} 赛季结束到期，按身价排序</span></div>
+    <div class="tw"><table>${th([['球员', 1], ['球队', 1], ['位置', 1], ['年龄'], ['评分'], ['身价'], ['本季', 1], ['动向', 1]])}<tbody>
+    ${expiring.slice(0, TW.exp).map(p => `<tr><td class="l"><button class="lnk" ${plink(p.team, p.name)}><span>${esc(p.name)}</span></button></td><td class="l"><span class="tname">${crest(p.team, 18)}<span class="muted">${esc(p.team)}</span></span></td><td class="l mono" style="font-size:12px">${p.pos}</td><td>${ageNow(p)}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td class="muted">${esc(p.value)}</td><td class="l muted" style="font-size:12px">${stLine(p)}</td><td class="l" style="font-size:12px">${mood(p)}</td></tr>`).join('')}
+    </tbody></table></div>${expiring.length > TW.exp ? `<div style="text-align:center;margin-top:12px"><button class="btn" data-act="twExp">再显示 20 人</button></div>` : ''}</div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Rising stars</div><h2>潜在新星</h2></div><span class="note">21 岁以下 · 按潜力排序</span></div>
+    <div class="tw"><table>${th([['球员', 1], ['球队', 1], ['位置', 1], ['年龄'], ['评分'], ['潜力'], ['身价'], ['本季', 1], ['关注球队', 1]])}<tbody>
+    ${kids.slice(0, TW.kid).map(p => { const su = suitorsOf(p, 3); return `<tr><td class="l"><button class="lnk" ${plink(p.team, p.name)}><span>${esc(p.name)}</span></button></td><td class="l"><span class="tname">${crest(p.team, 18)}<span class="muted">${esc(p.team)}</span></span></td><td class="l mono" style="font-size:12px">${p.pos}</td><td>${ageNow(p)}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td><span class="rt-pill" style="background:${rtColor(p.pot)}">${p.pot}</span></td><td class="muted">${esc(p.value)}</td><td class="l muted" style="font-size:12px">${stLine(p)}</td><td class="l" style="font-size:12px">${su.length ? `<span class="tname" style="gap:4px">${su.map(t => crest(t, 18)).join('')}</span>` : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
+    </tbody></table></div>${kids.length > TW.kid ? `<div style="text-align:center;margin-top:12px"><button class="btn" data-act="twKid">再显示 20 人</button></div>` : ''}
+    <p class="note" style="margin:10px 0 0">潜力按年龄和现有能力估算，越年轻成长空间越大。</p></div>
+  ${transferPanel()}
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Record deals</div><h2>历史重磅转会</h2></div><span class="note">S02 起威超球队之间的转会</span></div>
+    <div class="troph recs" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
+      <div class="on"><b>${feeTxt(top[0].fee)}</b><span>转会费纪录 · ${esc(nm(top[0].pid))}</span></div>
+      <div><b>${esc(topSp[0])}</b><span>引援花费最多 · ${feeTxt(topSp[1])}</span></div>
+      <div><b>${esc(topEa[0])}</b><span>卖人收入最多 · ${feeTxt(topEa[1])}</span></div>
+      <div><b>${SN(+busiest[0])}</b><span>最疯狂的转会窗 · ${feeTxt(busiest[1])}</span></div>
+      <div><b>${esc(nm(+jour[0]))}</b><span>转会次数最多 · ${jour[1]} 次</span></div>
+    </div>
+    <div class="tw"><table>${th([['#'], ['球员', 1], ['转会窗', 1], ['从', 1], ['到', 1], ['转会费']])}<tbody>
+    ${top.map((t, i) => `<tr><td class="pos">${i + 1}</td><td class="l"><button class="lnk" data-pid="${t.pid}"><span>${esc(nm(t.pid))}</span></button></td><td class="l mono">${SN(t.s)} 赛季前</td><td class="l">${tlink(t.from, 18)}</td><td class="l">${tlink(t.to, 18)}</td><td class="hl">${feeTxt(t.fee)}</td></tr>`).join('')}
+    </tbody></table></div></div>
+  </section>`;
+}
 let histSort = '威超冠军';
-after.history = () => { const t = $('#trSel'); t && t.addEventListener('change', e => { trSeason = +e.target.value; render(); }); };
+after.transfers = () => { const t = $('#trSel'); t && t.addEventListener('change', e => { trSeason = +e.target.value; render(); }); };
 function vHistory() {
   const champs = SEASONS.map(s => ({ s, t: ranking(s)[0], pts: HS[s].table[0].pts }));
   const allTime = clubsFor('all').sort((a, b) => b.pts - a.pts || b.gd - a.gd);
@@ -1396,7 +1465,7 @@ function vHistory() {
     </tbody></table></div></div>
   <div class="grid g-2">${scorerBlock(top('g'), ['历史射手榜', 'All-time goals'], ' 球')}${scorerBlock(top('a'), ['历史助攻榜', 'All-time assists'], ' 次')}</div>
   <div style="text-align:center"><button class="btn" data-statsgo="all">查看全部历史球员与球队数据榜 →</button></div>
-  ${transferPanel()}
+  <div class="panel split" style="padding:14px 18px"><span class="note">历年转会、合同到期和潜在新星都移到了「转会窗」。</span><button class="btn ghost" data-go="transfers">打开转会窗 →</button></div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">Trophy cabinet</div><h2>各队荣誉</h2></div><span class="note">来自 PDF，加上 S18 起模拟出来的威超冠军 · 点表头排序</span></div>
     <div class="tw"><table><thead><tr><th class="l">球队</th>${TROPHIES.map(k => `<th class="sort ${histSort === k ? 'sorted' : ''}" data-hs="${k}">${k}</th>`).join('')}</tr></thead><tbody>
     ${hon.map(r => `<tr><td class="l">${tlink(r.team, 20)}</td>${TROPHIES.map(k => `<td class="${r[k] ? '' : 'dim'}" ${r[k] && k === histSort ? 'style="color:var(--accent-2)"' : ''}>${r[k] || 0}</td>`).join('')}</tr>`).join('')}
@@ -1442,6 +1511,8 @@ document.addEventListener('click', e => {
   if (act === 'doReset') { S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
   if (act === 'sync') openSync();
+  if (act === 'twExp') { TW.exp += 20; render(); }
+  if (act === 'twKid') { TW.kid += 20; render(); }
   if (act === 'unlockSync') unlockSync();
   if (act === 'lockSync') { WEB.key = ''; try { localStorage.removeItem('ves-sync-key'); } catch (e) {} setSync('view'); openSync(); }
   if (act === 'exportSave') exportSave();
@@ -1622,6 +1693,7 @@ async function exportSave() {
   const m = $('#syncMsg'); if (m) m.textContent = '已导出。若没有开始下载，说明当前页面不允许下载文件。';
 }
 
+if (MIGRATED) setTimeout(() => toast('S18 参赛名单已更新（泽尼联回到威超），赛季进度重新开始'), 400);
 const h0 = (location.hash || '').slice(1);
 go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
 setSync('local'); cloudInit();

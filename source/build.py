@@ -8,6 +8,7 @@ d = os.path.dirname(os.path.abspath(__file__)) + '/'
 hist_d = json.load(open(d + 'hist.json'))
 site = json.load(open(d + 'site_data.json'))
 hist_d['s18'] = [r['team'] for r in site['standings']['18']]
+for pos, t in json.load(open(d + 'realign.json')).get('18', {}).items(): hist_d['s18'][int(pos) - 1] = t  # S18 名单合理化
 hist = json.dumps(hist_d, ensure_ascii=False, separators=(',', ':'))
 logos = {}
 for f in sorted(os.listdir(d + 'assets/logos')):
