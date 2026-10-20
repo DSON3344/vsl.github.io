@@ -776,7 +776,7 @@ function vTable() {
       <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净胜</th><th>积分</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.w + r.d + r.l}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="pts">${r.pts}</td></tr>`).join('')}
       </tbody></table></div>${ZONE_LEGEND}
-      <p class="note" style="margin:10px 0 0">${H2.sim ? '这个赛季是在网站上逐场模拟出来的，赛季结束后自动存档。' : off ? '官网原始的积分榜数据，仅供对照。' : '380 场比赛逐场推演而成。名次与官网完全一致，比分、胜平负和球员数据由推演自然产生，不再照搬官网的榜单。'}</p></div>`;
+      ${!off && HIST.realign && HIST.realign[s] ? `<p class="note" style="margin:10px 0 0;color:var(--accent-2)">参赛名单已合理化：${HIST.realign[s].map(([p, a, b]) => `第 ${p} 名 ${esc(a)} → ${esc(b)}`).join('；')}。官网这几处与上下赛季的升降级对不上（该降级的球队下赛季仍在、没降级的球队却消失），名次和积分不变，只换了队名。</p>` : ''}<p class="note" style="margin:10px 0 0">${H2.sim ? '这个赛季是在网站上逐场模拟出来的，赛季结束后自动存档。' : off ? '官网原始的积分榜数据，仅供对照。' : '380 场比赛逐场推演而成。名次与官网完全一致，比分、胜平负和球员数据由推演自然产生，不再照搬官网的榜单。'}</p></div>`;
     const R = H2.rounds[tblRound];
     body += `<div class="panel"><div class="ph"><div><div class="eyebrow">Results</div><h2>第 ${tblRound + 1} 轮赛果</h2></div>
       <div class="btns"><button class="btn ghost" data-act="tPrev" ${tblRound <= 0 ? 'disabled' : ''} aria-label="上一轮">←</button><select id="tblRnd" aria-label="轮次">${H2.rounds.map((_, i) => `<option value="${i}" ${i === tblRound ? 'selected' : ''}>第 ${i + 1} 轮</option>`).join('')}</select><button class="btn ghost" data-act="tNext" ${tblRound >= 37 ? 'disabled' : ''} aria-label="下一轮">→</button></div></div>

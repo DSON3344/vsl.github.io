@@ -16,6 +16,10 @@ const ENGINE = ctx.ENGINE;
 // S18 前的变动：转会与退役（PDF 写“至今”的，到 S17 为止）
 for (const list of Object.values(PDF.legends)) list.forEach(l => { if (!l.end) l.end = 17; });
 const SITE = JSON.parse(fs.readFileSync(D + 'site_data.json', 'utf8'));
+// 官网参赛名单前后矛盾的赛季做合理化：该降级的不留、没降级的不消失、每季正好降 3 升 3（只换队名，名次积分不变）
+const OFFICIAL = JSON.parse(JSON.stringify(SITE.standings));
+const REALIGN = JSON.parse(fs.readFileSync(D + 'realign.json', 'utf8'));
+for (const [s, map] of Object.entries(REALIGN)) if (/^\d+$/.test(s)) for (const [pos, team] of Object.entries(map)) SITE.standings[s][+pos - 1].team = team;
 const LAST = 17;
 
 /* ---------- RNG ---------- */
@@ -99,6 +103,8 @@ P.forEach((p, id) => {
     let join = leg ? leg.start : (p.tgp > 0 ? Math.max(1, 18 - Math.ceil(p.tgp / 42)) : S18_MOVES.includes(p.name) ? 18 : 17 - Math.floor(rnd() * 3));
     const other = p.stints.filter(st => st.team !== p.cur).map(st => st.end);
     if (other.length) join = Math.max(join, Math.max(...other) + 1);
+    // 撞名 = 父子：儿子要等父亲离开同一家俱乐部之后才加盟
+    (byName[clean(p.name)] || []).forEach(j => { if (P[j] === p || P[j].kind === 'db') return; const ends = [...P[j].stints.filter(st => st.team === p.cur).map(st => st.end), ...P[j].site.filter(x => x.team === p.cur).map(x => x.s)]; if (ends.length) join = Math.max(join, Math.min(18, Math.max(...ends) + 1)); });
     p.join = join;
     for (let s = Math.max(join, proSeason(p)); s <= LAST; s++) put(id, s, p.cur, 2);
   }
@@ -180,6 +186,7 @@ const prevTeam = {};           // pid -> 上一季效力的球队
 const genPool = [];            // 补充球员
 const target = (s, t) => clubBase(t) + (10.5 - rankIn(s, t)) * 0.3;
 const lineOf = sl => LINE(sl.replace(/-.*/, ''));
+const stayDown = {}, leftAt = {};
 for (let s = 1; s <= LAST; s++) {
   XI[s] = {};
   const used = new Set();
@@ -190,7 +197,13 @@ for (let s = 1; s <= LAST; s++) {
   P.forEach((p, id) => {
     if (assign[id][s] && assign[id][s].prio >= 2) return;
     if (p.kind === 'db') { if (s >= proSeason(p) && s < (p.join || 18)) free.push(id); }
-    else if (p.kind === 'gen' && s >= p.born && s <= p.until) free.push(id);
+    else if (p.kind === 'gen' && s >= p.born && s <= p.until) {
+      // 球队降级后，多数球员留队踢次级联赛（这一季没有威超出场），球队升回来再一起回来
+      const pt = prevTeam[id];
+      if (pt && !teamsIn(s).includes(pt) && teamsIn(s - 1).includes(pt) && rnd() < 0.65) { stayDown[id] = pt; return; }
+      if (stayDown[id] && !teamsIn(s).includes(stayDown[id])) return;
+      free.push(id);
+    }
   });
   const slotsOf = {};
   for (const team of teamsIn(s)) {
@@ -210,7 +223,8 @@ for (let s = 1; s <= LAST; s++) {
       for (const id of free) {
         if (used.has(id) || P[id].line !== sl.line) continue;
         const r = ratingAt(P[id], s);
-        const sc = -Math.abs(r - tgt) - (r < tgt - 5 ? 4 : 0) + (prevTeam[id] === team ? 4 : 0) + gauss() * 0.8;
+        const back = leftAt[id] && leftAt[id].team === team && s - leftAt[id].s <= 2;
+        const sc = -Math.abs(r - tgt) - (r < tgt - 5 ? 4 : 0) + (prevTeam[id] === team || stayDown[id] === team ? 4 : 0) - (back ? 6 : 0) + gauss() * 0.8;
         if (sc > bestScore) { bestScore = sc; best = id; }
       }
       if (best == null) {
@@ -225,7 +239,9 @@ for (let s = 1; s <= LAST; s++) {
       assign[best][s] = assign[best][s] || { team, prio: 0 };
     });
     XI[s][team] = slotsOf[team].map(x => ({ pid: x.pid, slot: x.slot, line: x.line, r: x.r }));
-    XI[s][team].forEach(x => prevTeam[x.pid] = team);
+    XI[s][team].forEach(x => { if (prevTeam[x.pid] && prevTeam[x.pid] !== team) leftAt[x.pid] = { team: prevTeam[x.pid], s }; prevTeam[x.pid] = team; delete stayDown[x.pid];
+      // 资料库球员提前以自由身来到现在的球队，就从这季起一直留队
+      const q = P[x.pid]; if (q.kind === 'db' && team === q.cur && s < (q.join || 18)) { for (let k = s + 1; k < (q.join || 18); k++) put(x.pid, k, team, 2); q.join = s; } });
   }
 }
 
@@ -394,7 +410,7 @@ for (let s = 1; s <= LAST; s++) {
   });
   CS[s] = csT;
   const table = R.table.map(r => ({ team: r.t, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.pts }));
-  OUT.seasons[s] = { teams, table, official: SITE.standings[s].map(r => ({ team: r.team, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.w * 3 + r.d })), rounds, xi: Object.fromEntries(teams.map(t => [t, XI[s][t].map(x => [x.pid, x.slot, x.r])])), club: csT };
+  OUT.seasons[s] = { teams, table, official: OFFICIAL[s].map(r => ({ team: r.team, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.w * 3 + r.d })), rounds, xi: Object.fromEntries(teams.map(t => [t, XI[s][t].map(x => [x.pid, x.slot, x.r])])), club: csT };
 }
 
 /* ---------- 输出 ---------- */
@@ -423,6 +439,7 @@ const activeTeam = {}; P.forEach((p, i) => { const st = p.stints.find(x => x.ong
 OUT.players = P.map((p, i) => used.has(i) ? [p.name, p.pos, p.nat || '', p.kind === 'db' ? p.cur : '', p.kind[0], activeSet.has(i) ? 1 : 0, activeTeam[i] || '', p.kind === 'db' ? p.dbr : p.peak] : null);
 OUT.pstats = {};
 for (const s in PS) OUT.pstats[s] = Object.entries(PS[s]).map(([id, o]) => [+id, o.team, o.apps, o.min, o.g, o.a, o.y, o.r, o.sh, o.ot, o.tk, o.sv, o.cs, o.motm, Math.round(o.rs * 10), o.kp, o.int, o.ps, o.pc, o.pg, o.pm]);
+OUT.realign = {}; for (const [ss, map] of Object.entries(REALIGN)) if (/^\d+$/.test(ss)) OUT.realign[ss] = Object.entries(map).map(([pos, team]) => [+pos, OFFICIAL[ss][+pos - 1].team, team]);
 OUT.officialStats = SITE.stats;
 OUT.transfers = transfers;
 OUT.officialAllTime = SITE.standings.history;
