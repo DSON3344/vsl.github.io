@@ -1249,6 +1249,8 @@ document.addEventListener('click', e => {
   if (act === 'doReset') { S = newSeason(S.promoted); M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
   if (act === 'sync') openSync();
+  if (act === 'unlockSync') unlockSync();
+  if (act === 'lockSync') { WEB.key = ''; try { localStorage.removeItem('ves-sync-key'); } catch (e) {} setSync('view'); openSync(); }
   if (act === 'exportSave') exportSave();
   if (act === 'close') $('#dlg').close();
   if (act === 'swap') { M = { ...M, h: M.a, a: M.h, fx: null, stored: false, res: null, phase: 'pre' }; render(); }
@@ -1269,15 +1271,21 @@ window.addEventListener('hashchange', () => { const h = (location.hash || '').sl
 
 /* ---------- 跨设备同步 ----------
    在 Claude 里打开时：进度存进你账号下的私人数据（data/users/<你>/...），手机和电脑自动同步。
-   在 GitHub 网站打开时：只能存在本机浏览器，可以用「导出 / 导入进度」手动搬。 */
+   在 ves.dson.site 打开时：进度存进 Vercel 云端（/api/progress），所有人可看，输入密码的设备才能写入。
+   在其他地方（GitHub Pages / 本地文件）打开时：只能存在本机浏览器，可以用「导出 / 导入进度」手动搬。 */
 const CLOUD = { db: null, meta: null, busy: false, status: 'local', ready: false };
+const WEB = { on: false, etag: null, timer: null, busy: false, pending: false, key: '' };
+try { WEB.key = localStorage.getItem('ves-sync-key') || ''; } catch (e) {}
 function setSync(st) {
   CLOUD.status = st;
   const el = $('#syncChip'); if (!el) return;
-  el.textContent = { local: '仅本机', cloud: '☁ 已同步', saving: '☁ 同步中…', error: '☁ 同步失败', connecting: '☁ 连接中…' }[st] || st;
+  el.textContent = { local: '仅本机', cloud: '☁ 已同步', saving: '☁ 同步中…', error: '☁ 同步失败', connecting: '☁ 连接中…', view: '☁ 只读 · 点此解锁' }[st] || st;
   el.style.color = st === 'cloud' ? 'var(--win)' : st === 'error' ? 'var(--loss)' : '';
 }
-function cloudQueue() { if (!CLOUD.db) return; cloudFlush(); }
+function cloudQueue() {
+  if (CLOUD.db) return cloudFlush();
+  if (WEB.on) { clearTimeout(WEB.timer); WEB.timer = setTimeout(webPush, 1200); }
+}
 async function cloudFlush() {
   if (!CLOUD.db || CLOUD.busy) return;
   CLOUD.busy = true; setSync('saving');
@@ -1302,7 +1310,7 @@ async function cloudPull(meta) {
   return true;
 }
 async function cloudInit() {
-  if (!window.claude || typeof window.claude.use !== 'function') { setSync('local'); return; }
+  if (!window.claude || typeof window.claude.use !== 'function') return webInit();
   setSync('connecting');
   try {
     const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
@@ -1322,16 +1330,85 @@ async function cloudInit() {
     }, () => setSync('error'));
   } catch (e) { setSync('local'); }
 }
+/* ---- Vercel 云端（ves.dson.site） ---- */
+const countPlayed = st => (st && Array.isArray(st.fx) ? st.fx.filter(r => r.every(m => m.r)).length : 0);
+function validState(st) { return st && Array.isArray(st.fx) && st.fx.length === 38 && Array.isArray(st.teams); }
+async function webFetch(headers) {
+  const r = await fetch('/api/progress', { cache: 'no-store', headers: headers || {} });
+  if (r.status === 304) return { same: true };
+  if (!r.ok) throw new Error('http ' + r.status);
+  const o = await r.json();
+  return { etag: o.etag || null, state: o.state || null };
+}
+function adopt(st, msg) {
+  S = st; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  if (!live) { M = null; render(); }
+  if (msg) toast(msg);
+}
+async function webPull(quiet) {
+  if (!WEB.on || WEB.busy || WEB.pending) return;
+  try {
+    const o = await webFetch(WEB.etag ? { 'If-None-Match': WEB.etag } : null);
+    if (o.same) return;
+    WEB.etag = o.etag;
+    const st = o.state;
+    if (st && st.key === KEY && validState(st.s) && (st.s.updated || 0) > (S.updated || 0)) adopt(st.s, quiet ? null : '已同步其他设备的进度');
+  } catch (e) { /* 网络抖动时下次再试 */ }
+}
+async function webPush() {
+  if (!WEB.on) return;
+  if (!WEB.key) { setSync('view'); return; }
+  if (WEB.busy) { WEB.pending = true; return; }
+  WEB.busy = true; WEB.pending = false; setSync('saving');
+  try {
+    const r = await fetch('/api/progress', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-ves-key': WEB.key }, body: JSON.stringify({ key: KEY, s: S }) });
+    if (r.status === 401) { WEB.key = ''; try { localStorage.removeItem('ves-sync-key'); } catch (e) {} setSync('view'); toast('同步密码不对，进度只存在这台设备'); }
+    else if (!r.ok) setSync('error');
+    else { const o = await r.json(); WEB.etag = o.etag || WEB.etag; setSync('cloud'); }
+  } catch (e) { setSync('error'); }
+  WEB.busy = false;
+  if (WEB.pending) webPush();
+}
+async function webInit() {
+  if (!/^https?:$/.test(location.protocol) || /github\.io$/.test(location.hostname)) { setSync('local'); return; }
+  setSync('connecting');
+  let o;
+  try { o = await webFetch(); } catch (e) { setSync('local'); return; }
+  WEB.on = true; WEB.etag = o.etag;
+  const st = o.state && o.state.key === KEY && validState(o.state.s) ? o.state.s : null;
+  const lp = countPlayed(S);
+  if (st && ((st.updated || 0) > (S.updated || 0) || (lp === 0 && countPlayed(st) > 0))) { adopt(st, countPlayed(st) ? '已载入云端进度' : null); setSync(WEB.key ? 'cloud' : 'view'); }
+  else if (WEB.key && lp > 0) await webPush();
+  else setSync(WEB.key ? 'cloud' : 'view');
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') webPull(); });
+  window.addEventListener('focus', () => webPull());
+}
+async function unlockSync() {
+  const inp = $('#syncKey'); const k = inp ? inp.value.trim() : '';
+  const m = $('#syncMsg'); if (!k) { if (m) m.textContent = '请先输入密码。'; return; }
+  try {
+    const r = await fetch('/api/progress', { method: 'POST', headers: { 'x-ves-key': k } });
+    if (r.status === 401) { if (m) m.textContent = '密码不对，再试一次。'; return; }
+    if (!r.ok) throw 0;
+  } catch (e) { if (m) m.textContent = '连不上云端，稍后再试。'; return; }
+  WEB.key = k; try { localStorage.setItem('ves-sync-key', k); } catch (e) {}
+  if (m) m.textContent = '已解锁，这台设备的模拟结果会自动同步。';
+  await webPull(true);
+  if (countPlayed(S) > 0) await webPush(); else setSync('cloud');
+  openSync();
+}
 function openSync() {
   const d = $('#dlg');
-  const cloud = CLOUD.status !== 'local';
+  const cloud = !!CLOUD.db;
+  const web = WEB.on;
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div><div class="eyebrow">Season ${SEASON} progress</div><h2 style="font-size:20px;font-weight:900;margin-top:4px">进度同步</h2></div>
-    ${cloud ? `<p class="muted" style="margin:0">这个页面在 Claude 里打开，S${SEASON} 进度会自动存到你的账号，用同一个账号在手机或电脑打开这个页面，进度会自动同步。</p>`
+    ${web ? (WEB.key ? `<p class="muted" style="margin:0">已解锁。这台设备的模拟结果会自动存到云端，手机和电脑打开 ves.dson.site 都会看到同一份进度。</p><div class="btns"><button class="btn ghost" data-act="lockSync">在这台设备上锁定</button></div>` : `<p class="muted" style="margin:0">所有人都能看到云端的 S${SEASON} 进度。输入同步密码后，这台设备的模拟结果才会写入云端；不输入的话，模拟结果只留在这台设备。</p><div class="btns"><input id="syncKey" type="password" placeholder="同步密码" autocomplete="current-password" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:7px 10px;font-size:13px;color:var(--fg)"><button class="btn" data-act="unlockSync">解锁</button></div>`) : cloud ? `<p class="muted" style="margin:0">这个页面在 Claude 里打开，S${SEASON} 进度会自动存到你的账号，用同一个账号在手机或电脑打开这个页面，进度会自动同步。</p>`
       : `<p class="muted" style="margin:0">现在打开的网站只能把进度存在这台设备的浏览器里，换设备不会自动同步。可以在这里导出进度文件，到另一台设备上导入。</p>`}
     <div class="btns"><button class="btn" data-act="exportSave">导出进度文件</button><label class="btn" style="cursor:pointer">导入进度文件<input type="file" id="importSave" accept="application/json,.json" hidden></label></div>
     <p class="note" style="margin:0" id="syncMsg">已模拟 ${playedRounds()} 轮 · 上次保存 ${S.updated ? new Date(S.updated).toLocaleString('zh-CN') : '—'}</p></div>`;
   if (!d.open) d.showModal();
+  const sk = $('#syncKey'); if (sk) sk.addEventListener('keydown', e => { if (e.key === 'Enter') unlockSync(); });
   $('#importSave').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
     const rd = new FileReader();
