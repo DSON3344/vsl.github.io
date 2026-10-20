@@ -17,7 +17,7 @@ data = (open(d + 'player_data.js').read() + '\n'
         + '(' + open(d + 'extra_players.json').read() + ').forEach(p => PLAYER_DATABASE[p.team].push(p));\n'
         + open(d + 'teams_data.js').read() + '\n' + open(d + 'roster_overrides.js').read()
         + '\nconst TEAMS_DATA = window.TEAMS_DATA;\nconst HISTORY = ' + open(d + 'history.json').read()
-        + ';\nconst HIST = ' + hist + ';\nconst LOGOS_B64 = ' + json.dumps(logos) + ';\n')
+        + ';\nconst HIST = ' + hist + ';\nconst EXT_REAL = ' + open(d + 'ext_squads.json').read() + ';\nconst LOGOS_B64 = ' + json.dumps(logos) + ';\n')
 body = open(d + 'app.html').read().replace('/*__DATA__*/', data).replace('/*__ENGINE__*/', open(d + 'engine.js').read())
 head = '''<!doctype html>
 <html lang="zh-CN">
