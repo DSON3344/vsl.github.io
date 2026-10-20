@@ -281,7 +281,7 @@ dialog::backdrop{background:rgba(2,4,8,.7);backdrop-filter:blur(3px)}
 .lead b{font-size:16px;font-weight:900;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lead small{font-size:11.5px;color:var(--fg-2)}
 td.hl{color:var(--accent-2);font-weight:500;background:rgba(156,194,255,.05)}
-.prow{display:grid;grid-template-columns:minmax(0,1fr) repeat(4,30px) 44px;gap:8px;align-items:center;font-size:12.5px;padding:4px 2px;border-bottom:1px solid rgba(150,180,235,.06)}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) repeat(6,minmax(26px,auto)) 44px;gap:8px;align-items:center;font-size:12.5px;padding:4px 2px;border-bottom:1px solid rgba(150,180,235,.06)}
 .prow .rt{font-family:var(--mono);text-align:right}
 .prow .meta{font-family:var(--mono);font-size:10.5px;color:var(--fg-3);text-align:right;white-space:nowrap}
 @media (max-width:460px){.attrs{grid-template-columns:minmax(0,1fr)}}
@@ -364,7 +364,7 @@ function newSeason() {
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.fx && s.teams) return s; } catch (e) {} return null; }
-const compact = res => ({ hg: res.hg, ag: res.ag, ev: res.events.filter(e => e.type !== 'chance').map(e => [e.m, e.type, e.side, e.player, e.assist || 0]), motm: [res.motm.name, res.motm.team, res.motm.r], st: [res.stats.poss[0], res.stats.shots[0], res.stats.shots[1], res.stats.onTarget[0], res.stats.onTarget[1], res.stats.corners[0], res.stats.corners[1], res.stats.tackles[0], res.stats.tackles[1], res.stats.saves[0], res.stats.saves[1]], pl: ['h', 'a'].map(k => res.players[k].map(r => [r.sh, r.ot, r.tk, r.sv, Math.round(r.r * 10), r.min])) });
+const compact = res => ({ hg: res.hg, ag: res.ag, ev: res.events.filter(e => e.type !== 'chance').map(e => [e.m, e.type, e.side, e.player, e.assist || 0]), motm: [res.motm.name, res.motm.team, res.motm.r], st: [res.stats.poss[0], res.stats.shots[0], res.stats.shots[1], res.stats.onTarget[0], res.stats.onTarget[1], res.stats.corners[0], res.stats.corners[1], res.stats.tackles[0], res.stats.tackles[1], res.stats.saves[0], res.stats.saves[1]], pl: ['h', 'a'].map(k => res.players[k].map(r => [r.sh, r.ot, r.tk, r.sv, Math.round(r.r * 10), r.min, r.kp, r.int])) });
 function playRound(i) { S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); m.r = compact(ENGINE.simulate(m.h, m.a, m.c)); } }); }
 const nextRound = () => S.fx.findIndex(r => r.some(m => !m.r));
 const playedRounds = () => S.fx.filter(r => r.every(m => m.r)).length;
@@ -389,13 +389,13 @@ function table(upto = 38) {
 }
 function playerStats() {
   const P = {};
-  const get = (n, t) => P[t + '|' + n] || (P[t + '|' + n] = { name: n, team: t, g: 0, a: 0, y: 0, r: 0, apps: 0, min: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, line: '', pos: '' });
+  const get = (n, t) => P[t + '|' + n] || (P[t + '|' + n] = { name: n, team: t, g: 0, a: 0, y: 0, r: 0, apps: 0, min: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, line: '', pos: '' });
   S.fx.forEach(rd => rd.forEach(m => {
     if (!m.r) return;
     [[m.h, 0, m.r.ag], [m.a, 1, m.r.hg]].forEach(([t, i, conc]) => ENGINE.lineup(t).xi.forEach((x, k) => {
       const q = get(x.name, t); q.apps++; q.line = x.line; q.pos = (x.p && x.p.pos) || x.slot;
       const row = m.r.pl && m.r.pl[i][k];
-      if (row) { q.sh += row[0]; q.ot += row[1]; q.tk += row[2]; q.sv += row[3]; q.rs += row[4] / 10; q.min += row[5]; if (conc === 0 && row[5] >= 60 && (x.line === 'GK' || x.line === 'DF')) q.cs++; }
+      if (row) { q.sh += row[0]; q.ot += row[1]; q.tk += row[2]; q.sv += row[3]; q.rs += row[4] / 10; q.min += row[5]; q.kp += row[6] || 0; q.int += row[7] || 0; if (conc === 0 && row[5] >= 60 && (x.line === 'GK' || x.line === 'DF')) q.cs++; }
       else q.min += 90;
     }));
     m.r.ev.forEach(([min, type, side, pl, as]) => {
@@ -439,10 +439,10 @@ function familyChips(pid) {
 const pidOf = (team, name) => CUR_PID[team + '|' + name];
 const plink = (team, name, pid) => { const id = pid != null ? pid : pidOf(team, name); return id != null ? `data-pid="${id}"` : `data-player="${esc(team)}|${esc(name)}"`; };
 const SN = s => 'S' + String(s).padStart(2, '0');
-function rowObj(r) { const [pid, team, apps, min, g, a, y, rc, sh, ot, tk, sv, cs, motm, rs10] = r; const p = PL[pid]; return { pid, name: p[0], pos: p[1], line: ENGINE.LINE(p[1]), team, apps, min, g, a, y, r: rc, sh, ot, tk, sv, cs, motm, rs: rs10 / 10, avg: apps ? rs10 / 10 / apps : 0, ga: g + a }; }
+function rowObj(r) { const [pid, team, apps, min, g, a, y, rc, sh, ot, tk, sv, cs, motm, rs10, kp = 0, int = 0] = r; const p = PL[pid]; return { pid, name: p[0], pos: p[1], line: ENGINE.LINE(p[1]), team, apps, min, g, a, y, r: rc, sh, ot, tk, sv, cs, motm, rs: rs10 / 10, avg: apps ? rs10 / 10 / apps : 0, ga: g + a, kp, int }; }
 const HPS = {}; SEASONS.forEach(s => HPS[s] = HIST.pstats[s].map(rowObj));
 const liveStats = () => playerStats().map(p => ({ ...p, pid: pidOf(p.team, p.name) }));
-const SUMF = ['apps', 'min', 'g', 'a', 'y', 'r', 'sh', 'ot', 'tk', 'sv', 'cs', 'motm', 'rs'];
+const SUMF = ['apps', 'min', 'g', 'a', 'y', 'r', 'sh', 'ot', 'tk', 'sv', 'cs', 'motm', 'rs', 'kp', 'int'];
 function statsFor(season) {
   if (season === 'live') return liveStats();
   if (season === 'all') {
@@ -467,7 +467,7 @@ function clubsFor(season) {
 }
 const PSEASONS = {}; SEASONS.forEach(s => HPS[s].forEach(p => (PSEASONS[p.pid] = PSEASONS[p.pid] || []).push([s, p])));
 function personSeasons(pid) { const l = (PSEASONS[pid] || []).slice(); const lv = liveStats().find(x => x.pid === pid); if (lv) l.push([18, lv]); return l; }
-function peakRating(pid) { let m = 0; SEASONS.forEach(s => Object.values(HS[s].xi).forEach(x => x.forEach(([id, , r]) => { if (id === pid && r > m) m = r; }))); return m || null; }
+function peakRating(pid) { if (PL[pid] && PL[pid][7]) return PL[pid][7]; let m = 0; SEASONS.forEach(s => Object.values(HS[s].xi).forEach(x => x.forEach(([id, , r]) => { if (id === pid && r > m) m = r; }))); return m || null; }
 const isActive = pid => !!(PL[pid] && PL[pid][5]);
 const statusChips = (pid, small) => { const st = small ? ' style="font-size:10.5px"' : ''; return `<span class="chip ${isActive(pid) ? 'good' : ''}"${st}>${isActive(pid) ? '现役球员' : '退役球员'}</span>${PL[pid] && PL[pid][4] === 'l' ? `<span class="chip gold"${st}>传奇球员</span>` : ''}`; };
 function zone(i, n = 20) { return i < 4 ? 'z1' : i < 6 ? 'z2' : i < 7 ? 'z3' : i >= n - 3 ? 'zr' : ''; }
@@ -867,7 +867,7 @@ function finish() {
       <p class="muted" style="margin:0;font-size:13px">${headline(res)}</p>
       <div class="btns">${saved}<button class="btn" data-act="again">再模拟一次</button>${nxt ? `<button class="btn primary" data-act="nextfx">下一场 →</button>` : ''}</div></div></div>
     <div style="margin-top:22px"><div class="eyebrow" style="margin-bottom:10px">球员评分${res.players ? '' : ''}</div>
-    <div class="grid g-2">${[['h', h], ['a', a]].map(([k, t]) => `<div><div class="tname" style="margin-bottom:6px">${crest(t, 18)}<b style="font-size:13px">${esc(t)}</b></div><div class="prow" style="color:var(--fg-3);font-size:10.5px"><span>球员</span><span class="meta">射门</span><span class="meta">射正</span><span class="meta">抢断</span><span class="meta">扑救</span><span class="meta">评分</span></div>${res.players[k].slice().sort((x, y) => y.r - x.r).map(r => { const gl = res.events.filter(e => e.type === 'goal' && e.player === r.name && e.team === t).length, as = res.events.filter(e => e.type === 'goal' && e.assist === r.name && e.team === t).length; return `<div class="prow"><button class="lnk" data-player="${esc(t)}|${esc(r.name)}"><span>${esc(r.name)}</span> <span class="dim mono" style="font-size:10.5px">${esc(r.slot)}</span>${gl ? ` <span style="color:var(--accent-2)">⚽${gl > 1 ? '×' + gl : ''}</span>` : ''}${as ? ` <span class="dim">A${as > 1 ? '×' + as : ''}</span>` : ''}</button><span class="meta">${r.sh}</span><span class="meta">${r.ot}</span><span class="meta">${r.tk}</span><span class="meta">${r.sv || '–'}</span><span class="rt"><span class="rt-pill" style="background:${r.r >= 8 ? 'var(--gold)' : r.r >= 7 ? '#9cc2ff' : r.r >= 6 ? '#a9b4c4' : '#ff8a8a'}">${r.r.toFixed(1)}</span></span></div>`; }).join('')}</div>`).join('')}</div></div>`;
+    <div class="grid g-2">${[['h', h], ['a', a]].map(([k, t]) => `<div><div class="tname" style="margin-bottom:6px">${crest(t, 18)}<b style="font-size:13px">${esc(t)}</b></div><div class="prow" style="color:var(--fg-3);font-size:10.5px"><span>球员</span><span class="meta">射门</span><span class="meta">射正</span><span class="meta">关键传球</span><span class="meta">抢断</span><span class="meta">拦截</span><span class="meta">扑救</span><span class="meta">评分</span></div>${res.players[k].slice().sort((x, y) => y.r - x.r).map(r => { const gl = res.events.filter(e => e.type === 'goal' && e.player === r.name && e.team === t).length, as = res.events.filter(e => e.type === 'goal' && e.assist === r.name && e.team === t).length; return `<div class="prow"><button class="lnk" data-player="${esc(t)}|${esc(r.name)}"><span>${esc(r.name)}</span> <span class="dim" style="font-size:10.5px">${ENGINE.ROLE_ZH[r.role] || esc(r.slot)}</span>${gl ? ` <span style="color:var(--accent-2)">⚽${gl > 1 ? '×' + gl : ''}</span>` : ''}${as ? ` <span class="dim">A${as > 1 ? '×' + as : ''}</span>` : ''}</button><span class="meta">${r.sh}</span><span class="meta">${r.ot}</span><span class="meta">${r.kp}</span><span class="meta">${r.tk}</span><span class="meta">${r.int}</span><span class="meta">${r.sv || '–'}</span><span class="rt"><span class="rt-pill" style="background:${r.r >= 8 ? 'var(--gold)' : r.r >= 7 ? '#9cc2ff' : r.r >= 6 ? '#a9b4c4' : '#ff8a8a'}">${r.r.toFixed(1)}</span></span></div>`; }).join('')}</div>`).join('')}</div></div>`;
   updateChip();
 }
 function updateChip() { const nr = nextRound(); $('#roundChip').innerHTML = nr < 0 ? `S${SEASON} · <b>已完赛</b>` : `S${SEASON} · 第 <b>${String(nr + 1).padStart(2, '0')}</b> / 38 轮`; }
@@ -1038,7 +1038,7 @@ function openPlayer(team, name) {
       <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span>${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     <div><div class="eyebrow" style="margin-bottom:8px">S${SEASON} 本赛季（模拟）</div>
-      ${s ? `<div class="stats3 s4">${[[s.apps, '出场'], [s.min, '出场分钟'], [s.avg.toFixed(2), '场均评分'], [s.motm, '全场最佳'], [s.g, '进球'], [s.a, '助攻'], [s.sh, '射门'], [s.ot, '射正'], [s.tk, '抢断'], ...(s.line === 'GK' ? [[s.sv, '扑救']] : []), ...(s.line === 'GK' || s.line === 'DF' ? [[s.cs, '零封']] : []), [s.y, '黄牌'], [s.r, '红牌']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>` : `<div class="empty">本赛季还没有首发出场</div>`}</div>
+      ${s ? `<div class="stats3 s4">${[[s.apps, '出场'], [s.min, '出场分钟'], [s.avg.toFixed(2), '场均评分'], [s.motm, '全场最佳'], [s.g, '进球'], [s.a, '助攻'], [s.sh, '射门'], [s.ot, '射正'], [s.kp || 0, '关键传球'], [s.tk, '抢断'], [s.int || 0, '拦截'], ...(s.line === 'GK' ? [[s.sv, '扑救']] : []), ...(s.line === 'GK' || s.line === 'DF' ? [[s.cs, '零封']] : []), [s.y, '黄牌'], [s.r, '红牌']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>` : `<div class="empty">本赛季还没有首发出场</div>`}</div>
     ${careerHTML(pid)}
     <div><div class="eyebrow" style="margin-bottom:8px">资料库记录（含威超以外的比赛）</div><div class="stats3"><div><b>${p.cGP}</b><span>生涯出场</span></div><div><b>${p.cG}</b><span>生涯进球</span></div><div><b>${p.cA}</b><span>生涯助攻</span></div>
       <div><b>${p.tGP}</b><span>本队出场</span></div><div><b>${p.tG}</b><span>本队进球</span></div><div><b>${p.tA}</b><span>本队助攻</span></div></div></div>
@@ -1056,7 +1056,9 @@ const PCATS = [
   { k: 'avg', zh: '场均评分', en: 'Average rating', fmt: v => v.toFixed(2), minApps: true, ctx: [['motm', '全场最佳']] },
   { k: 'sh', zh: '射门', en: 'Shots', ctx: [['ot', '射正'], ['g', '进球']] },
   { k: 'ot', zh: '射正', en: 'Shots on target', ctx: [['sh', '射门'], ['g', '进球']] },
-  { k: 'tk', zh: '抢断', en: 'Tackles', ctx: [['y', '黄牌']] },
+  { k: 'kp', zh: '关键传球', en: 'Key passes', ctx: [['a', '助攻']] },
+  { k: 'tk', zh: '抢断', en: 'Tackles', ctx: [['int', '拦截']] },
+  { k: 'int', zh: '拦截', en: 'Interceptions', ctx: [['tk', '抢断']] },
   { k: 'motm', zh: '全场最佳', en: 'Player of the match', ctx: [['avg', '评分']] },
   { k: 'y', zh: '黄牌', en: 'Yellow cards', ctx: [['r', '红牌'], ['tk', '抢断']] },
   { k: 'r', zh: '红牌', en: 'Red cards', ctx: [['y', '黄牌']] },

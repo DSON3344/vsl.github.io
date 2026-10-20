@@ -130,6 +130,63 @@ const ENGINE = (() => {
     (s) => `${s} 禁区内倒地，裁判示意比赛继续`, (s) => `${s} 的射门被后卫门线解围`,
   ];
 
+  // ---------- 位置化的赛后数据与评分 ----------
+  function roleOf(slot) {
+    const p = String(slot).replace(/-.*/, '');
+    if (p === 'GK') return 'GK';
+    if (/WB/.test(p) || p === 'LB' || p === 'RB') return 'FB';
+    if (/CB/.test(p)) return 'CB';
+    if (/DM/.test(p)) return 'DM';
+    if (/AM/.test(p)) return 'AM';
+    if (p === 'LM' || p === 'RM') return 'WM';
+    if (/CM/.test(p)) return 'CM';
+    if (/LW|RW/.test(p)) return 'W';
+    return 'ST';
+  }
+  const ROLE_ZH = { GK: '门将', CB: '中卫', FB: '边卫', DM: '后腰', CM: '中场', WM: '边前卫', AM: '前腰', W: '边锋', ST: '前锋' };
+  // 每个位置看重的数据不同：门将看扑救和零封、中卫看抢断拦截和失球、中场看关键传球和控球、锋线看进球和射正
+  function matchRating(r, o) {
+    const res = o.gf > o.ga ? 0.3 : o.gf < o.ga ? -0.3 : 0;
+    const cs = o.ga === 0;
+    const ROLE_BASE = { GK: 6.25, CB: 6.5, FB: 6.35, DM: 6.15, CM: 6.5, WM: 6.45, AM: 6.2, W: 6.1, ST: 6.35 };
+    let v = ROLE_BASE[r.role] + (r.ovr - 82) * 0.035 + res + gauss() * 0.22;
+    switch (r.role) {
+      case 'GK': v += r.sv * 0.22 + (cs ? 0.9 : 0) - o.ga * 0.32; break;
+      case 'CB': v += r.tk * 0.10 + r.int * 0.12 + (cs ? 0.6 : 0) - o.ga * 0.22 + r.g * 0.9 + r.a * 0.6; break;
+      case 'FB': v += r.tk * 0.08 + r.int * 0.08 + r.kp * 0.12 + (cs ? 0.4 : 0) - o.ga * 0.15 + r.g * 0.9 + r.a * 0.7; break;
+      case 'DM': v += r.tk * 0.10 + r.int * 0.10 + r.kp * 0.08 + (o.poss - 50) * 0.015 + (cs ? 0.25 : 0) - o.ga * 0.08 + r.g * 0.9 + r.a * 0.6; break;
+      case 'CM': v += r.tk * 0.06 + r.int * 0.05 + r.kp * 0.14 + (o.poss - 50) * 0.02 + r.g * 0.9 + r.a * 0.7; break;
+      case 'WM': case 'AM': case 'W': v += r.kp * 0.16 + r.ot * 0.12 - (r.sh - r.ot) * 0.03 + r.g * 0.95 + r.a * 0.75 - (r.g + r.a === 0 ? 0.15 : 0); break;
+      default: v += r.g * 1.05 + r.ot * 0.15 - (r.sh - r.ot) * 0.05 + r.a * 0.6 + r.kp * 0.08 - (r.g === 0 ? 0.35 : 0);
+    }
+    v -= r.yc * 0.3 + r.rc * 1.5;
+    if (r.min < 60) v = 6 + (v - 6) * Math.max(0.3, r.min / 90);
+    return +Math.max(4.5, Math.min(10, v)).toFixed(1);
+  }
+  // X: [{slot,line,r,attr}]；o: {goals:[[进球者下标,助攻者下标]], cards:[[下标,是否红牌,分钟]], shots, ot, oppOt, gf, ga, poss, press}
+  function sideStats(X, o) {
+    const rows = X.map(x => ({ slot: x.slot, line: x.line, role: roleOf(x.slot), ovr: x.r, min: 90, sh: 0, ot: 0, tk: 0, int: 0, kp: 0, sv: 0, g: 0, a: 0, yc: 0, rc: 0 }));
+    const att = (x, k) => (x.attr && x.attr[k]) || x.r;
+    o.goals.forEach(([gi, ai]) => { if (gi >= 0) { rows[gi].g++; rows[gi].sh++; rows[gi].ot++; } if (ai >= 0) { rows[ai].a++; rows[ai].kp++; } });
+    const gf = o.goals.length;
+    const shW = X.map(x => x.line === 'GK' ? 0 : Math.sqrt(POS_GOAL(x.slot)) * att(x, 'sho') / 80 + 0.25);
+    const extra = [];
+    for (let n = Math.max(0, o.shots - gf); n > 0; n--) { const k = X.indexOf(pick(X, shW)); rows[k].sh++; extra.push(k); }
+    for (let n = Math.max(0, o.ot - gf); n > 0 && extra.length; n--) { const j = Math.floor(rnd() * extra.length); rows[extra[j]].ot++; extra.splice(j, 1); }
+    const kpW = X.map(x => POS_AST(x.slot) * Math.pow(att(x, 'pas') / 80, 2));
+    for (let n = Math.max(0, Math.round(o.shots * 0.7) - rows.reduce((a, r) => a + r.kp, 0)); n > 0; n--) rows[X.indexOf(pick(X, kpW))].kp++;
+    const tkW = X.map(x => (x.line === 'GK' ? 0.02 : x.line === 'DF' ? 2.8 : /DM/.test(x.slot) ? 3.4 : x.line === 'MF' ? 1.8 : 0.6) * Math.pow(att(x, 'def') / 75, 2));
+    const tk = Math.max(6, Math.round(15 + gauss() * 3.5 + (o.press ? 3 : 0) + (50 - o.poss) * 0.12));
+    for (let n = 0; n < tk; n++) rows[X.indexOf(pick(X, tkW))].tk++;
+    const inW = X.map(x => (x.line === 'GK' ? 0.01 : /CB/.test(x.slot) ? 3.2 : x.line === 'DF' ? 2.2 : /DM/.test(x.slot) ? 3 : x.line === 'MF' ? 1.2 : 0.3) * Math.pow(att(x, 'def') / 75, 2));
+    const it = Math.max(3, Math.round(9 + gauss() * 2.5 + (50 - o.poss) * 0.1));
+    for (let n = 0; n < it; n++) rows[X.indexOf(pick(X, inW))].int++;
+    const gk = rows.find(r => r.line === 'GK'); if (gk) gk.sv = Math.max(0, o.oppOt - o.ga);
+    o.cards.forEach(([ci, red, m]) => { if (ci < 0) return; if (red) { rows[ci].rc++; rows[ci].min = Math.min(rows[ci].min, Math.max(1, Math.floor(m))); } else rows[ci].yc++; });
+    rows.forEach(r => r.r = matchRating(r, o));
+    return rows;
+  }
+
   function simulate(home, away, opt = {}) {
     const e = expected(home, away, opt);
     const fh = Math.max(0.6, 1 + gauss() * 0.13), fa = Math.max(0.6, 1 + gauss() * 0.13);
@@ -181,45 +238,21 @@ const ENGINE = (() => {
     };
     // ---------- 球员个人数据 ----------
     const players = {};
-    const sides = [[home, 'h', 0, 1], [away, 'a', 1, 0]];
-    sides.forEach(([t, side, i, o]) => {
+    [[home, 'h', 0, 1], [away, 'a', 1, 0]].forEach(([t, side, i, o]) => {
       const xi = lineup(t).xi;
-      const rows = xi.map(s => ({ name: s.name, slot: s.slot, line: s.line, min: 90, sh: 0, ot: 0, tk: 0, sv: 0, r: 0 }));
       const idx = n => xi.findIndex(s => s.name === n);
-      const goals = events.filter(ev => ev.type === 'goal' && ev.side === side);
-      goals.forEach(ev => { const k = idx(ev.player); if (k >= 0) { rows[k].sh++; rows[k].ot++; } });
-      // 剩余射门 / 射正
-      const shW = xi.map(s => s.line === 'GK' ? 0 : Math.sqrt(POS_GOAL(s.slot)) * (((s.p.attributes && s.p.attributes.sho) || s.rating) / 80) + 0.25);
-      let restSh = Math.max(0, stats.shots[i] - goals.length), restOt = Math.max(0, stats.onTarget[i] - goals.length);
-      const extra = [];
-      for (let n = 0; n < restSh; n++) { const k = xi.indexOf(pick(xi, shW)); rows[k].sh++; extra.push(k); }
-      for (let n = 0; n < restOt && extra.length; n++) { const j = Math.floor(rnd() * extra.length); rows[extra[j]].ot++; extra.splice(j, 1); }
-      // 抢断
-      const tkTotal = Math.max(6, Math.round(15 + gauss() * 3.5 + (/防守|逼抢|压制|摆大巴|对抗/.test(TEAMS_DATA[t].style || '') ? 3 : 0)));
-      const tkW = xi.map(s => (s.line === 'GK' ? 0.02 : s.line === 'DF' ? 2.8 : /DM/.test(s.slot) ? 3.4 : s.line === 'MF' ? 1.8 : 0.6) * Math.pow(((s.p.attributes && s.p.attributes.def) || 60) / 75, 2));
-      for (let n = 0; n < tkTotal; n++) rows[xi.indexOf(pick(xi, tkW))].tk++;
-      // 扑救
-      const conceded = side === 'h' ? ag : hg;
-      const gk = rows.find(r => r.line === 'GK');
-      if (gk) gk.sv = Math.max(0, stats.onTarget[o] - conceded);
-      // 红牌减少出场时间
-      events.filter(ev => ev.type === 'red' && ev.side === side).forEach(ev => { const k = idx(ev.player); if (k >= 0) rows[k].min = Math.min(rows[k].min, Math.max(1, Math.floor(ev.m))); });
-      // 评分
-      const win = side === 'h' ? hg - ag : ag - hg;
-      rows.forEach((r, k) => {
-        const s = xi[k];
-        r.r = 6.3 + (s.rating - 80) * 0.05 + win * 0.15 + gauss() * 0.3 + r.ot * 0.12 + r.tk * 0.07 + r.sv * 0.18;
-        if (conceded === 0 && (r.line === 'GK' || r.line === 'DF')) r.r += 0.45;
-        if (r.line === 'GK' || r.line === 'DF') r.r -= conceded * 0.12;
+      const rows = sideStats(xi.map(s => ({ slot: s.slot, line: s.line, r: s.rating, attr: s.p.attributes })), {
+        goals: events.filter(ev => ev.type === 'goal' && ev.side === side).map(ev => [idx(ev.player), ev.assist ? idx(ev.assist) : -1]),
+        cards: events.filter(ev => (ev.type === 'yellow' || ev.type === 'red') && ev.side === side).map(ev => [idx(ev.player), ev.type === 'red' ? 1 : 0, ev.m]),
+        shots: stats.shots[i], ot: stats.onTarget[i], oppOt: stats.onTarget[o], gf: side === 'h' ? hg : ag, ga: side === 'h' ? ag : hg, poss: stats.poss[i],
+        press: /防守|逼抢|压制|摆大巴|对抗/.test(TEAMS_DATA[t].style || ''),
       });
-      goals.forEach(ev => { const k = idx(ev.player); if (k >= 0) rows[k].r += 1.0; const q = ev.assist ? idx(ev.assist) : -1; if (q >= 0) rows[q].r += 0.6; });
-      events.filter(ev => ev.side === side && ev.type === 'red').forEach(ev => { const k = idx(ev.player); if (k >= 0) rows[k].r -= 1.5; });
-      events.filter(ev => ev.side === side && ev.type === 'yellow').forEach(ev => { const k = idx(ev.player); if (k >= 0) rows[k].r -= 0.2; });
-      rows.forEach(r => r.r = +Math.max(4.5, Math.min(10, r.r)).toFixed(1));
-      players[side] = rows;
+      players[side] = rows.map((r, k) => ({ ...r, name: xi[k].name }));
     });
     stats.tackles = [players.h.reduce((a, r) => a + r.tk, 0), players.a.reduce((a, r) => a + r.tk, 0)];
     stats.saves = [players.h.reduce((a, r) => a + r.sv, 0), players.a.reduce((a, r) => a + r.sv, 0)];
+    stats.interceptions = [players.h.reduce((a, r) => a + r.int, 0), players.a.reduce((a, r) => a + r.int, 0)];
+    stats.keyPasses = [players.h.reduce((a, r) => a + r.kp, 0), players.a.reduce((a, r) => a + r.kp, 0)];
     const all = [...players.h.map(r => ({ ...r, team: home })), ...players.a.map(r => ({ ...r, team: away }))];
     const motm = all.sort((a, b) => b.r - a.r)[0];
     return { home, away, hg, ag, events, stats, players, motm: { team: motm.team, name: motm.name, r: motm.r }, cond: { h: e.ch, a: e.ca }, opt: { weather: opt.weather, slot: opt.slot } };
@@ -245,6 +278,6 @@ const ENGINE = (() => {
 
   function randomConditions() { return { weather: pick(WEATHERS, [5, 3, 2]), slot: pick(SLOTS, [1, 1.5, 2, 3, 3, 4, 1, 0.5]) }; }
 
-  return { lineup, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { roleOf, ROLE_ZH, matchRating, sideStats, lineup, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

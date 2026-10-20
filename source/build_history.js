@@ -10,6 +10,9 @@ vm.runInContext(fs.readFileSync(D + 'roster_overrides.js', 'utf8'), ctx);
 const PDB = ctx.PLAYER_DATABASE, TD = ctx.window.TEAMS_DATA;
 JSON.parse(fs.readFileSync(__dirname + '/extra_players.json', 'utf8')).forEach(p => PDB[p.team].push(p));
 const PDF = JSON.parse(fs.readFileSync(D + 'history.json', 'utf8'));
+ctx.TEAMS_DATA = TD; ctx.HISTORY = PDF;
+vm.runInContext(fs.readFileSync(D + 'engine.js', 'utf8').replace('const ENGINE', 'var ENGINE'), ctx);
+const ENGINE = ctx.ENGINE;
 // S18 前的变动：转会与退役（PDF 写“至今”的，到 S17 为止）
 for (const list of Object.values(PDF.legends)) list.forEach(l => { if (!l.end) l.end = 17; });
 const SITE = JSON.parse(fs.readFileSync(D + 'site_data.json', 'utf8'));
@@ -26,7 +29,7 @@ const clean = s => String(s || '').replace(/[·\s]/g, '');
 const LINE = p => { p = String(p || ''); if (p === 'GK') return 'GK'; if (/CB|LB|RB|WB/.test(p)) return 'DF'; if (/DM|CM|LM|RM|AM/.test(p)) return 'MF'; return 'FW'; };
 const POS_GOAL = p => /CAM|LAM|RAM/.test(p) ? 1.9 : /LW|RW/.test(p) ? 2.3 : /ST/.test(p) ? 3.1 : /WB/.test(p) ? 0.7 : { GK: 0, DF: 0.35, MF: 1.1, FW: 3 }[LINE(p)];
 const POS_AST = p => /CAM|LAM|RAM/.test(p) ? 3.4 : /LW|RW|LM|RM/.test(p) ? 2.8 : /WB|LB|RB/.test(p) ? 1.6 : /CM/.test(p) ? 2 : /DM/.test(p) ? 1 : /ST/.test(p) ? 1.6 : LINE(p) === 'GK' ? 0.05 : 0.5;
-const TIER = { 'S++': 94, 'S+': 91, 'S': 88, 'A+': 85, 'A': 82 };
+const TIER = { 'S++': 94, 'S+': 92, 'S': 90, 'A+': 88, 'A': 86 };
 
 /* ---------- persons ---------- */
 const P = []; // {name,pos,line,nat,cur,dbr,age,tgp,stints:[],site:[], kind}
@@ -109,16 +112,36 @@ P.forEach((p, id) => { if (p.kind === 'db') { const pro = 18 - (p.age - 17); Obj
 
 /* ---------- 评分 ---------- */
 const ageCurve = a => -1.1 * Math.max(0, 27 - a) - 0.8 * Math.max(0, a - 31);
+/* 俱乐部底蕴：S01–S17 平均积分 → 球员能力基准（豪门球员不会太低） */
+const AVGPTS = {};
+for (let s = 1; s <= LAST; s++) SITE.standings[s].forEach(r => { (AVGPTS[r.team] = AVGPTS[r.team] || []).push(r.w * 3 + r.d); });
+const clubBase = t => { const a = AVGPTS[t] || [30]; const m = a.reduce((x, y) => x + y, 0) / a.length; return Math.max(75, Math.min(89, 72 + m * 0.2)); };
+/* 巅峰能力值：传奇按等级、官网榜单按排名、补充球员按俱乐部底蕴 */
+function setPeak(p) {
+  if (p.kind === 'db') return;
+  const clubs = [...new Set([...p.stints.map(x => x.team), ...p.site.map(x => x.team)])];
+  const floor = clubs.length ? Math.max(...clubs.map(clubBase)) : 80;
+  let pk = 0;
+  if (p.stints.length) pk = Math.max(...p.stints.map(x => x.tier));
+  if (p.site.length) pk = Math.max(pk, ...p.site.map(x => x.cat === 'cards' ? 86 - x.rank * 0.3 : 92 - x.rank * 0.7));
+  p.peak = Math.round(Math.max(pk, floor + 1));
+}
+/* 生涯曲线：前两季成长、最后两季下滑，中段为巅峰 */
+function arc(s, c0, c1) {
+  const len = c1 - c0 + 1, k = s - c0, back = c1 - s;
+  let d = 0;
+  if (len >= 3) d += [3, 1.5, 0.5][k] || 0;
+  if (len >= 5) d += [2, 1][back] || 0;
+  return d;
+}
 function ratingAt(p, s) {
   if (p.kind === 'db' && s >= proSeason(p)) return Math.round(p.dbr + ageCurve(p.age - (18 - s)) - ageCurve(p.age));
-  const st = p.stints.find(x => s >= x.start && s <= x.end);
-  if (st) { const edge = (s === st.start || s === st.end) ? 2 : 0; return st.tier - edge; }
-  const ss = p.site.filter(x => x.s === s);
-  if (ss.length) return Math.max(...ss.map(x => (x.cat === 'cards' ? 84 : 92) - x.rank * 0.8)) | 0;
-  const near = p.site.length ? Math.min(...p.site.map(x => Math.abs(x.s - s))) : 1;
-  return (p.base || 84) - near;
+  const ss = Object.keys(assign[P.indexOf(p)] || {}).map(Number);
+  const c0 = p.kind === 'gen' ? p.born : (ss.length ? Math.min(...ss) : s), c1 = p.kind === 'gen' ? p.until : (ss.length ? Math.max(...ss) : s);
+  return Math.round((p.peak || 84) - arc(s, c0, Math.max(c1, s)));
 }
 
+P.forEach(setPeak);
 /* ---------- 虚构球员 ---------- */
 /* 按国籍生成名字：先定国籍，再用该国常见的音节组合 */
 const NG = {
@@ -183,12 +206,12 @@ for (let s = 1; s <= LAST; s++) {
       let f = fs_[i];
       if (!f || s > f.until || usedSeason.has(f.pid)) {
         const pos = sl.slot.replace(/-.*/, '').replace(/^(L|R)(?=CB$)/, '');
-        const gp = genPerson(team); const id = newPerson({ name: gp.name, pos, line: sl.line, nat: gp.nat, kind: 'gen', off: Math.round(gauss() * 2), born: s });
-        f = fs_[i] = { pid: id, until: s + 3 + Math.floor(rnd() * 5) };
+        const gp = genPerson(team); const id = newPerson({ name: gp.name, pos, line: sl.line, nat: gp.nat, kind: 'gen', born: s, peak: Math.round(Math.min(clubBase(team) + 3, clubBase(team) + gauss() * 1.8)) });
+        f = fs_[i] = { pid: id, until: s + 3 + Math.floor(rnd() * 5) }; P[id].until = f.until;
       }
       const p = P[f.pid];
       const yrs = s - p.born;
-      sl.pid = f.pid; sl.r = Math.round(tgt + p.off - 2 + Math.min(yrs, 3) - Math.max(0, yrs - 5)); usedSeason.add(f.pid);
+      sl.pid = f.pid; sl.r = ratingAt(p, s); usedSeason.add(f.pid);
       (assign[f.pid] = assign[f.pid] || {})[s] = { team, prio: 0 };
     });
     XI[s][team] = slots.map(x => ({ pid: x.pid, slot: x.slot, line: x.line, r: x.r }));
@@ -297,7 +320,7 @@ function reconstruct(s) {
 const PS = {}; // s -> pid -> stats
 const CS = {}; // s -> team -> stats
 const OUT = { seasons: {} };
-const stat = (s, pid, team) => { const o = (PS[s] = PS[s] || {}); return o[pid] || (o[pid] = { team, apps: 0, min: 0, g: 0, a: 0, y: 0, r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0 }); };
+const stat = (s, pid, team) => { const o = (PS[s] = PS[s] || {}); return o[pid] || (o[pid] = { team, apps: 0, min: 0, g: 0, a: 0, y: 0, r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0 }); };
 const report = [];
 for (let s = 1; s <= LAST; s++) {
   const R = reconstruct(s);
@@ -382,24 +405,13 @@ for (let s = 1; s <= LAST; s++) {
     const ots = sides.map(([ti, g], k) => Math.max(g, Math.min(shots[k], Math.round(shots[k] * (0.34 + rnd() * 0.14)))));
     const rows = sides.map(([ti, gf, ga], k) => {
       const X = xi[ti];
-      const r = X.map(x => ({ pid: x.pid, slot: x.slot, line: x.line, min: 90, sh: 0, ot: 0, tk: 0, sv: 0, g: 0, a: 0 }));
       const idx = id => X.findIndex(x => x.pid === id);
-      ev.goals.filter(g => g[1] === ti).forEach(g => { const i = idx(g[2]); if (i >= 0) { r[i].g++; r[i].sh++; r[i].ot++; } const j = idx(g[3]); if (j >= 0) r[j].a++; });
-      const wS = X.map(x => x.line === 'GK' ? 0 : Math.sqrt(POS_GOAL(x.slot)) * x.r / 85 + 0.25);
-      const extra = []; for (let n = Math.max(0, shots[k] - gf); n > 0; n--) { const i = X.indexOf(pick(X, wS)); r[i].sh++; extra.push(i); }
-      for (let n = Math.max(0, ots[k] - gf); n > 0 && extra.length; n--) { const j = Math.floor(rnd() * extra.length); r[extra[j]].ot++; extra.splice(j, 1); }
-      const wT = X.map(x => x.line === 'GK' ? 0.02 : x.line === 'DF' ? 2.8 : /DM/.test(x.slot) ? 3.4 : x.line === 'MF' ? 1.8 : 0.6);
-      const tk = Math.max(6, Math.round(15 + gauss() * 3.5)); for (let n = 0; n < tk; n++) r[X.indexOf(pick(X, wT))].tk++;
-      const gk = r.find(x => x.line === 'GK'); if (gk) gk.sv = Math.max(0, ots[1 - k] - ga);
-      ev.cards.filter(c => c[1] === ti && c[2] === 1).forEach(c => { const i = idx(c[3]); if (i >= 0) r[i].min = Math.min(r[i].min, c[0]); });
-      const win = gf - ga;
-      r.forEach((x, i) => {
-        let v = 6.3 + (X[i].r - 80) * 0.05 + win * 0.15 + gauss() * 0.3 + x.ot * 0.12 + x.tk * 0.07 + x.sv * 0.18 + x.g * 1.0 + x.a * 0.6;
-        if (x.line === 'GK' || x.line === 'DF') v += (ga === 0 ? 0.45 : 0) - ga * 0.12;
-        ev.cards.filter(c => c[1] === ti && c[3] === x.pid).forEach(c => v -= c[2] ? 1.5 : 0.2);
-        x.rt = Math.max(4.5, Math.min(10, +v.toFixed(1)));
+      const st = ENGINE.sideStats(X.map(x => ({ slot: x.slot, line: x.line, r: x.r, attr: (P[x.pid].kind === 'db' && (PDB[P[x.pid].cur] || []).find(q => q.name === P[x.pid].name) || {}).attributes })), {
+        goals: ev.goals.filter(g => g[1] === ti).map(g => [idx(g[2]), g[3] >= 0 ? idx(g[3]) : -1]),
+        cards: ev.cards.filter(c => c[1] === ti).map(c => [idx(c[3]), c[2], c[0]]),
+        shots: shots[k], ot: ots[k], oppOt: ots[1 - k], gf, ga, poss: k ? 100 - poss : poss, press: /防守|逼抢|压制|摆大巴|对抗/.test(TD[teams[ti]].style || ''),
       });
-      return r;
+      return st.map((r, q) => ({ ...r, pid: X[q].pid, rt: r.r }));
     });
     const all = rows.flat(); const motm = all.reduce((a, b) => b.rt > a.rt ? b : a);
     sides.forEach(([ti, gf, ga], k) => {
@@ -410,7 +422,7 @@ for (let s = 1; s <= LAST; s++) {
       const p = gf > ga ? 3 : gf === ga ? 1 : 0; if (k) c.ap += p; else c.hp += p;
       ev.cards.filter(x => x[1] === ti).forEach(x => x[2] ? c.rc++ : c.y++);
       rows[k].forEach(x => {
-        const o = stat(s, x.pid, t); o.apps++; o.min += x.min; o.sh += x.sh; o.ot += x.ot; o.tk += x.tk; o.sv += x.sv; o.rs += x.rt; o.g += x.g; o.a += x.a;
+        const o = stat(s, x.pid, t); o.apps++; o.min += x.min; o.sh += x.sh; o.ot += x.ot; o.tk += x.tk; o.sv += x.sv; o.rs += x.rt; o.g += x.g; o.a += x.a; o.kp += x.kp; o.int += x.int;
         if (ga === 0 && x.min >= 60 && (x.line === 'GK' || x.line === 'DF')) o.cs++;
       });
       ev.cards.filter(x => x[1] === ti).forEach(x => { const o = stat(s, x[3], t); x[2] ? o.r++ : o.y++; });
@@ -447,9 +459,9 @@ P.forEach((p, i) => { if (p.kind === 'db' || p.kind === 'gen' || !used.has(i)) r
 OUT.family = family;
 family.forEach(([f, c]) => { if (!P[f].nat) P[f].nat = P[c].nat; });
 const activeTeam = {}; P.forEach((p, i) => { const st = p.stints.find(x => x.ongoing); if (p.kind !== 'db' && st) activeTeam[i] = st.team; });
-OUT.players = P.map((p, i) => used.has(i) ? [p.name, p.pos, p.nat || '', p.kind === 'db' ? p.cur : '', p.kind[0], activeSet.has(i) ? 1 : 0, activeTeam[i] || ''] : null);
+OUT.players = P.map((p, i) => used.has(i) ? [p.name, p.pos, p.nat || '', p.kind === 'db' ? p.cur : '', p.kind[0], activeSet.has(i) ? 1 : 0, activeTeam[i] || '', p.kind === 'db' ? p.dbr : p.peak] : null);
 OUT.pstats = {};
-for (const s in PS) OUT.pstats[s] = Object.entries(PS[s]).map(([id, o]) => [+id, o.team, o.apps, o.min, o.g, o.a, o.y, o.r, o.sh, o.ot, o.tk, o.sv, o.cs, o.motm, Math.round(o.rs * 10)]);
+for (const s in PS) OUT.pstats[s] = Object.entries(PS[s]).map(([id, o]) => [+id, o.team, o.apps, o.min, o.g, o.a, o.y, o.r, o.sh, o.ot, o.tk, o.sv, o.cs, o.motm, Math.round(o.rs * 10), o.kp, o.int]);
 OUT.officialStats = SITE.stats;
 OUT.officialAllTime = SITE.standings.history;
 fs.writeFileSync(D + 'hist.json', JSON.stringify(OUT));
