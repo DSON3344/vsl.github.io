@@ -26,6 +26,8 @@ const LAST = 17;
 let _s = 20261020;
 let _s2 = 20261020;
 const rnd2 = () => { _s2 |= 0; _s2 = _s2 + 0x6D2B79F5 | 0; let t = Math.imul(_s2 ^ _s2 >>> 15, 1 | _s2); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+let _s3 = 77012;
+const rnd3 = () => { _s3 |= 0; _s3 = _s3 + 0x6D2B79F5 | 0; let t = Math.imul(_s3 ^ _s3 >>> 15, 1 | _s3); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const rnd = () => { _s |= 0; _s = _s + 0x6D2B79F5 | 0; let t = Math.imul(_s ^ _s >>> 15, 1 | _s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const gauss = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
 const pick = (arr, w) => { const t = w.reduce((a, b) => a + b, 0); if (t <= 0) return arr[Math.floor(rnd() * arr.length)]; let r = rnd() * t; for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; } return arr[arr.length - 1]; };
@@ -252,6 +254,22 @@ for (let s = 1; s <= LAST; s++) {
       assign[best][s] = assign[best][s] || { team, prio: 0 };
     });
     XI[s][team] = slotsOf[team].map(x => ({ pid: x.pid, slot: x.slot, line: x.line, r: x.r }));
+    // 替补席补到 7 人（至少 1 名门将）：优先上季同队的球员，不够就从自由球员里挑，再不够就生成
+    const benchNow = pinned[team].filter(id => !used.has(id));
+    benchNow.forEach(id => used.add(id));
+    const needLines = ['GK', 'DF', 'DF', 'MF', 'MF', 'FW', 'MF'];
+    benchNow.forEach(id => { const k = needLines.indexOf(P[id].line); if (k >= 0) needLines.splice(k, 1); });
+    for (const line of needLines.slice(0, Math.max(0, 7 - benchNow.length))) {
+      let best = null, bs = -99;
+      for (const id of free) { if (used.has(id) || P[id].line !== line) continue; const r = ratingAt(P[id], s); const sc = -Math.abs(r - (tgt - 3)) + (prevTeam[id] === team ? 6 : 0) + gauss() * 0.8; if (sc > bs) { bs = sc; best = id; } }
+      if (best == null || bs < -9) {
+        const gp = genPerson(team), born = s - Math.floor(rnd() * 3);
+        const pos = line === 'GK' ? 'GK' : line === 'DF' ? (rnd() < 0.5 ? 'CB' : rnd() < 0.5 ? 'LB' : 'RB') : line === 'MF' ? (rnd() < 0.5 ? 'CM' : 'CDM') : (rnd() < 0.6 ? 'ST' : 'LW');
+        best = newPerson({ name: gp.name, pos, line, nat: gp.nat, kind: 'gen', born, until: born + 7 + Math.floor(rnd() * 6), peak: Math.round(tgt - 3 + gauss() * 1.5) });
+        assign[best] = {}; free.push(best);
+      }
+      used.add(best); assign[best][s] = { team, prio: 1 }; prevTeam[best] = team;
+    }
     XI[s][team].forEach(x => { if (prevTeam[x.pid] && prevTeam[x.pid] !== team) leftAt[x.pid] = { team: prevTeam[x.pid], s }; prevTeam[x.pid] = team; delete stayDown[x.pid];
       // 资料库球员提前以自由身来到现在的球队，就从这季起一直留队
       const q = P[x.pid]; if (q.kind === 'db' && team === q.cur && s < (q.join || 18)) { for (let k = s + 1; k < (q.join || 18); k++) put(x.pid, k, team, 2); q.join = s; } });
@@ -264,7 +282,7 @@ const ageAt = (p, s) => p.kind === 'db' ? p.age - (18 - s) : null;
 const seasonTeam = {}; // pid -> {s: team}
 for (let s = 1; s <= LAST; s++) for (const [t, X] of Object.entries(XI[s])) X.forEach(x => (seasonTeam[x.pid] = seasonTeam[x.pid] || {})[s] = t);
 // 在名单上但没首发的赛季也算效力（板凳）
-P.forEach((p, id) => { for (const [s, a] of Object.entries(assign[id] || {})) if (a.prio >= 2) (seasonTeam[id] = seasonTeam[id] || {})[s] = a.team; });
+P.forEach((p, id) => { for (const [s, a] of Object.entries(assign[id] || {})) if (a.prio >= 1) (seasonTeam[id] = seasonTeam[id] || {})[s] = a.team; });
 const transfers = [];
 for (const [id, m] of Object.entries(seasonTeam)) {
   const ss = Object.keys(m).map(Number).sort((a, b) => a - b);
@@ -358,7 +376,7 @@ function simulateSeason(s) {
 
 /* ---------- 比赛事件与球员数据 ---------- */
 const PS = {}, CS = {}, OUT = { seasons: {} };
-const stat = (s, pid, team) => { const o = (PS[s] = PS[s] || {}); return o[pid] || (o[pid] = { team, apps: 0, min: 0, g: 0, a: 0, y: 0, r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0 }); };
+const stat = (s, pid, team) => { const o = (PS[s] = PS[s] || {}); return o[pid] || (o[pid] = { team, apps: 0, min: 0, g: 0, a: 0, y: 0, r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, starts: 0 }); };
 const attrOf = pid => (P[pid].kind === 'db' && (PDB[P[pid].cur] || []).find(q => q.name === P[pid].name) || {}).attributes;
 const report = [];
 for (let s = 1; s <= LAST; s++) {
@@ -367,14 +385,30 @@ for (let s = 1; s <= LAST; s++) {
   const goals = M.reduce((a, m) => a + m.hg + m.ag, 0);
   report.push(`S${s} 名次${R.orderOk ? '一致' : '不一致'} · 冠军 ${R.table[0].pts} 分 · 场均进球 ${(goals / M.length).toFixed(2)}`);
   const xi = teams.map(t => XI[s][t]);
+  // 替补席：本季在队但没首发的球员（每场换上 2–4 人，独立随机数，不影响比分和名次）
+  const bench = teams.map(t => { const onXI = new Set(XI[s][t].map(x => x.pid)); return P.map((p, id) => id).filter(id => assign[id] && assign[id][s] && assign[id][s].team === t && assign[id][s].prio >= 1 && !onXI.has(id)).map(id => ({ pid: id, line: P[id].line, pos: P[id].pos, r: ratingAt(P[id], s) })); });
+  const squadFor = ti => {
+    const X = xi[ti].map(x => ({ ...x, min: 90, start: 1 }));
+    const B = bench[ti].slice(); const n = Math.min(B.length, 2 + Math.floor(rnd3() * 3));
+    for (let k = 0; k < n; k++) {
+      const bi = Math.floor(rnd3() * Math.min(B.length, 6)), b = B.sort((u, v) => v.r - u.r).splice(bi, 1)[0];
+      const outs = X.filter(x => x.start && x.min === 90 && x.line !== 'GK' && (x.line === b.line || b.line === 'GK' ? x.line === b.line : true));
+      const pool = outs.filter(x => x.line === b.line).length ? outs.filter(x => x.line === b.line) : outs;
+      if (!pool.length || b.line === 'GK') continue;
+      const o = pool[Math.floor(rnd3() * pool.length)], m = 55 + Math.floor(rnd3() * 33);
+      o.min = m; X.push({ pid: b.pid, slot: o.slot, line: o.line, r: b.r, min: 90 - m, start: 0 });
+    }
+    return X;
+  };
   const csT = {}; teams.forEach(t => csT[t] = { poss: 0, sh: 0, ot: 0, tk: 0, sv: 0, cor: 0, y: 0, rc: 0, cs: 0, hp: 0, ap: 0, ps: 0, pc: 0, pg: 0, pm: 0 });
   const rounds = [];
   M.forEach(m => {
     const ev = { goals: [], cards: [], pmiss: [] };
+    const SQ = {}; SQ[m.h] = squadFor(m.h); SQ[m.a] = squadFor(m.a);
     [[m.h, m.hg], [m.a, m.ag]].forEach(([ti, g]) => {
-      const X = xi[ti];
-      const wG = X.map(x => POS_GOAL(x.slot) * Math.pow(x.r / 85, 3) * Math.pow(((attrOf(x.pid) || {}).sho || x.r) / 80, 2));
-      const wA = X.map(x => POS_AST(x.slot) * Math.pow(x.r / 85, 3) * Math.pow(((attrOf(x.pid) || {}).pas || x.r) / 80, 2));
+      const X = SQ[ti];
+      const wG = X.map(x => POS_GOAL(x.slot) * Math.pow(x.r / 85, 3) * Math.pow(((attrOf(x.pid) || {}).sho || x.r) / 80, 2) * x.min / 90);
+      const wA = X.map(x => POS_AST(x.slot) * Math.pow(x.r / 85, 3) * Math.pow(((attrOf(x.pid) || {}).pas || x.r) / 80, 2) * x.min / 90);
       for (let k = 0; k < g; k++) {
         const sc = pick(X, wG);
         let as = -1;
@@ -383,11 +417,11 @@ for (let s = 1; s <= LAST; s++) {
         ev.goals.push([mn, ti, sc.pid, as, 0]);
       }
       // 点球（独立随机数，不影响其余推演）：部分进球改由点球手罚进，另有少量罚丢
-      const taker = X.filter(x => x.line !== 'GK').reduce((b, x) => { const v = ((attrOf(x.pid) || {}).sho || x.r) + (/ST/.test(x.slot) ? 4 : /AM|W/.test(x.slot) ? 2 : 0) + x.r * 0.2; return v > b.v ? { x, v } : b; }, { x: null, v: -1 }).x;
+      const taker = X.filter(x => x.line !== 'GK' && x.start).reduce((b, x) => { const v = ((attrOf(x.pid) || {}).sho || x.r) + (/ST/.test(x.slot) ? 4 : /AM|W/.test(x.slot) ? 2 : 0) + x.r * 0.2; return v > b.v ? { x, v } : b; }, { x: null, v: -1 }).x;
       ev.goals.forEach(gl => { if (gl[1] === ti && taker && rnd2() < 0.07) { gl[2] = taker.pid; gl[3] = -1; gl[4] = 1; } });
       if (taker && rnd2() < 0.032) ev.pmiss.push([ti, taker.pid, rnd2() < 0.62 ? 1 : 0]);
       const press = /逼抢|压制|对抗|防守/.test(TD[teams[ti]].style || '');
-      const wC = X.map(x => (x.line === 'DF' ? 2 : /DM/.test(x.slot) ? 2.6 : x.line === 'MF' ? 1.3 : x.line === 'GK' ? 0.15 : 0.8));
+      const wC = X.map(x => (x.line === 'DF' ? 2 : /DM/.test(x.slot) ? 2.6 : x.line === 'MF' ? 1.3 : x.line === 'GK' ? 0.15 : 0.8) * x.min / 90);
       const ny = poissonSample(1.6 + (press ? 0.4 : 0));
       const yc = {};
       for (let k = 0; k < ny; k++) { const x = pick(X, wC); const mn = 5 + Math.floor(rnd() * 88); yc[x.pid] = (yc[x.pid] || 0) + 1; ev.cards.push([mn, ti, yc[x.pid] === 2 ? 1 : 0, x.pid]); }
@@ -402,16 +436,16 @@ for (let s = 1; s <= LAST; s++) {
     const pmOf = k => ev.pmiss.filter(x => x[0] === (k ? m.a : m.h));
     [0, 1].forEach(k => { const pm = pmOf(k), g = k ? m.ag : m.hg; shots[k] = Math.max(shots[k], g + 1 + pm.length); ots[k] = Math.min(shots[k], Math.max(ots[k], g + pm.filter(x => x[2]).length)); });
     const rows = sides.map(([ti, gf, ga], k) => {
-      const X = xi[ti];
+      const X = SQ[ti];
       const idx = id => X.findIndex(x => x.pid === id);
-      return ENGINE.sideStats(X.map(x => ({ slot: x.slot, line: x.line, r: x.r, attr: attrOf(x.pid) })), {
+      return ENGINE.sideStats(X.map(x => ({ slot: x.slot, line: x.line, r: x.r, attr: attrOf(x.pid), min: x.min, start: x.start })), {
         goals: ev.goals.filter(g => g[1] === ti).map(g => [idx(g[2]), g[3] >= 0 ? idx(g[3]) : -1, g[4]]),
         pmiss: pmOf(k).map(x => [idx(x[1]), x[2]]),
         cards: ev.cards.filter(c => c[1] === ti).map(c => [idx(c[3]), c[2], c[0]]),
         shots: shots[k], ot: ots[k], oppOt: ots[1 - k], gf, ga, poss: k ? 100 - poss : poss, press: /防守|逼抢|压制|摆大巴|对抗/.test(TD[teams[ti]].style || ''),
       }).map((r, q) => ({ ...r, pid: X[q].pid, rt: r.r }));
     });
-    const all = rows.flat(); const motm = all.reduce((a, b) => b.rt > a.rt ? b : a);
+    const all = rows.flat().filter(x => x.min >= 20); const motm = all.reduce((a, b) => b.rt > a.rt ? b : a);
     sides.forEach(([ti, gf, ga], k) => {
       const t = teams[ti], c = csT[t];
       c.poss += k ? 100 - poss : poss; c.sh += shots[k]; c.ot += ots[k];
@@ -420,7 +454,7 @@ for (let s = 1; s <= LAST; s++) {
       const p = gf > ga ? 3 : gf === ga ? 1 : 0; if (k) c.ap += p; else c.hp += p;
       ev.cards.filter(x => x[1] === ti).forEach(x => x[2] ? c.rc++ : c.y++);
       rows[k].forEach(x => {
-        const o = stat(s, x.pid, t); o.apps++; o.min += x.min; o.sh += x.sh; o.ot += x.ot; o.tk += x.tk; o.sv += x.sv; o.rs += x.rt; o.g += x.g; o.a += x.a; o.kp += x.kp; o.int += x.int; o.ps += x.ps; o.pc += x.pc; o.pg += x.pg; o.pm += x.pm; c.ps += x.ps; c.pc += x.pc; c.pg += x.pg; c.pm += x.pm;
+        const o = stat(s, x.pid, t); o.apps++; o.starts += x.start; o.min += x.min; o.sh += x.sh; o.ot += x.ot; o.tk += x.tk; o.sv += x.sv; o.rs += x.rt; o.g += x.g; o.a += x.a; o.kp += x.kp; o.int += x.int; o.ps += x.ps; o.pc += x.pc; o.pg += x.pg; o.pm += x.pm; c.ps += x.ps; c.pc += x.pc; c.pg += x.pg; c.pm += x.pm;
         if (ga === 0 && x.min >= 60 && (x.line === 'GK' || x.line === 'DF')) o.cs++;
       });
       ev.cards.filter(x => x[1] === ti).forEach(x => { const o = stat(s, x[3], t); x[2] ? o.r++ : o.y++; });
@@ -459,7 +493,7 @@ family.forEach(([f, c]) => { if (!P[f].nat) P[f].nat = P[c].nat; });
 const activeTeam = {}; P.forEach((p, i) => { const st = p.stints.find(x => x.ongoing); if (p.kind !== 'db' && st) activeTeam[i] = st.team; });
 OUT.players = P.map((p, i) => used.has(i) ? [p.name, p.pos, p.nat || '', p.kind === 'db' ? p.cur : '', p.kind[0], activeSet.has(i) ? 1 : 0, activeTeam[i] || '', p.kind === 'db' ? p.dbr : p.peak] : null);
 OUT.pstats = {};
-for (const s in PS) OUT.pstats[s] = Object.entries(PS[s]).map(([id, o]) => [+id, o.team, o.apps, o.min, o.g, o.a, o.y, o.r, o.sh, o.ot, o.tk, o.sv, o.cs, o.motm, Math.round(o.rs * 10), o.kp, o.int, o.ps, o.pc, o.pg, o.pm]);
+for (const s in PS) OUT.pstats[s] = Object.entries(PS[s]).map(([id, o]) => [+id, o.team, o.apps, o.min, o.g, o.a, o.y, o.r, o.sh, o.ot, o.tk, o.sv, o.cs, o.motm, Math.round(o.rs * 10), o.kp, o.int, o.ps, o.pc, o.pg, o.pm, o.starts]);
 OUT.realign = {}; for (const [ss, map] of Object.entries(REALIGN)) if (/^\d+$/.test(ss)) OUT.realign[ss] = Object.entries(map).map(([pos, team]) => [+pos, OFFICIAL[ss][+pos - 1].team, team]);
 OUT.officialStats = SITE.stats;
 OUT.transfers = transfers;
