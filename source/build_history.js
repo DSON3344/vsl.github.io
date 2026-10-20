@@ -110,6 +110,18 @@ P.forEach((p, id) => {
   }
 });
 P.forEach((p, id) => { if (p.kind === 'db') Object.keys(assign[id]).forEach(s => { if (+s < proSeason(p) && assign[id][s].prio <= 2) delete assign[id][s]; }); });
+// 用户指定的球员生涯（careers.json）：只按这里的球队和年份效力，外赛区年份不在威超出场
+const CAREERS = JSON.parse(fs.readFileSync(D + 'careers.json', 'utf8'));
+const fixedCareer = {};
+for (const [key, st] of Object.entries(CAREERS)) {
+  if (key.startsWith('_')) continue;
+  const [name, cur] = key.split('@');
+  const ids = (byName[clean(name)] || []).filter(i => cur ? P[i].kind === 'db' && P[i].cur === cur : P[i].kind !== 'db' && P[i].kind !== 'gen');
+  if (!ids.length) { console.warn('careers.json 找不到球员：', key); continue; }
+  const id = ids[0]; fixedCareer[id] = st;
+  assign[id] = {};
+  st.forEach(([team, a, b]) => { if (team.endsWith('*')) return; for (let s = a; s <= Math.min(b, LAST); s++) put(id, s, team, 4); });
+}
 
 /* ---------- 评分 ---------- */
 const ageCurve = a => -1.1 * Math.max(0, 27 - a) - 0.8 * Math.max(0, a - 31);
@@ -196,6 +208,7 @@ for (let s = 1; s <= LAST; s++) {
   const free = [];
   P.forEach((p, id) => {
     if (assign[id][s] && assign[id][s].prio >= 2) return;
+    if (fixedCareer[id]) return;
     if (p.kind === 'db') { if (s >= proSeason(p) && s < (p.join || 18)) free.push(id); }
     else if (p.kind === 'gen' && s >= p.born && s <= p.until) {
       // 球队降级后，多数球员留队踢次级联赛（这一季没有威超出场），球队升回来再一起回来
@@ -258,7 +271,15 @@ for (const [id, m] of Object.entries(seasonTeam)) {
   for (let i = 1; i < ss.length; i++) if (m[ss[i]] !== m[ss[i - 1]]) { const p = P[id]; const r = ratingAt(p, ss[i]); transfers.push([ss[i], +id, m[ss[i - 1]], m[ss[i]], valueOf(r, ageAt(p, ss[i]))]); }
 }
 // S18：资料库现队与 S17 球队不同
-P.forEach((p, id) => { if (p.kind !== 'db' || !seasonTeam[id]) return; const ss = Object.keys(seasonTeam[id]).map(Number); const last = Math.max(...ss); const from = seasonTeam[id][last]; if (from !== p.cur) transfers.push([18, id, from, p.cur, valueOf(p.dbr, p.age)]); });
+P.forEach((p, id) => { if (p.kind !== 'db' || !seasonTeam[id] || fixedCareer[id]) return; const ss = Object.keys(seasonTeam[id]).map(Number); const last = Math.max(...ss); const from = seasonTeam[id][last]; if (from !== p.cur) transfers.push([18, id, from, p.cur, valueOf(p.dbr, p.age)]); });
+// 指定生涯的球员：转会按 careers.json 的顺序生成（含外赛区球队）
+for (let i = transfers.length - 1; i >= 0; i--) if (fixedCareer[transfers[i][1]]) transfers.splice(i, 1);
+const EXT = new Set();
+for (const [id, st] of Object.entries(fixedCareer)) for (let k = 1; k < st.length; k++) {
+  const nm = t => { const e = t.endsWith('*'); const n = t.replace(/\*$/, ''); if (e) EXT.add(n); return n; };
+  const p = P[id], s = st[k][1];
+  transfers.push([s, +id, nm(st[k - 1][0]), nm(st[k][0]), valueOf(s >= 18 && p.dbr ? p.dbr : ratingAt(p, Math.min(s, LAST)), ageAt(p, s))]);
+}
 transfers.sort((a, b) => a[0] - b[0] || b[4] - a[4]);
 
 /* ---------- 推演比赛：结果服从官网名次，比分和球员数据自然产生 ---------- */
@@ -442,6 +463,7 @@ for (const s in PS) OUT.pstats[s] = Object.entries(PS[s]).map(([id, o]) => [+id,
 OUT.realign = {}; for (const [ss, map] of Object.entries(REALIGN)) if (/^\d+$/.test(ss)) OUT.realign[ss] = Object.entries(map).map(([pos, team]) => [+pos, OFFICIAL[ss][+pos - 1].team, team]);
 OUT.officialStats = SITE.stats;
 OUT.transfers = transfers;
+OUT.extClubs = [...EXT];
 OUT.officialAllTime = SITE.standings.history;
 fs.writeFileSync(D + 'hist.json', JSON.stringify(OUT));
 console.log(report.join('\n'));

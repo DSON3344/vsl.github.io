@@ -1203,7 +1203,7 @@ function openPerson(pid) {
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(pos)}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(name)}</h3>
-      <div class="btns" style="margin-top:8px">${statusChips(pid)}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${CUR_TEAM_OF[pid] ? `<span class="chip">现效力 ${esc(CUR_TEAM_OF[pid])}</span>` : (() => { const sp = spanOf(pid); return sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span><span class="chip">${SN(sp[1])} 赛季后退役</span>` : ''; })()}${familyChips(pid)}</div></div></div>
+      <div class="btns" style="margin-top:8px">${statusChips(pid)}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${CUR_TEAM_OF[pid] ? `<span class="chip">现效力 ${esc(CUR_TEAM_OF[pid])}</span>` : (() => { const sp = spanOf(pid); return sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span><span class="chip">${SN(sp[1])} 赛季后退役</span>` : ''; })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
     ${(() => { const rows = personSeasons(pid); if (!rows.length) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; return scopeTabs('pp', [{ label: '威超生涯', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...byT.map(t => ({ label: t, note: `效力 ${esc(t)} 期间`, html: statGrid(sumRows(rows.filter(r => r[1].team === t).map(r => r[1])), ENGINE.LINE(pos)) }))]); })()}
     ${careerHTML(pid)}${transferHTML(pid)}</div>`;
   if (!d.open) d.showModal();
@@ -1226,7 +1226,7 @@ function openPlayer(team, name) {
     <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${crest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}</span></div><h3>${esc(p.name)}</h3>
-      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
+      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${(() => {
       const rows = pid != null ? personSeasons(pid) : (s ? [[SEASON, s]] : []);
@@ -1370,8 +1370,14 @@ after.stats = () => {
 const TRANSFERS = (HIST.transfers || []).map(([s, pid, from, to, fee]) => ({ s, pid, from, to, fee }));
 const TR_BY_PID = {}; TRANSFERS.forEach(t => (TR_BY_PID[t.pid] = TR_BY_PID[t.pid] || []).push(t));
 const feeTxt = f => 'ⰵ' + f + 'M';
+// 外赛区球队（不在威超、没有队徽）
+const isExt = t => !TD[t];
+const ecrest = (t, n = 18) => isExt(t) ? `<span title="外赛区" style="width:${n}px;height:${n}px;flex:none;display:inline-grid;place-items:center;border:1px dashed var(--line-2);border-radius:50%;font-size:${Math.round(n * .5)}px;color:var(--fg-3)">外</span>` : crest(t, n);
+const clubCell = (t, n = 18) => isExt(t) ? `<span class="tname">${ecrest(t, n)}<span class="muted">${esc(t)} <span class="dim" style="font-size:11px">外赛区</span></span></span>` : tlink(t, n);
+// 母队：第一笔转会的出发球队，没转会过就是第一次出场的球队
+const homeClub = pid => { const l = TR_BY_PID[pid]; if (l && l.length) return l.slice().sort((a, b) => a.s - b.s)[0].from; const r = (PSEASONS[pid] || [])[0]; return r ? r[1].team : null; };
 function transferRow(t, showName = true) {
-  return `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n">${SN(t.s)}</span><span class="tname" style="gap:6px;flex-wrap:wrap">${showName ? `<button class="lnk" data-pid="${t.pid}"><b>${esc(PL[t.pid] ? PL[t.pid][0] : '')}</b></button>` : ''}${crest(t.from, 18)}<span class="dim">${esc(t.from)}</span><span class="dim">→</span>${crest(t.to, 18)}<span>${esc(t.to)}</span></span><span class="v">${feeTxt(t.fee)}</span></div>`;
+  return `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n">${SN(t.s)}</span><span class="tname" style="gap:6px;flex-wrap:wrap">${showName ? `<button class="lnk" data-pid="${t.pid}"><b>${esc(PL[t.pid] ? PL[t.pid][0] : '')}</b></button>` : ''}${ecrest(t.from, 18)}<span class="dim">${esc(t.from)}${isExt(t.from) ? '（外赛区）' : ''}</span><span class="dim">→</span>${ecrest(t.to, 18)}<span>${esc(t.to)}${isExt(t.to) ? '<span class="dim">（外赛区）</span>' : ''}</span></span><span class="v">${feeTxt(t.fee)}</span></div>`;
 }
 function transferHTML(pid) {
   const l = TR_BY_PID[pid]; if (!l || !l.length) return '';
@@ -1384,7 +1390,7 @@ function transferPanel() {
   const total = list.reduce((a, t) => a + t.fee, 0);
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer market</div><h2>转会市场</h2></div>
     <select id="trSel" aria-label="转会窗口">${seasons.map(x => `<option value="${x}" ${x === trSeason ? 'selected' : ''}>${SN(x)} 赛季前</option>`).join('')}</select></div>
-    <p class="note" style="margin:0 0 10px">${SN(trSeason)} 赛季前共 ${list.length} 笔转会，总额 ${feeTxt(total)}。威超球队之间，以及卖到威超以外球队的转会。</p>
+    <p class="note" style="margin:0 0 10px">${SN(trSeason)} 赛季前共 ${list.length} 笔转会，总额 ${feeTxt(total)}。包括威超球队之间、与外赛区及威超以外球队之间的转会。</p>
     <div class="rank-list">${list.slice(0, 30).map(t => transferRow(t)).join('')}</div>${list.length > 30 ? `<p class="note" style="margin:8px 0 0">只显示金额最高的 30 笔</p>` : ''}</div>`;
 }
 
@@ -1419,7 +1425,7 @@ function vTransfers() {
   const nm = id => PL[id] ? PL[id][0] : '';
   const cnt = {}; TRANSFERS.forEach(t => cnt[t.pid] = (cnt[t.pid] || 0) + 1);
   const jour = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
-  const spend = {}, earn = {}; TRANSFERS.forEach(t => { spend[t.to] = (spend[t.to] || 0) + t.fee; earn[t.from] = (earn[t.from] || 0) + t.fee; });
+  const spend = {}, earn = {}; TRANSFERS.forEach(t => { if (!isExt(t.to)) spend[t.to] = (spend[t.to] || 0) + t.fee; if (!isExt(t.from)) earn[t.from] = (earn[t.from] || 0) + t.fee; });
   const topSp = Object.entries(spend).sort((a, b) => b[1] - a[1])[0], topEa = Object.entries(earn).sort((a, b) => b[1] - a[1])[0];
   const bySeason = {}; TRANSFERS.forEach(t => bySeason[t.s] = (bySeason[t.s] || 0) + t.fee);
   const busiest = Object.entries(bySeason).sort((a, b) => b[1] - a[1])[0];
@@ -1435,7 +1441,7 @@ function vTransfers() {
     </tbody></table></div>${kids.length > TW.kid ? `<div style="text-align:center;margin-top:12px"><button class="btn" data-act="twKid">再显示 20 人</button></div>` : ''}
     <p class="note" style="margin:10px 0 0">潜力按年龄和现有能力估算，越年轻成长空间越大。</p></div>
   ${transferPanel()}
-  <div class="panel"><div class="ph"><div><div class="eyebrow">Record deals</div><h2>历史重磅转会</h2></div><span class="note">S02 起威超球队之间的转会</span></div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Record deals</div><h2>历史重磅转会</h2></div><span class="note">S02 起的转会，含往返外赛区</span></div>
     <div class="troph recs" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
       <div class="on"><b>${feeTxt(top[0].fee)}</b><span>转会费纪录 · ${esc(nm(top[0].pid))}</span></div>
       <div><b>${esc(topSp[0])}</b><span>引援花费最多 · ${feeTxt(topSp[1])}</span></div>
@@ -1444,7 +1450,7 @@ function vTransfers() {
       <div><b>${esc(nm(+jour[0]))}</b><span>转会次数最多 · ${jour[1]} 次</span></div>
     </div>
     <div class="tw"><table>${th([['#'], ['球员', 1], ['转会窗', 1], ['从', 1], ['到', 1], ['转会费']])}<tbody>
-    ${top.map((t, i) => `<tr><td class="pos">${i + 1}</td><td class="l"><button class="lnk" data-pid="${t.pid}"><span>${esc(nm(t.pid))}</span></button></td><td class="l mono">${SN(t.s)} 赛季前</td><td class="l">${tlink(t.from, 18)}</td><td class="l">${tlink(t.to, 18)}</td><td class="hl">${feeTxt(t.fee)}</td></tr>`).join('')}
+    ${top.map((t, i) => `<tr><td class="pos">${i + 1}</td><td class="l"><button class="lnk" data-pid="${t.pid}"><span>${esc(nm(t.pid))}</span></button></td><td class="l mono">${SN(t.s)} 赛季前</td><td class="l">${clubCell(t.from)}</td><td class="l">${clubCell(t.to)}</td><td class="hl">${feeTxt(t.fee)}</td></tr>`).join('')}
     </tbody></table></div></div>
   </section>`;
 }
