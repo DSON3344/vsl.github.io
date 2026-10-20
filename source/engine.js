@@ -434,6 +434,7 @@ const ENGINE = (() => {
 
   function randomConditions() { return { weather: pick(WEATHERS, [5, 3, 2]), slot: pick(SLOTS, [1, 1.5, 2, 3, 3, 4, 1, 0.5]) }; }
 
-  return { roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
+  return { clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
