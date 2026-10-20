@@ -1557,8 +1557,9 @@ function loreHTML(pid) {
   const L = loreOf(pid); if (!L) return '';
   const tierOf = k => Object.entries(LORE.tiers || {}).find(([t, l]) => Array.isArray(l) && l.includes(k)), tr = tierOf(LORE_KEY_OF[pid]);
   const tierChip = (LORE.goat || []).includes(LORE_KEY_OF[pid]) ? '<span class="chip gold">威超 GOAT</span>' : '';
-  const tierChip2 = tr ? `<span class="chip ${tr[0] === 'T0' ? 'gold' : ''}">威超前锋梯队 ${tr[0]}</span>` : '';
-  if (!(L.pre || L.career)) return tr ? `<div><div class="eyebrow" style="margin-bottom:8px">威超定位</div><div class="btns" style="gap:6px">${tierChip}${tierChip2}</div></div>` : '';
+  const ta = Object.entries(LORE.tiersAll || {}).find(([t, l]) => Array.isArray(l) && l.includes(LORE_KEY_OF[pid]));
+  const tierChip2 = (tr ? `<span class="chip ${tr[0] === 'T0' ? 'gold' : ''}">威超联赛梯队 ${tr[0]}</span>` : '') + (ta ? `<span class="chip ${ta[0] === 'T0' ? 'gold' : ''}">含威联赛梯队 ${ta[0]}</span>` : '');
+  if (!(L.pre || L.career)) return tr || ta ? `<div><div class="eyebrow" style="margin-bottom:8px">威超定位</div><div class="btns" style="gap:6px">${tierChip}${tierChip2}</div></div>` : '';
   const rows = personSeasons(pid), lg = sumRows(rows.map(r => r[1])), lg17 = sumRows(rows.filter(r => r[0] <= 17).map(r => r[1])), after = sumRows(rows.filter(r => r[0] > 17).map(r => r[1]));
   const pre = L.pre || {}, C = L.career || {}, cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
   const aw = awardsOfPid(pid); const nB = aw.filter(x => x[0] === '金球奖').length, nG = aw.filter(x => x[0] === '威超金手套').length;
@@ -1574,14 +1575,20 @@ function loreHTML(pid) {
   return `<div><div class="eyebrow" style="margin-bottom:8px">传奇档案</div><div class="btns" style="gap:6px;margin-bottom:10px">${gal ? `<span class="chip gold">威龙${esc(gal.title)}</span>` : ''}${tierChip}${tierChip2}${hon}</div><div class="grid g-2" style="gap:12px">${parts.join('')}</div><p class="note" style="margin:8px 0 0">“杯赛 · 洲际赛 · 其他”= 设定的生涯总数减去威联赛时代和威超联赛的数字。</p></div>`;
 }
 function goatHTML() {
-  const row = k => { const pid = LORE_PID[k]; if (pid == null) return null; const rs = personSeasons(pid), t = sumRows(rs.map(r => r[1])); const teams = [...new Set(rs.map(r => r[1].team))]; const L = LORE.players[k] || {}; const nB = awardsOfPid(pid).filter(x => x[0] === '金球奖').length + ((L.pre || {}).ballon || 0); return { k, pid, name: k.split('@')[0], teams, sp: spanOf(pid), ...t, nB }; };
-  const T = LORE.tiers || {};
-  const tierRows = ['T0', 'T1', 'T2'].map(t => ({ t, rows: (T[t] || []).map(row).filter(Boolean).sort((a, b) => (LORE.goat || []).includes(b.k) - (LORE.goat || []).includes(a.k) || b.g / Math.max(1, b.apps) - a.g / Math.max(1, a.apps)) }));
-  const lab = { T0: '顶级', T1: '一线', T2: '二线' };
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Strikers tier list</div><h2>威超前锋梯队</h2></div><span class="note">只看威超联赛 · 李奥纳、哈雷斯为 GOAT · 梯队内按场均进球排</span></div>
-    <div class="tw"><table><thead><tr><th>梯队</th><th class="l">球员</th><th class="l">效力</th><th>威超赛季</th><th>出场</th><th>进球</th><th>场均</th><th>助攻</th><th>金球奖</th></tr></thead><tbody>
-    ${tierRows.map(({ t, rows }) => rows.map((r, i) => `<tr${i === 0 && t !== 'T0' ? ' style="border-top:2px solid var(--line)"' : ''}><td class="pos" style="${t === 'T0' ? 'color:var(--gold)' : ''}">${i === 0 ? `${t}<div class="dim" style="font-size:10px;font-weight:400">${lab[t]}</div>` : ''}</td><td class="l"><button class="lnk" data-pid="${r.pid}"><b>${esc(r.name)}</b></button>${(LORE.goat || []).includes(r.k) ? ' <span class="chip gold" style="font-size:10px;padding:1px 6px">GOAT</span>' : ''}</td><td class="l"><span class="tname" style="gap:4px">${r.teams.map(x => crest(x, 16)).join('')}<span class="muted" style="font-size:12px">${r.teams.map(esc).join(' · ')}</span></span></td><td class="mono muted">${r.sp ? SN(r.sp[0]) + '–' + SN(r.sp[1]) : ''}</td><td>${r.apps}</td><td><b>${r.g}</b></td><td class="mono">${(r.g / Math.max(1, r.apps)).toFixed(2)}</td><td>${r.a}</td><td>${r.nB ? `<span style="color:var(--gold)">${r.nB}</span>` : '<span class="dim">0</span>'}</td></tr>`).join('')).join('')}
-    </tbody></table></div></div>`;
+  const row = k => { const pid = LORE_PID[k]; if (pid == null) return null; const rs = personSeasons(pid), t = sumRows(rs.map(r => r[1])); const teams = [...new Set(rs.map(r => r[1].team))]; const L = LORE.players[k] || {}, pre = L.pre || {}, C = L.career || {};
+    const nB = awardsOfPid(pid).filter(x => x[0] === '金球奖').length + (pre.ballon || 0);
+    const dbp = PID_UID[pid] ? PDB0_BY_UID[PID_UID[pid]] : null;
+    const lg17 = sumRows(rs.filter(r => r[0] <= 17).map(r => r[1])), after = t.g - lg17.g;
+    const allG = C.g != null ? C.g + after : Math.max(t.g, dbp && dbp.cG || 0);
+    return { k, pid, name: k.split('@')[0], teams, sp: spanOf(pid), ...t, nB, preG: pre.g || 0, preApps: pre.apps || 0, allG }; };
+  const goat = k => (LORE.goat || []).includes(k);
+  const table = (T, all) => { const ks = Object.keys(T).filter(t => !t.startsWith('_'));
+    const lab = { T0: '顶级', 'T0.5': '准顶级', T1: '一线', T2: '二线' };
+    return `<div class="tw"><table><thead><tr><th>梯队</th><th class="l">球员</th><th class="l">效力</th><th>威超赛季</th>${all ? '<th>威联赛进球</th><th>威超进球</th><th>全部赛事进球</th>' : '<th>出场</th><th>进球</th><th>场均</th><th>助攻</th>'}<th>金球奖</th></tr></thead><tbody>
+    ${ks.map(t => (T[t] || []).map(row).filter(Boolean).sort((a, b) => all ? b.allG - a.allG : goat(b.k) - goat(a.k) || b.g / Math.max(1, b.apps) - a.g / Math.max(1, a.apps)).map((r, i) => `<tr${i === 0 && t !== ks[0] ? ' style="border-top:2px solid var(--line)"' : ''}><td class="pos" style="${t === ks[0] ? 'color:var(--gold)' : ''}">${i === 0 ? `${t}<div class="dim" style="font-size:10px;font-weight:400">${lab[t] || ''}</div>` : ''}</td><td class="l"><button class="lnk" data-pid="${r.pid}"><b>${esc(r.name)}</b></button>${goat(r.k) ? ' <span class="chip gold" style="font-size:10px;padding:1px 6px">威超 GOAT</span>' : ''}</td><td class="l"><span class="tname" style="gap:4px">${r.teams.map(x => crest(x, 16)).join('')}<span class="muted" style="font-size:12px">${r.teams.map(esc).join(' · ')}</span></span></td><td class="mono muted">${r.sp ? SN(r.sp[0]) + '–' + SN(r.sp[1]) : ''}</td>${all ? `<td>${r.preG || '<span class="dim">–</span>'}</td><td>${r.g}</td><td><b>${r.allG}</b></td>` : `<td>${r.apps}</td><td><b>${r.g}</b></td><td class="mono">${(r.g / Math.max(1, r.apps)).toFixed(2)}</td><td>${r.a}</td>`}<td>${r.nB ? `<span style="color:var(--gold)">${r.nB}</span>` : '<span class="dim">0</span>'}</td></tr>`).join('')).join('')}
+    </tbody></table></div>`; };
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Strikers tier list</div><h2>前锋梯队</h2></div><span class="note">李奥纳、哈雷斯为威超 GOAT</span></div>
+    ${scopeTabs('tier', [{ label: '只看威超联赛', note: '梯队内按威超场均进球排。', html: table(LORE.tiers || {}, false) }, { label: '含威联赛时代', note: '威龙、威尔福特、猎豹、猛虎的老一代在威超前身威联赛就是顶级前锋，S01 起已是生涯末段。梯队内按全部赛事进球排；“全部赛事”含威联赛、威超和杯赛洲际赛。', html: table(LORE.tiersAll || {}, true) }])}</div>`;
 }
 function galacticoHTML() {
   const keyOf = n => Object.keys(LORE.players).find(k => k.split('@')[0] === n);
@@ -1791,6 +1798,8 @@ function scopeTabs(id, tabs) {
   return `<div><div class="seg" role="group" aria-label="数据范围" style="margin-bottom:10px">${tabs.map((t, i) => `<button data-pscope="${id}:${i}" aria-pressed="${i === 0}">${t.label}</button>`).join('')}</div>
     ${tabs.map((t, i) => `<div data-pscope-panel="${id}:${i}" ${i ? 'hidden' : ''}>${t.note ? `<p class="note" style="margin:0 0 8px">${t.note}</p>` : ''}${t.html}</div>`).join('')}</div>`;
 }
+document.addEventListener('click', e => { const b = e.target.closest('section.view [data-pscope]'); if (!b) return; const root = b.closest('section.view'), [id] = b.dataset.pscope.split(':');
+  root.querySelectorAll(`[data-pscope^="${id}:"]`).forEach(x => x.setAttribute('aria-pressed', x === b)); root.querySelectorAll(`[data-pscope-panel^="${id}:"]`).forEach(p => p.hidden = p.dataset.pscopePanel !== b.dataset.pscope); });
 function bindScopes(root) {
   root.querySelectorAll('[data-pscope]').forEach(b => b.addEventListener('click', () => {
     const [id] = b.dataset.pscope.split(':');

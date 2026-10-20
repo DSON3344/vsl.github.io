@@ -152,7 +152,7 @@ function arc(s, c0, c1) {
 // 第一代银河战舰：巅峰在威联赛时代，S01 起是生涯末段，能力逐季下滑
 const TWILIGHT = new Set(Object.entries(JSON.parse(fs.readFileSync(D + 'lore.json', 'utf8')).players).filter(([k, v]) => v.pre && v.span[0] === 1).map(([k]) => k.split('@')[0]));
 function ratingAt(p, s) {
-  if (p.kind === 'legend' && TWILIGHT.has(p.name) && p.stints.some(st => st.start === 1 && st.team === '威龙')) return Math.round((p.peak || 88) - 0.6 - 1.4 * (s - 1));
+  if (p.kind === 'legend' && TWILIGHT.has(p.name) && p.stints.some(st => st.start === 1)) return Math.round((p.peak || 88) - 0.6 - 1.4 * (s - 1));
   if (p.kind === 'db' && s >= proSeason(p)) return Math.round(p.dbr + ageCurve(p.age - (18 - s)) - ageCurve(p.age));
   const ss = Object.keys(assign[P.indexOf(p)] || {}).map(Number);
   const c0 = p.kind === 'gen' ? p.born : (ss.length ? Math.min(...ss) : s), c1 = p.kind === 'gen' ? p.until : (ss.length ? Math.max(...ss) : s);
@@ -511,6 +511,12 @@ function loreEnforce(key, info) {
     const free = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === t ? 0 : 1 })).filter(({ m, k }) => (tm[m.entry[0]] === t || tm[m.entry[1]] === t) && !m.side[k].includes(pid));
     if (!free.length) break; const { m, k } = free[Math.floor(lr() * free.length)];
     m.side[k].push(pid); o.apps++; o.min += 20 + Math.floor(lr() * 30); o.ps += 14; o.pc += 12; o.rs += 6.7; apps++;
+  }
+  for (let guard = 0; apps > TA && guard < 500; guard++) {
+    const s = ss.slice().sort((a, b) => PS[b][pid].apps - PS[a][pid].apps)[0], o = PS[s][pid];
+    const c = loreMine(s, pid).find(({ m }) => !m.entry[6].some(g => g[2] === pid || g[3] === pid) && !m.entry[7].some(c => c[3] === pid) && m.entry[8] !== pid);
+    if (!c) break; c.m.side[c.k].splice(c.m.side[c.k].indexOf(pid), 1);
+    const f = 1 / o.apps; ['min', 'sh', 'ot', 'tk', 'sv', 'kp', 'int', 'ps', 'pc', 'rs'].forEach(k => o[k] = k === 'rs' ? o[k] * (1 - f) : Math.round(o[k] * (1 - f))); if (o.starts > 0) o.starts--; o.apps--; apps--;
   }
   const wt = ss.map(s => Math.pow(PS[s][pid].min, 0.75) * (0.88 + lr() * 0.24)), W = wt.reduce((a, b) => a + b, 0);
   const split = tot => { const raw = wt.map(w => tot * w / W), fl = raw.map(Math.floor); let r = tot - fl.reduce((a, b) => a + b, 0); raw.map((x, i) => [x - fl[i], i]).sort((a, b) => b[0] - a[0]).slice(0, r).forEach(([, i]) => fl[i]++); return fl; };
