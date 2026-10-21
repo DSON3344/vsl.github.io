@@ -26,7 +26,7 @@ const ENGINE = (() => {
       if (p) used.add(p);
       const coord = T.coords[r.pos] || [50, 50];
       return {
-        slot: r.pos, name: p ? p.name : r.name, rating: p ? p.rating : r.rating,
+        slot: r.pos, name: p ? p.name : r.name, rating: p ? p.rating - (r.pen || 0) : r.rating,
         p: p || { name: r.name, pos: r.pos, rating: r.rating, attributes: {} },
         x: coord[0], y: coord[1], line: LINE(r.pos)
       };
@@ -125,6 +125,16 @@ const ENGINE = (() => {
   function poisson(l) { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= rnd(); } while (p > L); return k - 1; }
   function pick(arr, w) { const t = w.reduce((a, b) => a + b, 0); let r = rnd() * t; for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; } return arr[arr.length - 1]; }
 
+  // ---------- 战术打法：进攻型多进也多丢，防守型少丢也少进，反击克制控球 ----------
+  function styleFx(s, opp) {
+    s = s || ''; opp = opp || ''; let a = 0, d = 0;
+    if (/极致攻击|攻击性控球|控球进攻|三叉戟|暴力突击|双核|核心终结|边路突破|中路渗透|攻击型/.test(s)) { a += 0.035; d -= 0.02; }
+    if (/摆大巴|极致防守|稳固防守|坚固的防守|区域联防|压缩空间/.test(s)) { a -= 0.04; d += 0.055; }
+    if (/反击/.test(s)) { a += 0.01; d += 0.02; if (/控球|压制/.test(opp)) a += 0.03; }
+    if (/逼抢|压制|反抢/.test(s)) { a += 0.015; d += 0.01; if (/控球/.test(opp)) a += 0.015; }
+    if (/控球|中场控制/.test(s)) { a += 0.01; d += 0.01; }
+    return { a, d };
+  }
   // ---------- 期望进球 ----------
   // opt.L = { h: pickXI(...), a: pickXI(...) } 时按实际首发计算
   function expected(home, away, opt = {}) {
@@ -132,8 +142,9 @@ const ENGINE = (() => {
     const ch = condition(home, opt.weather, opt.slot), ca = condition(away, opt.weather, opt.slot);
     const homeAdv = opt.neutral ? 1 : 1.12, awayPen = opt.neutral ? 1 : 0.94;
     const k = 0.078;
-    let lh = 1.06 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.04 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m);
-    let la = 1.06 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.04 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m);
+    const sh = styleFx((TEAMS_DATA[home] || {}).style, (TEAMS_DATA[away] || {}).style), sa = styleFx((TEAMS_DATA[away] || {}).style, (TEAMS_DATA[home] || {}).style);
+    let lh = 1.06 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.04 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
+    let la = 1.06 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.04 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
     return { lh: Math.min(lh, 5), la: Math.min(la, 5), ch, ca, H, A };
   }
 
