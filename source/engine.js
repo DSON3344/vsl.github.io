@@ -244,7 +244,7 @@ const ENGINE = (() => {
   const PASS_W = { GK: 0.45, CB: 1.25, FB: 1.0, DM: 1.35, CM: 1.35, WM: 0.95, AM: 1.05, W: 0.75, ST: 0.55 };
   const PASS_ACC = { GK: 0.68, CB: 0.89, FB: 0.80, DM: 0.88, CM: 0.87, WM: 0.79, AM: 0.80, W: 0.76, ST: 0.71 };
   function sideStats(X, o) {
-    const rows = X.map(x => ({ slot: x.slot, line: x.line, role: roleOf(x.slot), ovr: x.r, min: x.min == null ? 90 : x.min, start: x.start == null ? 1 : x.start, sh: 0, ot: 0, tk: 0, int: 0, kp: 0, sv: 0, g: 0, a: 0, yc: 0, rc: 0, ps: 0, pc: 0, pg: 0, pm: 0 }));
+    const rows = X.map(x => ({ slot: x.slot, line: x.line, role: roleOf(x.slot), ovr: x.r, min: x.min == null ? 90 : x.min, start: x.start == null ? 1 : x.start, sh: 0, ot: 0, tk: 0, int: 0, kp: 0, sv: 0, g: 0, a: 0, yc: 0, rc: 0, ps: 0, pc: 0, pg: 0, pm: 0, da: 0, ds: 0 }));
     const att = (x, k) => (x.attr && x.attr[k]) || x.r;
     const mf = k => Math.max(0.05, rows[k].min / 90);
     o.goals.forEach(([gi, ai, pen]) => { if (gi >= 0) { rows[gi].g++; rows[gi].sh++; rows[gi].ot++; if (pen) rows[gi].pg++; } if (ai >= 0) { rows[ai].a++; rows[ai].kp++; } });
@@ -263,6 +263,11 @@ const ENGINE = (() => {
     const inW = X.map((x, k) => (x.line === 'GK' ? 0.01 : /CB/.test(x.slot) ? 3.2 : x.line === 'DF' ? 2.2 : /DM/.test(x.slot) ? 3 : x.line === 'MF' ? 1.2 : 0.3) * Math.pow(att(x, 'def') / 75, 2) * mf(k));
     const it = Math.max(3, Math.round(9 + gauss() * 2.5 + (50 - o.poss) * 0.1));
     for (let n = 0; n < it; n++) rows[X.indexOf(pick(X, inW))].int++;
+    // 过人：边锋、前腰、前锋尝试最多，成功率看盘带能力
+    rows.forEach((r, k) => { const x = X[k], sl = x.slot || ''; const base = x.line === 'GK' ? 0 : /W/.test(sl) && !/WB/.test(sl) ? 2.6 : /AM/.test(sl) ? 1.9 : /ST|CF/.test(sl) ? 1.7 : x.line === 'MF' ? 0.8 : /WB|LB|RB/.test(sl) ? 0.6 : 0.2;
+      const exp = base * Math.pow(att(x, 'dri') / 80, 2) * mf(k) * Math.max(0.6, 1 + (o.poss - 50) * 0.01);
+      r.da = Math.max(0, Math.round(exp + gauss() * Math.sqrt(exp + 0.01) * 0.7));
+      r.ds = Math.round(r.da * Math.max(0.15, Math.min(0.88, 0.4 + (att(x, 'dri') - 75) * 0.012 + gauss() * 0.08))); });
     // 传球：总数跟控球率走，按位置和传球能力分给场上球员，成功率看位置、传球能力和控球
     const tot = Math.max(180, Math.round(420 + (o.poss - 50) * 13 + gauss() * 35));
     const pw = X.map((x, k) => PASS_W[rows[k].role] * Math.pow(att(x, 'pas') / 80, 1.5) * mf(k));

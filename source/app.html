@@ -321,6 +321,7 @@ th.sorted{color:var(--accent-2)}
       <button data-go="players">球员</button>
       <button data-go="transfers">转会窗</button>
       <button data-go="cups">赛事奖项</button>
+      <button data-go="xi">最强阵容</button>
       <button data-go="history">历史总榜</button>
     </nav>
     <div class="roundchip" id="roundChip"></div>
@@ -376,13 +377,13 @@ const DIRTY = new Set();
 function save() { S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} cloudQueue(); }
 function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.fx && s.teams) return s; } catch (e) {} return null; }
 // 比赛结果压缩存储。ev: [分钟, 类型, 主/客, 球员, 助攻者/被换下者, 附加值（点球=1 / 伤停轮数 / 被扑=1 / 直红=1）]
-// pl: [射门, 射正, 抢断, 扑救, 评分×10, 分钟, 关键传球, 拦截, 传球, 成功传球, 点球进球, 罚丢点球, 是否首发]；lu: 出场名单 [球员, 位置]
+// pl: [射门, 射正, 抢断, 扑救, 评分×10, 分钟, 关键传球, 拦截, 传球, 成功传球, 点球进球, 罚丢点球, 是否首发, 尝试过人, 成功过人]；lu: 出场名单 [球员, 位置]
 const compact = res => ({
   hg: res.hg, ag: res.ag,
   ev: res.events.filter(e => e.type !== 'chance').map(e => [e.m, e.type, e.side, e.player, e.type === 'sub' ? e.out : (e.assist || 0), e.type === 'goal' ? (e.pen ? 1 : 0) : e.type === 'inj' ? e.dur : e.type === 'pmiss' ? e.saved : e.type === 'red' ? (e.straight ? 1 : 0) : 0]),
   motm: [res.motm.name, res.motm.team, res.motm.r],
   st: [res.stats.poss[0], res.stats.shots[0], res.stats.shots[1], res.stats.onTarget[0], res.stats.onTarget[1], res.stats.corners[0], res.stats.corners[1], res.stats.tackles[0], res.stats.tackles[1], res.stats.saves[0], res.stats.saves[1], res.stats.passes[0], res.stats.passes[1], res.stats.passesOk[0], res.stats.passesOk[1]],
-  pl: ['h', 'a'].map(k => res.players[k].map(r => [r.sh, r.ot, r.tk, r.sv, Math.round(r.r * 10), r.min, r.kp, r.int, r.ps, r.pc, r.pg, r.pm, r.start])),
+  pl: ['h', 'a'].map(k => res.players[k].map(r => [r.sh, r.ot, r.tk, r.sv, Math.round(r.r * 10), r.min, r.kp, r.int, r.ps, r.pc, r.pg, r.pm, r.start, r.da || 0, r.ds || 0])),
   lu: ['h', 'a'].map(k => res.players[k].map(r => [r.name, r.slot])),
 });
 // 某场比赛一方的出场名单（旧存档没有名单时按默认首发）
@@ -826,13 +827,13 @@ function table(upto = 38, fx = S.fx, teams = S.teams) {
 const posOf = (t, n) => { const i = PINFO[t + '|' + n]; return i ? i.pos : null; };
 function playerStats(fx = S.fx) {
   const P = {};
-  const get = (n, t) => P[t + '|' + n] || (P[t + '|' + n] = { name: n, team: t, g: 0, a: 0, y: 0, r: 0, apps: 0, starts: 0, min: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, line: '', pos: '' });
+  const get = (n, t) => P[t + '|' + n] || (P[t + '|' + n] = { name: n, team: t, g: 0, a: 0, y: 0, r: 0, apps: 0, starts: 0, min: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, da: 0, ds: 0, line: '', pos: '' });
   fx.forEach(rd => rd.forEach(m => {
     if (!m.r) return;
     [[m.h, 0, m.r.ag], [m.a, 1, m.r.hg]].forEach(([t, i, conc]) => luOf(m, i).forEach((x, k) => {
       const q = get(x.name, t); q.apps++; q.pos = posOf(t, x.name) || String(x.slot).replace(/-.*/, ''); q.line = ENGINE.LINE(q.pos);
       const row = m.r.pl && m.r.pl[i][k];
-      if (row) { q.sh += row[0]; q.ot += row[1]; q.tk += row[2]; q.sv += row[3]; q.rs += row[4] / 10; q.min += row[5]; q.kp += row[6] || 0; q.int += row[7] || 0; q.ps += row[8] || 0; q.pc += row[9] || 0; q.starts += row[12] == null ? 1 : row[12]; if (conc === 0 && row[5] >= 60 && (q.line === 'GK' || q.line === 'DF')) q.cs++; }
+      if (row) { q.sh += row[0]; q.ot += row[1]; q.tk += row[2]; q.sv += row[3]; q.rs += row[4] / 10; q.min += row[5]; q.kp += row[6] || 0; q.int += row[7] || 0; q.ps += row[8] || 0; q.pc += row[9] || 0; q.starts += row[12] == null ? 1 : row[12]; q.da += row[13] || 0; q.ds += row[14] || 0; if (conc === 0 && row[5] >= 60 && (q.line === 'GK' || q.line === 'DF')) q.cs++; }
       else { q.min += 90; q.starts++; }
     }));
     m.r.ev.forEach(([min, type, side, pl, as, x]) => {
@@ -846,7 +847,7 @@ function playerStats(fx = S.fx) {
   }));
   return Object.values(P).map(finishP);
 }
-const finishP = q => ({ ...q, ga: q.g + q.a, avg: q.apps ? q.rs / q.apps : 0, pacc: q.ps ? q.pc / q.ps * 100 : 0, subs: q.apps - (q.starts ?? q.apps) });
+const finishP = q => ({ ...q, ga: q.g + q.a, avg: q.apps ? q.rs / q.apps : 0, pacc: q.ps ? q.pc / q.ps * 100 : 0, dacc: q.da ? q.ds / q.da * 100 : 0, subs: q.apps - (q.starts ?? q.apps) });
 function clubStats(fx = S.fx, teams = S.teams) {
   const C = {};
   table(38, fx, teams).forEach(r => C[r.team] = { ...r, gd: r.gf - r.ga, cs: 0, poss: 0, sh: 0, ot: 0, tk: 0, sv: 0, y: 0, rc: 0, cor: 0, hp: 0, ap: 0, ps: 0, pc: 0, pg: 0, pm: 0 });
@@ -881,10 +882,10 @@ const pidOf = (team, name) => { const o = BY_TN[team + '|' + name]; if (o && o.u
 const pidTeam = pid => TEAM_OF_UID[PID_UID[pid]] || null;
 const plink = (team, name, pid) => { const id = pid != null ? pid : pidOf(team, name); return id != null ? `data-pid="${id}"` : `data-player="${esc(team)}|${esc(name)}"`; };
 const SN = s => 'S' + String(s).padStart(2, '0');
-function rowObj(r) { const [pid, team, apps, min, g, a, y, rc, sh, ot, tk, sv, cs, motm, rs10, kp = 0, int = 0, ps = 0, pc = 0, pg = 0, pm = 0, starts = apps] = r; const p = PL[pid]; return finishP({ pid, name: p[0], pos: p[1], line: ENGINE.LINE(p[1]), team, apps, starts, min, g, a, y, r: rc, sh, ot, tk, sv, cs, motm, rs: rs10 / 10, kp, int, ps, pc, pg, pm }); }
+function rowObj(r) { const [pid, team, apps, min, g, a, y, rc, sh, ot, tk, sv, cs, motm, rs10, kp = 0, int = 0, ps = 0, pc = 0, pg = 0, pm = 0, starts = apps, da = 0, ds = 0] = r; const p = PL[pid]; return finishP({ pid, name: p[0], pos: p[1], line: ENGINE.LINE(p[1]), team, apps, starts, min, g, a, y, r: rc, sh, ot, tk, sv, cs, motm, rs: rs10 / 10, kp, int, ps, pc, pg, pm, da, ds }); }
 const HPS = {};
 const liveStats = () => playerStats().map(p => ({ ...p, pid: pidOf(p.team, p.name) }));
-const SUMF = ['apps', 'starts', 'min', 'g', 'a', 'y', 'r', 'sh', 'ot', 'tk', 'sv', 'cs', 'motm', 'rs', 'kp', 'int', 'ps', 'pc', 'pg', 'pm'];
+const SUMF = ['apps', 'starts', 'min', 'g', 'a', 'y', 'r', 'sh', 'ot', 'tk', 'sv', 'cs', 'motm', 'rs', 'kp', 'int', 'ps', 'pc', 'pg', 'pm', 'da', 'ds'];
 const sumRows = rows => { const o = Object.fromEntries(SUMF.map(f => [f, 0])); rows.forEach(r => SUMF.forEach(f => o[f] += r[f] || 0)); return finishP(o); };
 function statsFor(season) {
   if (season === 'live') return liveStats();
@@ -937,7 +938,7 @@ function makeArchive() {
     s: SEASON, teams: S.teams.slice(), promoted: (S.promoted || []).slice(),
     table: tb.map(r => ({ team: r.team, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.pts })),
     rounds, club, xi,
-    ps: ps.map(p => [p.name, p.team, p.apps, p.min, p.g, p.a, p.y, p.r, p.sh, p.ot, p.tk, p.sv, p.cs, p.motm, Math.round(p.rs * 10), p.kp, p.int, p.ps, p.pc, p.pg, p.pm, p.starts, (BY_TN[p.team + '|' + p.name] || {}).uid || '']),
+    ps: ps.map(p => [p.name, p.team, p.apps, p.min, p.g, p.a, p.y, p.r, p.sh, p.ot, p.tk, p.sv, p.cs, p.motm, Math.round(p.rs * 10), p.kp, p.int, p.ps, p.pc, p.pg, p.pm, p.starts, (BY_TN[p.team + '|' + p.name] || {}).uid || '', p.da || 0, p.ds || 0]),
     xiUid: Object.fromEntries(S.teams.map(t => [t, ENGINE.lineup(t).xi.map(x => (BY_TN[t + '|' + x.name] || {}).uid || '')])),
   };
 }
@@ -952,7 +953,7 @@ function registerArchive(A) {
     rounds: A.rounds.map(rd => rd.map(m => { const th = T[m[0]], ta = T[m[1]], tm = x => x ? ta : th; return [m[0], m[1], m[2], m[3], m[4], m[5], m[6].map(g => [g[0], g[1], pid(tm(g[1]), g[2]), g[3] ? pid(tm(g[1]), g[3]) : -1, g[4]]), m[7].map(c => [c[0], c[1], c[2], pid(tm(c[1]), c[3])]), pid(m[8][1], m[8][0]), m[9], m[10], m[11]]; })),
   };
   delete AWARD_CACHE[s];
-  HPS[s] = A.ps.map(r => rowObj([pidFor(r[1], r[0], '', 0, r[22] || UM[r[1] + '|' + r[0]]), ...r.slice(1, 22)]));
+  HPS[s] = A.ps.map(r => rowObj([pidFor(r[1], r[0], '', 0, r[22] || UM[r[1] + '|' + r[0]]), ...r.slice(1, 22), r[23] || 0, r[24] || 0]));
   if (!SEASONS.includes(s)) SEASONS.push(s);
   SEASONS.sort((a, b) => a - b);
   Object.keys(PSEASONS).forEach(k => PSEASONS[k] = PSEASONS[k].filter(x => x[0] !== s));
@@ -1025,7 +1026,7 @@ function zone(i, n = 20) { return i < 4 ? 'z1' : i < 6 ? 'z2' : i < 7 ? 'z3' : i
 const ZONE_LEGEND = `<div class="legend"><span style="--c:var(--z1)">全联冠</span><span style="--c:var(--z2)">全联杯</span><span style="--c:var(--z3)">全协联</span><span style="--c:var(--zr)">降级</span></div>`;
 
 /* ---------- Router ---------- */
-const VIEWS = ['overview', 'table', 'stats', 'match', 'teams', 'players', 'transfers', 'cups', 'history'];
+const VIEWS = ['overview', 'table', 'stats', 'match', 'teams', 'players', 'transfers', 'cups', 'xi', 'history'];
 let view = 'overview', viewArg = null;
 function go(v, arg = null, push = true) {
   if (!VIEWS.includes(v)) v = 'overview';
@@ -1040,7 +1041,7 @@ function render() {
   const app = $('#app');
   const nr = nextRound();
   $('#roundChip').innerHTML = nr < 0 ? `S${SEASON} · <b>已完赛</b>` : `S${SEASON} · 第 <b>${String(nr + 1).padStart(2, '0')}</b> / 38 轮`;
-  app.innerHTML = ({ overview: vOverview, table: vTable, stats: vStats, match: vMatch, teams: vTeams, players: vPlayers, transfers: vTransfers, cups: vCups, history: vHistory })[view]();
+  app.innerHTML = ({ overview: vOverview, table: vTable, stats: vStats, match: vMatch, teams: vTeams, players: vPlayers, transfers: vTransfers, cups: vCups, xi: vXI, history: vHistory })[view]();
   after[view] && after[view]();
 }
 const after = {};
@@ -1123,7 +1124,7 @@ function newsItems() {
   const add = (ri, tag, cls, html, pr = 0) => items.push({ ri, tag, cls, html, pr });
   const H2 = coachHistory();
   // 休赛期
-  H2.stints.filter(x => x.s0 === SEASON && x.r0 === 0 && SEASON > 1).forEach(x => { const prev = H2.stints.find(y => y.team === x.team && y.s1 === SEASON - 1 && y.r1 === 38); const C = COACH_REG[x.id], T = coachTactics(x.id); add(-1, '换帅', 'gold', `${tm(x.team)} 任命 <b>${esc(C.name)}</b> 为新主帅（${esc(T.style)} · ${esc(T.form)}）${prev ? `，前任 ${esc(COACH_REG[prev.id].name)} ${esc(prev.out)}` : ''}`, 3); });
+  H2.stints.filter(x => x.s0 === SEASON && x.r0 === 0 && SEASON > 1).forEach(x => { const prev = H2.stints.find(y => y.team === x.team && y.s1 === SEASON - 1 && y.r1 === 38); const C = COACH_REG[x.id], T = tacFor(x.team, x.id); add(-1, '换帅', 'gold', `${tm(x.team)} 任命 <b>${esc(C.name)}</b> 为新主帅（${esc(T.style)} · ${esc(T.form)}）${prev ? `，前任 ${esc(COACH_REG[prev.id].name)} ${esc(prev.out)}` : ''}`, 3); });
   if (SEASON <= 18 && SEASON > 1) {
     S.teams.forEach(t => { const M2 = movesOf(t, SEASON); M2.ins.forEach(x => { const o = BY_TN[t + '|' + x.name]; if (o && o.rating >= 87) add(-1, '转会', '', `${pl(t, x.name)}（${o.rating}）${x.from ? `从 ${tm(x.from)} ` : ''}加盟 ${tm(t)}`, 2); });
       M2.ret.forEach(x => { if ((PL[x.pid] || [])[7] >= 88) add(-1, '退役', '', `${esc(x.name)} 已在上季结束后挂靴，告别 ${tm(t)}`, 2); }); });
@@ -1808,6 +1809,11 @@ function awardsOf(s) {
   const mvpVotes = voteShares(pick(rows, p => base(p) + (p.team === champ ? 2 : 0)).slice(0, 6), p => base(p) + (p.team === champ ? 2 : 0), 3);
   const mvp = mvpVotes[0];
   const goal = bestGoalOf(s);
+  const defSc = p => p.avg * 10 + p.cs * 0.35 + p.tk * 0.03 + p.int * 0.04 + p.g * 0.3 + p.a * 0.15 + (p.team === champ ? 1.5 : 0);
+  const defVotes = voteShares(pick(rows.filter(p => p.line === 'DF'), defSc).slice(0, 5), defSc, 2.5), def = defVotes[0] || null;
+  const wsc = p => p._w;
+  const worldPool = rows.map(p => ({ ...p, _w: bsc(p) + bonus(p.team) * 0.4 })).concat(extRowsFor(s).filter(p => p.apps >= 20).map(p => ({ ...p, _w: bsc(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + (extLeagueChamp[p.team] ? 2.5 : 0) + bonus(p.team) * 0.4 })));
+  const worldVotes = voteShares(pick(worldPool, wsc).slice(0, 8), wsc, 6), world = worldVotes[0] || null;
   const boot = pick((HPS[s] || []), p => p.g * 1000 - p.apps)[0];
   const assist = pick((HPS[s] || []), p => p.a * 1000 - p.apps)[0];
   const fg = loreAward('glove', s); const glove = (fg != null && rows.find(p => p.pid === fg)) || pick(rows.filter(p => p.line === 'GK'), p => p.cs * 100 + p.avg)[0];
@@ -1815,19 +1821,19 @@ function awardsOf(s) {
   const used = new Set(), xi = [];
   const take = (f, n) => pick(rows.filter(p => !used.has(p.pid) && f(p)), base).slice(0, n).forEach(p => { used.add(p.pid); xi.push(p); });
   take(p => p.line === 'GK', 1); take(p => /CB/.test(p.pos), 2); take(p => /LB|RB|WB/.test(p.pos), 2); take(p => p.line === 'MF', 3); take(p => p.line === 'FW', 3);
-  return (AWARD_CACHE[s] = { ballon, ballonVotes, mvp, mvpVotes, goal, boot, assist, glove, young, xi });
+  return (AWARD_CACHE[s] = { ballon, ballonVotes, mvp, mvpVotes, goal, def, defVotes, world, worldVotes, boot, assist, glove, young, xi });
 }
-const AWARD_NAMES = { ballon: '金球奖', goal: '最佳进球', mvp: '威超最佳球员', boot: '威超金靴', assist: '威超助攻王', glove: '威超金手套', young: '金童奖', xi: '年度最佳阵容' };
+const AWARD_NAMES = { ballon: '金球奖', world: '世界足球先生', def: '铁卫奖', goal: '最佳进球', mvp: '威超最佳球员', boot: '威超金靴', assist: '威超助攻王', glove: '威超金手套', young: '金童奖', xi: '年度最佳阵容' };
 function awardsOfPid(pid, uid) {
   const out = [], K = pid != null ? 'p' + pid : 'u' + uid; const is = p => p && akey(p) === K;
-  SEASONS.forEach(s => { const A = awardsOf(s); if (!A) return; if (is(A.ballon[0])) out.push(['金球奖', s]); if (is(A.ballon[1])) out.push(['金球奖亚军', s]); if (is(A.ballon[2])) out.push(['金球奖季军', s]); ['mvp', 'boot', 'assist', 'glove', 'young'].forEach(k => { if (is(A[k])) out.push([AWARD_NAMES[k], s]); }); if (A.xi.some(is)) out.push(['年度最佳阵容', s]); if (A.goal && A.goal[0] && A.goal[0].pid === pid) out.push(['最佳进球', s]); });
+  SEASONS.forEach(s => { const A = awardsOf(s); if (!A) return; if (is(A.ballon[0])) out.push(['金球奖', s]); if (is(A.ballon[1])) out.push(['金球奖亚军', s]); if (is(A.ballon[2])) out.push(['金球奖季军', s]); ['world', 'mvp', 'boot', 'assist', 'def', 'glove', 'young'].forEach(k => { if (is(A[k])) out.push([AWARD_NAMES[k], s]); }); if (A.xi.some(is)) out.push(['年度最佳阵容', s]); if (A.goal && A.goal[0] && A.goal[0].pid === pid) out.push(['最佳进球', s]); });
   return out;
 }
 function awardChips(pid, uid) {
   if (pid == null && !uid) return '';
   const l = awardsOfPid(pid, uid); if (!l.length) return '';
   const by = {}; l.forEach(([k, s]) => (by[k] = by[k] || []).push(s));
-  const order = ['金球奖', '金球奖亚军', '金球奖季军', '威超最佳球员', '最佳进球', '威超金靴', '威超助攻王', '威超金手套', '金童奖', '年度最佳阵容'];
+  const order = ['金球奖', '金球奖亚军', '金球奖季军', '世界足球先生', '威超最佳球员', '最佳进球', '铁卫奖', '威超金靴', '威超助攻王', '威超金手套', '金童奖', '年度最佳阵容'];
   return `<div><div class="eyebrow" style="margin-bottom:8px">个人荣誉</div><div class="btns" style="gap:6px">${order.filter(k => by[k]).map(k => `<span class="chip ${k === '金球奖' ? 'gold' : ''}" title="${by[k].map(SN).join('、')}">${k}${by[k].length > 1 ? ' ×' + by[k].length : ''} <span class="dim" style="font-size:10.5px">${by[k].map(SN).join(' ')}</span></span>`).join('')}</div></div>`;
 }
 function awardsHTML(s) {
@@ -1839,6 +1845,8 @@ function awardsHTML(s) {
   return `<div class="grid g-2" style="align-items:start">
     <div><div class="eyebrow" style="margin-bottom:8px">金球奖 · 得票率</div>${voteList((A.ballonVotes || A.ballon).slice(0, 8), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)}`)}
       <div class="eyebrow" style="margin:16px 0 8px">威超 MVP · 得票率</div>${voteList((A.mvpVotes || [A.mvp]).filter(Boolean).slice(0, 5), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)} 分`)}
+      ${A.worldVotes && A.worldVotes.length ? `<div class="eyebrow" style="margin:16px 0 8px">世界足球先生 · 得票率（与外赛区球员同场竞争）</div>${voteList(A.worldVotes.slice(0, 5), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)}`)}` : ''}
+      ${A.defVotes && A.defVotes.length ? `<div class="eyebrow" style="margin:16px 0 8px">铁卫奖（威超最佳后卫）· 得票率</div>${voteList(A.defVotes.slice(0, 5), p => `${p.pos} · ${p.cs} 场零封 · ${p.tk} 抢断 · ${p.int} 拦截 · ${p.avg.toFixed(2)}`)}` : ''}
       ${A.goal ? `<div class="eyebrow" style="margin:16px 0 8px">最佳进球 · 球迷投票</div><div class="rank-list">${A.goal.map((g, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span><button class="lnk" data-pid="${g.pid}"><b>${esc(g.name)}</b></button> <span class="sub">${esc(g.team)} · 第 ${g.ri + 1} 轮对阵 ${esc(g.opp)} 第 ${Math.round(g.min)} 分钟，${esc(g.desc)}（${g.score}）</span></span><span class="v mono" style="font-size:12px;white-space:nowrap">${bar(g.pct)}</span></div>`).join('')}</div>` : ''}
       <div class="rank-list" style="margin-top:16px">${row('金靴', A.boot, A.boot && A.boot.g + ' 球')}${row('助攻王', A.assist, A.assist && A.assist.a + ' 次')}${row('金手套', A.glove, A.glove && A.glove.cs + ' 场零封')}${row('金童奖', A.young, A.young ? ageAtSeason(A.young.pid, s) + ' 岁' : '')}</div></div>
     <div><div class="eyebrow" style="margin-bottom:8px">年度最佳阵容</div><div class="rank-list">${A.xi.map(p => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(p.pos)}</span>${who(p)}<span class="v mono" style="font-size:12px">${p.avg.toFixed(2)}</span></div>`).join('')}</div></div></div>`;
@@ -1888,7 +1896,7 @@ function vCups() {
 }
 const LEAGUE_SHORT_OF = t => { const L = EXT_LEAGUES.find(L => L.clubs.some(c => c[0] === t)); return L ? L.short : '外赛区'; };
 after.cups = () => { const c = $('#cupSel'); c && c.addEventListener('change', e => { cupSeason = +e.target.value; render(); }); };
-const TROPHIES = ['威超冠军', '世联赛冠军', '全联冠', '全联杯', '全协联', '威联赛冠军', '威联赛杯', '社区杯'];
+const TROPHIES = ['威超冠军', '世联赛冠军', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯'];
 /* ---------- 主教练：每季开局、半程（第 19 轮后）和季末按成绩换帅 ----------
    全由已存档的赛果推算（同样的赛果永远得到同样的换帅），不需要额外存档 */
 const COACH_REG = {};
@@ -1927,7 +1935,7 @@ function coachHistory() {
     const avail = pool.filter(c => s >= c.from && s <= c.to && !busy(c.id) && !stints.some(x => x.id === c.id && x.team === t && x.s1 >= s - 3));
     const want = clubBaseApprox(t), rnd = seeded('hire|' + t + '|' + s + '|' + r);
     let best = null, bv = -1e9;
-    avail.forEach(c => { const C = COACH_REG[c.id]; const v = C.rep - Math.abs(C.rep - want - 4) * 0.6 + (C.clubs.has(t) ? 7 : 0) + rnd() * 6; if (v > bv) { bv = v; best = c.id; } });
+    avail.forEach(c => { const C = COACH_REG[c.id]; const Tt = TRIDENT.has(t) ? coachTactics(c.id) : null; const v = C.rep - Math.abs(C.rep - want - 4) * 0.6 + (C.clubs.has(t) ? 7 : 0) + (Tt && isTrident(Tt.form) ? 5 : 0) + rnd() * 6; if (v > bv) { bv = v; best = c.id; } });
     if (!best || bv < want - 12 || rnd() < 0.35) best = genCoach(t, s, r);
     cur[t] = { id: best, team: t, s0: s, r0: r, why };
     stints.push(cur[t]);
@@ -1972,7 +1980,7 @@ function coachPanel(t) {
   const H2 = coachHistory(), L = H2.stints.filter(x => x.team === t).slice().reverse();
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Managers</div><h2>历任主帅</h2></div><span class="note">执教能力影响球队表现，影响力带动士气；半程排名太差或季末降级、低于预期会换帅</span></div>
     <div class="tw"><table><thead><tr><th class="l">主帅</th><th class="l">打法 · 阵型</th><th>能力</th><th>影响力</th><th class="l">任期</th><th>胜</th><th>平</th><th>负</th><th>胜率</th><th class="l">威超冠军</th><th class="l">离任</th></tr></thead><tbody>
-    ${L.map(st => { const C = COACH_REG[st.id], R = coachRecord(st), n = R.w + R.d + R.l; return `<tr><td class="l">${C.pid != null ? `<button class="lnk" data-pid="${C.pid}"><b>${esc(C.name)}</b></button>` : `<b>${esc(C.name)}</b>`} <span class="dim" style="font-size:11px">${esc(C.kind)}${C.nat ? ' · ' + esc(C.nat) : ''}</span></td><td class="l muted" style="font-size:12px">${(() => { const X = coachTactics(st.id); return esc(X.style) + ' · ' + esc(X.form); })()}</td><td>${C.rep}</td><td>${C.infl}</td><td class="l mono" style="font-size:12px">${stintTxt(st)}</td><td>${R.w}</td><td>${R.d}</td><td>${R.l}</td><td class="muted">${n ? Math.round(R.w / n * 100) + '%' : '–'}</td><td class="l">${R.titles.length ? `<span style="color:var(--gold)">${R.titles.map(SN).join(' ')}</span>` : '<span class="dim">–</span>'}</td><td class="l muted" style="font-size:12px">${st.out ? esc(st.out) : '<span style="color:var(--win)">在任</span>'}</td></tr>`; }).join('')}
+    ${L.map(st => { const C = COACH_REG[st.id], R = coachRecord(st), n = R.w + R.d + R.l; return `<tr><td class="l">${C.pid != null ? `<button class="lnk" data-pid="${C.pid}"><b>${esc(C.name)}</b></button>` : `<b>${esc(C.name)}</b>`} <span class="dim" style="font-size:11px">${esc(C.kind)}${C.nat ? ' · ' + esc(C.nat) : ''}</span></td><td class="l muted" style="font-size:12px">${(() => { const X = tacFor(t, st.id); return esc(X.style) + ' · ' + esc(X.form); })()}</td><td>${C.rep}</td><td>${C.infl}</td><td class="l mono" style="font-size:12px">${stintTxt(st)}</td><td>${R.w}</td><td>${R.d}</td><td>${R.l}</td><td class="muted">${n ? Math.round(R.w / n * 100) + '%' : '–'}</td><td class="l">${R.titles.length ? `<span style="color:var(--gold)">${R.titles.map(SN).join(' ')}</span>` : '<span class="dim">–</span>'}</td><td class="l muted" style="font-size:12px">${st.out ? esc(st.out) : '<span style="color:var(--win)">在任</span>'}</td></tr>`; }).join('')}
     </tbody></table></div></div>`;
 }
 function coachChangesHTML(s) {
@@ -2053,12 +2061,22 @@ function reslot(t, form) {
   const r = bestXI(t, slots); if (!r || r.length < 11) return;
   TD[t].roster = r; if (F) TD[t].coords = F.coords;
 }
+// 传统上偏爱进攻三叉戟的球队：主帅的阵型没有三名前锋时改用三前锋阵型，防守型打法改成进攻打法
+const TRIDENT = new Set(['威龙', '猎豹', '猛龙', '威尔福特', '罗联']);
+const isTrident = f => FORMS[f] && FORMS[f].slots.filter(x => ENGINE.LINE(x) === 'FW').length >= 3;
+function tacFor(t, id) {
+  const C = coachTactics(id); if (!C) return null;
+  if (!TRIDENT.has(t)) return { style: C.style, form: C.form };
+  const form = isTrident(C.form) ? C.form : (/^3/.test(C.form) && FORMS['3-4-3'] ? '3-4-3' : '4-3-3');
+  const style = /摆大巴|极致防守|稳固防守|坚固的防守|区域联防|压缩空间/.test(C.style) ? '三叉戟齐飞' : C.style;
+  return { style, form };
+}
 function ensureTactics() {
   if (typeof SEASONS === 'undefined' || !S || !S.fx) return;
   const H2 = coachHistory(), key = H2.key + '|' + GROWN + '|' + MOD_VER_SEASON;
   if (key === TAC_KEY) return; TAC_KEY = key;
   Object.keys(TD).forEach(t => {
-    const c = H2.cur[t], C = c && coachTactics(c.id);
+    const c = H2.cur[t], C = c && tacFor(t, c.id);
     if (C) { TD[t].style = C.style; TD[t].form = C.form; }
     if (C && C.form !== (TD[t].formNow || FORM_OF0[t])) { reslot(t, C.form); TD[t].formNow = C.form; }
     else reslot(t, null);
@@ -2199,7 +2217,7 @@ const ATTR = { spd: '速度', sho: '射门', pas: '传球', dri: '盘带', def: 
 function statGrid(o, line) {
   if (!o || !o.apps) return '<div class="empty">没有出场记录</div>';
   const cells = [[o.apps, '出场'], [o.starts ?? o.apps, '首发'], [o.min, '出场分钟'], [o.avg.toFixed(2), '场均评分'], [o.motm, '全场最佳'], [o.g, '进球'], [o.a, '助攻'], [o.pg || 0, '点球进球'],
-    [o.sh, '射门'], [o.ot, '射正'], [o.ps || 0, '传球'], [o.pc || 0, '成功传球'], [o.ps ? o.pacc.toFixed(1) + '%' : '–', '传球成功率'], [o.kp || 0, '关键传球'], [o.tk, '抢断'], [o.int || 0, '拦截'],
+    [o.sh, '射门'], [o.ot, '射正'], [o.ps || 0, '传球'], [o.pc || 0, '成功传球'], [o.ps ? o.pacc.toFixed(1) + '%' : '–', '传球成功率'], [o.kp || 0, '关键传球'], [o.ds || 0, '成功过人'], [o.da || 0, '尝试过人'], [o.da ? (o.ds / o.da * 100).toFixed(1) + '%' : '–', '过人成功率'], [o.tk, '抢断'], [o.int || 0, '拦截'],
     ...(line === 'GK' ? [[o.sv, '扑救']] : []), ...(line === 'GK' || line === 'DF' ? [[o.cs, '零封']] : []), [o.y, '黄牌'], [o.r, '红牌']];
   if (o.pm) cells.splice(8, 0, [o.pm, '罚丢点球']);
   return `<div class="stats3 s4">${cells.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>`;
@@ -2370,6 +2388,9 @@ const PCATS = [
   { k: 'pc', zh: '成功传球', en: 'Passes completed', ctx: [['ps', '传球'], ['pacc', '成功率']] },
   { k: 'pacc', zh: '传球成功率', en: 'Pass accuracy', fmt: v => v.toFixed(1) + '%', minPass: true, ctx: [['ps', '传球'], ['pc', '成功传球']] },
   { k: 'pg', zh: '点球进球', en: 'Penalty goals', ctx: [['pm', '罚丢'], ['g', '总进球']] },
+  { k: 'ds', zh: '成功过人', en: 'Successful dribbles', ctx: [['da', '尝试过人'], ['dacc', '成功率']] },
+  { k: 'da', zh: '尝试过人', en: 'Dribbles attempted', ctx: [['ds', '成功过人'], ['dacc', '成功率']] },
+  { k: 'dacc', zh: '过人成功率', en: 'Dribble success', fmt: v => v.toFixed(1) + '%', minDrib: true, ctx: [['da', '尝试'], ['ds', '成功']] },
   { k: 'tk', zh: '抢断', en: 'Tackles', ctx: [['int', '拦截']] },
   { k: 'int', zh: '拦截', en: 'Interceptions', ctx: [['tk', '抢断']] },
   { k: 'motm', zh: '全场最佳', en: 'Player of the match', ctx: [['avg', '评分']] },
@@ -2404,7 +2425,7 @@ let SM = { mode: 'player', season: 'live', cat: null, team: '', line: '', limit:
 function minAppsFor(season) { return season === 'live' ? Math.max(1, Math.ceil(playedRounds() * 0.4)) : season === 'all' ? 60 : 15; }
 function rankPlayers(cat, ps, f = {}) {
   const minApps = minAppsFor(SM.season);
-  let l = ps.filter(p => (!cat.only || p.line === cat.only) && (!f.team || p.team === f.team || (p.teams && p.teams.includes(f.team))) && (!f.line || p.line === f.line) && (cat.minApps ? p.apps >= minApps : cat.minPass ? p.apps >= minApps && p.ps >= minApps * 20 : p[cat.k] > 0));
+  let l = ps.filter(p => (!cat.only || p.line === cat.only) && (!f.team || p.team === f.team || (p.teams && p.teams.includes(f.team))) && (!f.line || p.line === f.line) && (cat.minApps ? p.apps >= minApps : cat.minPass ? p.apps >= minApps && p.ps >= minApps * 20 : cat.minDrib ? p.apps >= minApps && p.da >= minApps * 1.5 : p[cat.k] > 0));
   l.sort((x, y) => y[cat.k] - x[cat.k] || x.min - y.min || x.name.localeCompare(y.name, 'zh'));
   let rk = 0; l.forEach((p, i) => { if (i === 0 || p[cat.k] !== l[i - 1][cat.k]) rk = i + 1; p.rk = rk; });
   return l;
@@ -2618,6 +2639,75 @@ function vTransfers() {
 }
 let histSort = '威超冠军';
 after.transfers = () => { const t = $('#trSel'); t && t.addEventListener('change', e => { trSeason = +e.target.value; render(); }); };
+/* ---------- 个人荣誉榜 ---------- */
+const HON_COLS = [['ballon', '金球奖', 10], ['world', '世界足球先生', 8], ['mvp', '威超MVP', 6], ['boot', '金靴', 4], ['assist', '助攻王', 3], ['def', '铁卫奖', 3], ['glove', '金手套', 3], ['young', '金童奖', 2], ['goal', '最佳进球', 2], ['xi', '最佳阵容', 1]];
+let honSort = 'score';
+function honourBoard() {
+  const B = {};
+  const add = (p, k) => { if (!p) return; const key = p.pid != null ? 'p' + p.pid : p.team + '|' + p.name; const o = B[key] || (B[key] = { pid: p.pid, name: p.name, team: p.team, teams: new Set(), score: 0 }); o[k] = (o[k] || 0) + 1; o.teams.add(p.team); o.score += HON_COLS.find(c => c[0] === k)[2]; };
+  SEASONS.forEach(s => { const A = awardsOf(s); if (!A) return; add(A.ballon[0], 'ballon'); add(A.world, 'world'); add(A.mvp, 'mvp'); add(A.boot, 'boot'); add(A.assist, 'assist'); add(A.def, 'def'); add(A.glove, 'glove'); add(A.young, 'young'); if (A.goal && A.goal[0]) add({ pid: A.goal[0].pid, name: A.goal[0].name, team: A.goal[0].team }, 'goal'); A.xi.forEach(p => add(p, 'xi')); });
+  const L = Object.values(B).sort((a, b) => (b[honSort] || 0) - (a[honSort] || 0) || b.score - a.score).slice(0, 40);
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Individual honours</div><h2>个人荣誉榜</h2></div><span class="note">点表头按该奖项排序 · 总分：金球 10、世界足球先生 8、MVP 6、金靴 4、助攻王/铁卫/金手套 3、金童/最佳进球 2、最佳阵容 1</span></div>
+    ${L.length ? `<div class="tw"><table><thead><tr><th>#</th><th class="l">球员</th><th class="l">效力</th>${HON_COLS.map(([k, n]) => `<th><button class="lnk" data-honsort="${k}" style="${honSort === k ? 'color:var(--accent-2)' : ''}">${n}</button></th>`).join('')}<th><button class="lnk" data-honsort="score" style="${honSort === 'score' ? 'color:var(--accent-2)' : ''}">总分</button></th></tr></thead><tbody>
+    ${L.map((o, i) => `<tr><td class="pos">${i + 1}</td><td class="l">${o.pid != null ? `<button class="lnk" data-pid="${o.pid}"><b>${esc(o.name)}</b></button>` : `<b>${esc(o.name)}</b>`}</td><td class="l"><span class="tname" style="gap:3px">${[...o.teams].map(t => TD[t] ? crest(t, 16) : ecrest(t, 16)).join('')}</span></td>${HON_COLS.map(([k]) => `<td class="${o[k] ? '' : 'dim'}" ${o[k] && (k === 'ballon' || k === 'world') ? 'style="color:var(--gold)"' : ''}>${o[k] || 0}</td>`).join('')}<td class="pts">${o.score}</td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="empty">踢完第一个赛季后这里会出现个人荣誉榜</div>'}</div>`;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-honsort]'); if (!b) return; honSort = b.dataset.honsort; render(); });
+/* ---------- 最强阵容：现役最佳（威超 / 全球）、俱乐部史上最强、国家队最强 ---------- */
+let XIF = { mode: 'cur', team: '威龙', nat: '', form: '4-3-3' };
+function bestXIFrom(cands, slots) {
+  const used = new Set(), pick = new Array(slots.length).fill(null);
+  slots.map((sl, i) => ({ sl, i })).sort((a, b) => (b.sl === 'GK') - (a.sl === 'GK')).forEach(({ sl, i }) => { let bp = null, bv = -1e9; cands.forEach(p => { if (used.has(p)) return; const v = slotVal(sl, p); if (v > bv) { bv = v; bp = p; } }); if (bp) { used.add(bp); pick[i] = bp; } });
+  for (let it = 0; it < 40; it++) { let gain = 0, move = null;
+    slots.forEach((sl, i) => { const cur = pick[i] ? slotVal(sl, pick[i]) : -1e9;
+      cands.forEach(p => { if (used.has(p)) return; const g = slotVal(sl, p) - cur; if (g > gain) { gain = g; move = () => { used.delete(pick[i]); used.add(p); pick[i] = p; }; } });
+      slots.forEach((sl2, j) => { if (j <= i || !pick[i] || !pick[j]) return; const g = slotVal(sl, pick[j]) + slotVal(sl2, pick[i]) - cur - slotVal(sl2, pick[j]); if (g > gain) { gain = g; move = () => { const x = pick[i]; pick[i] = pick[j]; pick[j] = x; }; } }); });
+    if (!move || gain < 0.01) break; move(); }
+  const bench = cands.filter(p => !used.has(p)).sort((a, b) => b.rating - a.rating).slice(0, 7);
+  return { xi: slots.map((sl, i) => pick[i] ? { ...pick[i], slot: sl } : null).filter(Boolean), bench };
+}
+function clubAllTime(t) {
+  const M = {}, add = (key, o) => { const c = M[key]; if (!c || o.rating > c.rating) M[key] = { ...o, seasons: (c ? c.seasons : 0) + 1 }; else c.seasons++; };
+  for (let s = 1; s <= Math.min(SEASON, 17); s++) (((HIST.squads || {})[s] || {})[t] || []).forEach(([pid, , r]) => add('p' + pid, { pid, name: PL[pid][0], pos: PL[pid][1], rating: r, team: t, nat: PL[pid][2] }));
+  SEASONS.filter(s => s >= 18).forEach(s => ((HS[s].xi || {})[t] || []).forEach(([pid, sl, r]) => { if (pid != null && PL[pid]) add('p' + pid, { pid, name: PL[pid][0], pos: PL[pid][1] || String(sl).replace(/-.*/, ''), rating: r, team: t, nat: PL[pid][2] }); }));
+  if (SEASON >= 18) (PDB[t] || []).forEach(p => { const pid = UIDPID[p.uid]; add(pid != null ? 'p' + pid : 'n' + p.name, { pid, name: p.name, pos: p.pos, rating: p.rating, team: t, nat: p.nat }); });
+  return Object.values(M);
+}
+function liveCands(scope) {
+  const L = [];
+  Object.entries(PDB).forEach(([t, l]) => { if (scope === 'league' && !S.teams.includes(t)) return; l.forEach(p => L.push({ pid: UIDPID[p.uid], name: p.name, pos: p.pos, rating: p.rating, team: t, nat: p.nat, age: p.age })); });
+  if (scope !== 'league') Object.entries(FDB).forEach(([c, l]) => l.forEach(p => { if (typeof p.age === 'number' && p.age < 17) return; L.push({ pid: null, name: p.name, pos: p.pos, rating: p.rating, team: c, nat: p.nat, age: p.age, ext: 1 }); }));
+  return L;
+}
+function xiPitch(xi, coords) {
+  const dot = s => { const c0 = coords[s.slot] || [50, 50], xx = c0[0] < 8 ? 0 : 6 + (c0[0] - 12) * 0.95, x = 4 + xx, y = 3 + c0[1] / 100 * 58, c = TD[s.team] ? tcol(s.team) : '#8a94a6';
+    return `<g class="pl" ${s.pid != null ? `data-pid="${s.pid}"` : s.ext ? `data-ext="${esc(s.team)}"` : `data-player="${esc(s.team)}|${esc(s.name)}"`} tabindex="0"><circle cx="${x}" cy="${y}" r="2.15" fill="${c}"/><text class="rt" x="${x}" y="${y + .1}" ${luma(c) < .5 ? 'style="fill:#fff"' : ''}>${s.rating}</text><text class="nm" x="${x}" y="${y + 3.9}">${esc(s.name)}</text></g>`; };
+  return `<div class="pitch"><svg viewBox="0 0 100 64" role="img" aria-label="阵容"><rect class="p-bg" x="0" y="0" width="100" height="64" rx="1"/>${[...Array(10)].map((_, i) => i % 2 ? `<rect class="p-stripe" x="${i * 10}" y="0" width="10" height="64"/>` : '').join('')}<rect class="p-ln" x="1" y="1" width="98" height="62"/><line class="p-ln" x1="50" y1="1" x2="50" y2="63"/><circle class="p-ln" cx="50" cy="32" r="8"/><rect class="p-ln" x="1" y="16" width="14" height="32"/><rect class="p-ln" x="85" y="16" width="14" height="32"/><rect class="p-ln" x="1" y="25" width="5" height="14"/><rect class="p-ln" x="94" y="25" width="5" height="14"/>${xi.map(dot).join('')}</svg></div>`;
+}
+function vXI() {
+  const F = FORMS[XIF.form] || FORMS['4-3-3'] || Object.values(FORMS)[0];
+  const live = XIF.mode === 'nat' || XIF.mode === 'world' ? liveCands('world') : liveCands('league');
+  const nats = Object.entries(live.reduce((m, p) => { if (p.nat) { m[p.nat] = m[p.nat] || []; m[p.nat].push(p.rating); } return m; }, {})).filter(([, l]) => l.length >= 11).map(([n, l]) => [n, l.sort((a, b) => b - a).slice(0, 11).reduce((a, b) => a + b, 0) / 11]).sort((a, b) => b[1] - a[1]);
+  if (XIF.mode === 'nat' && !nats.some(([n]) => n === XIF.nat)) XIF.nat = nats[0] ? nats[0][0] : '';
+  const cands = XIF.mode === 'club' ? clubAllTime(XIF.team) : XIF.mode === 'nat' ? live.filter(p => p.nat === XIF.nat) : live;
+  const R = bestXIFrom(cands, F.slots), avg = R.xi.length ? R.xi.reduce((a, p) => a + p.rating, 0) / R.xi.length : 0;
+  const title = { cur: `${SN(SEASON)} 威超现役最佳阵容`, world: `${SN(SEASON)} 全球现役最佳阵容（含外赛区）`, club: `${XIF.team} 俱乐部史上最强阵容（截至 ${SN(SEASON)}）`, nat: `${XIF.nat} 国家队最强阵容（现役）` }[XIF.mode];
+  const sel = (id, opts, v) => `<select id="${id}">${opts.map(([k, n]) => `<option value="${esc(k)}" ${k === v ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+  const who = p => `${p.pid != null ? `<button class="lnk" data-pid="${p.pid}">${esc(p.name)}</button>` : p.ext ? `<button class="lnk" data-ext="${esc(p.team)}">${esc(p.name)}</button>` : `<button class="lnk" data-player="${esc(p.team)}|${esc(p.name)}">${esc(p.name)}</button>`}`;
+  return `<section class="view"><div><div class="eyebrow">Dream teams</div><h1>最强阵容</h1><p class="muted" style="margin:6px 0 0;font-size:13px">按阵型挑出最强的 11 人：位置不对口会扣能力分。俱乐部史上最强按每名球员在该队效力期间的最高评分。</p></div>
+  <div class="panel"><div class="btns" style="gap:10px;align-items:center">
+    ${sel('xiMode', [['cur', '现役最佳（威超）'], ['world', '现役最佳（全球）'], ['club', '俱乐部史上最强'], ['nat', '国家队最强']], XIF.mode)}
+    ${XIF.mode === 'club' ? sel('xiTeam', ALL_TEAMS.map(t => [t, t]), XIF.team) : ''}
+    ${XIF.mode === 'nat' ? sel('xiNat', nats.map(([n, v]) => [n, `${n}（前 11 人均分 ${v.toFixed(1)}）`]), XIF.nat) : ''}
+    ${sel('xiForm', Object.keys(FORMS).map(f => [f, f]), XIF.form)}</div></div>
+  <div class="grid g-main" style="align-items:start">
+    <div class="panel"><div class="ph"><div><div class="eyebrow">${esc(XIF.form)}</div><h2>${esc(title)}</h2></div><span class="note mono">首发均分 ${avg.toFixed(1)}</span></div>${R.xi.length ? xiPitch(R.xi, F.coords) : '<div class="empty">没有足够的球员</div>'}</div>
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Line-up</div><h2>名单</h2></div></div><div class="rank-list">
+      ${R.xi.map(p => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(p.slot)}</span><span>${who(p)} <span class="sub">${esc(p.team)}${p.nat ? ' · ' + esc(p.nat) : ''}${p.seasons ? ` · ${p.seasons} 季` : ''}</span></span><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></div>`).join('')}
+      ${R.bench.length ? `<div class="eyebrow" style="margin:10px 0 4px">替补</div>${R.bench.map(p => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(p.pos)}</span><span>${who(p)} <span class="sub">${esc(p.team)}</span></span><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></div>`).join('')}` : ''}</div></div>
+  </div></section>`;
+}
+after.xi = () => { [['xiMode', 'mode'], ['xiTeam', 'team'], ['xiNat', 'nat'], ['xiForm', 'form']].forEach(([id, k]) => { const e = $('#' + id); e && e.addEventListener('change', ev => { XIF[k] = ev.target.value; render(); }); }); };
 function vHistory() {
   const champs = SEASONS.map(s => ({ s, t: ranking(s)[0], pts: HS[s].table[0].pts }));
   const allTime = clubsFor('all').sort((a, b) => b.pts - a.pts || b.gd - a.gd);
@@ -2631,6 +2721,7 @@ function vHistory() {
     <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛季</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净胜</th><th>积分</th><th>冠军</th></tr></thead><tbody>
     ${allTime.map((r, i) => `<tr><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.seasons}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd > 0 ? '+' : ''}${r.gd}</td><td class="pts">${r.pts}</td><td>${r.titles ? `<span style="color:var(--gold)">${r.titles}</span>` : '<span class="dim">0</span>'}</td></tr>`).join('')}
     </tbody></table></div></div>
+  ${honourBoard()}
   <div class="grid g-2">${scorerBlock(top('g'), ['历史射手榜', 'All-time goals'], ' 球')}${scorerBlock(top('a'), ['历史助攻榜', 'All-time assists'], ' 次')}</div>
   <div style="text-align:center"><button class="btn" data-statsgo="all">查看全部历史球员与球队数据榜 →</button></div>
   <div class="panel split" style="padding:14px 18px"><span class="note">历年转会、合同到期和潜在新星都移到了「转会窗」。</span><button class="btn ghost" data-go="transfers">打开转会窗 →</button></div>
