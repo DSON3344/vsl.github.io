@@ -5238,6 +5238,8 @@ const ENGINE = (() => {
   // ---------- 天气/时段状态 ----------
   const WEATHERS = ['晴天', '阴天', '雨天'];
   const SLOTS = ['早上', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '凌晨'];
+  let teamMod = null;
+  const setTeamMod = f => { teamMod = f; };
   function condition(team, weather, slot) {
     const P = HISTORY.profiles[team] || {};
     const parse = s => (s || '').split(/[；;]/).map(x => x.trim());
@@ -5248,6 +5250,7 @@ const ENGINE = (() => {
     if (bt === slot) add('擅长' + slot, 4);
     if (ww === weather) add('怕' + weather, -4.5);
     if (wt === slot) add('不适应' + slot, -4.5);
+    if (teamMod) (teamMod(team) || []).forEach(x => add(x.txt, x.d));
     const level = m >= 1.075 ? '最佳' : m > 1.01 ? '良好' : m <= 0.925 ? '最差' : m < 0.99 ? '低迷' : '正常';
     return { m, level, tags, mods };
   }
@@ -5572,7 +5575,7 @@ const ENGINE = (() => {
   function randomConditions() { return { weather: pick(WEATHERS, [5, 3, 2]), slot: pick(SLOTS, [1, 1.5, 2, 3, 3, 4, 1, 0.5]) }; }
 
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
-  return { clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { setTeamMod, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
 </script>
@@ -5651,7 +5654,7 @@ function teamCtx(team, ri, fx = S.fx) {
   return { out, streak };
 }
 const ctxPair = (m, ri) => ({ h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) });
-function playRound(i) { DIRTY.add(i); S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); } }); }
+function playRound(i) { DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); } }); }
 const nextRound = () => S.fx.findIndex(r => r.some(m => !m.r));
 const playedRounds = () => S.fx.filter(r => r.every(m => m.r)).length;
 
@@ -5978,7 +5981,7 @@ function setupHistoric(s) {
   Object.entries(PDB).forEach(([t, l]) => l.forEach(p => { p.team = t; BY_TN[t + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = t; }));
   Object.entries(FDB).forEach(([c, l]) => { FDB[c] = l.filter(p => typeof p.age !== 'number' || p.age >= 16); FDB[c].forEach(p => { BY_TN[c + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = c; }); });
 }
-let YOUTH_BASE = null;
+let YOUTH_BASE = null, MOD_VER = 0, MOD_CACHE = {};
 function applyGrowth() {
   // 从 S18 的原始资料重新推算到当前赛季：成长 → 退役与青训 → 转会窗
   Object.keys(PDB0).forEach(t => PDB[t] = PDB0[t].map(p => { const q = JSON.parse(JSON.stringify(p)); q.rating0 = q.rating; q.age0 = q.age; q.s0 = 18; q.uid = 'D|' + t + '|' + p.name; q.cEnd = contractInit(q, t); return q; }));
@@ -6032,6 +6035,7 @@ function applyGrowth() {
       if (!now || best.v >= r.rating + 3) { r.name = best.p.name; r.rating = best.p.rating; }
     });
   });
+  MOD_VER++;
   if (SEASON < 18) setupHistoric(SEASON);
   ENGINE.clearCache();
   if (GROWN && GROWN !== SEASON && ALLP_READY) syncAllPlayers();
@@ -6728,7 +6732,8 @@ const DOM_REF = 90.4, DOM_EDGE = 1.6, DOM_CACHE = {};
 function domTop(s) { const k = s + '|' + GROWN + '|' + SEASON; if (DOM_CACHE[k] != null) return DOM_CACHE[k]; const v = Object.keys(TD).map(t => domStrAt(t, s)).sort((a, b) => b - a).slice(0, 4); return DOM_CACHE[k] = v.reduce((a, b) => a + b, 0) / v.length; }
 function clubStrAt(t, s) {
   if (EXT_CLUB[t]) return EXT_CLUB[t].str + (s != null ? (ghash('drift|' + t + '|' + s) - 0.5) * 3 + (domTop(s) - DOM_REF - DOM_EDGE) : 0);
-  return domStrAt(t, s);
+  const v = domStrAt(t, s);
+  return s === SEASON && TD[t] && S && S.fx ? v + teamMorale(t).abil * 0.25 : v;
 }
 function domStrAt(t, s) {
   if (!TD[t]) return 75;
@@ -7002,16 +7007,16 @@ function coachPool() {
   Object.entries(HIST.squads || {}).forEach(([ss, T]) => Object.entries(T).forEach(([t, l]) => l.forEach(([pid]) => { last[pid] = Math.max(last[pid] || 0, +ss); (clubs[pid] = clubs[pid] || new Set()).add(t); })));
   const L = [];
   Object.entries(last).forEach(([pid, ls]) => { pid = +pid; const pp = PL[pid]; if (!pp || pp[3] || ls >= 17) return; const pk = pp[7] || 0; if (pk < 88 && pp[4] !== 'l') return;
-    const id = 'P' + pid; COACH_REG[id] = { id, name: pp[0], nat: pp[2] || '', pid, rep: Math.round(70 + (pk - 86) * 2.2 + ghash('cr|' + pid) * 6), clubs: clubs[pid], kind: '名宿' };
+    const id = 'P' + pid; COACH_REG[id] = { id, name: pp[0], nat: pp[2] || '', pid, rep: Math.round(Math.min(95, 70 + (pk - 86) * 2.2 + ghash('cr|' + pid) * 6)), infl: Math.round(Math.min(98, 76 + (pk - 86) * 2.5 + ghash('ci|' + pid) * 8)), clubs: clubs[pid], kind: '名宿' };
     L.push({ id, from: ls + 1 + Math.floor(ghash('cf|' + pid) * 2), to: ls + 14 }); });
   Object.entries(H.profiles || {}).forEach(([t, P]) => { if (!P.coach) return; if (L.some(c => COACH_REG[c.id].name === P.coach)) return;
     const games = P.career ? P.career[1] + P.career[2] + P.career[3] : 38, id = 'N|' + P.coach;
-    COACH_REG[id] = { id, name: P.coach, nat: '', rep: Math.round(83 + ghash('nr|' + P.coach) * 7), clubs: new Set([t]), kind: '职业教练' };
+    COACH_REG[id] = { id, name: P.coach, nat: '', rep: Math.round(83 + ghash('nr|' + P.coach) * 7), infl: Math.round(78 + ghash('ni|' + P.coach) * 12), clubs: new Set([t]), kind: '职业教练' };
     L.push({ id, from: Math.max(1, 18 - Math.ceil(games / 38) - 4), to: 40 }); });
   return (coachPool.L = L);
 }
 const TEAM_NAT = t => { const n = (PDB0[t] || []).map(p => p.nat).filter(Boolean); return n[Math.floor(ghash('tn|' + t) * n.length)] || '英格兰'; };
-function genCoach(t, s, k) { const id = 'G|' + t + '|' + s + '|' + k; if (!COACH_REG[id]) { const nat = TEAM_NAT(t); COACH_REG[id] = { id, name: coachName(id, nat), nat, rep: Math.round(Math.max(60, Math.min(84, clubBaseApprox(t) - 8 + ghash(id) * 10))), clubs: new Set(), kind: '职业教练' }; } return id; }
+function genCoach(t, s, k) { const id = 'G|' + t + '|' + s + '|' + k; if (!COACH_REG[id]) { const nat = TEAM_NAT(t); COACH_REG[id] = { id, name: coachName(id, nat), nat, rep: Math.round(Math.max(60, Math.min(84, clubBaseApprox(t) - 8 + ghash(id) * 10))), infl: Math.round(58 + ghash(id + 'i') * 24), clubs: new Set(), kind: '职业教练' }; } return id; }
 const clubBaseApprox = t => { const v = (PDB0[t] || []).map(p => p.rating).sort((a, b) => b - a).slice(0, 11); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 78; };
 function leagueTableAt(s, upto) {
   if (HS[s] && HS[s].rounds) { const T = HS[s].teams, P = {}; T.forEach(t => P[t] = { team: t, pts: 0, gd: 0, gf: 0 }); HS[s].rounds.slice(0, upto).forEach(rd => rd.forEach(m => { const h = P[T[m[0]]], a = P[T[m[1]]]; h.gf += m[2]; a.gf += m[3]; h.gd += m[2] - m[3]; a.gd += m[3] - m[2]; h.pts += m[2] > m[3] ? 3 : m[2] === m[3] ? 1 : 0; a.pts += m[3] > m[2] ? 3 : m[2] === m[3] ? 1 : 0; })); return Object.values(P).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf).map(r => r.team); }
@@ -7072,9 +7077,9 @@ const coachOf = t => { const c = coachHistory().cur[t]; return c ? { ...c, ...CO
 const stintTxt = st => `${SN(st.s0)}${st.r0 ? ` 第 ${st.r0 + 1} 轮` : ''} – ${st.s1 ? `${SN(st.s1)}${st.r1 < 38 ? ` 第 ${st.r1} 轮` : ''}` : '至今'}`;
 function coachPanel(t) {
   const H2 = coachHistory(), L = H2.stints.filter(x => x.team === t).slice().reverse();
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Managers</div><h2>历任主帅</h2></div><span class="note">半程排名太差或季末降级、低于预期会换帅</span></div>
-    <div class="tw"><table><thead><tr><th class="l">主帅</th><th class="l">任期</th><th>胜</th><th>平</th><th>负</th><th>胜率</th><th class="l">威超冠军</th><th class="l">离任</th></tr></thead><tbody>
-    ${L.map(st => { const C = COACH_REG[st.id], R = coachRecord(st), n = R.w + R.d + R.l; return `<tr><td class="l">${C.pid != null ? `<button class="lnk" data-pid="${C.pid}"><b>${esc(C.name)}</b></button>` : `<b>${esc(C.name)}</b>`} <span class="dim" style="font-size:11px">${esc(C.kind)}${C.nat ? ' · ' + esc(C.nat) : ''}</span></td><td class="l mono" style="font-size:12px">${stintTxt(st)}</td><td>${R.w}</td><td>${R.d}</td><td>${R.l}</td><td class="muted">${n ? Math.round(R.w / n * 100) + '%' : '–'}</td><td class="l">${R.titles.length ? `<span style="color:var(--gold)">${R.titles.map(SN).join(' ')}</span>` : '<span class="dim">–</span>'}</td><td class="l muted" style="font-size:12px">${st.out ? esc(st.out) : '<span style="color:var(--win)">在任</span>'}</td></tr>`; }).join('')}
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Managers</div><h2>历任主帅</h2></div><span class="note">执教能力影响球队表现，影响力带动士气；半程排名太差或季末降级、低于预期会换帅</span></div>
+    <div class="tw"><table><thead><tr><th class="l">主帅</th><th>能力</th><th>影响力</th><th class="l">任期</th><th>胜</th><th>平</th><th>负</th><th>胜率</th><th class="l">威超冠军</th><th class="l">离任</th></tr></thead><tbody>
+    ${L.map(st => { const C = COACH_REG[st.id], R = coachRecord(st), n = R.w + R.d + R.l; return `<tr><td class="l">${C.pid != null ? `<button class="lnk" data-pid="${C.pid}"><b>${esc(C.name)}</b></button>` : `<b>${esc(C.name)}</b>`} <span class="dim" style="font-size:11px">${esc(C.kind)}${C.nat ? ' · ' + esc(C.nat) : ''}</span></td><td>${C.rep}</td><td>${C.infl}</td><td class="l mono" style="font-size:12px">${stintTxt(st)}</td><td>${R.w}</td><td>${R.d}</td><td>${R.l}</td><td class="muted">${n ? Math.round(R.w / n * 100) + '%' : '–'}</td><td class="l">${R.titles.length ? `<span style="color:var(--gold)">${R.titles.map(SN).join(' ')}</span>` : '<span class="dim">–</span>'}</td><td class="l muted" style="font-size:12px">${st.out ? esc(st.out) : '<span style="color:var(--win)">在任</span>'}</td></tr>`; }).join('')}
     </tbody></table></div></div>`;
 }
 function coachChangesHTML(s) {
@@ -7123,6 +7128,33 @@ function movesPanel(t) {
     </div>${(() => { const c = coachChangesHTML(tmvSeason - 1).split('；').filter(x => x.startsWith(t + '：')); return c.length ? `<p class="note" style="margin:10px 0 0">换帅：${c.map(x => x.slice(t.length + 1)).join('；')}</p>` : ''; })()}</div>`;
 }
 after.teams = () => { const e = $('#tmvSel'); e && e.addEventListener('change', ev => { tmvSeason = +ev.target.value; render(); }); };
+/* ---------- 主帅与士气对比赛的影响 ----------
+   执教能力：每高于 78 一点，进攻和防守表现约 +0.22%（最多约 ±4%）
+   影响力：带来额外的士气加成，也能在连败时稳住更衣室
+   士气：最近 5 场的积分，高涨时 +，低落时 −；新帅上任头 5 场有“新帅效应” */
+function formOf(t) {
+  const res = []; for (let ri = 0; ri < S.fx.length; ri++) S.fx[ri].forEach(m => { if (!m.r || (m.h !== t && m.a !== t)) return; const gf = m.h === t ? m.r.hg : m.r.ag, ga = m.h === t ? m.r.ag : m.r.hg; res.push({ ri, p: gf > ga ? 3 : gf === ga ? 1 : 0 }); });
+  return res;
+}
+function teamMorale(t) {
+  const k = t + '|' + SEASON + '|' + MOD_VER; if (MOD_CACHE[k]) return MOD_CACHE[k];
+  const c = coachOf(t), f = formOf(t), last = f.slice(-5), infl = c ? c.infl || 70 : 70;
+  const ppg = last.length ? last.reduce((a, x) => a + x.p, 0) / last.length : 1.4;
+  let mor = (ppg - 1.4) * 3; mor *= mor < 0 ? Math.max(0.35, 1.25 - infl / 100) : 0.6 + infl / 250; mor += (infl - 75) * 0.06;
+  const played = f.length, since = c ? (c.s0 === SEASON ? f.filter(x => x.ri >= c.r0).length : 99) : 99;
+  const bounce = c && c.s0 === SEASON && c.r0 > 0 && since < 5 ? 2.5 : 0;
+  const abil = c ? (c.rep - 78) * 0.22 : 0;
+  const lv = mor >= 3 ? '高涨' : mor >= 1 ? '良好' : mor > -1 ? '一般' : mor > -3 ? '低落' : '谷底';
+  return (MOD_CACHE[k] = { abil: Math.max(-4.5, Math.min(4.5, abil)), mor: Math.max(-5, Math.min(5, mor)), bounce, lv, ppg, played, coach: c });
+}
+ENGINE.setTeamMod(t => {
+  if (!TD[t] || !S || !S.fx) return [];
+  const M = teamMorale(t), out = [];
+  if (M.coach && Math.abs(M.abil) >= 0.3) out.push({ txt: `主帅${M.coach.name}${M.abil > 0 ? '执教加成' : '执教一般'}`, d: +M.abil.toFixed(1) });
+  if (Math.abs(M.mor) >= 0.5) out.push({ txt: '士气' + M.lv, d: +M.mor.toFixed(1) });
+  if (M.bounce) out.push({ txt: '新帅效应', d: M.bounce });
+  return out;
+});
 function teamDetail(t) {
   const P = H.profiles[t] || {}, D = TD[t], st = ENGINE.strength(t), hon = honOf(t);
   const squad = (PDB[t] || []).slice().sort((a, b) => b.rating - a.rating);
@@ -7141,7 +7173,9 @@ function teamDetail(t) {
       <div class="btns" style="margin-top:10px"><span class="chip">${esc(P.style || D.style)}</span><span class="chip">${esc(P.formation || '')}</span>${hon['威超冠军'] ? `<span class="chip gold">威超冠军 ×${hon['威超冠军']}</span>` : ''}${(() => { const E = cupEntrants(SEASON); return ['世联赛', '全联冠', '全联杯', '全协联'].filter(k => E[k].includes(t)).map(k => `<span class="chip good">${SN(SEASON)} ${k}</span>`).join(''); })()}</div>
       <dl class="facts">
         ${(() => { const c = coachOf(t), R = c ? coachRecord(c) : null; return `<div><dt>主教练</dt><dd>${c ? (c.pid != null ? `<button class="lnk" data-pid="${c.pid}">${esc(c.name)}</button>` : esc(c.name)) : '—'}</dd></div>
-        <div><dt>执教战绩</dt><dd class="mono" style="font-size:12px">${R ? `${R.w}胜 ${R.d}平 ${R.l}负 · ${stintTxt(c).replace(/ – 至今$/, ' 上任')}` : '—'}</dd></div>`; })()}
+        <div><dt>执教战绩</dt><dd class="mono" style="font-size:12px">${R ? `${R.w}胜 ${R.d}平 ${R.l}负 · ${stintTxt(c).replace(/ – 至今$/, ' 上任')}` : '—'}</dd></div>
+        <div><dt>执教能力 / 影响力</dt><dd class="mono">${c ? `${c.rep} / ${c.infl}` : '—'}</dd></div>
+        ${(() => { const M = teamMorale(t); return `<div><dt>士气</dt><dd>${M.lv} <span class="dim mono" style="font-size:11px">${M.mor >= 0 ? '+' : ''}${M.mor.toFixed(1)}%${M.bounce ? ' · 新帅效应' : ''}</span></dd></div>`; })()}`; })()}
         <div><dt>队长</dt><dd>${esc(capNow || '—')}</dd></div>
         <div><dt>主场</dt><dd>${esc(D.stadium)}</dd></div>
         <div><dt>最佳状态</dt><dd>${esc((P.best || '—').replace('；', ' · '))}</dd></div>

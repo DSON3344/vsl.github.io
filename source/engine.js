@@ -101,6 +101,8 @@ const ENGINE = (() => {
   // ---------- 天气/时段状态 ----------
   const WEATHERS = ['晴天', '阴天', '雨天'];
   const SLOTS = ['早上', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '凌晨'];
+  let teamMod = null;
+  const setTeamMod = f => { teamMod = f; };
   function condition(team, weather, slot) {
     const P = HISTORY.profiles[team] || {};
     const parse = s => (s || '').split(/[；;]/).map(x => x.trim());
@@ -111,6 +113,7 @@ const ENGINE = (() => {
     if (bt === slot) add('擅长' + slot, 4);
     if (ww === weather) add('怕' + weather, -4.5);
     if (wt === slot) add('不适应' + slot, -4.5);
+    if (teamMod) (teamMod(team) || []).forEach(x => add(x.txt, x.d));
     const level = m >= 1.075 ? '最佳' : m > 1.01 ? '良好' : m <= 0.925 ? '最差' : m < 0.99 ? '低迷' : '正常';
     return { m, level, tags, mods };
   }
@@ -435,6 +438,6 @@ const ENGINE = (() => {
   function randomConditions() { return { weather: pick(WEATHERS, [5, 3, 2]), slot: pick(SLOTS, [1, 1.5, 2, 3, 3, 4, 1, 0.5]) }; }
 
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
-  return { clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { setTeamMod, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
