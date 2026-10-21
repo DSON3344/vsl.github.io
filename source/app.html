@@ -405,6 +405,7 @@ function teamCtx(team, ri, fx = S.fx) {
   }
   const out = {};
   Object.keys(ban).forEach(n => { if (ban[n] >= ri) out[n] = { why: why[n], left: ban[n] - ri + 1 }; });
+  if (fx === S.fx) offField().forEach(e => { if (e.team !== team || e.kind === 'flavor' || !(e.ri <= ri && ri < e.ri + e.dur)) return; const left = e.ri + e.dur - ri; if (!out[e.name] || out[e.name].left < left) out[e.name] = { why: e.kind === 'train' ? 'inj' : 'strike', left }; });
   return { out, streak };
 }
 const ctxPair = (m, ri) => ({ h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) });
@@ -674,7 +675,8 @@ function transferWindow(s, log) {
       if (ext.length && m.rnd() < (m.free ? 0.35 : 0.5)) { const [club] = ext[Math.floor(m.rnd() * ext.length)]; goAbroad(m, club); return; }
       if (m.free) m.p.cEnd = s + 2 + Math.floor(m.rnd() * 2); return;
     }
-    const w = opts.map(t2 => Math.pow(Math.max(1, str[t2] - 68), 2) * (lg.has(t2) ? 2 : 1));
+    const w = opts.map(t2 => (PDB[t2] || []).some(q => q.name === m.p.name) ? 0 : Math.pow(Math.max(1, str[t2] - 68), 2) * (lg.has(t2) ? 2 : 1));
+    if (!w.some(x => x > 0)) { if (m.free) m.p.cEnd = s + 2 + Math.floor(m.rnd() * 2); return; }
     let x = m.rnd() * w.reduce((u, v) => u + v, 0), k = 0; for (; k < opts.length - 1; k++) { x -= w[k]; if (x <= 0) break; }
     const to = opts[k];
     PDB[m.t].splice(PDB[m.t].indexOf(m.p), 1); PDB[to].push(m.p); m.p.team = to;
@@ -696,7 +698,7 @@ function transferWindow(s, log) {
       const byLine = ['GK', 'DF', 'MF', 'FW'].map(l => { const rs = PDB[t].filter(q => ENGINE.LINE(q.pos) === l).map(ratN).sort((a, b) => b - a).slice(0, LINE_NEED[l]); return { l, gap: str[t] - (rs.length < LINE_NEED[l] ? 60 : rs[rs.length - 1]) }; }).sort((a, b) => b.gap - a.gap);
       const line = byLine[0].l, target = str[t] - 1;
       // 从外赛区（实力不比自己强太多的球队）挑同位置、能力合适、30 岁以下的球员
-      const pool = []; Object.entries(FDB).forEach(([club, sq]) => { if ((EXT_CLUB[club] || {}).str > str[t] + 3) return; sq.forEach(q => { if (ENGINE.LINE(q.pos) !== line || typeof q.age0 !== 'number' || (q.stints && q.stints.length && q.stints[q.stints.length - 1][1] === ns)) return; const r = ratN(q), a = ageN(q); if (a > 30 || r < target - 3 || r > target + 3) return; pool.push({ q, club, r, a }); }); });
+      const pool = []; Object.entries(FDB).forEach(([club, sq]) => { if ((EXT_CLUB[club] || {}).str > str[t] + 3) return; sq.forEach(q => { if ((PDB[t] || []).some(x => x.name === q.name) || ENGINE.LINE(q.pos) !== line || typeof q.age0 !== 'number' || (q.stints && q.stints.length && q.stints[q.stints.length - 1][1] === ns)) return; const r = ratN(q), a = ageN(q); if (a > 30 || r < target - 3 || r > target + 3) return; pool.push({ q, club, r, a }); }); });
       if (!pool.length) continue;
       pool.sort((u, v) => (v.r - u.r) || u.q.name.localeCompare(v.q.name));
       const pk = pool[Math.floor(rnd() * Math.min(6, pool.length))], f = pk.q, club = pk.club;
@@ -1097,6 +1099,76 @@ function fxRow(m, ri, mi) {
     <div class="tname ${r ? (aw ? 'win' : 'lose') : ''}">${crest(m.a, 24)}<span>${esc(m.a)}</span></div></div>`;
 }
 let ovRound = null;
+/* ---------- 场外事件：训练受伤、罢赛和花边新闻（按赛季和轮次推算，会真的影响出场） ---------- */
+let OFF_CACHE = {};
+const INJ_KINDS = ['大腿肌肉拉伤', '脚踝扭伤', '膝盖挫伤', '腹股沟不适', '小腿拉伤', '肩膀脱臼', '背部劳损', '感冒发烧'];
+const STRIKE_WHY = ['不满主帅{c}的轮换安排', '与主帅{c}在训练场上爆发争执', '不满球队迟迟不给续约', '要求转会遭俱乐部拒绝', '不满被安排踢不熟悉的位置'];
+const FLAVOR = ['{p}在社交媒体晒出新纹身，引发球迷热议', '{p}探望儿童医院的小球迷', '{t}主帅{c}：「我们只专注下一场比赛」', '{p}代言的球鞋上市，首日售罄', '{p}在训练中打进一记倒钩，视频疯传', '{t}球迷为{p}制作巨幅 TIFO', '{p}透露自己最崇拜的球员是{t}的前辈', '{p}与队友在更衣室为生日的队友庆生', '{t}更衣室气氛融洽，{p}称「这是最团结的一季」', '{p}被拍到深夜加练射门'];
+function offField() {
+  if (!S || !S.teams) return [];
+  const key = SEASON + '|' + S.teams.join(','); if (OFF_CACHE.key === key) return OFF_CACHE.list;
+  const list = [], sqOf = t => (PDB[t] || []).slice().sort((a, b) => b.rating - a.rating).slice(0, 16);
+  for (let i = 0; i < 38; i++) {
+    const rnd = seeded('off|' + key + '|' + i), team = () => S.teams[Math.floor(rnd() * S.teams.length)];
+    if (rnd() < 0.5) { const t = team(), sq = sqOf(t), p = sq[Math.floor(rnd() * sq.length)]; if (p) { const long = rnd() < 0.12; list.push({ ri: i, kind: 'train', team: t, name: p.name, dur: long ? 5 + Math.floor(rnd() * 5) : 1 + Math.floor(rnd() * 3), what: INJ_KINDS[Math.floor(rnd() * INJ_KINDS.length)] }); } }
+    if (i >= 3 && rnd() < 0.07) { const t = team(), st = sqOf(t).filter(p => p.rating >= 84 && ENGINE.LINE(p.pos) !== 'GK').slice(0, 6); if (st.length) list.push({ ri: i, kind: 'strike', team: t, name: st[Math.floor(rnd() * st.length)].name, dur: 1 + Math.floor(rnd() * 3), why: STRIKE_WHY[Math.floor(rnd() * STRIKE_WHY.length)] }); }
+    if (rnd() < 0.3) { const t = team(), sq = sqOf(t).slice(0, 8), p = sq[Math.floor(rnd() * sq.length)]; if (p) list.push({ ri: i, kind: 'flavor', team: t, name: p.name, tpl: FLAVOR[Math.floor(rnd() * FLAVOR.length)] }); }
+  }
+  OFF_CACHE = { key, list }; return list;
+}
+/* ---------- 新闻：场内（帽子戏法、大胜、红牌、伤病、夺冠、降级）和场外（伤病、罢赛、换帅、转会、退役、花边） ---------- */
+function newsItems() {
+  const nr = nextRound(), cur = nr < 0 ? 38 : nr, items = [], pl = (t, n) => `<button class="lnk" ${plink(t, n)}>${esc(n)}</button>`, tm = t => `<button class="lnk" data-team="${esc(t)}">${esc(t)}</button>`;
+  const cname = t => { const c = coachOf(t); return c ? c.name : '主帅'; };
+  const add = (ri, tag, cls, html, pr = 0) => items.push({ ri, tag, cls, html, pr });
+  const H2 = coachHistory();
+  // 休赛期
+  H2.stints.filter(x => x.s0 === SEASON && x.r0 === 0 && SEASON > 1).forEach(x => { const prev = H2.stints.find(y => y.team === x.team && y.s1 === SEASON - 1 && y.r1 === 38); const C = COACH_REG[x.id], T = coachTactics(x.id); add(-1, '换帅', 'gold', `${tm(x.team)} 任命 <b>${esc(C.name)}</b> 为新主帅（${esc(T.style)} · ${esc(T.form)}）${prev ? `，前任 ${esc(COACH_REG[prev.id].name)} ${esc(prev.out)}` : ''}`, 3); });
+  if (SEASON <= 18 && SEASON > 1) {
+    S.teams.forEach(t => { const M2 = movesOf(t, SEASON); M2.ins.forEach(x => { const o = BY_TN[t + '|' + x.name]; if (o && o.rating >= 87) add(-1, '转会', '', `${pl(t, x.name)}（${o.rating}）${x.from ? `从 ${tm(x.from)} ` : ''}加盟 ${tm(t)}`, 2); });
+      M2.ret.forEach(x => { if ((PL[x.pid] || [])[7] >= 88) add(-1, '退役', '', `${esc(x.name)} 已在上季结束后挂靴，告别 ${tm(t)}`, 2); }); });
+    S.teams.forEach(t => (PDB[t] || []).forEach(p => { const pid = UIDPID[p.uid]; if (pid != null && PL[pid] && PL[pid][8] === SEASON && p.rating >= 86) add(-1, '新星', 'good', `新星 ${pl(t, p.name)}（${p.age} 岁，${p.rating}）在 ${tm(t)} 迎来威超首秀赛季`, 1); }));
+  } else if (SEASON > 18) {
+    (TR_LOG[SEASON - 1] || []).filter(x => !x.free && (TD[x.to] || TD[x.from])).sort((a, b) => b.fee - a.fee).slice(0, 4).forEach(x => add(-1, '转会', '', `${esc(x.name)} 以 ⰵ${x.fee}M 从 ${TD[x.from] ? tm(x.from) : esc(x.from)} 转会 ${TD[x.to] ? tm(x.to) : esc(x.to)}`, 2));
+    ((RET_LOG[SEASON - 1] || {}).retired || []).slice().sort((a, b) => b.peak - a.peak).slice(0, 3).forEach(x => add(-1, '退役', '', `${esc(x.name)}（${x.age} 岁）宣布退役，告别 ${tm(x.team)}`, 2));
+    ((RET_LOG[SEASON - 1] || {}).youth || []).slice().sort((a, b) => b.pot - a.pot).slice(0, 2).forEach(x => add(-1, '新星', 'good', `${tm(x.team)} 青训提拔 ${esc(x.name)}（${x.age} 岁，潜力 ${x.pot}）`, 1));
+  }
+  // 场外事件
+  offField().filter(e => e.ri <= Math.min(cur, 37) && (nr < 0 || e.ri <= nr)).forEach(e => {
+    if (e.kind === 'train') add(e.ri, '伤病', 'bad', `${pl(e.team, e.name)}（${tm(e.team)}）训练中${esc(e.what)}，预计缺席 ${e.dur} 场`, 1);
+    else if (e.kind === 'strike') add(e.ri, '罢赛', 'bad', `${pl(e.team, e.name)}${esc(e.why.replace('{c}', cname(e.team)))}，拒绝参加接下来 ${e.dur} 场比赛`, 2);
+    else add(e.ri, '花边', '', esc(e.tpl.replace('{p}', '\u0001').replace('{t}', e.team).replace('{c}', cname(e.team))).replace('\u0001', pl(e.team, e.name)), 0);
+  });
+  // 场内
+  for (let k = 0; k < cur; k++) (S.fx[k] || []).forEach(m => { if (!m.r) return;
+    const sideT = sd => sd === 'h' ? m.h : m.a, opp = sd => sd === 'h' ? m.a : m.h, gl = {};
+    m.r.ev.forEach(([mn, type, sd, p, , x]) => { if (type === 'goal') gl[sd + '|' + p] = (gl[sd + '|' + p] || 0) + 1;
+      if (type === 'red' && x) add(k, '红牌', 'bad', `${pl(sideT(sd), p)}（${tm(sideT(sd))}）对阵 ${tm(opp(sd))} 第 ${Math.round(mn)} 分钟被直接红牌罚下`, 0);
+      if (type === 'inj' && (x || 1) >= 3) add(k, '伤病', 'bad', `${pl(sideT(sd), p)}（${tm(sideT(sd))}）在对阵 ${tm(opp(sd))} 的比赛中受伤，预计缺席 ${x} 轮`, 1); });
+    Object.entries(gl).forEach(([k2, n]) => { if (n < 3) return; const [sd, p] = k2.split('|'); add(k, '帽子戏法', 'gold', `${pl(sideT(sd), p)} 上演${n >= 4 ? ` ${n} 球大四喜` : '帽子戏法'}，${tm(m.h)} ${m.r.hg}–${m.r.ag} ${tm(m.a)}`, 2); });
+    if (Math.abs(m.r.hg - m.r.ag) >= 4) add(k, '大胜', 'good', `${tm(m.r.hg > m.r.ag ? m.h : m.a)} ${Math.max(m.r.hg, m.r.ag)}–${Math.min(m.r.hg, m.r.ag)} 大胜 ${tm(m.r.hg > m.r.ag ? m.a : m.h)}`, 1);
+  });
+  // 换帅（半程）
+  H2.stints.filter(x => x.s1 === SEASON && x.r1 < 38 && x.r1 <= cur).forEach(x => { const n = H2.stints.find(y => y.team === x.team && y.s0 === SEASON && y.r0 === x.r1); add(x.r1 - 1, '换帅', 'gold', `${tm(x.team)} 解雇主帅 ${esc(COACH_REG[x.id].name)}（${esc(x.out)}）${n ? `，${esc(COACH_REG[n.id].name)} 接手` : ''}`, 3); });
+  // 夺冠 / 降级 / 退役宣布
+  let champDone = false; const relDone = new Set();
+  for (let k = 1; k <= cur; k++) { const T = table(k), rem = 38 - k;
+    if (!champDone && T[0].pts - T[1].pts > rem * 3) { champDone = true; add(k - 1, '夺冠', 'gold', rem ? `${tm(T[0].team)} 提前 ${rem} 轮锁定 ${SN(SEASON)} 威超冠军！` : `${tm(T[0].team)} 夺得 ${SN(SEASON)} 威超冠军！`, 4); }
+    T.slice(17).forEach(r => { if (!relDone.has(r.team) && r.pts + rem * 3 < T[16].pts) { relDone.add(r.team); add(k - 1, '降级', 'bad', `${tm(r.team)} ${rem ? `还剩 ${rem} 轮` : '最终'}确定降级`, 3); } }); }
+  if (cur >= 28) {
+    if (SEASON < 18) S.teams.forEach(t => (PDB[t] || []).forEach(p => { const pid = UIDPID[p.uid]; if (pid != null && PL[pid] && !PL[pid][3] && lastSquadSeason(pid) === SEASON && p.rating >= 84 && p.age >= 31) add(27, '退役', '', `${pl(t, p.name)}（${p.age} 岁）宣布本季结束后退役`, 2); }));
+    else ALL_PLAYERS.filter(p => !p.extra && typeof p.age0 === 'number' && S.teams.includes(p.team) && p.rating >= 84 && retiresAt(p, p.age, p.rating)).forEach(p => add(27, '退役', '', `${pl(p.team, p.name)}（${p.age} 岁）宣布本季结束后退役`, 2));
+  }
+  return items.sort((a, b) => b.ri - a.ri || b.pr - a.pr);
+}
+let newsAll = false;
+function newsPanel() {
+  const L = newsItems(), shown = newsAll ? L : L.slice(0, 14);
+  const when = ri => ri < 0 ? '休赛期' : `第 ${ri + 1} 轮`;
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">News</div><h2>新闻</h2></div><span class="note">场内场外消息 · 训练伤病和罢赛会让球员真的缺阵</span></div>
+    ${L.length ? `<div class="rank-list">${shown.map(n => `<div class="rk" style="grid-template-columns:64px 72px minmax(0,1fr)"><span class="dim mono" style="font-size:11px">${when(n.ri)}</span><span><span class="chip ${n.cls}" style="font-size:11px;padding:1px 7px">${n.tag}</span></span><span style="font-size:13.5px">${n.html}</span></div>`).join('')}</div>
+    ${L.length > 14 ? `<div style="text-align:center;margin-top:10px"><button class="btn ghost" data-act="newsAll">${newsAll ? '收起' : `查看全部 ${L.length} 条`}</button></div>` : ''}` : '<div class="empty">开季后这里会出现新闻</div>'}</div>`;
+}
 function vOverview() {
   const nr = nextRound(), played = playedRounds();
   const showR = ovRound != null ? ovRound : (nr < 0 ? 37 : nr);
@@ -1141,6 +1213,7 @@ function vOverview() {
         <p class="note" style="margin:10px 0 0">比赛中有小概率受伤；累计 5 张黄牌停赛 1 场，两黄变红停 1 场，直接红牌停 2 场。连续首发多场的球员可能被轮换。</p></div>` : ''}
     </div>
   </div>
+  ${newsPanel()}
   <div class="grid g-2">
     <div class="panel"><div class="ph"><div><div class="eyebrow">Title race</div><h2>前五名积分走势</h2></div></div>
       ${played ? raceChart(T.slice(0, 5), played) : `<div class="empty">第 1 轮结束后开始绘制</div>`}</div>
@@ -1240,7 +1313,7 @@ function matchLineups() {
   const ctx = fxm && !fxm.r ? ctxPair(fxm, M.fx[0]) : null;
   return { h: ENGINE.pickXI(M.h, ctx && ctx.h), a: ENGINE.pickXI(M.a, ctx && ctx.a) };
 }
-const whyTxt = o => o.why === 'inj' ? `伤病 · 还缺 ${o.left} 轮` : `停赛 ${o.left} 场`;
+const whyTxt = o => o.why === 'inj' ? `伤病 · 还缺 ${o.left} 轮` : o.why === 'strike' ? `罢赛 · 还缺 ${o.left} 场` : `停赛 ${o.left} 场`;
 function absentHTML(t, Lt) {
   const ctx = M.fx ? teamCtx(t, M.fx[0]).out : {};
   const miss = Lt.out.map(o => `<span class="chip bad" style="font-size:11px">${esc(o.name)} · ${whyTxt(ctx[o.name] || o.why)}</span>`);
@@ -1873,7 +1946,8 @@ function movesOf(t, s) {
     const A = squadIdx(s - 1), B = squadIdx(s);
     Object.entries(B).forEach(([pid, tm]) => { if (tm !== t || A[pid] === t) return; ins.push({ pid: +pid, name: PL[pid][0], pos: PL[pid][1], from: A[pid] || null }); });
     Object.entries(A).forEach(([pid, tm]) => { if (tm !== t || B[pid] === t) return; const to = B[pid] || null; let later = null; if (!to) for (let k = s + 1; k <= 18; k++) if (squadIdx(k)[pid]) { later = k; break; }
-      (to || later ? outs : ret).push({ pid: +pid, name: PL[pid][0], pos: PL[pid][1], to, later }); });
+      const pp = PL[pid], age = pp[9] != null && pp[8] ? pp[9] + (s - 1 - pp[8]) : null;
+      (to || later || (age != null && age < 30) ? outs : ret).push({ pid: +pid, name: pp[0], pos: pp[1], to, later, age, away: !to && !later }); });
   } else if (s >= 19) {
     (TR_LOG[s - 1] || []).forEach(x => { if (x.to === t) ins.push({ name: x.name, pos: x.pos, from: x.from, fee: x.fee, free: x.free }); if (x.from === t) outs.push({ name: x.name, pos: x.pos, to: x.to, fee: x.fee, free: x.free }); });
     const R = RET_LOG[s - 1] || { retired: [], youth: [] };
@@ -1893,7 +1967,7 @@ function movesPanel(t) {
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Ins & outs</div><h2>人员变动</h2></div><select id="tmvSel" aria-label="赛季">${seasons.map(x => `<option value="${x}" ${x === tmvSeason ? 'selected' : ''}>${SN(x)} 赛季前</option>`).join('')}</select></div>
     <div class="grid" style="gap:14px">
       ${col('转入', M2.ins, x => `<div class="rk" style="grid-template-columns:40px minmax(0,1fr)"><span class="n mono" style="font-size:11px">${esc(x.pos || '')}</span><span>${lk(x, t)} <span class="sub">${x.youth ? '青训提拔' : x.from ? '来自 ' : '首次登场'}${x.from ? club(x.from) : ''}</span></span></div>`)}
-      ${col('转出', M2.outs, x => `<div class="rk" style="grid-template-columns:40px minmax(0,1fr)"><span class="n mono" style="font-size:11px">${esc(x.pos || '')}</span><span>${lk(x, x.to || t)} <span class="sub">${x.to ? '去了 ' + club(x.to) : x.later ? `离队，${SN(x.later)} 复出` : ''}</span></span></div>`)}
+      ${col('转出', M2.outs, x => `<div class="rk" style="grid-template-columns:40px minmax(0,1fr)"><span class="n mono" style="font-size:11px">${esc(x.pos || '')}</span><span>${lk(x, x.to || t)} <span class="sub">${x.to ? '去了 ' + club(x.to) : x.later ? `离队，${SN(x.later)} 复出` : x.away ? '离开威超体系（海外或低级别联赛）' : ''}</span></span></div>`)}
       ${col('退役', M2.ret, x => `<div class="rk" style="grid-template-columns:40px minmax(0,1fr)"><span class="n mono" style="font-size:11px">${esc(x.pos || '')}</span><span>${lk(x, t)}${x.age ? ` <span class="sub">${x.age} 岁</span>` : ''}</span></div>`)}
     </div>${(() => { const c = coachChangesHTML(tmvSeason - 1).split('；').filter(x => x.startsWith(t + '：')); return c.length ? `<p class="note" style="margin:10px 0 0">换帅：${c.map(x => x.slice(t.length + 1)).join('；')}</p>` : ''; })()}</div>`;
 }
@@ -1908,12 +1982,26 @@ function coachTactics(id) {
   C.form = fs[Math.floor(rnd() * fs.length)]; C.style = STYLE_LIST[Math.floor(rnd() * STYLE_LIST.length)];
   return C;
 }
+// 按阵型挑最强的 11 人：先贪心分配，再反复尝试“替补换上 / 两人互换位置”，直到总分不能再提高（明星不会被埋没在替补席）
+const slotVal = (sl, p) => p.rating - Math.min(8, ENGINE.fitCost(sl, p.pos) * 0.8) * 1.25;
+function bestXI(t, slots) {
+  const sq = (PDB[t] || []).slice(); if (!sq.length) return null;
+  const used = new Set(), pick = new Array(slots.length).fill(null);
+  slots.map((sl, i) => ({ sl, i })).sort((a, b) => (b.sl === 'GK') - (a.sl === 'GK')).forEach(({ sl, i }) => { let bp = null, bv = -1e9; sq.forEach(p => { if (used.has(p)) return; const v = slotVal(sl, p); if (v > bv) { bv = v; bp = p; } }); if (bp) { used.add(bp); pick[i] = bp; } });
+  for (let it = 0; it < 40; it++) {
+    let gain = 0, move = null;
+    slots.forEach((sl, i) => { const cur = pick[i] ? slotVal(sl, pick[i]) : -1e9;
+      sq.forEach(p => { if (used.has(p)) return; const g = slotVal(sl, p) - cur; if (g > gain) { gain = g; move = () => { used.delete(pick[i]); used.add(p); pick[i] = p; }; } });
+      slots.forEach((sl2, j) => { if (j <= i || !pick[i] || !pick[j]) return; const g = slotVal(sl, pick[j]) + slotVal(sl2, pick[i]) - cur - slotVal(sl2, pick[j]); if (g > gain) { gain = g; move = () => { const x = pick[i]; pick[i] = pick[j]; pick[j] = x; }; } }); });
+    if (!move || gain < 0.01) break; move();
+  }
+  return slots.map((sl, i) => pick[i] ? (() => { const pen = Math.round(Math.min(8, ENGINE.fitCost(sl, pick[i].pos) * 0.8)); return { pos: sl, name: pick[i].name, rating: pick[i].rating - pen, pen }; })() : null).filter(Boolean);
+}
 function reslot(t, form) {
-  const F = FORMS[form]; if (!F) return;
-  const sq = (PDB[t] || []).slice(), used = new Set(), roster = [];
-  const order = F.slots.map((sl, i) => ({ sl, i })).sort((a, b) => (a.sl === 'GK' ? -1 : 0) - (b.sl === 'GK' ? -1 : 0) || sq.filter(p => ENGINE.fitCost(a.sl, p.pos) === 0).length - sq.filter(p => ENGINE.fitCost(b.sl, p.pos) === 0).length);
-  order.forEach(({ sl, i }) => { let bp = null, bv = -1e9; sq.forEach(p => { if (used.has(p)) return; const v = p.rating - ENGINE.fitCost(sl, p.pos) * 1.5; if (v > bv) { bv = v; bp = p; } }); if (!bp) return; used.add(bp); const pen = Math.round(Math.min(8, ENGINE.fitCost(sl, bp.pos) * 0.8)); roster[i] = { pos: sl, name: bp.name, rating: bp.rating - pen, pen }; });
-  TD[t].roster = roster.filter(Boolean); TD[t].coords = F.coords;
+  const F = form && FORMS[form];
+  const slots = F ? F.slots : TD[t].roster.map(r => r.pos);
+  const r = bestXI(t, slots); if (!r || r.length < 11) return;
+  TD[t].roster = r; if (F) TD[t].coords = F.coords;
 }
 function ensureTactics() {
   if (typeof SEASONS === 'undefined' || !S || !S.fx) return;
@@ -1921,9 +2009,9 @@ function ensureTactics() {
   if (key === TAC_KEY) return; TAC_KEY = key;
   Object.keys(TD).forEach(t => {
     const c = H2.cur[t], C = c && coachTactics(c.id);
-    if (!C) return;
-    TD[t].style = C.style; TD[t].form = C.form;
-    if (C.form !== (TD[t].formNow || FORM_OF0[t])) { reslot(t, C.form); TD[t].formNow = C.form; }
+    if (C) { TD[t].style = C.style; TD[t].form = C.form; }
+    if (C && C.form !== (TD[t].formNow || FORM_OF0[t])) { reslot(t, C.form); TD[t].formNow = C.form; }
+    else reslot(t, null);
   });
   ENGINE.clearCache(); MOD_VER++;
 }
@@ -1994,7 +2082,7 @@ function teamDetail(t) {
   <div class="grid ${legends.length ? 'g-main' : ''}">
     <div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>球员名单 · ${squad.length} 人</h2></div></div>
       <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>身价</th><th>S${SEASON} 出场</th><th>S${SEASON} 进球</th><th>S${SEASON} 助攻</th><th>S${SEASON} 评分</th></tr></thead><tbody>
-      ${squad.map(p => { const s = pmap[p.name], o = outMap[p.name]; return `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" ${plink(t, p.name)}><span>${esc(p.name)}</span></button>${o ? ` <span class="chip ${o.why === 'inj' ? 'bad' : ''}" style="font-size:10px;padding:0 5px">${o.why === 'inj' ? '伤 ' + o.left + '轮' : '停赛'}</span>` : ''}</td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td class="muted">${esc(p.value)}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
+      ${squad.map(p => { const s = pmap[p.name], o = outMap[p.name]; return `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" ${plink(t, p.name)}><span>${esc(p.name)}</span></button>${o ? ` <span class="chip ${o.why === 'inj' ? 'bad' : ''}" style="font-size:10px;padding:0 5px">${o.why === 'inj' ? '伤 ' + o.left + '轮' : o.why === 'strike' ? '罢赛' : '停赛'}</span>` : ''}</td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td class="muted">${esc(p.value)}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
       </tbody></table></div></div>
     ${legends.length ? `<div class="panel" style="align-self:start"><div class="ph"><div><div class="eyebrow">Club legends</div><h2>核心球员时期</h2></div><span class="note">S++ > S+ > S > A+ > A</span></div>
       <div class="rank-list">${legends.map(l => `<div class="rk" style="grid-template-columns:40px minmax(0,1fr) auto"><span class="n">${esc(l.pos)}</span><span>${esc(l.name)} <span class="sub mono">S${l.start}–${l.end ? 'S' + l.end : '至今'}</span></span><span class="tier ${l.tier.startsWith('S') ? 'S' : ''}">${esc(l.tier)}</span></div>`).join('')}</div></div>` : ''}
@@ -2202,7 +2290,7 @@ function openPlayer(team, name) {
       const clubRows = rows.filter(r => r[1].team === team).map(r => r[1]);
       const out = S.teams.includes(team) && nextRound() >= 0 ? teamCtx(team, nextRound()).out[p.name] : null;
       if (!TD[team]) return '';
-      return (out ? `<div class="btns"><span class="chip bad">${out.why === 'inj' ? `伤病中 · 还缺 ${out.left} 轮` : `停赛 · 还要停 ${out.left} 场`}</span></div>` : '') + scopeTabs('pl', [
+      return (out ? `<div class="btns"><span class="chip bad">${out.why === 'inj' ? `伤病中 · 还缺 ${out.left} 轮` : out.why === 'strike' ? `罢赛中 · 还缺 ${out.left} 场` : `停赛 · 还要停 ${out.left} 场`}</span></div>` : '') + scopeTabs('pl', [
         { label: `${SN(SEASON)} 本赛季`, note: s ? `本赛季联赛（模拟），出场 ${s.apps} 场` : '', html: s ? statGrid(s, line) : '<div class="empty">本赛季还没有出场</div>' },
         { label: '本队生涯', note: `在 ${esc(team)} 的威超出场（${clubRows.length} 个赛季）`, html: statGrid(sumRows(clubRows), line) },
         { label: '威超生涯', note: `所有球队合计（${rows.length} 个赛季）`, html: statGrid(sumRows(rows.map(r => r[1])), line) },
@@ -2556,6 +2644,7 @@ document.addEventListener('click', e => {
   if (act === 'reset') confirmReset();
   if (act === 'resetAll') return confirmResetAll();
   if (act === 'calendar') return openCalendar();
+  if (act === 'newsAll') { newsAll = !newsAll; return render(); }
   if (act === 'doResetAll') { $('#dlg').close(); doResetAll(); return; }
   if (act === 'doReset') { S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
@@ -2788,7 +2877,7 @@ if (/vesdebug/.test(location.hash)) window.__ves = {
   cups: s => cupsOf(s), season: () => SEASON, awards: s => { const A = awardsOf(s); return A && A.ballon.map(p => p.name + '@' + p.team); },
   names: () => [...Object.values(PDB).flat(), ...Object.values(FDB).flat()].map(p => p.name),
   strengths: () => Object.keys(TD).map(t => [t, +clubStrAt(t, SEASON).toFixed(1)]).sort((a, b) => b[1] - a[1]).slice(0, 6).concat(['阿罗拉', '蛮城', '皇族马'].map(t => [t, +clubStrAt(t, SEASON).toFixed(1)])),
-  logs: () => ({ RET_LOG, TR_LOG }), future: () => FUTURE, card: pid => { openPerson(pid); return $('#dlg').innerText; }, cardP: (t, n) => { openPlayer(t, n); return $('#dlg').innerText; }, pids: () => PL.map((p, i) => p ? i : -1).filter(i => i >= 0), allp: () => ALL_PLAYERS.map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating, at: p.attributes ? Object.keys(p.attributes).length : 0, extra: p.extra, kind: p.uid ? p.uid[0] : '' })), ext: () => Object.values(FDB).flat().map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating })), champ: s => HS[s] && HS[s].table.slice(0, 3).map(r => r.team + r.pts).join(' ') + ' | 降 ' + (S.archive.find(A => A.s === s) || {}).relegated + ' 升 ' + (S.archive.find(A => A.s === s) || {}).next, top: s => (HPS[s] || []).slice().sort((a, b) => b.g - a.g).slice(0, 4).map(p => p.name + '/' + p.team + '/' + p.g).join(' '), teams: () => S.teams.join(','),
+  logs: () => ({ RET_LOG, TR_LOG }), future: () => FUTURE, benchCheck: () => { ensureTactics(); return Object.keys(TD).map(t => { const R = TD[t].roster, xi = R.map(r => r.name); const sq = PDB[t] || []; const b = sq.filter(p => !xi.includes(p.name) && R.some(r => { const q = sq.find(x => x.name === r.name); return q && slotVal(r.pos, p) - slotVal(r.pos, q) >= 3; })); return b.length ? t + ':' + b.map(p => p.name + p.rating + p.pos).join(',') : ''; }).filter(Boolean); },  card: pid => { openPerson(pid); return $('#dlg').innerText; }, cardP: (t, n) => { openPlayer(t, n); return $('#dlg').innerText; }, pids: () => PL.map((p, i) => p ? i : -1).filter(i => i >= 0), allp: () => ALL_PLAYERS.map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating, at: p.attributes ? Object.keys(p.attributes).length : 0, extra: p.extra, kind: p.uid ? p.uid[0] : '' })), ext: () => Object.values(FDB).flat().map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating })), champ: s => HS[s] && HS[s].table.slice(0, 3).map(r => r.team + r.pts).join(' ') + ' | 降 ' + (S.archive.find(A => A.s === s) || {}).relegated + ' 升 ' + (S.archive.find(A => A.s === s) || {}).next, top: s => (HPS[s] || []).slice().sort((a, b) => b.g - a.g).slice(0, 4).map(p => p.name + '/' + p.team + '/' + p.g).join(' '), teams: () => S.teams.join(','),
 };
 })();
 </script>
