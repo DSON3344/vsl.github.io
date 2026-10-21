@@ -339,7 +339,7 @@ const activeTeam = {}; P.forEach((p, i) => { const st = p.stints.find(x => x.ong
 const LORE0 = JSON.parse(fs.readFileSync(D + 'lore.json', 'utf8'));
 const PRE = new Set(Object.entries(LORE0.players).filter(([k, v]) => v.pre).map(([k]) => k.split('@')[0]));
 const first = {}; for (let s = LAST; s >= 1; s--) for (const L of Object.values(SQUADS[s])) L.forEach(([id]) => first[id] = s);
-const ageFirst = i => { const p = P[i], f = first[i] || 18; if (p.kind === 'db') return p.age - (18 - f); if (p.kind === 'gen') return 19 + (f - p.born); if (p.kind === 'legend' && PRE.has(p.name) && f === 1) return 30 + Math.floor(((i * 7) % 3)); return 20 + ((i * 13) % 3); };
+const ageFirst = i => { const p = P[i], f = first[i] || 18; if (p.kind === 'db') return p.age - (18 - f); if (p.kind === 'gen') return f === 1 ? 20 + ((i * 29) % 9) : 19 + (f - p.born); if (p.kind === 'legend' && PRE.has(p.name) && f === 1) return 30 + Math.floor(((i * 7) % 3)); if (f === 1) return 21 + ((i * 37) % 10); return 20 + ((i * 13) % 3); };
 OUT.players = P.map((p, i) => used.has(i) ? [p.name, p.pos, p.nat || '', p.kind === 'db' ? p.cur : '', p.kind[0], activeSet.has(i) ? 1 : 0, activeTeam[i] || '', p.kind === 'db' ? p.dbr : p.peak, first[i] || 18, ageFirst(i)] : null);
 OUT.squads = SQUADS;
 OUT.lorePid = {};
