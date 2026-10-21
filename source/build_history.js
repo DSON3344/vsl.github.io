@@ -92,7 +92,7 @@ for (let s = 1; s <= LAST; s++) {
 const teamsIn = s => SITE.standings[s].map(r => r.team);
 const rankIn = (s, t) => teamsIn(s).indexOf(t);
 const assign = P.map(() => ({}));
-const put = (id, s, team, prio) => { if (s < 1 || s > LAST || !teamsIn(s).includes(team)) return; const cur = assign[id][s]; if (!cur || cur.prio < prio) assign[id][s] = { team, prio }; };
+const put = (id, s, team, prio) => { if (s < 1 || s > LAST || !TD[team]) return; const cur = assign[id][s]; if (!cur || cur.prio < prio) assign[id][s] = { team, prio }; };
 P.forEach((p, id) => {
   p.stints.forEach(st => { for (let s = st.start; s <= st.end; s++) put(id, s, st.team, 3); });
   const byTeam = {};
@@ -202,13 +202,16 @@ function genPerson(team) {
 const XI = {};
 const prevTeam = {};           // pid -> 上一季效力的球队
 const genPool = [];            // 补充球员
-const target = (s, t) => clubBase(t) + (10.5 - rankIn(s, t)) * 0.3;
+const target = (s, t) => rankIn(s, t) < 0 ? clubBase(t) - 1.5 : clubBase(t) + (10.5 - rankIn(s, t)) * 0.3;
 const lineOf = sl => LINE(sl.replace(/-.*/, ''));
 const stayDown = {}, leftAt = {};
 for (let s = 1; s <= LAST; s++) {
   XI[s] = {};
   const used = new Set();
-  const pinned = {}; teamsIn(s).forEach(t => pinned[t] = []);
+  // 每季 27 支球队都有阵容（不在威超的球队踢次级联赛），威超球队先挑
+  const ORDER = teamsIn(s).concat(Object.keys(TD).filter(t => !teamsIn(s).includes(t)).sort((a, b) => clubBase(b) - clubBase(a)));
+  const pinned = {}; ORDER.forEach(t => pinned[t] = []);
+  P.forEach((p, id) => { if (stayDown[id] && !teamsIn(s).includes(stayDown[id]) && (p.kind !== 'gen' || (s >= p.born && s <= p.until)) && !(assign[id][s] && assign[id][s].prio >= 2)) assign[id][s] = { team: stayDown[id], prio: 2 }; });
   P.forEach((p, id) => { const a = assign[id][s]; if (a && a.prio >= 2) pinned[a.team].push(id); });
   // 自由球员
   const free = [];
@@ -225,7 +228,7 @@ for (let s = 1; s <= LAST; s++) {
     }
   });
   const slotsOf = {};
-  for (const team of teamsIn(s)) {
+  for (const team of ORDER) {
     const slots = TD[team].roster.map(r => ({ slot: r.pos, line: lineOf(r.pos), pid: null }));
     const cands = pinned[team].map(id => ({ id, pr: assign[id][s].prio >= 3 ? 1 : 0, r: ratingAt(P[id], s), line: P[id].line, pos: P[id].pos })).sort((a, b) => b.pr - a.pr || b.r - a.r);
     for (const c of cands) {
@@ -234,7 +237,7 @@ for (let s = 1; s <= LAST; s++) {
     }
     slotsOf[team] = slots;
   }
-  for (const team of teamsIn(s)) {
+  for (const team of ORDER) {
     const tgt = target(s, team);
     slotsOf[team].forEach(sl => {
       if (sl.pid != null) return;
@@ -304,289 +307,22 @@ for (const [id, st] of Object.entries(fixedCareer)) for (let k = 1; k < st.lengt
 }
 transfers.sort((a, b) => a[0] - b[0] || b[4] - a[4]);
 
-/* ---------- 推演比赛：结果服从官网名次，比分和球员数据自然产生 ---------- */
-function fixtures(teams) {
-  const n = teams.length, arr = teams.slice(1), rounds = [];
-  for (let r = 0; r < n - 1; r++) {
-    const ring = [teams[0], ...arr], ms = [];
-    for (let i = 0; i < n / 2; i++) { const a = ring[i], b = ring[n - 1 - i]; ms.push((r + i) % 2 === 0 ? [a, b] : [b, a]); }
-    rounds.push(ms); arr.unshift(arr.pop());
-  }
-  return rounds.concat(rounds.map(ms => ms.map(([a, b]) => [b, a])));
-}
-const WEATHERS = ['晴天', '阴天', '雨天'], SLOTS = ['早上', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '凌晨'];
-
-
-const pois = (l, k) => { let p = Math.exp(-l); for (let i = 1; i <= k; i++) p *= l / i; return p; };
-function outcomeProbs(lh, la) { let H = 0, Dw = 0, A = 0; for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) { const q = pois(lh, i) * pois(la, j); if (i > j) H += q; else if (i === j) Dw += q; else A += q; } return { 1: H, 0: Dw, '-1': A }; }
-function poissonSample(l) { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= rnd(); } while (p > L); return k - 1; }
-function simulateSeason(s) {
-  const teams = teamsIn(s), N = teams.length;
-  const str = teams.map(t => XI[s][t].reduce((a, x) => a + x.r, 0) / 11);
-  const order = shuffle(teams.map((_, i) => i));
-  const M = []; fixtures(order).forEach((ms, ri) => ms.forEach(([h, a]) => {
-    const d = str[h] - str[a];
-    const lh = 1.3 * Math.exp(0.034 * d) * 1.08, la = 1.3 * Math.exp(-0.034 * d) * 0.93;
-    const pr = outcomeProbs(lh, la);
-    M.push({ ri, h, a, lh, la, lp: { 1: Math.log(pr[1]), 0: Math.log(pr[0]), '-1': Math.log(pr[-1]) }, o: 0, hg: 0, ag: 0 });
-  }));
-  const W = new Array(N).fill(0), Dd = new Array(N).fill(0), L = new Array(N).fill(0);
-  const apply = (m, sg) => { if (m.o === 1) { W[m.h] += sg; L[m.a] += sg; } else if (m.o === 0) { Dd[m.h] += sg; Dd[m.a] += sg; } else { L[m.h] += sg; W[m.a] += sg; } };
-  M.forEach(m => { const r = rnd(), pH = Math.exp(m.lp[1]), pD = Math.exp(m.lp[0]); m.o = r < pH ? 1 : r < pH + pD ? 0 : -1; apply(m, 1); });
-  const pts = i => W[i] * 3 + Dd[i];
-  const viol = () => { let c = 0; for (let i = 0; i < N - 1; i++) { const d = pts(i + 1) - pts(i); if (d > 0) c += d + 1; else if (d === 0) c += 0.3; } return c; };
-  const hard = () => { for (let i = 0; i < N - 1; i++) if (pts(i + 1) > pts(i)) return true; return false; };
-  // 以 T=1 采样（保持比赛结果的随机性），名次约束的权重逐步加大，满足后变成硬约束
-  const ties = () => { let c = 0; for (let i = 0; i < N - 1; i++) if (pts(i) === pts(i + 1)) c++; return c; };
-  let v = viol();
-  const IT = 300000;
-  for (let it = 0; it < IT * 4; it++) {
-    const m = M[Math.floor(rnd() * M.length)];
-    const old = m.o, nw = [1, 0, -1].filter(x => x !== old)[Math.floor(rnd() * 2)];
-    apply(m, -1); m.o = nw; apply(m, 1);
-    let dc = m.lp[old] - m.lp[nw];
-    if (it < IT) { const v2 = viol(); dc += (0.5 + 30 * it / IT) * (v2 - v); if (dc <= 0 || rnd() < Math.exp(-dc)) { v = v2; continue; } }
-    else { if (hard()) { const v2 = viol(); dc += 40 * (v2 - v); if (dc <= 0 || rnd() < Math.exp(-dc)) { v = v2; continue; } }
-      else { const okNow = !hard(); if (okNow) { const t2 = ties(); dc += 1.0 * t2; if (dc <= 0 || rnd() < Math.exp(-dc)) { v = viol(); continue; } } } }
-    apply(m, -1); m.o = old; apply(m, 1);
-  }
-  // 若仍有名次冲突，用贪心修正
-  for (let k = 0; k < 200000 && hard(); k++) {
-    const m = M[Math.floor(rnd() * M.length)];
-    const old = m.o, nw = [1, 0, -1].filter(x => x !== old)[Math.floor(rnd() * 2)];
-    const v0 = viol(); apply(m, -1); m.o = nw; apply(m, 1);
-    if (viol() > v0) { apply(m, -1); m.o = old; apply(m, 1); }
-  }
-  // 比分：按期望进球抽样，并与胜平负一致
-  const sampleScore = m => { for (let k = 0; k < 400; k++) { const h = poissonSample(m.lh), a = poissonSample(m.la); if ((m.o === 1 && h > a) || (m.o === 0 && h === a) || (m.o === -1 && h < a)) return [h, a]; } return m.o === 1 ? [1, 0] : m.o === 0 ? [1, 1] : [0, 1]; };
-  M.forEach(m => { [m.hg, m.ag] = sampleScore(m); });
-  const GF = new Array(N).fill(0), GA = new Array(N).fill(0);
-  const recount = () => { GF.fill(0); GA.fill(0); M.forEach(m => { GF[m.h] += m.hg; GA[m.h] += m.ag; GF[m.a] += m.ag; GA[m.a] += m.hg; }); };
-  recount();
-  const tieBad = () => { const bad = []; for (let i = 0; i < N - 1; i++) if (pts(i) === pts(i + 1)) { const a = GF[i] - GA[i], b = GF[i + 1] - GA[i + 1]; if (b > a || (b === a && GF[i + 1] >= GF[i])) bad.push(i); } return bad; };
-  for (let k = 0; k < 20000; k++) {
-    const bad = tieBad(); if (!bad.length) break;
-    const i = bad[Math.floor(rnd() * bad.length)], t = rnd() < 0.5 ? i : i + 1;
-    const ms = M.filter(m => m.h === t || m.a === t); const m = ms[Math.floor(rnd() * ms.length)];
-    const old = [m.hg, m.ag]; [m.hg, m.ag] = sampleScore(m); recount();
-    if (tieBad().length > bad.length) { [m.hg, m.ag] = old; recount(); }
-  }
-  const table = teams.map((t, i) => ({ t, i, w: W[i], d: Dd[i], l: L[i], gf: GF[i], ga: GA[i], pts: pts(i) }));
-  const sorted = table.slice().sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
-  const exp = teams.map((_, i) => M.reduce((a, m) => a + (m.h === i ? 3 * Math.exp(m.lp[1]) + Math.exp(m.lp[0]) : m.a === i ? 3 * Math.exp(m.lp[-1]) + Math.exp(m.lp[0]) : 0), 0));
-  if (process.env.DBG) console.log('S' + s, 'str', str.map(x => x.toFixed(0)).join(','), '| exp', exp.map(x => x.toFixed(0)).join(','), '| got', table.map(r => r.pts).join(','));
-  return { teams, M, table, orderOk: sorted.every((r, k) => r.i === k) };
-}
-
-/* ---------- 比赛事件与球员数据 ---------- */
-const PS = {}, CS = {}, OUT = { seasons: {} }, PLAYED = {};
-const stat = (s, pid, team) => { const o = (PS[s] = PS[s] || {}); return o[pid] || (o[pid] = { team, apps: 0, min: 0, g: 0, a: 0, y: 0, r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, starts: 0 }); };
-const attrOf = pid => (P[pid].kind === 'db' && (PDB[P[pid].cur] || []).find(q => q.name === P[pid].name) || {}).attributes;
-const report = [];
-for (let s = 1; s <= LAST; s++) {
-  const R = simulateSeason(s);
-  const { teams, M } = R;
-  const goals = M.reduce((a, m) => a + m.hg + m.ag, 0);
-  report.push(`S${s} 名次${R.orderOk ? '一致' : '不一致'} · 冠军 ${R.table[0].pts} 分 · 场均进球 ${(goals / M.length).toFixed(2)}`);
-  const xi = teams.map(t => XI[s][t]);
-  // 替补席：本季在队但没首发的球员（每场换上 2–4 人，独立随机数，不影响比分和名次）
-  const bench = teams.map(t => { const onXI = new Set(XI[s][t].map(x => x.pid)); return P.map((p, id) => id).filter(id => assign[id] && assign[id][s] && assign[id][s].team === t && assign[id][s].prio >= 1 && !onXI.has(id)).map(id => ({ pid: id, line: P[id].line, pos: P[id].pos, r: ratingAt(P[id], s) })); });
-  const squadFor = ti => {
-    const X = xi[ti].map(x => ({ ...x, min: 90, start: 1 }));
-    const B = bench[ti].slice(); const n = Math.min(B.length, 2 + Math.floor(rnd3() * 3));
-    for (let k = 0; k < n; k++) {
-      const bi = Math.floor(rnd3() * Math.min(B.length, 6)), b = B.sort((u, v) => v.r - u.r).splice(bi, 1)[0];
-      const outs = X.filter(x => x.start && x.min === 90 && x.line !== 'GK' && (x.line === b.line || b.line === 'GK' ? x.line === b.line : true));
-      const pool = outs.filter(x => x.line === b.line).length ? outs.filter(x => x.line === b.line) : outs;
-      if (!pool.length || b.line === 'GK') continue;
-      const o = pool[Math.floor(rnd3() * pool.length)], m = 55 + Math.floor(rnd3() * 33);
-      o.min = m; X.push({ pid: b.pid, slot: o.slot, line: o.line, r: b.r, min: 90 - m, start: 0 });
-    }
-    return X;
-  };
-  const csT = {}; teams.forEach(t => csT[t] = { poss: 0, sh: 0, ot: 0, tk: 0, sv: 0, cor: 0, y: 0, rc: 0, cs: 0, hp: 0, ap: 0, ps: 0, pc: 0, pg: 0, pm: 0 });
-  const rounds = [];
-  M.forEach(m => {
-    const ev = { goals: [], cards: [], pmiss: [] };
-    const SQ = {}; SQ[m.h] = squadFor(m.h); SQ[m.a] = squadFor(m.a);
-    [[m.h, m.hg], [m.a, m.ag]].forEach(([ti, g]) => {
-      const X = SQ[ti];
-      const wG = X.map(x => POS_GOAL(x.slot) * Math.pow(x.r / 85, 3) * Math.pow(((attrOf(x.pid) || {}).sho || x.r) / 80, 2) * x.min / 90);
-      const wA = X.map(x => POS_AST(x.slot) * Math.pow(x.r / 85, 3) * Math.pow(((attrOf(x.pid) || {}).pas || x.r) / 80, 2) * x.min / 90);
-      for (let k = 0; k < g; k++) {
-        const sc = pick(X, wG);
-        let as = -1;
-        if (rnd() < 0.78) { const w = X.map((x, j) => x === sc ? 0 : wA[j]); as = pick(X, w).pid; }
-        let mn = 1 + Math.floor(rnd() * 90); if (mn === 90 && rnd() < 0.6) mn = 91 + Math.floor(rnd() * 4);
-        ev.goals.push([mn, ti, sc.pid, as, 0]);
-      }
-      // 点球（独立随机数，不影响其余推演）：部分进球改由点球手罚进，另有少量罚丢
-      const taker = X.filter(x => x.line !== 'GK' && x.start).reduce((b, x) => { const v = ((attrOf(x.pid) || {}).sho || x.r) + (/ST/.test(x.slot) ? 4 : /AM|W/.test(x.slot) ? 2 : 0) + x.r * 0.2; return v > b.v ? { x, v } : b; }, { x: null, v: -1 }).x;
-      ev.goals.forEach(gl => { if (gl[1] === ti && taker && rnd2() < 0.07) { gl[2] = taker.pid; gl[3] = -1; gl[4] = 1; } });
-      if (taker && rnd2() < 0.032) ev.pmiss.push([ti, taker.pid, rnd2() < 0.62 ? 1 : 0]);
-      const press = /逼抢|压制|对抗|防守/.test(TD[teams[ti]].style || '');
-      const wC = X.map(x => (x.line === 'DF' ? 2 : /DM/.test(x.slot) ? 2.6 : x.line === 'MF' ? 1.3 : x.line === 'GK' ? 0.15 : 0.8) * x.min / 90);
-      const ny = poissonSample(1.6 + (press ? 0.4 : 0));
-      const yc = {};
-      for (let k = 0; k < ny; k++) { const x = pick(X, wC); const mn = 5 + Math.floor(rnd() * 88); yc[x.pid] = (yc[x.pid] || 0) + 1; ev.cards.push([mn, ti, yc[x.pid] === 2 ? 1 : 0, x.pid]); }
-      if (rnd() < 0.04) { const x = pick(X, wC); ev.cards.push([10 + Math.floor(rnd() * 80), ti, 1, x.pid]); }
-    });
-    ev.goals.sort((a, b) => a[0] - b[0]); ev.cards.sort((a, b) => a[0] - b[0]);
-    const sides = [[m.h, m.hg, m.ag], [m.a, m.ag, m.hg]];
-    const avg = ti => xi[ti].reduce((a, x) => a + x.r, 0) / 11;
-    const poss = Math.round(Math.max(30, Math.min(70, 51.5 + (avg(m.h) - avg(m.a)) * 1.6 + gauss() * 5)));
-    const shots = [Math.max(m.hg + 1, Math.round(m.lh * 4.2 + 6 + gauss() * 2.5)), Math.max(m.ag + 1, Math.round(m.la * 4.2 + 6 + gauss() * 2.5))];
-    const ots = shots.map((sh, k) => { const g = k ? m.ag : m.hg; return Math.max(g, Math.min(sh, Math.round(sh * (0.34 + rnd() * 0.14)))); });
-    const pmOf = k => ev.pmiss.filter(x => x[0] === (k ? m.a : m.h));
-    [0, 1].forEach(k => { const pm = pmOf(k), g = k ? m.ag : m.hg; shots[k] = Math.max(shots[k], g + 1 + pm.length); ots[k] = Math.min(shots[k], Math.max(ots[k], g + pm.filter(x => x[2]).length)); });
-    const rows = sides.map(([ti, gf, ga], k) => {
-      const X = SQ[ti];
-      const idx = id => X.findIndex(x => x.pid === id);
-      return ENGINE.sideStats(X.map(x => ({ slot: x.slot, line: x.line, r: x.r, attr: attrOf(x.pid), min: x.min, start: x.start })), {
-        goals: ev.goals.filter(g => g[1] === ti).map(g => [idx(g[2]), g[3] >= 0 ? idx(g[3]) : -1, g[4]]),
-        pmiss: pmOf(k).map(x => [idx(x[1]), x[2]]),
-        cards: ev.cards.filter(c => c[1] === ti).map(c => [idx(c[3]), c[2], c[0]]),
-        shots: shots[k], ot: ots[k], oppOt: ots[1 - k], gf, ga, poss: k ? 100 - poss : poss, press: /防守|逼抢|压制|摆大巴|对抗/.test(TD[teams[ti]].style || ''),
-      }).map((r, q) => ({ ...r, pid: X[q].pid, rt: r.r }));
-    });
-    const all = rows.flat().filter(x => x.min >= 20); const motm = all.reduce((a, b) => b.rt > a.rt ? b : a);
-    sides.forEach(([ti, gf, ga], k) => {
-      const t = teams[ti], c = csT[t];
-      c.poss += k ? 100 - poss : poss; c.sh += shots[k]; c.ot += ots[k];
-      c.tk += rows[k].reduce((a, x) => a + x.tk, 0); c.sv += rows[k].reduce((a, x) => a + x.sv, 0);
-      c.cor += Math.round(shots[k] * 0.38 + rnd() * 3); if (ga === 0) c.cs++;
-      const p = gf > ga ? 3 : gf === ga ? 1 : 0; if (k) c.ap += p; else c.hp += p;
-      ev.cards.filter(x => x[1] === ti).forEach(x => x[2] ? c.rc++ : c.y++);
-      rows[k].forEach(x => {
-        const o = stat(s, x.pid, t); o.apps++; o.starts += x.start; o.min += x.min; o.sh += x.sh; o.ot += x.ot; o.tk += x.tk; o.sv += x.sv; o.rs += x.rt; o.g += x.g; o.a += x.a; o.kp += x.kp; o.int += x.int; o.ps += x.ps; o.pc += x.pc; o.pg += x.pg; o.pm += x.pm; c.ps += x.ps; c.pc += x.pc; c.pg += x.pg; c.pm += x.pm;
-        if (ga === 0 && x.min >= 60 && (x.line === 'GK' || x.line === 'DF')) o.cs++;
-      });
-      ev.cards.filter(x => x[1] === ti).forEach(x => { const o = stat(s, x[3], t); x[2] ? o.r++ : o.y++; });
-    });
-    stat(s, motm.pid, teams[rows[0].includes(motm) ? m.h : m.a]).motm++;
-    const w = WEATHERS[Math.floor(rnd() * 3)], sl = SLOTS[Math.floor(rnd() * 8)];
-    const entry = [m.h, m.a, m.hg, m.ag, w, sl, ev.goals.map(g => [g[0], g[1] === m.h ? 0 : 1, g[2], g[3], g[4]]), ev.cards.map(c => [c[0], c[1] === m.h ? 0 : 1, c[2], c[3]]), motm.pid, poss, shots[0], shots[1]];
-    (rounds[m.ri] = rounds[m.ri] || []).push(entry);
-    (PLAYED[s] = PLAYED[s] || []).push({ entry, side: [rows[0].map(x => x.pid), rows[1].map(x => x.pid)] });
-  });
-  CS[s] = csT;
-  const table = R.table.map(r => ({ team: r.t, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.pts }));
-  OUT.seasons[s] = { teams, table, official: OFFICIAL[s].map(r => ({ team: r.team, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.w * 3 + r.d })), rounds, xi: Object.fromEntries(teams.map(t => [t, XI[s][t].map(x => [x.pid, x.slot, x.r])])), club: csT };
-}
-
-/* ---------- 传奇设定（lore.json）：威超联赛生涯出场/进球/助攻按设定 ---------- */
-const LORE = JSON.parse(fs.readFileSync(D + 'lore.json', 'utf8'));
-const lr = (() => { let x = 4242; return () => { x |= 0; x = x + 0x6D2B79F5 | 0; let t = Math.imul(x ^ x >>> 15, 1 | x); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();
-const lshuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(lr() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-function lorePid(key, span) {
-  const [name, team] = key.split('@');
-  const ids = byName[clean(name)] || [];
-  const inSpan = ids.find(i => { for (let s = span[0]; s <= span[1]; s++) if (PS[s] && PS[s][i] && PS[s][i].team === team) return true; return false; });
-  if (inSpan != null) return inSpan;
-  const played = ids.filter(i => P[i].kind !== 'gen' && Object.keys(PS).some(s => PS[s][i]));
-  return played.find(i => Object.keys(PS).some(s => PS[s][i] && PS[s][i].team === team)) ?? played[0];
-}
-const LOCK = new Set(), LORE_PID = {};
-function loreTeamGoal(s, e, k) { const T = OUT.seasons[s].table, tm = OUT.seasons[s].teams; e[k ? 3 : 2]++; const H = T.find(r => r.team === tm[e[0]]), A = T.find(r => r.team === tm[e[1]]); if (k) { A.gf++; H.ga++; } else { H.gf++; A.ga++; } }
-function loreMine(s, pid) { const t = PS[s][pid].team, tm = OUT.seasons[s].teams; return PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === t ? 0 : 1 })).filter(({ m, k }) => m.side[k].includes(pid)); }
-function loreMate(side, pid, wfn) { const c = side.filter(i => i !== pid && !LOCK.has(i)); if (!c.length) return -1; const w = c.map(wfn); let t = w.reduce((a, b) => a + b, 0); if (t <= 0) return c[Math.floor(lr() * c.length)]; let r = lr() * t; for (let i = 0; i < c.length; i++) { r -= w[i]; if (r <= 0) return c[i]; } return c[c.length - 1]; }
-const scW = i => ({ FW: 3, MF: 1.4, DF: 0.35, GK: 0 })[P[i].line] ?? 1, asW = i => ({ FW: 1.6, MF: 2.4, DF: 0.8, GK: 0.05 })[P[i].line] ?? 1;
-function loreAddGoal(s, mine, pid, role) {
-  const wins = mine.filter(({ m, k }) => (k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3]) > 0);
-  const pool = wins.length ? wins : mine; const { m, k } = pool[Math.floor(lr() * pool.length)];
-  const team = PS[s][pid].team; let sc, as;
-  if (role === 'g') { sc = pid; as = lr() < 0.75 ? loreMate(m.side[k], pid, asW) : -1; }
-  else { sc = loreMate(m.side[k], pid, scW); as = pid; if (sc < 0) return false; }
-  let mn = 1 + Math.floor(lr() * 90); m.entry[6].push([mn, k, sc, as, 0]); m.entry[6].sort((a, b) => a[0] - b[0]);
-  loreTeamGoal(s, m.entry, k);
-  const S = PS[s][sc]; S.g++; S.sh++; S.ot++; S.rs += 0.5; if (as >= 0) { PS[s][as].a++; PS[s][as].rs += 0.3; }
-  if (k) m.entry[11]++; else m.entry[10]++;
-  return true;
-}
-function loreEnforce(key, info) {
-  const pid = lorePid(key, info.span); if (pid == null) { console.warn('lore 找不到', key); return; }
-  LORE_PID[key] = pid; if (!info.league) return;
-  const [TA, TG, TAS] = info.league;
-  const ss = Object.keys(PS).map(Number).filter(s => PS[s][pid]).sort((a, b) => a - b);
-  // 出场：不够就补替补出场
-  let apps = ss.reduce((a, s) => a + PS[s][pid].apps, 0);
-  for (let guard = 0; apps < TA && guard < 2000; guard++) {
-    const s = ss.slice().sort((a, b) => PS[a][pid].apps - PS[b][pid].apps)[0]; const o = PS[s][pid]; if (o.apps >= 38) break;
-    const t = o.team, tm = OUT.seasons[s].teams;
-    const free = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === t ? 0 : 1 })).filter(({ m, k }) => (tm[m.entry[0]] === t || tm[m.entry[1]] === t) && !m.side[k].includes(pid));
-    if (!free.length) break; const { m, k } = free[Math.floor(lr() * free.length)];
-    m.side[k].push(pid); o.apps++; o.min += 20 + Math.floor(lr() * 30); o.ps += 14; o.pc += 12; o.rs += 6.7; apps++;
-  }
-  for (let guard = 0; apps > TA && guard < 500; guard++) {
-    const s = ss.slice().sort((a, b) => PS[b][pid].apps - PS[a][pid].apps)[0], o = PS[s][pid];
-    const c = loreMine(s, pid).find(({ m }) => !m.entry[6].some(g => g[2] === pid || g[3] === pid) && !m.entry[7].some(c => c[3] === pid) && m.entry[8] !== pid);
-    if (!c) break; c.m.side[c.k].splice(c.m.side[c.k].indexOf(pid), 1);
-    const f = 1 / o.apps; ['min', 'sh', 'ot', 'tk', 'sv', 'kp', 'int', 'ps', 'pc', 'rs'].forEach(k => o[k] = k === 'rs' ? o[k] * (1 - f) : Math.round(o[k] * (1 - f))); if (o.starts > 0) o.starts--; o.apps--; apps--;
-  }
-  const wt = ss.map(s => Math.pow(PS[s][pid].min, 0.75) * (0.88 + lr() * 0.24)), W = wt.reduce((a, b) => a + b, 0);
-  const split = tot => { const raw = wt.map(w => tot * w / W), fl = raw.map(Math.floor); let r = tot - fl.reduce((a, b) => a + b, 0); raw.map((x, i) => [x - fl[i], i]).sort((a, b) => b[0] - a[0]).slice(0, r).forEach(([, i]) => fl[i]++); return fl; };
-  const tg = split(TG), ta = TAS == null ? null : split(TAS);
-  ss.forEach((s, j) => {
-    const o = PS[s][pid], mine = loreMine(s, pid);
-    const evs = () => lshuffle(mine.flatMap(({ m, k }) => m.entry[6].filter(g => g[1] === k).map(g => ({ g, m, k }))));
-    // 进球
-    let need = tg[j] - o.g;
-    if (need > 0) for (const { g } of evs()) { if (need <= 0) break; if (g[2] === pid || LOCK.has(g[2])) continue; const old = g[2]; if (g[3] === pid) { g[3] = old; o.a--; PS[s][old].a++; } PS[s][old].g--; PS[s][old].rs -= 0.5; g[2] = pid; o.g++; o.sh++; o.ot++; o.rs += 0.5; need--; }
-    for (let guard = 0; need > 0 && guard < 500; guard++) if (loreAddGoal(s, mine, pid, 'g')) need--;
-    if (need < 0) for (const { g, m, k } of evs()) { if (need >= 0) break; if (g[2] !== pid) continue; const nw = loreMate(m.side[k], pid, scW); if (nw < 0) continue; if (g[3] === nw) g[3] = -1, PS[s][nw].a--; g[2] = nw; PS[s][nw].g++; o.g--; o.rs -= 0.5; need++; }
-    // 助攻
-    need = ta ? ta[j] - o.a : 0;
-    if (need > 0) for (const { g } of evs()) { if (need <= 0) break; if (g[2] === pid || g[3] === pid || g[4] || LOCK.has(g[2]) || (g[3] >= 0 && LOCK.has(g[3]))) continue; if (g[3] >= 0) PS[s][g[3]].a--; g[3] = pid; o.a++; o.rs += 0.3; need--; }
-    for (let guard = 0; need > 0 && guard < 500; guard++) if (loreAddGoal(s, mine, pid, 'a')) need--;
-    if (need < 0) for (const { g, m, k } of evs()) { if (need >= 0) break; if (g[3] !== pid) continue; const nw = lr() < 0.6 ? loreMate(m.side[k].filter(i => i !== g[2]), pid, asW) : -1; g[3] = nw; if (nw >= 0) PS[s][nw].a++; o.a--; need++; }
-  });
-  LOCK.add(pid);
-}
-const LORE_ORDER = [...LORE.tiers.T0, ...LORE.tiers.T1, ...LORE.tiers.T2, '维拉@威龙', '安利克@威龙', '李仁炫@威龙', '门德利奇@威龙', '亚当斯@威龙', '范德容@威龙'];
-LORE_ORDER.concat(Object.keys(LORE.players).filter(k => !LORE_ORDER.includes(k))).forEach(k => loreEnforce(k, LORE.players[k]));
-// 改动进球后核对名次（积分 > 净胜球 > 进球）：同分时把下方球队大胜里的一个进球去掉，或给上方球队加一个
-const tieBadAt = T => { for (let i = 0; i < T.length - 1; i++) { const a = T[i], b = T[i + 1]; if (a.pts === b.pts && ((b.gf - b.ga) > (a.gf - a.ga) || ((b.gf - b.ga) === (a.gf - a.ga) && b.gf >= a.gf))) return i; } return -1; };
-for (let s = 1; s <= LAST; s++) {
-  const T = OUT.seasons[s].table, tm = OUT.seasons[s].teams;
-  for (let guard = 0; guard < 3000; guard++) {
-    const i = tieBadAt(T); if (i < 0) break;
-    const a = T[i], b = T[i + 1];
-    const bm = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === b.team ? 0 : tm[m.entry[1]] === b.team ? 1 : -1 })).filter(({ m, k }) => k >= 0 && (k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3]) >= 2);
-    let done = false;
-    // 净胜球差太大：把下方球队一场一球小胜改成平局（对手多进一球），让积分拉开
-    if ((b.gf - b.ga) - (a.gf - a.ga) > 4) {
-      const c2 = T[i + 2];
-      const cand = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === b.team ? 0 : tm[m.entry[1]] === b.team ? 1 : -1 })).filter(({ m, k }) => k >= 0 && (k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3]) >= 1);
-      const mg = ({ m, k }) => k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3];
-      for (const { m, k } of lshuffle(cand).sort((x, y) => mg(x) - mg(y))) {
-        const o = T.find(r => r.team === tm[m.entry[1 - k]]), j = T.indexOf(o);
-        if (c2 && b.pts - 2 < c2.pts) continue;
-        if (j > 0 && T[j - 1] !== b && T[j - 1].pts <= o.pts + 1) continue;
-        if (j > 0 && T[j - 1] === b && b.pts - 2 <= o.pts + 1) continue;
-        const n = mg({ m, k }); let okk = true;
-        for (let q = 0; q < n; q++) { const sc = loreMate(m.side[1 - k], -1, scW); if (sc < 0) { okk = false; break; } m.entry[6].push([46 + Math.floor(lr() * 48), 1 - k, sc, -1, 0]); loreTeamGoal(s, m.entry, 1 - k); PS[s][sc].g++; }
-        m.entry[6].sort((x, y) => x[0] - y[0]); if (!okk) continue;
-        b.w--; b.d++; b.pts -= 2; o.l--; o.d++; o.pts += 1; done = true; if (process.env.DBG2) console.log("tweak", s, guard, b.team, o.team); break;
-      }
-      if (done) continue;
-    }
-    const c = T[i + 2], okBelow = () => !c || c.pts !== b.pts || (b.gf - b.ga) - 1 > (c.gf - c.ga) || ((b.gf - b.ga) - 1 === (c.gf - c.ga) && b.gf - 1 > c.gf);
-    if (okBelow()) for (const { m, k } of lshuffle(bm)) { const gi = m.entry[6].findIndex(g => g[1] === k && !LOCK.has(g[2]) && (g[3] < 0 || !LOCK.has(g[3]))); if (gi < 0) continue; const g = m.entry[6].splice(gi, 1)[0]; PS[s][g[2]].g--; if (g[3] >= 0) PS[s][g[3]].a--; m.entry[k ? 3 : 2]--; const H = T.find(r => r.team === tm[m.entry[0]]), A = T.find(r => r.team === tm[m.entry[1]]); if (k) { A.gf--; H.ga--; } else { H.gf--; A.ga--; } done = true; break; }
-    if (!done && okBelow()) for (const { m, k } of lshuffle(bm)) { const opp = 1 - k; const sc = loreMate(m.side[opp], -1, scW); if (sc < 0) continue; m.entry[6].push([1 + Math.floor(lr() * 90), opp, sc, -1, 0]); m.entry[6].sort((x, y) => x[0] - y[0]); loreTeamGoal(s, m.entry, opp); PS[s][sc].g++; done = true; break; }
-    if (!done) { const am = PLAYED[s].map(m => ({ m, k: tm[m.entry[0]] === a.team ? 0 : tm[m.entry[1]] === a.team ? 1 : -1 })).filter(({ m, k }) => k >= 0 && (k ? m.entry[3] - m.entry[2] : m.entry[2] - m.entry[3]) > 0); if (!am.length) break; const { m, k } = am[Math.floor(lr() * am.length)]; const sc = loreMate(m.side[k], -1, scW); if (sc < 0) continue; m.entry[6].push([1 + Math.floor(lr() * 90), k, sc, -1, 0]); m.entry[6].sort((x, y) => x[0] - y[0]); loreTeamGoal(s, m.entry, k); PS[s][sc].g++; }
-  }
-}
-for (let s = 1; s <= LAST; s++) { const T = OUT.seasons[s].table; for (let i = 0; i < T.length - 1; i++) { const a = T[i], b = T[i + 1]; if (a.pts === b.pts && ((b.gf - b.ga) > (a.gf - a.ga) || ((b.gf - b.ga) === (a.gf - a.ga) && b.gf > a.gf))) report.push(`S${s} 传奇进球改动后 ${a.team}/${b.team} 同分排序需注意`); } }
-OUT.lorePid = LORE_PID;
-
-/* ---------- 输出 ---------- */
+/* ---------- 输出：S01–S17 每季 27 支球队的阵容（首发 11 人 + 替补），比赛结果交给网站重新模拟 ---------- */
+const OUT = {};
 const used = new Set();
-for (const s in PS) for (const id in PS[s]) used.add(+id);
+const SQUADS = {};
+for (let s = 1; s <= LAST; s++) {
+  SQUADS[s] = {};
+  for (const [t, X] of Object.entries(XI[s])) {
+    const onXI = new Set(X.map(x => x.pid));
+    const bench = P.map((p, id) => id).filter(id => assign[id] && assign[id][s] && assign[id][s].team === t && !onXI.has(id)).map(id => [id, '', ratingAt(P[id], s)]).sort((a, b) => b[2] - a[2]).slice(0, 12);
+    SQUADS[s][t] = X.map(x => [x.pid, x.slot, x.r]).concat(bench);
+    SQUADS[s][t].forEach(([id]) => used.add(id));
+  }
+}
 P.forEach((p, i) => { if (p.kind === 'db') used.add(i); });
-// 现役阵容里有、球员资料库里没有的名字 -> 历史人物
 const rosterLinks = {}, activeSet = new Set();
-P.forEach((p, i) => { if (p.kind === 'db') activeSet.add(i); if (p.stints.some(st => st.end === LAST && PDF.legends && true)) {} });
-for (const [team, list] of Object.entries(PDF.legends)) list.forEach(l => { if (false) { const id = (byName[clean(l.name.replace(/^.*换成/, ''))] || []).find(i => P[i].stints.some(st => st.team === team)); if (id != null) activeSet.add(id); } });
+P.forEach((p, i) => { if (p.kind === 'db') activeSet.add(i); });
 for (const [team, T] of Object.entries(TD)) T.roster.forEach(r => {
   const sq = PDB[team] || [];
   if (sq.some(x => clean(x.name) === clean(r.name) || clean(x.name).includes(clean(r.name)) || clean(r.name).includes(clean(x.name)))) return;
@@ -595,23 +331,28 @@ for (const [team, T] of Object.entries(TD)) T.roster.forEach(r => {
   if (id != null) { rosterLinks[team + '|' + r.name] = id; activeSet.add(id); used.add(id); }
 });
 P.forEach(p => { if (!p.nat && NATMAP[clean(p.name)]) p.nat = NATMAP[clean(p.name)]; });
-OUT.rosterLinks = rosterLinks;
-// 撞名 = 父子：历史球员与同名的现役资料库球员
 const family = [];
 P.forEach((p, i) => { if (p.kind === 'db' || p.kind === 'gen' || !used.has(i)) return; (byName[clean(p.name)] || []).forEach(j => { if (j !== i && P[j].kind === 'db') family.push([i, j]); }); });
-OUT.family = family;
 family.forEach(([f, c]) => { if (!P[f].nat) P[f].nat = P[c].nat; });
 const activeTeam = {}; P.forEach((p, i) => { const st = p.stints.find(x => x.ongoing); if (p.kind !== 'db' && st) activeTeam[i] = st.team; });
-OUT.players = P.map((p, i) => used.has(i) ? [p.name, p.pos, p.nat || '', p.kind === 'db' ? p.cur : '', p.kind[0], activeSet.has(i) ? 1 : 0, activeTeam[i] || '', p.kind === 'db' ? p.dbr : p.peak] : null);
-OUT.pstats = {};
-for (const s in PS) OUT.pstats[s] = Object.entries(PS[s]).map(([id, o]) => [+id, o.team, o.apps, o.min, o.g, o.a, o.y, o.r, o.sh, o.ot, o.tk, o.sv, o.cs, o.motm, Math.round(o.rs * 10), o.kp, o.int, o.ps, o.pc, o.pg, o.pm, o.starts]);
-OUT.realign = {}; for (const [ss, map] of Object.entries(REALIGN)) if (/^\d+$/.test(ss)) OUT.realign[ss] = Object.entries(map).map(([pos, team]) => [+pos, OFFICIAL[ss][+pos - 1].team, team]);
-OUT.officialStats = SITE.stats;
-OUT.transfers = transfers;
-OUT.extClubs = [...EXT];
-OUT.officialAllTime = SITE.standings.history;
+// 每人第一次出现在阵容里的赛季和当时年龄（网站用来算各季年龄）
+const LORE0 = JSON.parse(fs.readFileSync(D + 'lore.json', 'utf8'));
+const PRE = new Set(Object.entries(LORE0.players).filter(([k, v]) => v.pre).map(([k]) => k.split('@')[0]));
+const first = {}; for (let s = LAST; s >= 1; s--) for (const L of Object.values(SQUADS[s])) L.forEach(([id]) => first[id] = s);
+const ageFirst = i => { const p = P[i], f = first[i] || 18; if (p.kind === 'db') return p.age - (18 - f); if (p.kind === 'gen') return 19 + (f - p.born); if (p.kind === 'legend' && PRE.has(p.name) && f === 1) return 30 + Math.floor(((i * 7) % 3)); return 20 + ((i * 13) % 3); };
+OUT.players = P.map((p, i) => used.has(i) ? [p.name, p.pos, p.nat || '', p.kind === 'db' ? p.cur : '', p.kind[0], activeSet.has(i) ? 1 : 0, activeTeam[i] || '', p.kind === 'db' ? p.dbr : p.peak, first[i] || 18, ageFirst(i)] : null);
+OUT.squads = SQUADS;
+OUT.lorePid = {};
+for (const [k, v] of Object.entries(LORE0.players)) { const [name, team] = k.split('@'); const ids = byName[clean(name)] || [];
+  const hit = ids.find(i => { for (let s = v.span[0]; s <= Math.min(v.span[1], LAST); s++) if (SQUADS[s][team] && SQUADS[s][team].some(([id]) => id === i)) return true; return false; }) ?? ids.find(i => used.has(i) && P[i].kind !== 'gen');
+  if (hit != null) OUT.lorePid[k] = hit; }
+OUT.rosterLinks = rosterLinks; OUT.family = family; OUT.transfers = transfers; OUT.extClubs = [...EXT];
+OUT.s1 = teamsIn(1);
+OUT.leagueTeams = Object.fromEntries([...Array(LAST)].map((_, i) => [i + 1, teamsIn(i + 1)]));
 fs.writeFileSync(D + 'hist.json', JSON.stringify(OUT));
-console.log(report.join('\n'));
-console.log('players', OUT.players.filter(Boolean).length, 'generated', P.filter(p => p.kind === 'gen').length, 'size', (fs.statSync(D + 'hist.json').size / 1e6).toFixed(2) + 'MB');
-for (const s of [1, 9, 17]) console.log('S' + s, Object.entries(PS[s]).map(([id, o]) => [P[id].name, o.team, o.g]).sort((a, b) => b[2] - a[2]).slice(0, 6).map(x => x.join(' ')).join(' | '));
+// 同一季同一队有没有重名
+let dup = 0; for (let s = 1; s <= LAST; s++) for (const [t, L] of Object.entries(SQUADS[s])) { const n = L.map(([id]) => P[id].name); if (new Set(n).size !== n.length) { dup++; if (dup < 6) console.log('重名', s, t, n.filter((x, k) => n.indexOf(x) !== k)); } }
+console.log('players', OUT.players.filter(Boolean).length, 'generated', P.filter(p => p.kind === 'gen').length, 'dup squads', dup, 'size', (fs.statSync(D + 'hist.json').size / 1e6).toFixed(2) + 'MB');
+console.log('S1 威龙', SQUADS[1]['威龙'].map(([id, sl, r]) => P[id].name + (sl ? ':' + sl : '') + ':' + r).join(' '));
+console.log('S5 out-of-league sample', Object.keys(SQUADS[5]).filter(t => !teamsIn(5).includes(t)).slice(0, 2).map(t => t + ' ' + SQUADS[5][t].slice(0, 11).map(([id, , r]) => P[id].name + ':' + r).join(',')).join(' | '));
 console.log('transfers', transfers.length);
