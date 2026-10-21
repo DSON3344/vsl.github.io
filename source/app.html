@@ -780,7 +780,8 @@ function applyGrowth() {
     const sq = PDB[t] || [];
     const inXI = () => new Set(T.roster.map(r => r.name));
     T.roster.forEach(r => {
-      const was = (PDB0[t] || []).some(p => p.name === r.name), now = sq.find(p => p.name === r.name);
+      const cl = ENGINE.clean, was = (PDB0[t] || []).some(p => cl(p.name) === cl(r.name)), now = sq.find(p => cl(p.name) === cl(r.name));
+      if (now && now.name !== r.name) r.name = now.name;
       if (now) r.rating = now.rating;
       else if (!was) return;
       const used = inXI();
@@ -1001,9 +1002,18 @@ function seasonEndDialog(A) {
   if (!d.open) d.showModal();
 }
 function peakRating(pid) { if (PL[pid] && PL[pid][7]) return PL[pid][7]; let m = 0; SEASONS.forEach(s => Object.values(HS[s].xi).forEach(x => x.forEach(([id, , r]) => { if (id === pid && r > m) m = r; }))); return m || null; }
-const isActive = pid => !!(PL[pid] && PL[pid][5]) && !RETIRED_PID.has(pid) && (PL[pid][4] !== 'd' || !!pidTeam(pid) || !PID_UID[pid]);
+// 球员在当前赛季处于哪个阶段：未出道 / 在役 / 暂别 / 已退役（按 S01–S18 的阵容资料）
+function phaseOf(pid) {
+  const pp = PL[pid] || [], first = pp[8] || null, isDB = !!pp[3], last = isDB ? 99 : lastSquadSeason(pid);
+  if (first && SEASON < first) return { k: 'future', first };
+  if (SEASON < 18 && squadIdx(SEASON)[pid]) return { k: 'active', first };
+  if (!isDB && last && last < SEASON) return { k: 'retired', first, last };
+  if (SEASON < 18) return { k: 'gap', first };
+  return { k: 'other', first };
+}
+const isActive = pid => SEASON < 18 ? !!squadIdx(SEASON)[pid] : !!(PL[pid] && PL[pid][5]) && !RETIRED_PID.has(pid) && (PL[pid][4] !== 'd' || !!pidTeam(pid) || !PID_UID[pid]);
 const abroadOf = pid => ABROAD[PID_UID[pid]] || null;
-const statusChips = (pid, small) => { const st = small ? ' style="font-size:10.5px"' : ''; const ab = abroadOf(pid); return `<span class="chip ${isActive(pid) || ab ? 'good' : ''}"${st}>${isActive(pid) ? '现役球员' : ab ? `旅外 · ${esc(ab.club)}` : '退役球员'}</span>${PL[pid] && PL[pid][4] === 'l' ? `<span class="chip gold"${st}>传奇球员</span>` : ''}`; };
+const statusChips = (pid, small) => { const st = small ? ' style="font-size:10.5px"' : ''; const ab = abroadOf(pid), ph = phaseOf(pid); return `<span class="chip ${isActive(pid) || ab ? 'good' : ''}"${st}>${isActive(pid) ? '现役球员' : ab ? `旅外 · ${esc(ab.club)}` : ph.k === 'future' ? '尚未出道' : ph.k === 'gap' ? '暂别威超' : '退役球员'}</span>${PL[pid] && PL[pid][4] === 'l' ? `<span class="chip gold"${st}>传奇球员</span>` : ''}`; };
 function zone(i, n = 20) { return i < 4 ? 'z1' : i < 6 ? 'z2' : i < 7 ? 'z3' : i >= n - 3 ? 'zr' : ''; }
 const ZONE_LEGEND = `<div class="legend"><span style="--c:var(--z1)">全联冠</span><span style="--c:var(--z2)">全联杯</span><span style="--c:var(--z3)">全协联</span><span style="--c:var(--zr)">降级</span></div>`;
 
@@ -2089,29 +2099,39 @@ function personProfile(pid) {
   const sp = spanOf(pid), pk = peakCache(pid) || 80;
   let ret = null; Object.entries(RET_LOG).forEach(([s, L]) => L.retired.forEach(x => { if (x.uid === uid) ret = { s: +s, age: x.age }; }));
   const preEra = !base && loreOf(pid) && loreOf(pid).pre;
-  const debutAge = base ? (sp ? base.age0 - (18 - sp[0]) : null) : preEra ? 30 + Math.floor(h('a') * 3) : 18 + Math.floor(h('a') * 4);
-  const endAge = ret ? ret.age : base ? null : sp ? debutAge + (sp[1] - sp[0]) : null;
+  const f1 = PL[pid][8] || (sp && sp[0]), a1 = PL[pid][9];
+  const debutAge = base ? (f1 ? base.age - (18 - f1) : null) : a1 != null ? a1 : preEra ? 30 + Math.floor(h('a') * 3) : 18 + Math.floor(h('a') * 4);
+  const lastS = base ? null : lastSquadSeason(pid) || (sp && sp[1]);
+  const endAge = ret ? ret.age : base ? null : lastS && lastS < SEASON ? debutAge + (lastS - (f1 || lastS)) : null;
+  const ageNowP = base ? base.age - (18 - SEASON) : debutAge != null && f1 ? debutAge + (SEASON - f1) : null;
   const ht = base ? base.height : Math.round(line === 'GK' ? 186 + h('h') * 10 : line === 'DF' ? 180 + h('h') * 12 : line === 'MF' ? 172 + h('h') * 14 : 175 + h('h') * 14);
   const wt = base ? base.weight : Math.round(ht - 105 + h('w') * 12);
   const nos = { GK: [1, 12, 13, 22], DF: [2, 3, 4, 5, 6, 15, 23], MF: [6, 8, 10, 14, 16, 18, 20], FW: [7, 9, 11, 17, 19, 21] }[line];
   const no = base ? base.no : nos[Math.floor(h('n') * nos.length)];
   let attrs = base ? base.attributes : null;
   if (!attrs) { attrs = {}; const tpl = { ...ATTR_TPL[line] }; if (/W|AM/.test(pos)) { tpl.dri = (tpl.dri || 0) + 3; tpl.spd = (tpl.spd || 0) + 3; } Object.entries(tpl).forEach(([k, d]) => attrs[k] = Math.max(30, Math.min(99, Math.round(pk + d + (h('at' + k) - 0.5) * 8)))); }
-  return { no, ht, wt, attrs, debutAge, endAge, ret, preEra: !!preEra, peakValue: valueM(pk, 27), nat: nat || (base && base.nat) || '' };
+  return { no, ht, wt, attrs, debutAge, endAge, ret, preEra: !!preEra, f1, lastS, ageNowP, peakValue: valueM(pk, 27), nat: nat || (base && base.nat) || '' };
 }
+let OPEN_DEPTH = 0;
 function openPerson(pid) {
+  const pp = PL[pid]; if (!pp) return;
+  if (OPEN_DEPTH > 1) return openPersonCard(pid);
+  OPEN_DEPTH++; try { return openPersonInner(pid); } finally { OPEN_DEPTH--; }
+}
+function openPersonCard(pid) { return openPersonInner(pid, true); }
+function openPersonInner(pid, noRedirect) {
   const pp = PL[pid]; if (!pp) return;
   const [name, pos, nat, cur, kind] = pp;
   const nowT = pidTeam(pid) || (PID_UID[pid] ? null : cur);
-  if (nowT && !RETIRED_PID.has(pid)) return openPlayer(nowT, name);
+  if (!noRedirect && nowT && !RETIRED_PID.has(pid)) return openPlayer(nowT, name);
   const rows = personSeasons(pid); const teams = [...new Set(rows.map(r => r[1].team))];
   const pk = peakCache(pid);
   const d = $('#dlg');
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(pos)}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(name)}</h3>
-      <div class="btns" style="margin-top:8px">${statusChips(pid)}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const sp = spanOf(pid); return sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span><span class="chip">${SN(sp[1])} 赛季后退役</span>` : ''; })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
-    ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, sp && pf.debutAge ? (pf.preEra ? `威联赛时代出道 · ${SN(sp[0])} 时 ${pf.debutAge} 岁` : `${SN(sp[0])} 出道 · ${pf.debutAge} 岁`) : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : sp ? SN(sp[1]) : ''} 退役 · ${pf.endAge} 岁` : '', `巅峰身价 ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
+      <div class="btns" style="margin-top:8px">${statusChips(pid)}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const ph = phaseOf(pid), sp = spanOf(pid); if (ph.k === 'future') return `<span class="chip">${SN(ph.first)} 出道</span>`; if (ph.k === 'gap') return `<span class="chip">目前不在任何球队</span>`; const last = ph.last || (sp && sp[1]); return (sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span>` : '') + (last ? `<span class="chip">${SN(last)} 赛季后退役</span>` : ''); })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
+    ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, pf.f1 && pf.debutAge != null ? (pf.preEra ? `威联赛时代出道 · ${SN(pf.f1)} 时 ${pf.debutAge} 岁` : `${SN(pf.f1)} 出道 · ${pf.debutAge} 岁`) : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : SN(pf.lastS)} 退役 · ${pf.endAge} 岁` : pf.ageNowP != null && !(pf.f1 > SEASON) ? `现年 ${pf.ageNowP} 岁` : '', `巅峰身价 ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
       <div><div class="eyebrow" style="margin-bottom:8px">巅峰能力</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div></div>`; })()}
     ${(() => { const rows = personSeasons(pid); if (!rows.length) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; return scopeTabs('pp', [{ label: '威超生涯', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...byT.map(t => ({ label: t, note: `效力 ${esc(t)} 期间`, html: statGrid(sumRows(rows.filter(r => r[1].team === t).map(r => r[1])), ENGINE.LINE(pos)) }))]); })()}
     ${awardChips(pid)}${loreHTML(pid)}${growthHTML(pid, null)}${careerHTML(pid)}${transferHTML(pid)}</div>`;
@@ -2733,7 +2753,7 @@ if (/vesdebug/.test(location.hash)) window.__ves = {
   cups: s => cupsOf(s), season: () => SEASON, awards: s => { const A = awardsOf(s); return A && A.ballon.map(p => p.name + '@' + p.team); },
   names: () => [...Object.values(PDB).flat(), ...Object.values(FDB).flat()].map(p => p.name),
   strengths: () => Object.keys(TD).map(t => [t, +clubStrAt(t, SEASON).toFixed(1)]).sort((a, b) => b[1] - a[1]).slice(0, 6).concat(['阿罗拉', '蛮城', '皇族马'].map(t => [t, +clubStrAt(t, SEASON).toFixed(1)])),
-  logs: () => ({ RET_LOG, TR_LOG }), future: () => FUTURE, champ: s => HS[s] && HS[s].table.slice(0, 3).map(r => r.team + r.pts).join(' ') + ' | 降 ' + (S.archive.find(A => A.s === s) || {}).relegated + ' 升 ' + (S.archive.find(A => A.s === s) || {}).next, top: s => (HPS[s] || []).slice().sort((a, b) => b.g - a.g).slice(0, 4).map(p => p.name + '/' + p.team + '/' + p.g).join(' '), teams: () => S.teams.join(','),
+  logs: () => ({ RET_LOG, TR_LOG }), future: () => FUTURE, card: pid => { openPerson(pid); return $('#dlg').innerText; }, cardP: (t, n) => { openPlayer(t, n); return $('#dlg').innerText; }, pids: () => PL.map((p, i) => p ? i : -1).filter(i => i >= 0), allp: () => ALL_PLAYERS.map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating, at: p.attributes ? Object.keys(p.attributes).length : 0, extra: p.extra, kind: p.uid ? p.uid[0] : '' })), ext: () => Object.values(FDB).flat().map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating })), champ: s => HS[s] && HS[s].table.slice(0, 3).map(r => r.team + r.pts).join(' ') + ' | 降 ' + (S.archive.find(A => A.s === s) || {}).relegated + ' 升 ' + (S.archive.find(A => A.s === s) || {}).next, top: s => (HPS[s] || []).slice().sort((a, b) => b.g - a.g).slice(0, 4).map(p => p.name + '/' + p.team + '/' + p.g).join(' '), teams: () => S.teams.join(','),
 };
 })();
 </script>

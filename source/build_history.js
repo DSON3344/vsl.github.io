@@ -331,6 +331,8 @@ for (const [team, T] of Object.entries(TD)) T.roster.forEach(r => {
   if (id != null) { rosterLinks[team + '|' + r.name] = id; activeSet.add(id); used.add(id); }
 });
 P.forEach(p => { if (!p.nat && NATMAP[clean(p.name)]) p.nat = NATMAP[clean(p.name)]; });
+const NAT_FIX = { 亚历克斯: '英格兰', 曼迪马利亚: '西班牙', 内罗: '巴西' };
+P.forEach(p => { if (!p.nat && NAT_FIX[p.name]) p.nat = NAT_FIX[p.name]; if (!p.nat) p.nat = '英格兰'; });
 const family = [];
 P.forEach((p, i) => { if (p.kind === 'db' || p.kind === 'gen' || !used.has(i)) return; (byName[clean(p.name)] || []).forEach(j => { if (j !== i && P[j].kind === 'db') family.push([i, j]); }); });
 family.forEach(([f, c]) => { if (!P[f].nat) P[f].nat = P[c].nat; });
