@@ -10915,6 +10915,15 @@ ENGINE.setTeamMod(t => {
   const cap = capitalEffect(t); if (cap) out.push({ txt: cap.txt, d: +cap.d.toFixed(1) });
   return out;
 });
+// 队史射手榜 / 助攻榜：S01 起在本队的威超联赛数据（含本季已赛场次）
+function clubLeaders(t) {
+  const A = {}, add = (p, s) => { const k = p.pid != null ? 'p' + p.pid : p.name; const o = A[k] || (A[k] = { pid: p.pid, name: p.name, g: 0, a: 0, apps: 0, ss: new Set() }); o.g += p.g || 0; o.a += p.a || 0; o.apps += p.apps || 0; o.ss.add(s); };
+  SEASONS.forEach(s => (HPS[s] || []).forEach(p => { if (p.team === t) add(p, s); }));
+  liveStats().forEach(p => { if (p.team === t) add(p, SEASON); });
+  const L = Object.values(A), span = o => { const v = [...o.ss]; return SN(Math.min(...v)) + (v.length > 1 ? '–' + SN(Math.max(...v)) : ''); };
+  const list = (k, unit) => { const top = L.filter(o => o[k] > 0).sort((a, b) => b[k] - a[k] || a.apps - b.apps).slice(0, 10); return top.length ? `<div class="rank-list">${top.map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span>${o.pid != null ? `<button class="lnk" data-pid="${o.pid}"><b>${esc(o.name)}</b></button>` : `<button class="lnk" data-player="${esc(t)}|${esc(o.name)}"><b>${esc(o.name)}</b></button>`} <span class="sub">${o.apps} 场 · ${span(o)}</span></span><span class="v">${o[k]}${unit}</span></div>`).join('')}</div>` : '<div class="empty">还没有比赛数据</div>'; };
+  return `<div class="grid g-2" style="align-items:start"><div class="panel"><div class="ph"><div><div class="eyebrow">Club top scorers</div><h2>队史射手榜</h2></div><span class="note">威超联赛 · 在本队的进球</span></div>${list('g', ' 球')}</div><div class="panel"><div class="ph"><div><div class="eyebrow">Club top assists</div><h2>队史助攻榜</h2></div><span class="note">威超联赛 · 在本队的助攻</span></div>${list('a', ' 次')}</div></div>`;
+}
 function teamDetail(t) {
   const P = H.profiles[t] || {}, D = TD[t], st = ENGINE.strength(t), hon = honOf(t);
   const squad = (PDB[t] || []).slice().sort((a, b) => b.rating - a.rating);
@@ -10922,7 +10931,7 @@ function teamDetail(t) {
   const inLeague = S.teams.includes(t); const tb = inLeague ? table() : null; const posNow = tb ? tb.findIndex(r => r.team === t) + 1 : null;
   const outMap = inLeague && nextRound() >= 0 ? teamCtx(t, nextRound()).out : {};
   const histS = SEASON < 18;
-  const car = histS ? null : P.career; const legends = (H.legends[t] || []).filter(l => l.start <= SEASON).map(l => ({ ...l, end: l.end && l.end < SEASON ? l.end : null }));
+  const car = histS ? null : P.career; const legends = (H.legends[t] || []).filter(l => l.start <= SEASON).map(l => ({ ...l, end: l.end && l.end < SEASON ? l.end : null })).sort((a, b) => { const R = ['S++', 'S+', 'S', 'A+', 'A']; const ra = R.indexOf(a.tier.replace(/[^SA+]/g, '')), rb = R.indexOf(b.tier.replace(/[^SA+]/g, '')); return (ra < 0 ? 9 : ra) - (rb < 0 ? 9 : rb) || a.start - b.start; });
   // S18 之前：队长取当季首发里在队最久的球员，主教练资料只有 S18 的
   const capNow = histS ? (() => { const xi = TD[t].roster.map(r => r.name); let best = null, bn = -1; xi.forEach(n => { const o = BY_TN[t + '|' + n]; const pid = o && UIDPID[o.uid]; if (pid == null) return; let c = 0; for (let k = 1; k <= SEASON; k++) if (((HIST.squads[k] || {})[t] || []).some(x => x[0] === pid)) c++; if (c > bn) { bn = c; best = n; } }); return best; })() : P.captain;
   return `<section class="view">
@@ -10952,6 +10961,7 @@ function teamDetail(t) {
   <div class="panel"><div class="ph"><div><div class="eyebrow">Honours</div><h2>荣誉</h2></div></div>
     <div class="troph">${TROPHIES.map(k => `<div class="${hon[k] ? (k === '威超冠军' || k === '世联赛冠军' ? 'on' : '') : 'zero'}"><b>${hon[k] || 0}</b><span>${k}</span></div>`).join('')}</div></div>
   ${teamSeasons(t)}
+  ${clubLeaders(t)}
   <div class="grid g-2" style="align-items:start">${movesPanel(t)}${coachPanel(t)}</div>
   <div class="grid ${legends.length ? 'g-main' : ''}">
     <div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>球员名单 · ${squad.length} 人</h2></div></div>
