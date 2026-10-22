@@ -1178,9 +1178,9 @@ function fxRow(m, ri, mi) {
   const r = m.r, cls = r ? 'fx played' : 'fx';
   const hw = r && r.hg > r.ag, aw = r && r.ag > r.hg;
   return `<div class="${cls}" data-fx="${ri}:${mi}" role="button" tabindex="0">
-    <div class="tname h ${r ? (hw ? 'win' : 'lose') : ''}">${crest(m.h, 24)}<span>${esc(m.h)}</span></div>
+    <div class="tname h ${r ? (hw ? 'win' : aw ? 'lose' : '') : ''}">${crest(m.h, 24)}<span>${esc(m.h)}</span></div>
     <div class="sc">${r ? `<b>${r.hg} – ${r.ag}</b>` : `<span class="vs">VS</span>`}<small>${r && m.c ? `${m.c.weather} · ${m.c.slot}` : '天气待定'}</small></div>
-    <div class="tname ${r ? (aw ? 'win' : 'lose') : ''}">${crest(m.a, 24)}<span>${esc(m.a)}</span></div></div>`;
+    <div class="tname ${r ? (aw ? 'win' : hw ? 'lose' : '') : ''}">${crest(m.a, 24)}<span>${esc(m.a)}</span></div></div>`;
 }
 let ovRound = null;
 /* ---------- 场外事件：训练受伤、罢赛和花边新闻（按赛季和轮次推算，会真的影响出场） ---------- */
@@ -1329,9 +1329,9 @@ function histFxRow(s, ri, mi) {
   const m = HS[s].rounds[ri][mi], T = HS[s].teams;
   const h = T[m[0]], a = T[m[1]], hg = m[2], ag = m[3];
   return `<div class="fx played" data-hm="${s}:${ri}:${mi}" role="button" tabindex="0">
-    <div class="tname h ${hg > ag ? 'win' : 'lose'}">${crest(h, 24)}<span>${esc(h)}</span></div>
+    <div class="tname h ${hg > ag ? 'win' : hg < ag ? 'lose' : ''}">${crest(h, 24)}<span>${esc(h)}</span></div>
     <div class="sc"><b>${hg} – ${ag}</b><small>${m[4]} · ${m[5]}</small></div>
-    <div class="tname ${ag > hg ? 'win' : 'lose'}">${crest(a, 24)}<span>${esc(a)}</span></div></div>`;
+    <div class="tname ${ag > hg ? 'win' : ag < hg ? 'lose' : ''}">${crest(a, 24)}<span>${esc(a)}</span></div></div>`;
 }
 function vTable() {
   const live = tblSeason === 'live';
@@ -1386,6 +1386,21 @@ function openHistMatch(s, ri, mi) {
   if (!d.open) d.showModal();
 }
 
+// 本季已踢完的比赛：显示正式赛果（不是重新模拟）
+function openLiveMatch(ri, mi) {
+  const m = S.fx[ri][mi], r = m.r, h = m.h, a = m.a;
+  const evs = r.ev.filter(e => ['goal', 'yellow', 'red', 'inj', 'pmiss'].includes(e[1])).map(e => ({ min: e[0], type: e[1], side: e[2], player: e[3], as: e[4], x: e[5] })).sort((x, y) => x.min - y.min);
+  const lab = { goal: '进球', yellow: '黄牌', red: '红牌', inj: '受伤', pmiss: '罚丢点球' };
+  const row = e => { const t = e.side === 'h' ? h : a; return `<div class="ev ${e.type}"><span class="m">${e.min > 90 ? '90+' + Math.round(e.min - 90) : Math.round(e.min)}'</span><span class="ic" style="color:${tcol(t)}">${e.type === 'goal' ? '⚽' : e.type === 'red' ? '🟥' : e.type === 'yellow' ? '🟨' : e.type === 'inj' ? '✚' : '✕'}</span><span class="t">${crest(t, 16)} <b>${esc(e.player)}</b> ${lab[e.type]}${e.type === 'goal' && e.x ? '（点球）' : ''}${e.type === 'goal' && e.as ? ` <span class="dim">助攻 ${esc(e.as)}</span>` : ''}${e.type === 'inj' && e.x ? ` <span class="dim">缺阵 ${e.x} 轮</span>` : ''}</span></div>`; };
+  const st = r.st || [], d = $('#dlg');
+  d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div class="eyebrow">${SN(SEASON)} · 第 ${ri + 1} 轮 · ${m.c ? esc(m.c.weather) + ' · ' + esc(m.c.slot) : ''} · 正式赛果</div>
+    <div class="board" style="gap:10px"><div class="side">${crest(h, 56)}<b>${esc(h)}</b></div><div class="score" style="font-size:52px">${r.hg}<span class="sep">:</span>${r.ag}</div><div class="side">${crest(a, 56)}<b>${esc(a)}</b></div></div>
+    <p class="muted" style="margin:0;text-align:center">${r.hg > r.ag ? esc(h) + ' 获胜' : r.hg < r.ag ? esc(a) + ' 获胜' : '双方战平'}${st.length ? ` · 控球 ${st[0]}% : ${100 - st[0]}% · 射门 ${st[1]} : ${st[2]}` : ''}</p>
+    <div class="feed" style="max-height:none">${evs.length ? evs.map(row).join('') : '<div class="empty">本场没有进球和红黄牌</div>'}</div>
+    ${r.motm ? `<p class="note" style="margin:0">全场最佳：<b>${esc(r.motm[0])}</b>（${esc(r.motm[1])}）</p>` : ''}</div>`;
+  if (!d.open) d.showModal();
+}
 /* ---------- Match center ---------- */
 let M = null; // {h,a,weather,slot,neutral,fx:[ri,mi]|null,res,phase}
 let live = null;
@@ -1591,7 +1606,8 @@ function finish() {
   $('#liveCtl').innerHTML = '';
   const fxm = M.fx ? S.fx[M.fx[0]][M.fx[1]] : null;
   let saved = '';
-  if (fxm && !fxm.r) { fxm.c = { weather: M.weather, slot: M.slot }; fxm.r = compact(res); M.stored = true; S.demo = false; DIRTY.add(M.fx[0]); save(); saved = `<span class="chip good">已计入第 ${M.fx[0] + 1} 轮</span>`; if (nextRound() < 0) setTimeout(() => { maybeEndSeason(); updateChip(); }, 900); }
+  if (fxm && fxm.r) saved = `<span class="chip">本场已有正式赛果 ${fxm.r.hg}:${fxm.r.ag}，这次是重赛，不计入积分</span>`;
+  if (fxm && !fxm.r) { M.storedNow = true; fxm.c = { weather: M.weather, slot: M.slot }; fxm.r = compact(res); M.stored = true; S.demo = false; DIRTY.add(M.fx[0]); save(); saved = `<span class="chip good">已计入第 ${M.fx[0] + 1} 轮</span>`; if (nextRound() < 0) setTimeout(() => { maybeEndSeason(); updateChip(); }, 900); }
   const st = res.stats, n = (x, y) => [x / (x + y || 1) * 100, y / (x + y || 1) * 100];
   const srow = (k, x, y, fmt = v => v) => { const [p, q] = n(x, y); return `<div class="row"><b class="r">${fmt(x)}</b><div class="l"><div class="hb" style="width:${p}%;background:${tcol(h)}"></div></div><span class="k">${k}</span><div><div class="hb" style="width:${q}%;background:${tcol(a)}"></div></div><b>${fmt(y)}</b></div>`; };
   const nxt = findNextFixture();
@@ -1911,6 +1927,7 @@ function awardsOf(s) {
   const wsc = p => p._w;
   const worldPool = rows.map(p => ({ ...p, _w: bsc(p) + bonus(p.team) * 0.4 })).concat(extRowsFor(s).filter(p => p.apps >= 20).map(p => ({ ...p, _w: bsc(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + (extLeagueChamp[p.team] ? 2.5 : 0) + bonus(p.team) * 0.4 })));
   const worldVotes = voteShares(pick(worldPool, wsc).slice(0, 8), wsc, 6), world = worldVotes[0] || null;
+  [ballonVotes, mvpVotes, defVotes, worldVotes].forEach(L => L.forEach(p => { if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
   const boot = pick((HPS[s] || []), p => p.g * 1000 - p.apps)[0];
   const assist = pick((HPS[s] || []), p => p.a * 1000 - p.apps)[0];
   const fg = loreAward('glove', s); const glove = (fg != null && rows.find(p => p.pid === fg)) || pick(rows.filter(p => p.line === 'GK'), p => p.cs * 100 + p.avg)[0];
@@ -1933,6 +1950,26 @@ function awardChips(pid, uid) {
   const order = ['金球奖', '金球奖亚军', '金球奖季军', '世界足球先生', '威超最佳球员', '最佳进球', '铁卫奖', '威超金靴', '威超助攻王', '威超金手套', '金童奖', '年度最佳阵容'];
   return `<div><div class="eyebrow" style="margin-bottom:8px">个人荣誉</div><div class="btns" style="gap:6px">${order.filter(k => by[k]).map(k => `<span class="chip ${k === '金球奖' ? 'gold' : ''}" title="${by[k].map(SN).join('、')}">${k}${by[k].length > 1 ? ' ×' + by[k].length : ''} <span class="dim" style="font-size:10.5px">${by[k].map(SN).join(' ')}</span></span>`).join('')}</div></div>`;
 }
+// 奖项提名：每人的优势（数据 + 团队荣誉 + 杯赛 MVP），得主显示获奖原因和得票率
+function strengthChips(p, kind) {
+  const st = kind === 'def' ? [`${p.cs} 场零封`, `${p.tk} 抢断`, `${p.int} 拦截`, `评分 ${p.avg.toFixed(2)}`] : p.line === 'GK' ? [`${p.cs} 场零封`, `${p.sv || 0} 次扑救`, `评分 ${p.avg.toFixed(2)}`] : [`${p.g} 球`, `${p.a} 助攻`, `评分 ${p.avg.toFixed(2)}`, ...(p.motm ? [`${p.motm} 次全场最佳`] : [])];
+  const hon = (p._hon || []).map(h => `<span class="chip ${/MVP|冠军$/.test(h) && !/威联赛杯|社区杯|全协联/.test(h) ? 'gold' : ''}" style="font-size:10.5px;padding:0 6px">${esc(h)}</span>`).join(' ');
+  return `<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span class="muted mono" style="font-size:11.5px">${st.join(' · ')}</span>${hon}</div>`;
+}
+function awardReason(p, kind) {
+  const team = p.team, H = p._hon || [], champs = H.filter(h => /冠军$/.test(h)), mvps = H.filter(h => /MVP/.test(h));
+  const stat = kind === 'def' ? `${p.cs} 场零封、${p.tk} 次抢断、${p.int} 次拦截，场均 ${p.avg.toFixed(2)} 分` : p.line === 'GK' ? `${p.cs} 场零封，场均 ${p.avg.toFixed(2)} 分` : `${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}`;
+  return `${stat}${champs.length ? `，帮助${team}拿下${champs.join('、')}` : '，个人表现力压群雄'}${mvps.length ? `，并当选${mvps.join('、')}` : ''}。`;
+}
+function awardBlock(title, L, kind) {
+  if (!L.length) return '';
+  const w = L[0];
+  const who = p => `<button class="lnk tname" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${TD[p.team] ? crest(p.team, 20) : ecrest(p.team, 20)}<span><b>${esc(p.name)}</b> <span class="sub">${esc(p.team)}${TD[p.team] ? '' : '（' + esc(extTag(p.team)) + '）'} · ${esc(p.pos)}</span></span></button>`;
+  const bar = pct => `<span style="display:inline-block;width:64px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, pct * 1.6)}%;background:var(--gold)"></i></span><b>${pct.toFixed(1)}%</b>`;
+  return `<div class="eyebrow" style="margin:16px 0 8px">${esc(title)}</div>
+    <div class="panel" style="padding:10px 12px;margin-bottom:8px;border-color:var(--gold)"><div class="split" style="align-items:center"><span><span style="color:var(--gold);font-weight:800">得主</span> ${who(w)}</span><span class="mono" style="color:var(--gold)">得票率 ${w.pct != null ? w.pct.toFixed(1) + '%' : '–'}</span></div><div class="muted" style="font-size:12.5px;margin-top:6px">获奖原因：${esc(awardReason(w, kind))}</div></div>
+    <div class="rank-list">${L.map((p, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto;align-items:start"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><div style="min-width:0">${who(p)}${strengthChips(p, kind)}</div><span class="v mono" style="font-size:12px;white-space:nowrap">${p.pct != null ? bar(p.pct) : ''}</span></div>`).join('')}</div>`;
+}
 function awardsHTML(s) {
   const A = awardsOf(s); if (!A) return '<div class="empty">这个赛季还没有奖项</div>';
   const who = (p, extra) => p ? `<button class="lnk tname" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${TD[p.team] ? crest(p.team, 22) : ecrest(p.team, 22)}<span><b>${esc(p.name)}</b> <span class="sub">${esc(p.team)}${TD[p.team] ? '' : '（' + esc(extTag(p.team)) + '）'}${extra ? ' · ' + extra : ''}</span></span></button>` : '<span class="dim">–</span>';
@@ -1940,11 +1977,11 @@ function awardsHTML(s) {
   const bar = pct => `<span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, pct * 1.6)}%;background:var(--gold)"></i></span><b>${pct.toFixed(1)}%</b>`;
   const voteList = (L, extra) => `<div class="rank-list">${L.map((p, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span>${who(p, extra(p))}<span class="v mono" style="font-size:12px;white-space:nowrap">${bar(p.pct)}</span></div>`).join('')}</div>`;
   return `<div class="grid g-2" style="align-items:start">
-    <div><div class="eyebrow" style="margin-bottom:8px">金球奖 · 得票率</div>${voteList((A.ballonVotes || A.ballon).slice(0, 8), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)}${p._hon && p._hon.length ? ' · ' + esc(p._hon.join('、')) : ' · 无重要团队荣誉'}`)}
-      <div class="eyebrow" style="margin:16px 0 8px">威超 MVP · 得票率</div>${voteList((A.mvpVotes || [A.mvp]).filter(Boolean).slice(0, 5), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)} 分`)}
-      ${A.worldVotes && A.worldVotes.length ? `<div class="eyebrow" style="margin:16px 0 8px">世界足球先生 · 得票率（与外赛区球员同场竞争）</div>${voteList(A.worldVotes.slice(0, 5), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)}`)}` : ''}
-      ${A.defVotes && A.defVotes.length ? `<div class="eyebrow" style="margin:16px 0 8px">铁卫奖（威超最佳后卫）· 得票率</div>${voteList(A.defVotes.slice(0, 5), p => `${p.pos} · ${p.cs} 场零封 · ${p.tk} 抢断 · ${p.int} 拦截 · ${p.avg.toFixed(2)}`)}` : ''}
-      ${A.goal ? `<div class="eyebrow" style="margin:16px 0 8px">最佳进球 · 球迷投票</div><div class="rank-list">${A.goal.map((g, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span><button class="lnk" data-pid="${g.pid}"><b>${esc(g.name)}</b></button> <span class="sub">${esc(g.team)} · 第 ${g.ri + 1} 轮对阵 ${esc(g.opp)} 第 ${Math.round(g.min)} 分钟，${esc(g.desc)}（${g.score}）</span></span><span class="v mono" style="font-size:12px;white-space:nowrap">${bar(g.pct)}</span></div>`).join('')}</div>` : ''}
+    <div>${awardBlock('金球奖', (A.ballonVotes || A.ballon).slice(0, 8), 'ballon')}
+      ${awardBlock('威超 MVP', (A.mvpVotes || [A.mvp]).filter(Boolean).slice(0, 5), 'mvp')}
+      ${A.worldVotes && A.worldVotes.length ? awardBlock('世界足球先生（与外赛区球员同场竞争）', A.worldVotes.slice(0, 5), 'world') : ''}
+      ${A.defVotes && A.defVotes.length ? awardBlock('铁卫奖（威超最佳后卫）', A.defVotes.slice(0, 5), 'def') : ''}
+      ${A.goal ? `<div class="eyebrow" style="margin:16px 0 8px">最佳进球 · 球迷投票</div><div class="panel" style="padding:10px 12px;margin-bottom:8px;border-color:var(--gold)"><b style="color:var(--gold)">得主：${esc(A.goal[0].name)}</b>（${esc(A.goal[0].team)}）· 得票率 ${A.goal[0].pct}%<div class="muted" style="font-size:12.5px;margin-top:4px">获奖原因：第 ${A.goal[0].ri + 1} 轮对阵 ${esc(A.goal[0].opp)} 第 ${Math.round(A.goal[0].min)} 分钟${esc(A.goal[0].desc)}，比分 ${A.goal[0].score}。</div></div><div class="rank-list">${A.goal.map((g, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span><button class="lnk" data-pid="${g.pid}"><b>${esc(g.name)}</b></button> <span class="sub">${esc(g.team)} · 第 ${g.ri + 1} 轮对阵 ${esc(g.opp)} 第 ${Math.round(g.min)} 分钟，${esc(g.desc)}（${g.score}）</span></span><span class="v mono" style="font-size:12px;white-space:nowrap">${bar(g.pct)}</span></div>`).join('')}</div>` : ''}
       <div class="rank-list" style="margin-top:16px">${row('金靴', A.boot, A.boot && A.boot.g + ' 球')}${row('助攻王', A.assist, A.assist && A.assist.a + ' 次')}${row('金手套', A.glove, A.glove && A.glove.cs + ' 场零封')}${row('金童奖', A.young, A.young ? ageAtSeason(A.young.pid, s) + ' 岁' : '')}</div></div>
     <div><div class="eyebrow" style="margin-bottom:8px">年度最佳阵容</div><div class="rank-list">${A.xi.map(p => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(p.pos)}</span>${who(p)}<span class="v mono" style="font-size:12px">${p.avg.toFixed(2)}</span></div>`).join('')}</div></div></div>`;
 }
@@ -2980,7 +3017,7 @@ document.addEventListener('click', e => {
   if (el.dataset.ext) return openExtClub(el.dataset.ext);
   if (el.dataset.player) { const [t, n] = el.dataset.player.split('|'); return openPlayer(t, n); }
   if (el.dataset.team) { if (el.tagName === 'LABEL') return; teamSel = el.dataset.team; $('#dlg').open && $('#dlg').close(); return go('teams'); }
-  if (el.dataset.fx) { const [ri, mi] = el.dataset.fx.split(':').map(Number); M = null; initMatch([ri, mi]); return go('match'); }
+  if (el.dataset.fx) { const [ri, mi] = el.dataset.fx.split(':').map(Number); if (S.fx[ri][mi].r) return openLiveMatch(ri, mi); M = null; initMatch([ri, mi]); return go('match'); }
   if (el.dataset.tbl) { tblSeason = el.dataset.tbl; return render(); }
   if (el.dataset.w) { M.weather = el.dataset.w; M.fx = null; M.stored = false; return render(); }
   if (el.dataset.neutral) { M.neutral = el.dataset.neutral === '1'; M.fx = null; M.stored = false; M.L = null; return render(); }
@@ -3243,7 +3280,7 @@ if (/vesdebug/.test(location.hash)) window.__ves = {
   cups: s => cupsOf(s), season: () => SEASON, awards: s => { const A = awardsOf(s); return A && A.ballon.map(p => p.name + '@' + p.team + '[' + (p._hon || []).join('/') + '] ' + p.g + 'g'); },
   names: () => [...Object.values(PDB).flat(), ...Object.values(FDB).flat()].map(p => p.name),
   strengths: () => Object.keys(TD).map(t => [t, +clubStrAt(t, SEASON).toFixed(1)]).sort((a, b) => b[1] - a[1]).slice(0, 6).concat(['阿罗拉', '蛮城', '皇族马'].map(t => [t, +clubStrAt(t, SEASON).toFixed(1)])),
-  logs: () => ({ RET_LOG, TR_LOG }), future: () => FUTURE, extClub: c => (FDB[c] || []).map(p => p.name + p.age + '/' + p.rating).join(' '), cap: () => capitalHistory().ev, benchCheck: () => { ensureTactics(); return Object.keys(TD).map(t => { const R = TD[t].roster, xi = R.map(r => r.name); const sq = PDB[t] || []; const b = sq.filter(p => !xi.includes(p.name) && R.some(r => { const q = sq.find(x => x.name === r.name); return q && slotVal(r.pos, p) - slotVal(r.pos, q) >= 3; })); return b.length ? t + ':' + b.map(p => p.name + p.rating + p.pos).join(',') : ''; }).filter(Boolean); },  card: pid => { openPerson(pid); return $('#dlg').innerText; }, cardP: (t, n) => { openPlayer(t, n); return $('#dlg').innerText; }, pids: () => PL.map((p, i) => p ? i : -1).filter(i => i >= 0), allp: () => ALL_PLAYERS.map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating, at: p.attributes ? Object.keys(p.attributes).length : 0, extra: p.extra, kind: p.uid ? p.uid[0] : '' })), ext: () => Object.values(FDB).flat().map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating })), champ: s => HS[s] && HS[s].table.slice(0, 3).map(r => r.team + r.pts).join(' ') + ' | 降 ' + (S.archive.find(A => A.s === s) || {}).relegated + ' 升 ' + (S.archive.find(A => A.s === s) || {}).next, top: s => (HPS[s] || []).slice().sort((a, b) => b.g - a.g).slice(0, 4).map(p => p.name + '/' + p.team + '/' + p.g).join(' '), teams: () => S.teams.join(','),
+  logs: () => ({ RET_LOG, TR_LOG }), future: () => FUTURE, chkGoals: () => { let bad = []; S.fx.forEach((rd, ri) => rd.forEach(m => { if (!m.r) return; const h = m.r.ev.filter(e => e[1] === 'goal' && e[2] === 'h').length, a = m.r.ev.filter(e => e[1] === 'goal' && e[2] === 'a').length; if (h !== m.r.hg || a !== m.r.ag) bad.push(ri + ':' + m.h + ' ' + m.r.hg + '-' + m.r.ag + ' ev ' + h + '-' + a); })); return bad; }, chkArch: () => { const bad = []; SEASONS.forEach(s => { const H = HS[s]; const pts = {}; H.rounds.forEach(rd => rd.forEach(m => { const a = H.teams[m[0]], b = H.teams[m[1]]; pts[a] = (pts[a] || 0) + (m[2] > m[3] ? 3 : m[2] === m[3] ? 1 : 0); pts[b] = (pts[b] || 0) + (m[3] > m[2] ? 3 : m[2] === m[3] ? 1 : 0); if (m[6].filter(g => g[1] === 0).length !== m[2] || m[6].filter(g => g[1] === 1).length !== m[3]) bad.push(s + ' goals ' + a + ' ' + m[2] + '-' + m[3]); })); H.table.forEach(r => { if (pts[r.team] !== r.pts) bad.push(s + ' pts ' + r.team); }); const C = cupsOf(s) || {}; Object.entries(C).forEach(([k, r]) => { if (r && r.ko) Object.entries(r.ko).forEach(([n, l]) => l.forEach(x => { const m2 = /^(\d+)–(\d+)/.exec(x.score || ''); if (m2 && +m2[1] < +m2[2]) bad.push(s + ' ' + k + n + ' ' + x.w + ' ' + x.score + ' ' + x.l); })); }); }); return bad; }, extClub: c => (FDB[c] || []).map(p => p.name + p.age + '/' + p.rating).join(' '), cap: () => capitalHistory().ev, benchCheck: () => { ensureTactics(); return Object.keys(TD).map(t => { const R = TD[t].roster, xi = R.map(r => r.name); const sq = PDB[t] || []; const b = sq.filter(p => !xi.includes(p.name) && R.some(r => { const q = sq.find(x => x.name === r.name); return q && slotVal(r.pos, p) - slotVal(r.pos, q) >= 3; })); return b.length ? t + ':' + b.map(p => p.name + p.rating + p.pos).join(',') : ''; }).filter(Boolean); },  card: pid => { openPerson(pid); return $('#dlg').innerText; }, cardP: (t, n) => { openPlayer(t, n); return $('#dlg').innerText; }, pids: () => PL.map((p, i) => p ? i : -1).filter(i => i >= 0), allp: () => ALL_PLAYERS.map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating, at: p.attributes ? Object.keys(p.attributes).length : 0, extra: p.extra, kind: p.uid ? p.uid[0] : '' })), ext: () => Object.values(FDB).flat().map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating })), champ: s => HS[s] && HS[s].table.slice(0, 3).map(r => r.team + r.pts).join(' ') + ' | 降 ' + (S.archive.find(A => A.s === s) || {}).relegated + ' 升 ' + (S.archive.find(A => A.s === s) || {}).next, top: s => (HPS[s] || []).slice().sort((a, b) => b.g - a.g).slice(0, 4).map(p => p.name + '/' + p.team + '/' + p.g).join(' '), teams: () => S.teams.join(','),
 };
 })();
 </script>
