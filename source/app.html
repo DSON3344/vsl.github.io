@@ -1729,7 +1729,7 @@ function buildHistCups() {
   CUP_QUOTA = null;
 }
 /* ---------- 个人奖项：金球奖、威超最佳球员、金靴、助攻王、金手套、金童奖、年度最佳阵容 ---------- */
-const CUP_BONUS = { 世联赛: 6, 全联冠: 8, 全联杯: 3, 全协联: 1.5, 威联赛杯: 1, 社区杯: 0.3 };
+const CUP_BONUS = { 世联赛: 14, 全联冠: 16, 全联杯: 6, 全协联: 3, 威联赛杯: 2, 社区杯: 0.5 };
 function ageAtSeason(pid, s) {
   const uid = PID_UID[pid];
   const b = uid && PDB0_BY_UID[uid]; if (b && typeof b.age === 'number') return b.age - (18 - s);
@@ -1824,13 +1824,23 @@ function awardsOf(s) {
   const rows = (HPS[s] || []).filter(p => p.apps >= 20);
   if (!rows.length) return null;
   const champ = HS[s].table[0].team, C = cupsOf(s) || {};
-  const bonus = t => (t === champ ? 6 : 0) + Object.entries(C).reduce((a, [k, r]) => a + (r && r.winner === t ? CUP_BONUS[k] || 0 : 0), 0);
+  const bonus = t => (t === champ ? 6 : 0) + Object.entries(C).reduce((a, [k, r]) => a + (r && r.winner === t ? (CUP_BONUS[k] || 0) * 0.45 : 0), 0);
+  // 金球奖的团队荣誉：联赛冠军、洲际杯赛冠军/亚军、杯赛 MVP、杯赛进球；一项大赛冠军都没有的会被扣分
+  const second = HS[s].table[1] && HS[s].table[1].team;
+  const honOfP = (p, extChamp) => { const L = [], t = p.team; let sc = 0;
+    if (extChamp) { sc += 14; L.push(LEAGUE_SHORT_OF(t) + '冠军'); } else if (t === champ) { sc += 14; L.push('威超冠军'); } else if (t === second) { sc += 4; L.push('威超亚军'); }
+    Object.entries(C).forEach(([k, r]) => { if (!r) return; if (r.winner === t) { sc += CUP_BONUS[k] || 0; L.push(k + '冠军'); } else if (r.runner === t && (k === '世联赛' || k === '全联冠')) { sc += 4; L.push(k + '亚军'); }
+      if (r.mvp === p.name && r.winner === t) { sc += k === '世联赛' || k === '全联冠' ? 6 : 2; L.push(k + ' MVP'); }
+      const row = (r.scorers || []).find(x => x[0] === p.name && x[1] === t); if (row) sc += row[2] * 0.3 + row[3] * 0.15; });
+    const major = L.some(x => /冠军$/.test(x) && !/威联赛杯|社区杯|全协联/.test(x));
+    if (!major) sc -= 6;
+    return { sc, L }; };
   const base = p => p.avg * 10 + p.g * 0.45 + p.a * 0.35 + p.motm * 0.35 + (p.line === 'GK' ? p.cs * 0.3 - 2 : p.line === 'DF' ? p.cs * 0.15 : 0);
   const bsc = p => base(p) + p.g * 0.35 + p.a * 0.15;
   const pick = (l, f) => l.slice().sort((a, b) => f(b) - f(a));
   const extLeagueChamp = {}; EXT_LEAGUES.forEach(L => { if (L.short !== '其他') extLeagueChamp[extTable(L, s)[0]] = 1; });
-  const ext = extRowsFor(s).filter(p => p.apps >= 20).map(p => ({ ...p, _sc: bsc(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + bonus(p.team) - (p.team === champ ? 6 : 0) + (extLeagueChamp[p.team] ? 5 : 0) }));
-  let ballon = rows.map(p => ({ ...p, _sc: bsc(p) + bonus(p.team) })).concat(ext).sort((a, b) => b._sc - a._sc);
+  const ext = extRowsFor(s).filter(p => p.apps >= 20).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]); return { ...p, _sc: bsc(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + h.sc, _hon: h.L }; });
+  let ballon = rows.map(p => { const h = honOfP(p, false); return { ...p, _sc: bsc(p) + h.sc, _hon: h.L }; }).concat(ext).sort((a, b) => b._sc - a._sc);
   { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
   const ballonVotes = voteShares(ballon.slice(0, 10), p => p._sc, 5);
   ballon = ballon.slice(0, 3);
@@ -1871,7 +1881,7 @@ function awardsHTML(s) {
   const bar = pct => `<span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, pct * 1.6)}%;background:var(--gold)"></i></span><b>${pct.toFixed(1)}%</b>`;
   const voteList = (L, extra) => `<div class="rank-list">${L.map((p, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span>${who(p, extra(p))}<span class="v mono" style="font-size:12px;white-space:nowrap">${bar(p.pct)}</span></div>`).join('')}</div>`;
   return `<div class="grid g-2" style="align-items:start">
-    <div><div class="eyebrow" style="margin-bottom:8px">金球奖 · 得票率</div>${voteList((A.ballonVotes || A.ballon).slice(0, 8), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)}`)}
+    <div><div class="eyebrow" style="margin-bottom:8px">金球奖 · 得票率</div>${voteList((A.ballonVotes || A.ballon).slice(0, 8), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)}${p._hon && p._hon.length ? ' · ' + esc(p._hon.join('、')) : ' · 无重要团队荣誉'}`)}
       <div class="eyebrow" style="margin:16px 0 8px">威超 MVP · 得票率</div>${voteList((A.mvpVotes || [A.mvp]).filter(Boolean).slice(0, 5), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)} 分`)}
       ${A.worldVotes && A.worldVotes.length ? `<div class="eyebrow" style="margin:16px 0 8px">世界足球先生 · 得票率（与外赛区球员同场竞争）</div>${voteList(A.worldVotes.slice(0, 5), p => `${p.g} 球 ${p.a} 助 · ${p.avg.toFixed(2)}`)}` : ''}
       ${A.defVotes && A.defVotes.length ? `<div class="eyebrow" style="margin:16px 0 8px">铁卫奖（威超最佳后卫）· 得票率</div>${voteList(A.defVotes.slice(0, 5), p => `${p.pos} · ${p.cs} 场零封 · ${p.tk} 抢断 · ${p.int} 拦截 · ${p.avg.toFixed(2)}`)}` : ''}
@@ -3110,7 +3120,7 @@ go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
 setSync('local'); cloudInit();
 if (/vesdebug/.test(location.hash)) window.__ves = {
   simSeason() { S.fx.forEach((r, i) => playRound(i)); save(); maybeEndSeason(); return SEASON; },
-  cups: s => cupsOf(s), season: () => SEASON, awards: s => { const A = awardsOf(s); return A && A.ballon.map(p => p.name + '@' + p.team); },
+  cups: s => cupsOf(s), season: () => SEASON, awards: s => { const A = awardsOf(s); return A && A.ballon.map(p => p.name + '@' + p.team + '[' + (p._hon || []).join('/') + '] ' + p.g + 'g'); },
   names: () => [...Object.values(PDB).flat(), ...Object.values(FDB).flat()].map(p => p.name),
   strengths: () => Object.keys(TD).map(t => [t, +clubStrAt(t, SEASON).toFixed(1)]).sort((a, b) => b[1] - a[1]).slice(0, 6).concat(['阿罗拉', '蛮城', '皇族马'].map(t => [t, +clubStrAt(t, SEASON).toFixed(1)])),
   logs: () => ({ RET_LOG, TR_LOG }), future: () => FUTURE, extClub: c => (FDB[c] || []).map(p => p.name + p.age + '/' + p.rating).join(' '), cap: () => capitalHistory().ev, benchCheck: () => { ensureTactics(); return Object.keys(TD).map(t => { const R = TD[t].roster, xi = R.map(r => r.name); const sq = PDB[t] || []; const b = sq.filter(p => !xi.includes(p.name) && R.some(r => { const q = sq.find(x => x.name === r.name); return q && slotVal(r.pos, p) - slotVal(r.pos, q) >= 3; })); return b.length ? t + ':' + b.map(p => p.name + p.rating + p.pos).join(',') : ''; }).filter(Boolean); },  card: pid => { openPerson(pid); return $('#dlg').innerText; }, cardP: (t, n) => { openPlayer(t, n); return $('#dlg').innerText; }, pids: () => PL.map((p, i) => p ? i : -1).filter(i => i >= 0), allp: () => ALL_PLAYERS.map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating, at: p.attributes ? Object.keys(p.attributes).length : 0, extra: p.extra, kind: p.uid ? p.uid[0] : '' })), ext: () => Object.values(FDB).flat().map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating })), champ: s => HS[s] && HS[s].table.slice(0, 3).map(r => r.team + r.pts).join(' ') + ' | 降 ' + (S.archive.find(A => A.s === s) || {}).relegated + ' 升 ' + (S.archive.find(A => A.s === s) || {}).next, top: s => (HPS[s] || []).slice().sort((a, b) => b.g - a.g).slice(0, 4).map(p => p.name + '/' + p.team + '/' + p.g).join(' '), teams: () => S.teams.join(','),
