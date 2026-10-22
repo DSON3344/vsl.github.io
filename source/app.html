@@ -1056,8 +1056,9 @@ function pickPromoted(n, exclude) {
   return out;
 }
 // 第 38 轮踢完后自动收尾：存档本赛季、降级 3 队、升级 3 队、抽新赛程
-function maybeEndSeason() {
+function maybeEndSeason(force) {
   if (nextRound() >= 0 || !S.fx.length) return false;
+  if (!force && !QUIET_END) return false;
   const A = makeArchive(); A.cups = simulateCups(SEASON);
   const tb = A.table, relegated = tb.slice(-3).map(r => r.team), stay = tb.slice(0, -3).map(r => r.team);
   const promoted = pickPromoted(3, S.teams);
@@ -1298,6 +1299,7 @@ function vOverview() {
         <p class="note" style="margin:10px 0 0">比赛中有小概率受伤；累计 5 张黄牌停赛 1 场，两黄变红停 1 场，直接红牌停 2 场。连续首发多场的球员可能被轮换。</p></div>` : ''}
     </div>
   </div>
+  ${nr < 0 ? `<div class="panel split" style="padding:16px 18px;border-color:var(--gold)"><div><div class="eyebrow">Season complete</div><b style="font-size:16px">${SN(SEASON)} 赛季已全部踢完 · ${esc(T[0].team)} 夺冠</b><p class="note" style="margin:4px 0 0">降级区：${T.slice(-3).map(r => esc(r.team)).join('、')}。积分榜、数据榜、球队资料都可以先看；满意后再进入新赛季（届时结算杯赛、个人奖项、升降级、退役与转会）。不满意可以重踢本季。</p></div><span class="btns"><button class="btn ghost" data-act="reset">重踢本季</button><button class="btn primary" data-act="nextSeason">进入 ${SN(SEASON + 1)} →</button></span></div>` : ''}
   ${S.target && S.target > SEASON ? `<div class="panel split" style="padding:14px 18px;border-color:var(--accent-2)"><span class="note">你从 ${SN(SEASON)} 重新开始模拟，原来的进度到 ${SN(S.target)}。踢到满意后，可以把后面的赛季按新结果一键重新推演。</span><span class="btns"><button class="btn primary" data-act="autoTarget">自动推演到 ${SN(S.target)}</button><button class="btn ghost" data-act="dropTarget">不用了</button></span></div>` : ''}
   ${newsPanel()}
   <div class="grid g-2">
@@ -2936,7 +2938,7 @@ function autoSimTo(target) {
     if (SEASON >= AUTO.target) { AUTO = null; S.target = null; save(); render(); toast(`已推演到 ${SN(SEASON)}`); return; }
     if (chip) chip.innerHTML = `自动推演中 · ${SN(SEASON)} → ${SN(AUTO.target)}`;
     S.fx.forEach((r, i) => { if (r.some(m => !m.r)) playRound(i); });
-    QUIET_END = true; maybeEndSeason(); QUIET_END = false;
+    QUIET_END = true; maybeEndSeason(true); QUIET_END = false;
     setTimeout(step, 20);
   };
   step();
@@ -2979,8 +2981,8 @@ document.addEventListener('click', e => {
   if (el.dataset.scat != null) { SM.cat = el.dataset.scat || null; SM.limit = 50; if (!SM.cat) { SM.team = ''; SM.line = ''; } render(); return window.scrollTo(0, 0); }
   if (el.dataset.sline != null) { SM.line = el.dataset.sline; SM.limit = 50; return render(); }
   const act = el.dataset.act;
-  if (act === 'round') { const nr = nextRound(); if (nr < 0) return; playRound(nr); S.demo = false; save(); ovRound = null; const end = maybeEndSeason(); render(); if (!end) toast(`第 ${nr + 1} 轮已模拟`); }
-  if (act === 'rest') { let n = 0; while (nextRound() >= 0) { playRound(nextRound()); n++; } S.demo = false; save(); ovRound = null; const end = maybeEndSeason(); render(); if (!end) toast(`已模拟剩余 ${n} 轮`); }
+  if (act === 'round') { const nr = nextRound(); if (nr < 0) return; playRound(nr); S.demo = false; save(); ovRound = null; render(); toast(nextRound() < 0 ? `${SN(SEASON)} 全部踢完，看完满意后点「进入 ${SN(SEASON + 1)}」` : `第 ${nr + 1} 轮已模拟`); }
+  if (act === 'rest') { let n = 0; while (nextRound() >= 0) { playRound(nextRound()); n++; } S.demo = false; save(); ovRound = null; render(); toast(`已模拟剩余 ${n} 轮 · 看完满意后点「进入 ${SN(SEASON + 1)}」`); }
   if (act === 'watch') { M = null; initMatch(); go('match'); }
   if (act === 'prevR') { ovRound = Math.max(0, (ovRound ?? Math.max(0, nextRound())) - 1); render(); }
   if (act === 'nextR') { ovRound = Math.min(37, (ovRound ?? Math.max(0, nextRound())) + 1); render(); }
@@ -2991,6 +2993,7 @@ document.addEventListener('click', e => {
   if (act === 'edSave') return saveEditor(el.dataset.uid);
   if (act === 'edReset') { const e = S.edits[el.dataset.uid]; const pid = UIDPID[el.dataset.uid] ?? (el.dataset.uid.startsWith('H|') ? +el.dataset.uid.slice(2) : null); if (e && e.orig != null && pid != null) PL[pid][0] = e.orig; delete S.edits[el.dataset.uid]; refreshAfterEdit(); return toast('已恢复原始资料'); }
   if (act === 'doRewind') { $('#dlg').close(); return rewindTo(+el.dataset.s); }
+  if (act === 'nextSeason') { if (maybeEndSeason(true)) render(); return; }
   if (act === 'autoTarget') return autoSimTo(S.target);
   if (act === 'dropTarget') { S.target = null; save(); return render(); }
   if (act === 'autoN') { const d = $('#dlg'); d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">快速推演</h2><p class="muted" style="margin:0">从 ${SN(SEASON)} 当前进度开始，一季一季自动踢完，不弹赛季总结。</p><div class="btns">${[1, 3, 5, 10].map(n => `<button class="btn" data-act="autoGo" data-n="${n}">推演 ${n} 季（到 ${SN(SEASON + n)}）</button>`).join('')}</div><div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button></div></div>`; if (!d.open) d.showModal(); return; }
@@ -3226,7 +3229,7 @@ const h0 = (location.hash || '').slice(1);
 go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
 setSync('local'); cloudInit();
 if (/vesdebug/.test(location.hash)) window.__ves = {
-  simSeason() { S.fx.forEach((r, i) => playRound(i)); save(); maybeEndSeason(); return SEASON; },
+  simSeason() { S.fx.forEach((r, i) => playRound(i)); save(); maybeEndSeason(true); return SEASON; },
   cups: s => cupsOf(s), season: () => SEASON, awards: s => { const A = awardsOf(s); return A && A.ballon.map(p => p.name + '@' + p.team + '[' + (p._hon || []).join('/') + '] ' + p.g + 'g'); },
   names: () => [...Object.values(PDB).flat(), ...Object.values(FDB).flat()].map(p => p.name),
   strengths: () => Object.keys(TD).map(t => [t, +clubStrAt(t, SEASON).toFixed(1)]).sort((a, b) => b[1] - a[1]).slice(0, 6).concat(['阿罗拉', '蛮城', '皇族马'].map(t => [t, +clubStrAt(t, SEASON).toFixed(1)])),
