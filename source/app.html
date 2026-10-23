@@ -1870,6 +1870,24 @@ function statsForComps(se) {
   return s == null ? base : mergeComps(base, cupRowsFor(s));
 }
 // 球员资料里的「全部赛事」：最近一季分赛事明细 + 历年合计
+// 职业生涯总计：威联赛时代（联赛 + 杯赛）+ 威超（联赛 + 杯赛），分段列出再合计
+function careerTotalHTML(pid) {
+  if (pid == null) return '';
+  const Z = () => ({ apps: 0, g: 0, a: 0, motm: 0, cs: 0, rs: 0, ra: 0, s0: null, s1: null });
+  const add = (o, apps, g, a, motm, cs, avg, s) => { o.apps += apps; o.g += g; o.a += a; o.motm += motm || 0; o.cs += cs || 0; if (avg > 0) { o.rs += avg * apps; o.ra += apps; } if (s != null && apps) { o.s0 = o.s0 == null ? s : Math.min(o.s0, s); o.s1 = o.s1 == null ? s : Math.max(o.s1, s); } };
+  const wl = Z(), wc = Z(), sl = Z(), sc = Z();
+  const id = WL ? WL.byPid[pid] : null;
+  if (id != null) wlCareer(id).L.forEach(([w, r]) => { add(wl, r.apps, r.g, r.a, r.motm, r.cs, r.avg, w); add(wc, r.capps, r.cg, r.ca, 0, 0, r.cavg, w); });
+  personSeasons(pid).forEach(([s, r]) => { add(sl, r.apps, r.g, r.a, r.motm, r.cs, r.avg, s); if (cupsOf(s)) { const T = allComps(s, r); Object.values(T.cups).forEach(c => add(sc, c.apps, c.g, c.a, c.motm, c.cs, c.avg, s)); } });
+  const tot = Z(); [wl, wc, sl, sc].forEach(o => { tot.apps += o.apps; tot.g += o.g; tot.a += o.a; tot.motm += o.motm; tot.cs += o.cs; tot.rs += o.rs; tot.ra += o.ra; });
+  if (!tot.apps || !(wl.apps + wc.apps)) return '';   // 没有威联赛经历的，沿用原本的威超统计即可
+  const span = (o, f) => o.s0 == null ? '' : ` <span class="dim" style="font-size:11px">${f(o.s0)}${o.s1 !== o.s0 ? '–' + f(o.s1) : ''}</span>`;
+  const gk = (PL[pid] || [])[1] === 'GK';
+  const tr = (name, o, bold) => o.apps ? `<tr ${bold ? 'style="font-weight:800"' : ''}><td class="l">${name}</td><td>${o.apps}</td><td>${bold ? `<span style="color:var(--gold)">${o.g}</span>` : o.g}</td><td>${o.a}</td>${gk ? `<td>${o.cs}</td>` : ''}<td>${o.motm}</td><td>${o.ra ? (o.rs / o.ra).toFixed(2) : '–'}</td></tr>` : '';
+  return `<div><div class="eyebrow" style="margin-bottom:6px">职业生涯总计 · 威联赛 + 威超</div><div class="tw"><table><thead><tr><th class="l">阶段</th><th>出场</th><th>进球</th><th>助攻</th>${gk ? '<th>零封</th>' : ''}<th>全场最佳</th><th>场均评分</th></tr></thead><tbody>
+    ${tr('威联赛 · 联赛' + span(wl, WN), wl)}${tr('威联赛 · 杯赛 / 洲际赛' + span(wc, WN), wc)}${tr('威超 · 联赛' + span(sl, SN), sl)}${tr('威超 · 杯赛 / 洲际赛' + span(sc, SN), sc)}${tr('职业生涯合计', tot, true)}
+  </tbody></table></div><p class="note" style="margin:4px 0 0">威联赛杯赛没有逐场的全场最佳记录；威超的杯赛数据从全部赛事统计开始后才有。</p></div>`;
+}
 function careerCompsHTML(pid) {
   if (pid == null) return '';
   const rows = personSeasons(pid).filter(([s]) => cupsOf(s)); if (!rows.length) return '';
@@ -2737,7 +2755,7 @@ function openPersonInner(pid, noRedirect) {
       <div><div class="eyebrow" style="margin-bottom:8px">巅峰能力</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div></div>`; })()}
     ${(() => { const rows = personSeasons(pid); if (!rows.length) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; return scopeTabs('pp', [{ label: '威超生涯', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...byT.map(t => ({ label: t, note: `效力 ${esc(t)} 期间`, html: statGrid(sumRows(rows.filter(r => r[1].team === t).map(r => r[1])), ENGINE.LINE(pos)) }))]); })()}
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(PID_UID[pid] || 'H|' + pid)}" style="padding:5px 10px;font-size:12px">✎ 编辑资料</button>${cmpBtn('p:' + pid, name)}</div>
-    ${awardChips(pid)}${careerCompsHTML(pid)}${wlCareerForPid(pid)}${loreHTML(pid)}${growthHTML(pid, null)}${careerHTML(pid)}${transferHTML(pid)}</div>`;
+    ${awardChips(pid)}${careerTotalHTML(pid)}${careerCompsHTML(pid)}${wlCareerForPid(pid)}${loreHTML(pid)}${growthHTML(pid, null)}${careerHTML(pid)}${transferHTML(pid)}</div>`;
   if (!d.open) d.showModal();
   bindScopes(d);
 }
@@ -2763,7 +2781,7 @@ function openPlayer(team, name) {
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${awardChips(pid, p.uid)}
     ${wlCareerForPid(pid)}
-    ${TD[team] ? careerCompsHTML(pid) : ''}
+    ${pid != null ? careerTotalHTML(pid) : ''}${TD[team] ? careerCompsHTML(pid) : ''}
     ${loreHTML(pid)}
     ${growthHTML(pid, p)}
     ${foreignCareerHTML(p)}
