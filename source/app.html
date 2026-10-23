@@ -1695,6 +1695,8 @@ function teamSeasons(t) {
     </tbody></table></div>${rows.some(r => r.live) ? `<p class="note" style="margin:8px 0 0">${SN(SEASON)}* 为本赛季进行中</p>` : ''}</div>`;
 }
 // 荣誉：PDF 记录 + 网站模拟出来的威超冠军
+// 威联赛时代（W01–W50）的荣誉，用和威超同样的奖杯名
+function wlHonOf(t) { const o = {}; if (!WL) return o; WL.S.forEach(S => { if (S.order[0] === t) o['威联赛冠军'] = (o['威联赛冠军'] || 0) + 1; WL_CUPS.forEach(k => { if (S.cups[k] && S.cups[k].w === t) { const n = CUP_TROPHY[k]; o[n] = (o[n] || 0) + 1; } }); }); return o; }
 function honOf(t) {
   const o = {}; const n = S.archive.filter(A => A.table[0].team === t).length; if (n) o['威超冠军'] = (o['威超冠军'] || 0) + n;
   S.archive.forEach(A => Object.entries(A.cups || {}).forEach(([c, r]) => { if (r.winner === t && CUP_TROPHY[c]) o[CUP_TROPHY[c]] = (o[CUP_TROPHY[c]] || 0) + 1; }));
@@ -2516,12 +2518,19 @@ ENGINE.setTeamMod(t => {
 });
 // 队史射手榜 / 助攻榜：S01 起在本队的威超联赛数据（含本季已赛场次）
 function clubLeaders(t) {
-  const A = {}, add = (p, s) => { const k = p.pid != null ? 'p' + p.pid : p.name; const o = A[k] || (A[k] = { pid: p.pid, name: p.name, g: 0, a: 0, apps: 0, ss: new Set() }); o.g += p.g || 0; o.a += p.a || 0; o.apps += p.apps || 0; o.ss.add(s); };
-  SEASONS.forEach(s => (HPS[s] || []).forEach(p => { if (p.team === t) add(p, s); }));
-  liveStats().forEach(p => { if (p.team === t) add(p, SEASON); });
-  const L = Object.values(A), span = o => { const v = [...o.ss]; return SN(Math.min(...v)) + (v.length > 1 ? '–' + SN(Math.max(...v)) : ''); };
-  const list = (k, unit) => { const top = L.filter(o => o[k] > 0).sort((a, b) => b[k] - a[k] || a.apps - b.apps).slice(0, 10); return top.length ? `<div class="rank-list">${top.map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span>${o.pid != null ? `<button class="lnk" data-pid="${o.pid}"><b>${esc(o.name)}</b></button>` : `<button class="lnk" data-player="${esc(t)}|${esc(o.name)}"><b>${esc(o.name)}</b></button>`} <span class="sub">${o.apps} 场 · ${span(o)}</span></span><span class="v">${o[k]}${unit}</span></div>`).join('')}</div>` : '<div class="empty">还没有比赛数据</div>'; };
-  return `<div class="grid g-2" style="align-items:start"><div class="panel"><div class="ph"><div><div class="eyebrow">Club top scorers</div><h2>队史射手榜</h2></div><span class="note">威超联赛 · 在本队的进球</span></div>${list('g', ' 球')}</div><div class="panel"><div class="ph"><div><div class="eyebrow">Club top assists</div><h2>队史助攻榜</h2></div><span class="note">威超联赛 · 在本队的助攻</span></div>${list('a', ' 次')}</div></div>`;
+  // 队史射手 / 助攻：威联赛时代 + 威超，全部赛事（联赛 + 杯赛 / 洲际赛），只算在本队的部分
+  const A = {}, get = (k, o) => A[k] || (A[k] = { ...o, g: 0, a: 0, apps: 0, ws: [], ss: [] });
+  const addS = (p, s, g, a, apps) => { const o = get(p.pid != null ? 'p' + p.pid : 'n' + p.name, { pid: p.pid, name: p.name }); o.g += g; o.a += a; o.apps += apps; if (apps) o.ss.push(s); };
+  const done = SEASONS.concat(isPending(SEASON) ? [SEASON] : []);
+  done.forEach(s => (HPS[s] || []).forEach(p => { if (p.team !== t) return; let g = p.g, a = p.a, apps = p.apps; if (cupsOf(s)) { const T = allComps(s, p); g = T.g; a = T.a; apps = T.apps; } addS(p, s, g, a, apps); }));
+  if (!isPending(SEASON)) liveStats().forEach(p => { if (p.team === t) addS(p, SEASON, p.g, p.a, p.apps); });
+  if (WL) WL.S.forEach(S => S.rows.forEach(r => { if (r.team !== t || !(r.apps + r.capps)) return; const P2 = wlP(r.id); const o = P2.pid >= 0 ? get('p' + P2.pid, { pid: P2.pid, name: P2.name }) : get('w' + r.id, { wl: r.id, name: P2.name }); o.g += r.g + r.cg; o.a += r.a + r.ca; o.apps += r.apps + r.capps; o.ws.push(S.w); }));
+  const L = Object.values(A);
+  const span = o => { const a = o.ws.length ? WN(Math.min(...o.ws)) : SN(Math.min(...o.ss)); const b = o.ss.length ? SN(Math.max(...o.ss)) : WN(Math.max(...o.ws)); return a === b ? a : a + '–' + b; };
+  const link = o => o.pid != null ? `<button class="lnk" data-pid="${o.pid}"><b>${esc(o.name)}</b></button>` : o.wl != null ? `<button class="lnk" data-wl="${o.wl}"><b>${esc(o.name)}</b></button>` : `<button class="lnk" data-player="${esc(t)}|${esc(o.name)}"><b>${esc(o.name)}</b></button>`;
+  const list = (k, unit) => { const top = L.filter(o => o[k] > 0).sort((a, b) => b[k] - a[k] || a.apps - b.apps).slice(0, 15); return top.length ? `<div class="rank-list">${top.map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span>${link(o)} <span class="sub">${o.apps} 场 · ${span(o)}${o.ws.length && !o.ss.length ? ' · 威联赛时代' : ''}</span></span><span class="v">${o[k]}${unit}</span></div>`).join('')}</div>` : '<div class="empty">还没有比赛数据</div>'; };
+  const note = WL ? '威联赛 + 威超 · 全部赛事 · 在本队' : '威超 · 全部赛事 · 在本队（威联赛数据载入中）';
+  return `<div class="grid g-2" style="align-items:start"><div class="panel"><div class="ph"><div><div class="eyebrow">Club top scorers</div><h2>队史射手榜</h2></div><span class="note">${note}</span></div>${list('g', ' 球')}</div><div class="panel"><div class="ph"><div><div class="eyebrow">Club top assists</div><h2>队史助攻榜</h2></div><span class="note">${note}</span></div>${list('a', ' 次')}</div></div>`;
 }
 /* ---------- 球队名单按赛季：当季名单快照（新存档）→ S01–S17 历史名单 → 当季出场球员 ---------- */
 let tmSq = null;
@@ -2582,7 +2591,8 @@ function teamDetail(t) {
     <div class="panel"><div class="ph"><div><div class="eyebrow">League position</div><h2>历年威超排名</h2></div><span class="note">金点为夺冠 · — 为未参加威超</span></div>${rankChart(t)}</div>
   </div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">Honours</div><h2>荣誉</h2></div></div>
-    <div class="troph">${TROPHIES.map(k => `<div class="${hon[k] ? (k === '威超冠军' || k === '世联赛冠军' ? 'on' : '') : 'zero'}"><b>${hon[k] || 0}</b><span>${k}</span></div>`).join('')}</div></div>
+    ${(() => { const W = wlHonOf(t), keys = ['威超冠军', '威联赛冠军', '世联赛冠军', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯']; const tot = k => (hon[k] || 0) + (W[k] || 0);
+      return `<div class="troph">${keys.map(k => `<div class="${tot(k) ? (k === '威超冠军' || k === '威联赛冠军' || k === '世联赛冠军' ? 'on' : '') : 'zero'}" title="${W[k] && k !== '威联赛冠军' ? `威超时期 ${hon[k] || 0} · 威联赛时期 ${W[k]}` : ''}"><b>${tot(k)}</b><span>${k}</span></div>`).join('')}</div>${Object.values(W).some(Boolean) ? `<p class="note" style="margin:8px 0 0">已含威联赛时代（W01–W50）的荣誉：${Object.entries(W).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join('、')}。鼠标停在杯赛上可看两个时期各几座。</p>` : ''}`; })()}</div>
   ${teamSeasons(t)}
   ${wlTeamPanel(t)}
   ${clubLeaders(t)}
@@ -3304,7 +3314,7 @@ function wlTeamPanel(t) {
   const best = seasons.length ? Math.min(...seasons.map(S => S.order.indexOf(t) + 1)) : null;
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Wei League era · W01–W50</div><h2>威联赛时代</h2></div><button class="btn ghost" data-go="wl">威联赛栏目 →</button></div>
     <div class="btns" style="gap:6px"><span class="chip ${titles.length ? 'gold' : ''}">威联赛冠军 ×${titles.length}${titles.length ? ` <span class="dim" style="font-size:10.5px">${titles.map(WN).join(' ')}</span>` : ''}</span>${WL_CUPS.filter(k => cups[k]).map(k => `<span class="chip">${k}冠军 ×${cups[k].length}</span>`).join('')}<span class="chip">威联赛 ${seasons.length} 季</span>${best ? `<span class="chip">最好名次 第 ${best} 名</span>` : ''}</div>
-    ${top.length ? `<div class="eyebrow" style="margin:12px 0 6px">威联赛时代队史射手（全部赛事）</div><div class="rank-list">${top.map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n">${i + 1}</span><span>${wlLink(o.id)} <span class="dim" style="font-size:11px">${o.apps} 场</span></span><span class="v mono">${o.g} 球</span></div>`).join('')}</div>` : ''}</div>`;
+    ${false && top.length ? `<div class="eyebrow" style="margin:12px 0 6px">威联赛时代队史射手（全部赛事）</div><div class="rank-list">${top.map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n">${i + 1}</span><span>${wlLink(o.id)} <span class="dim" style="font-size:11px">${o.apps} 场</span></span><span class="v mono">${o.g} 球</span></div>`).join('')}</div>` : ''}</div>`;
 }
 const WL_TAGS = {
   'MVP 三叉戟': { title: '威龙第一代进攻三叉戟「MVP」', club: '威龙', note: 'W05–W09' },
