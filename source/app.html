@@ -227,6 +227,7 @@ td.pts{color:var(--accent-2);font-weight:500}
 .pitch .nm{font-family:var(--sans);font-size:1.7px;fill:var(--fg);paint-order:stroke;stroke:var(--pitch);stroke-width:.5px}
 .pitch g.pl{cursor:pointer}
 .pitch g.pl:hover circle{stroke:#fff;stroke-width:.35}
+.pitch g.pl:focus{outline:none}.pitch g.pl:focus-visible circle{stroke:var(--accent);stroke-width:.6}
 @media (max-width:560px){.pitch .nm{display:none}}
 
 /* teams */
@@ -1033,6 +1034,8 @@ function makeArchive() {
     s: SEASON, teams: S.teams.slice(), promoted: (S.promoted || []).slice(),
     table: tb.map(r => ({ team: r.team, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.pts })),
     rounds, club, xi,
+    // 当季完整名单快照（所有球队）：[uid, 名, 位置, 号码, 年龄, 评分, 国籍]
+    sq: Object.fromEntries(Object.keys(TD).filter(t => PDB[t] && PDB[t].length).map(t => [t, PDB[t].map(p => [p.uid || '', p.name, p.pos, p.no, p.age, p.rating, p.nat || ''])])),
     ps: ps.map(p => [p.name, p.team, p.apps, p.min, p.g, p.a, p.y, p.r, p.sh, p.ot, p.tk, p.sv, p.cs, p.motm, Math.round(p.rs * 10), p.kp, p.int, p.ps, p.pc, p.pg, p.pm, p.starts, (BY_TN[p.team + '|' + p.name] || {}).uid || '', p.da || 0, p.ds || 0]),
     xiUid: Object.fromEntries(S.teams.map(t => [t, ENGINE.lineup(t).xi.map(x => (BY_TN[t + '|' + x.name] || {}).uid || '')])),
   };
@@ -2350,7 +2353,7 @@ function movesPanel(t) {
       ${col('退役', M2.ret, x => `<div class="rk" style="grid-template-columns:40px minmax(0,1fr)"><span class="n mono" style="font-size:11px">${esc(x.pos || '')}</span><span>${lk(x, t)}${x.age ? ` <span class="sub">${x.age} 岁</span>` : ''}</span></div>`)}
     </div>${(() => { const c = coachChangesHTML(tmvSeason - 1).split('；').filter(x => x.startsWith(t + '：')); return c.length ? `<p class="note" style="margin:10px 0 0">换帅：${c.map(x => x.slice(t.length + 1)).join('；')}</p>` : ''; })()}</div>`;
 }
-after.teams = () => { const e = $('#tmvSel'); e && e.addEventListener('change', ev => { tmvSeason = +ev.target.value; render(); }); };
+after.teams = () => { const e = $('#tmvSel'); e && e.addEventListener('change', ev => { tmvSeason = +ev.target.value; render(); }); const q = $('#tmSqSel'); q && q.addEventListener('change', ev => { tmSq = ev.target.value ? +ev.target.value : null; render(); }); };
 /* ---------- 主帅的战术打法与惯用阵型：换帅后球队的打法、阵型和首发会跟着变 ---------- */
 const STYLE_LIST = [...new Set(Object.values(STYLE0))].filter(x => !/亚洲风暴/.test(x));
 function coachTactics(id) {
@@ -2463,6 +2466,30 @@ function clubLeaders(t) {
   const list = (k, unit) => { const top = L.filter(o => o[k] > 0).sort((a, b) => b[k] - a[k] || a.apps - b.apps).slice(0, 10); return top.length ? `<div class="rank-list">${top.map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span>${o.pid != null ? `<button class="lnk" data-pid="${o.pid}"><b>${esc(o.name)}</b></button>` : `<button class="lnk" data-player="${esc(t)}|${esc(o.name)}"><b>${esc(o.name)}</b></button>`} <span class="sub">${o.apps} 场 · ${span(o)}</span></span><span class="v">${o[k]}${unit}</span></div>`).join('')}</div>` : '<div class="empty">还没有比赛数据</div>'; };
   return `<div class="grid g-2" style="align-items:start"><div class="panel"><div class="ph"><div><div class="eyebrow">Club top scorers</div><h2>队史射手榜</h2></div><span class="note">威超联赛 · 在本队的进球</span></div>${list('g', ' 球')}</div><div class="panel"><div class="ph"><div><div class="eyebrow">Club top assists</div><h2>队史助攻榜</h2></div><span class="note">威超联赛 · 在本队的助攻</span></div>${list('a', ' 次')}</div></div>`;
 }
+/* ---------- 球队名单按赛季：当季名单快照（新存档）→ S01–S17 历史名单 → 当季出场球员 ---------- */
+let tmSq = null;
+function squadAt(t, s) {
+  const A = (S.archive || []).find(x => x.s === s);
+  if (A && A.sq && A.sq[t]) return { src: 'snap', rows: A.sq[t].map(([uid, name, pos, no, age, rating, nat]) => ({ pid: uid && UIDPID[uid] != null ? UIDPID[uid] : pidOf(t, name), name, pos, no, age, rating, nat })) };
+  const H = HIST.squads && HIST.squads[s] && HIST.squads[s][t];
+  if (H) return { src: 'hist', rows: H.map(([pid, slot, rating]) => { const pp = PL[pid] || []; let no = null; try { no = personProfile(pid).no; } catch (e) {} return { pid, name: pp[0] || '?', pos: pp[1] || slot, no, age: ageAtSeason(pid, s), rating, nat: pp[2] || '', xi: !!slot }; }) };
+  const rows = (HPS[s] || []).filter(p => p.team === t).map(p => ({ pid: p.pid, name: p.name, pos: p.pos, no: null, age: ageAtSeason(p.pid, s), rating: null, nat: (PL[p.pid] || [])[2] || '' }));
+  return rows.length ? { src: 'apps', rows } : null;
+}
+function squadSeasons(t) { const out = []; for (let s = SEASON - 1; s >= 1; s--) if (squadAt(t, s)) out.push(s); return out; }
+function squadSelect(t) { const ss = squadSeasons(t); if (!ss.length) return ''; return `<select id="tmSqSel" aria-label="名单赛季"><option value="">${SN(SEASON)} 当季名单</option>${ss.map(x => `<option value="${x}" ${tmSq === x ? 'selected' : ''}>${SN(x)} 名单</option>`).join('')}</select>`; }
+function pastSquadPanel(t, s) {
+  const Q = squadAt(t, s); if (!Q) return '';
+  const st = {}; (HPS[s] || []).filter(p => p.team === t).forEach(p => st[p.pid != null ? 'p' + p.pid : p.name] = p);
+  const xiSet = new Set(((HS[s] && HS[s].xi && HS[s].xi[t]) || []).map(x => x[0]));
+  const rows = Q.rows.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0) || ((st['p' + b.pid] || {}).apps || 0) - ((st['p' + a.pid] || {}).apps || 0));
+  const inLg = HS[s] && HS[s].teams && HS[s].teams.includes(t), rk = inLg ? HS[s].table.findIndex(r => r.team === t) + 1 : null;
+  const note = Q.src === 'snap' ? '' : Q.src === 'hist' ? '' : '<p class="note" style="margin:8px 0 0">这季是旧存档，没有保存完整名单，这里列出当季在威超出场过的球员。</p>';
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Squad · ${SN(s)}</div><h2>${SN(s)} 球员名单 · ${rows.length} 人</h2></div><span class="btns">${inLg ? `<span class="chip">${SN(s)} 威超第 ${rk} 名</span>` : '<span class="chip">当季未参加威超</span>'}${squadSelect(t)}</span></div>
+    <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>当时年龄</th><th>当时评分</th><th>出场</th><th>进球</th><th>助攻</th><th>场均评分</th></tr></thead><tbody>
+    ${rows.map(p => { const x = st['p' + p.pid] || st[p.name] || null; return `<tr><td class="dim">${p.no ?? ''}</td><td class="l"><button class="lnk" ${p.pid != null ? `data-pid="${p.pid}"` : plink(t, p.name)}><span>${esc(p.name)}</span></button>${xiSet.has(p.pid) || p.xi ? ' <span class="chip" style="font-size:10px;padding:0 5px">主力</span>' : ''}</td><td class="l mono">${esc(p.pos || '')}</td><td class="l">${esc(p.nat || '')}</td><td>${p.age ?? '–'}</td><td>${p.rating != null ? `<span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span>` : '–'}</td><td>${x ? x.apps : 0}</td><td>${x ? x.g : 0}</td><td>${x ? x.a : 0}</td><td>${x && x.apps ? x.avg.toFixed(2) : '–'}</td></tr>`; }).join('')}
+    </tbody></table></div>${note}</div>`;
+}
 function teamDetail(t) {
   const P = H.profiles[t] || {}, D = TD[t], st = ENGINE.strength(t), hon = honOf(t);
   const squad = (PDB[t] || []).slice().sort((a, b) => b.rating - a.rating);
@@ -2503,10 +2530,10 @@ function teamDetail(t) {
   ${clubLeaders(t)}
   <div class="grid g-2" style="align-items:start">${movesPanel(t)}${coachPanel(t)}</div>
   <div class="grid ${legends.length ? 'g-main' : ''}">
-    <div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>球员名单 · ${squad.length} 人</h2></div></div>
+    ${tmSq != null && tmSq < SEASON && squadAt(t, tmSq) ? pastSquadPanel(t, tmSq) : `<div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>${SN(SEASON)} 球员名单 · ${squad.length} 人</h2></div>${squadSelect(t)}</div>
       <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>身价</th><th>S${SEASON} 出场</th><th>S${SEASON} 进球</th><th>S${SEASON} 助攻</th><th>S${SEASON} 评分</th></tr></thead><tbody>
       ${squad.map(p => { const s = pmap[p.name], o = outMap[p.name]; return `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" ${plink(t, p.name)}><span>${esc(p.name)}</span></button>${o ? ` <span class="chip ${o.why === 'inj' ? 'bad' : ''}" style="font-size:10px;padding:0 5px">${o.why === 'inj' ? '伤 ' + o.left + '轮' : o.why === 'strike' ? '罢赛' : '停赛'}</span>` : ''}</td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td class="muted">${esc(p.value)}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
-      </tbody></table></div></div>
+      </tbody></table></div></div>`}
     ${legends.length ? `<div class="panel" style="align-self:start"><div class="ph"><div><div class="eyebrow">Club legends</div><h2>核心球员时期</h2></div><span class="note">S++ > S+ > S > A+ > A</span></div>
       <div class="rank-list">${legends.map(l => `<div class="rk" style="grid-template-columns:40px minmax(0,1fr) auto"><span class="n">${esc(l.pos)}</span><span>${esc(l.name)} <span class="sub mono">S${l.start}–${l.end ? 'S' + l.end : '至今'}</span></span><span class="tier ${l.tier.startsWith('S') ? 'S' : ''}">${esc(l.tier)}</span></div>`).join('')}</div></div>` : ''}
   </div></section>`;
@@ -3224,7 +3251,7 @@ function confirmReset() {
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-pid],[data-hm],[data-statsgo],[data-tmode],[data-pmode],[data-go],[data-act],[data-team],[data-player],[data-fx],[data-tbl],[data-w],[data-neutral],[data-line],[data-speed],[data-hs],[data-sm],[data-scat],[data-sline],[data-ext]');
   if (!el) { if (e.target === $('#dlg')) $('#dlg').close(); return; }
-  if (el.dataset.go) { e.preventDefault(); if (el.dataset.go === 'teams') teamSel = null; return go(el.dataset.go); }
+  if (el.dataset.go) { e.preventDefault(); if (el.dataset.go === 'teams') { teamSel = null; tmSq = null; } return go(el.dataset.go); }
   if (el.dataset.pid != null && el.dataset.pid !== '') { const id = +el.dataset.pid; if (id >= 0) openPerson(id); return; }
   if (el.dataset.hm) { const [s, ri, mi] = el.dataset.hm.split(':').map(Number); return openHistMatch(s, ri, mi); }
   if (el.dataset.statsgo) { const v = el.dataset.statsgo; SM = { mode: 'player', season: /^\d+$/.test(v) ? +v : v, cat: null, team: '', line: '', limit: 50 }; $('#dlg').open && $('#dlg').close(); return go('stats'); }
