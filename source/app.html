@@ -1819,7 +1819,16 @@ function cupPlayerStats(matches, rnd) {
   cupPlayerStats.all = all.filter(p => TD[p.team] ? p.apps || p.g || p.a : p.g || p.a).map(p => TD[p.team] ? row(p) : [p.name, p.team, p.g, p.a, p.apps]); // 威超球员存完整数据；外赛区只存有进球/助攻的简表（控制存档大小）
   return all.filter(p => p.g || p.a).sort((u, v) => v.g - u.g || v.a - u.a || u.apps - v.apps).slice(0, 15).map(p => [p.name, p.team, p.g, p.a, p.apps]);
 }
-function cupFinish(o, rnd) { const M = CUP_REC || []; CUP_REC = null; o.games = M.filter(m => !m[4]).length; o.goals = M.reduce((a, m) => a + m[2] + m[3], 0); o.scorers = cupPlayerStats(M, rnd); o.ps = cupPlayerStats.all; const best = o.scorers.filter(x => x[1] === o.winner).sort((u, v) => (v[2] * 2 + v[3]) - (u[2] * 2 + u[3]))[0]; if (best) o.mvp = best[0]; return o; }
+function cupFinish(o, rnd) { const M = CUP_REC || []; CUP_REC = null; o.games = M.filter(m => !m[4]).length; o.goals = M.reduce((a, m) => a + m[2] + m[3], 0); o.scorers = cupPlayerStats(M, rnd); o.ps = cupPlayerStats.all; o.mvpInfo = null; { const pick = cupMvpPick(o); if (pick) { o.mvp = pick.name; o.mvpInfo = pick; } } return o; }
+// 杯赛 MVP：冠军队（亚军队打八折）在这项赛事里表现最好的球员——进球、助攻、全场最佳、场均评分、零封（门将/后卫）
+const CUP_MVP_SC = p => p.g * 2 + p.a * 1.3 + (p.full ? p.motm * 1.5 + (p.avg - 7) * p.apps * 0.5 + (/GK|DF/.test(p.line) ? p.cs * 0.8 : 0) : 0);
+function cupMvpPick(o) {
+  const rows = (o.ps || []).map(r => { const q = finishP(cupRowObj(r)); q.line = ENGINE.LINE(q.pos || ''); return q; }).filter(q => q.team === o.winner || q.team === o.runner);
+  const fair = rows.every(q => q.full); // 有外赛区球员（只有进球助攻）参与时，大家都只比进球助攻，免得威超球员占便宜
+  let best = null; rows.forEach(q => { const sc = (fair ? CUP_MVP_SC(q) : q.g * 2 + q.a * 1.3) * (q.team === o.winner ? 1 : 0.8); if (!best || sc > best.sc) best = { sc, q }; });
+  if (!best || best.sc <= 0) return null; const q = best.q;
+  return { name: q.name, team: q.team, g: q.g, a: q.a, apps: q.apps, avg: q.full && q.apps ? +q.avg.toFixed(2) : null, motm: q.full ? q.motm : null, cs: q.full ? q.cs : null, line: q.line };
+}
 /* ---------- 全赛季数据：威超联赛 + 各项杯赛 / 洲际赛 ---------- */
 const CUP_KS = ['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯'];
 const SEASON_ALL_CACHE = {};
@@ -2134,15 +2143,33 @@ function awardBlock(title, L, kind) {
     <div class="panel" style="padding:10px 12px;margin-bottom:8px;border-color:var(--gold)"><div class="split" style="align-items:center"><span><span style="color:var(--gold);font-weight:800">得主</span> ${who(w)}</span><span class="mono" style="color:var(--gold)">得票率 ${w.pct != null ? w.pct.toFixed(1) + '%' : '–'}</span></div><div class="muted" style="font-size:12.5px;margin-top:6px">获奖原因：${esc(awardReason(w, kind))}</div></div>
     <div class="rank-list">${L.map((p, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto;align-items:start"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><div style="min-width:0">${who(p)}${strengthChips(p, kind)}</div><span class="v mono" style="font-size:12px;white-space:nowrap">${p.pct != null ? bar(p.pct) : ''}</span></div>`).join('')}</div>`;
 }
+const cupMvpLine = m => `${m.name}（${m.team}）· ${m.apps ? m.apps + ' 场 ' : ''}${m.line === 'GK' ? `${m.cs ?? 0} 场零封` : `${m.g} 球 ${m.a} 助攻`}${m.avg != null ? ` · 评分 ${m.avg.toFixed(2)}` : ''}${m.motm ? ` · ${m.motm} 次全场最佳` : ''}`;
+const AWARD_RULES = [
+  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（联赛冠军、世联赛、全联冠最重，全联杯次之；杯赛 MVP、双冠/三冠另加分；一项大赛冠军都没有会扣分）＋ 威超 MVP 和威超金靴加分。提名 10 人，每队最多 3 人，同队第 2、3 人的团队荣誉加分打折。'],
+  ['威超 MVP', '只看威超联赛。候选：联赛出场 ≥ 20 场的威超球员。计分：联赛场均评分、进球、助攻、全场最佳（门将/后卫计零封）＋ 球队联赛名次（冠军最多，前四递减，降级区扣分）＋ 联赛射手榜、助攻榜、全场最佳次数第一各加分。不计任何杯赛。提名 6 人，每队最多 2 人。'],
+  ['世界足球先生', '威超球员和外赛区球员放在一起比。候选：各联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：全赛季个人数据（联赛 + 杯赛 / 洲际赛）为主，团队荣誉只占小部分（约金球奖的四成），外赛区联赛冠军另加少量分。比金球奖更看个人表现。提名 8 人，每队最多 3 人。'],
+  ['各杯赛 MVP（世联赛、全联冠、全联杯、全协联、威联赛杯、社区杯）', '只看该项赛事本身。候选：冠军队和亚军队在这项赛事里出场的球员（亚军队打八折）。计分：这项赛事的进球 ×2、助攻 ×1.3、全场最佳次数、场均评分（高于 7 分加、低于扣，按出场数放大）、门将/后卫的零封。冠亚军里有外赛区球队时，外赛区球员只有进球和助攻的数据，这时双方都只比进球和助攻，保持公平。'],
+  ['铁卫奖', '威超最佳后卫，只看联赛：零封、抢断、拦截、场均评分，进球助攻少量加分，冠军队小幅加分。'],
+  ['金靴 / 助攻王 / 金手套', '威超联赛进球最多 / 助攻最多 / 零封最多的球员（同数时出场少者优先；金手套同零封看评分）。'],
+  ['金童奖', '21 岁或以下、联赛出场 ≥ 20 场的威超球员中联赛表现最好的一位。'],
+  ['年度最佳阵容', '按联赛表现选出 1 门将、2 中卫、2 边后卫、3 中场、3 前锋。'],
+];
+const awardRulesHTML = () => `<details style="margin-top:4px"><summary class="note" style="cursor:pointer">各奖项的评选标准</summary><div class="rank-list" style="margin-top:8px">${AWARD_RULES.map(([k, v]) => `<div class="rk" style="grid-template-columns:150px minmax(0,1fr);align-items:start"><b style="font-size:13px">${k}</b><span class="muted" style="font-size:12.5px;line-height:1.6">${v}</span></div>`).join('')}</div></details>`;
+function cupMvpsHTML(s) {
+  const C = cupsOf(s) || {}, L = CUP_KS.filter(k => C[k] && C[k].mvp);
+  if (!L.length) return '';
+  return `<div class="eyebrow" style="margin:16px 0 8px">各赛事 MVP</div><div class="rank-list">${L.map(k => { const r = C[k], m = r.mvpInfo; const pid = TD[(m || {}).team || r.winner] ? pidOf((m || {}).team || r.winner, r.mvp) : null; return `<div class="rk" style="grid-template-columns:76px minmax(0,1fr);align-items:start"><span class="muted" style="font-size:12.5px">${k}</span><span>${pid != null ? `<button class="lnk" data-pid="${pid}"><b>${esc(r.mvp)}</b></button>` : `<b>${esc(r.mvp)}</b>`}${m ? ` <span class="muted" style="font-size:12px">${esc(cupMvpLine(m).replace(r.mvp, ''))}${m.team !== r.winner ? ' · 亚军队' : ''}</span>` : ` <span class="muted" style="font-size:12px">（${esc(r.winner)}，旧存档只记了名字）</span>`}</span></div>`; }).join('')}</div>`;
+}
 function awardsHTML(s) {
   const A = awardsOf(s); if (!A) return '<div class="empty">这个赛季还没有奖项</div>';
   const who = (p, extra) => p ? `<button class="lnk tname" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${TD[p.team] ? crest(p.team, 22) : ecrest(p.team, 22)}<span><b>${esc(p.name)}</b> <span class="sub">${esc(p.team)}${TD[p.team] ? '' : '（' + esc(extTag(p.team)) + '）'}${extra ? ' · ' + extra : ''}</span></span></button>` : '<span class="dim">–</span>';
   const row = (k, p, extra) => `<div class="rk" style="grid-template-columns:110px minmax(0,1fr)"><span class="muted" style="font-size:12.5px">${k}</span>${who(p, extra)}</div>`;
   const bar = pct => `<span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, pct * 1.6)}%;background:var(--gold)"></i></span><b>${pct.toFixed(1)}%</b>`;
   const voteList = (L, extra) => `<div class="rank-list">${L.map((p, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span>${who(p, extra(p))}<span class="v mono" style="font-size:12px;white-space:nowrap">${bar(p.pct)}</span></div>`).join('')}</div>`;
-  return `<div class="grid g-2" style="align-items:start">
+  return awardRulesHTML() + `<div class="grid g-2" style="align-items:start">
     <div>${awardBlock('金球奖', (A.ballonVotes || A.ballon).slice(0, 8), 'ballon')}
       ${awardBlock('威超 MVP', (A.mvpVotes || [A.mvp]).filter(Boolean).slice(0, 5), 'mvp')}
+      ${cupMvpsHTML(s)}
       ${A.worldVotes && A.worldVotes.length ? awardBlock('世界足球先生（与外赛区球员同场竞争）', A.worldVotes.slice(0, 5), 'world') : ''}
       ${A.defVotes && A.defVotes.length ? awardBlock('铁卫奖（威超最佳后卫）', A.defVotes.slice(0, 5), 'def') : ''}
       ${A.goal ? `<div class="eyebrow" style="margin:16px 0 8px">最佳进球 · 球迷投票</div><div class="panel" style="padding:10px 12px;margin-bottom:8px;border-color:var(--gold)"><b style="color:var(--gold)">得主：${esc(A.goal[0].name)}</b>（${esc(A.goal[0].team)}）· 得票率 ${A.goal[0].pct}%<div class="muted" style="font-size:12.5px;margin-top:4px">获奖原因：第 ${A.goal[0].ri + 1} 轮对阵 ${esc(A.goal[0].opp)} 第 ${Math.round(A.goal[0].min)} 分钟${esc(A.goal[0].desc)}，比分 ${A.goal[0].score}。</div></div><div class="rank-list">${A.goal.map((g, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span><button class="lnk" data-pid="${g.pid}"><b>${esc(g.name)}</b></button> <span class="sub">${esc(g.team)} · 第 ${g.ri + 1} 轮对阵 ${esc(g.opp)} 第 ${Math.round(g.min)} 分钟，${esc(g.desc)}（${g.score}）</span></span><span class="v mono" style="font-size:12px;white-space:nowrap">${bar(g.pct)}</span></div>`).join('')}</div>` : ''}
@@ -2158,7 +2185,7 @@ function cupResultHTML(k, r, s) {
   if (!r) return '';
   const head = `<div class="split" style="align-items:center"><div class="tname">${TD[r.winner] ? crest(r.winner, 40) : ecrest(r.winner, 40)}<div><div class="eyebrow">${esc(k)} 冠军</div><b style="font-size:18px">${TD[r.winner] ? `<button class="lnk" data-team="${esc(r.winner)}">${esc(r.winner)}</button>` : esc(r.winner)}</b><div class="muted" style="font-size:12px">${esc(r.detail)}${r.mvp ? ` · MVP ${esc(r.mvp)}` : ''}</div></div></div><span class="chip">${r.official ? '官网记录 · ' : ''}亚军 ${esc(r.runner || '')}</span></div>`;
   let body = '';
-  const sumLine = r.games ? `<p class="note" style="margin:8px 0 0">共 ${r.games} 场比赛 · ${r.goals} 球 · 场均 ${(r.goals / r.games).toFixed(2)} 球</p>` : '';
+  const sumLine = (r.games ? `<p class="note" style="margin:8px 0 0">共 ${r.games} 场比赛 · ${r.goals} 球 · 场均 ${(r.goals / r.games).toFixed(2)} 球</p>` : '') + (r.mvpInfo ? `<p class="note" style="margin:4px 0 0"><span style="color:var(--gold)">${esc(k)} MVP</span>：${esc(cupMvpLine(r.mvpInfo))}</p>` : '');
   if (r.ko) { const order = Object.keys(r.ko); body += `<details style="margin-top:10px" ${order.length <= 3 ? 'open' : ''}><summary class="note" style="cursor:pointer">淘汰赛全部对阵（${order.join(' → ')}）</summary><div class="grid" style="gap:10px;margin-top:8px">${order.map(n => `<div><div class="eyebrow" style="margin-bottom:4px">${n}</div><div class="rank-list">${r.ko[n].map(x => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)"><span>${cupClub(x.w)}</span><span class="v mono" style="font-size:12px">${esc(x.score)}</span><span style="opacity:.6">${cupClub(x.l)}</span></div>`).join('')}</div></div>`).join('')}</div></details>`;
     const last3 = order.filter(n => ['半决赛', '决赛'].includes(n)); if (last3.length) body = `<div class="grid" style="gap:10px;margin-top:10px">${last3.map(n => `<div><div class="eyebrow" style="margin-bottom:4px">${n}</div><div class="rank-list">${r.ko[n].map(x => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)"><span>${cupClub(x.w)}</span><span class="v mono" style="font-size:12px">${esc(x.score)}</span><span style="opacity:.6">${cupClub(x.l)}</span></div>`).join('')}</div></div>`).join('')}</div>` + body; }
   if (r.table) { const lg = r.table[0].length >= 5; body += `<details style="margin-top:10px" ${!r.ko ? 'open' : ''}><summary class="note" style="cursor:pointer">${r.ko ? '联赛阶段积分榜（前 8 直接晋级 16 强，9–24 名打附加赛）' : '完整积分榜'} · ${r.table.length} 队</summary><div class="tw" style="margin-top:8px;max-height:420px;overflow:auto"><table><thead><tr><th>#</th><th class="l">球队</th>${lg ? '<th>胜</th><th>平</th><th>负</th>' : ''}${r.table[0].length >= 7 ? '<th>进</th><th>失</th>' : ''}<th>净胜</th><th>积分</th></tr></thead><tbody>${r.table.map((x, i) => { const gd = x.length >= 7 ? x[5] - x[6] : x[2]; return `<tr class="${r.ko ? (i < 8 ? 'z1' : i < 24 ? '' : 'zr') : ''}"><td class="pos">${i + 1}</td><td class="l">${cupClub(x[0])}</td>${lg ? `<td>${x[2]}</td><td>${x[3]}</td><td>${x[4]}</td>` : ''}${x.length >= 7 ? `<td>${x[5]}</td><td>${x[6]}</td>` : ''}<td>${gd > 0 ? '+' : ''}${gd ?? ''}</td><td class="pts">${x[1]}</td></tr>`; }).join('')}</tbody></table></div></details>`; }
