@@ -3281,16 +3281,18 @@ function wlTeamPanel(t) {
 const WL_TAGS = {
   'MVP 三叉戟': { title: '威龙第一代进攻三叉戟「MVP」', club: '威龙', note: 'W05–W09' },
   '3M 三叉戟': { title: '威龙第二代进攻三叉戟「3M」', club: '威龙', note: 'W20–W30' },
-  'VJR 三叉戟': { title: '威龙第三代进攻三叉戟「VJR」· 史上最强进攻三叉戟', club: '威龙', note: '威联赛后期至威超初期' },
+  'VJR 三叉戟': { title: '威龙第三代进攻三叉戟「VJR」· 威龙历史最强进攻三叉戟', club: '威龙', note: '威联赛后期至威超初期' },
+  '猎豹三叉戟': { title: '猎豹进攻三叉戟 · 威联赛时期最强进攻三叉戟', club: '猎豹', note: '威联赛后期，与威龙互有胜负' },
+  '威尔福特三叉戟': { title: '威尔福特崛起三叉戟：萨科、沃夫伦、马尔科姆', club: '威尔福特', note: 'W45 崛起' },
   '历史最强右后卫': { title: '威龙 · 历史最强右后卫', club: '威龙', note: 'W43–W50，W50 正式退役' },
-  '最强双中场': { title: '猎豹 · 威联赛时期最强双中场', club: '猎豹', note: '' },
-  '3佩 三叉戟': { title: '猛龙 · 威联赛时期最强进攻三叉戟「3佩」', club: '猛龙', note: '威联赛后期，W50 落幕' },
+  '最强双中场': { title: '猎豹 · 威联赛时期最强双中场', club: '猎豹', note: '与猎豹三叉戟同期' },
+  '3佩 三叉戟': { title: '猛龙历史最强进攻三叉戟「3佩」', club: '猛龙', note: '威联赛后期，W50 落幕' },
 };
 function wlLegendsHTML() {
   const groups = {}; WL.pl.forEach(p => { if (p.tag) (groups[p.tag] = groups[p.tag] || []).push(p); });
-  const order = ['MVP 三叉戟', '3M 三叉戟', '最强双中场', 'VJR 三叉戟', '历史最强右后卫', '3佩 三叉戟'].filter(k => groups[k]);
+  const order = ['MVP 三叉戟', '3M 三叉戟', 'VJR 三叉戟', '猎豹三叉戟', '最强双中场', '历史最强右后卫', '威尔福特三叉戟', '3佩 三叉戟'].filter(k => groups[k]);
   if (!order.length) return '';
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Legends</div><h2>威联赛传奇组合</h2></div><span class="note">只在威联赛时期效力的球星 · 以及跨入威超的 VJR</span></div><div class="grid g-2" style="gap:14px">${order.map(k => { const T = WL_TAGS[k] || { title: k }, M = groups[k].map(p => ({ p, C: wlCareer(p.id) })); const ws = M.flatMap(x => x.C.L.map(y => y[0])); const tot = M.reduce((a, x) => ({ g: a.g + x.C.tot.g + x.C.tot.cg, a: a.a + x.C.tot.a + x.C.tot.ca }), { g: 0, a: 0 }); const titles = new Set(); M.forEach(x => x.C.hon.forEach(([h, w]) => { if (h === '威联赛冠军') titles.add(w); }));
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Legends</div><h2>威联赛传奇组合</h2></div><span class="note">只在威联赛时期效力的球星，以及跨入威超的 VJR、猎豹三叉戟、威尔福特三叉戟</span></div><div class="grid g-2" style="gap:14px">${order.map(k => { const T = WL_TAGS[k] || { title: k }, M = groups[k].map(p => ({ p, C: wlCareer(p.id) })); const ws = M.flatMap(x => x.C.L.map(y => y[0])); const tot = M.reduce((a, x) => ({ g: a.g + x.C.tot.g + x.C.tot.cg, a: a.a + x.C.tot.a + x.C.tot.ca }), { g: 0, a: 0 }); const titles = new Set(); M.forEach(x => x.C.hon.forEach(([h, w]) => { if (h === '威联赛冠军') titles.add(w); }));
     return `<div class="panel" style="padding:12px 14px"><div class="tname" style="gap:8px">${crest(T.club || M[0].C.L[0][1].team, 28)}<b style="font-size:14px">${esc(T.title)}</b></div><p class="note" style="margin:4px 0 8px">${WN(Math.min(...ws))}–${WN(Math.max(...ws))}${T.note ? ' · ' + esc(T.note) : ''} · 合计 ${tot.g} 球 ${tot.a} 助攻 · 期间 ${titles.size} 座威联赛冠军</p><div class="rank-list">${M.map(x => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>${wlLink(x.p.id)} <span class="dim" style="font-size:11px">${esc(x.p.pos)} · 巅峰 ${Math.max(...x.C.L.map(y => y[1].rt))}</span></span><span class="v mono" style="font-size:12px">${x.C.tot.apps + x.C.tot.capps} 场 ${x.C.tot.g + x.C.tot.cg} 球 ${x.C.tot.a + x.C.tot.ca} 助</span></div>`).join('')}</div></div>`; }).join('')}</div></div>`;
 }
 let WLV = { tab: 'season', s: 50 };

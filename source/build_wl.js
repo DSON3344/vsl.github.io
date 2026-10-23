@@ -37,10 +37,11 @@ const base = {}; CLUBS.forEach(c => { const l = ((HIST.squads['1'] || {})[c] || 
 const wave = {}; CLUBS.forEach(c => { wave[c] = { ph: rnd() * 6.28, fr: 0.06 + rnd() * 0.12, amp: 2 + rnd() * 1.8, tilt: gauss() * 0.5 }; });
 // DSON 设定的威联赛时期（W01–W50）俱乐部纵观实力，按综合实力排序
 const TIER = { S: ['威龙', '猎豹', '金狮', '猛虎', '狂蜂'], A: ['威尔福特', '切狐', '阿尔法骑士', '猛龙', '罗联', '森利西亚虎'], B: ['花豹', '蜜蜂', '飞鹰', '炎狼', '华尔兹', '龙王宫殿', '科摩多尊龙', '沃特梅兹', '泽尼联', '普雷斯顿', '岚', '罗杰剧院', '雷克夏', '威廉斯', '拉普兰德', '威尔顿联'] };
-const TVAL = {}; TIER.S.forEach((c, k) => TVAL[c] = 89.6 - k * 0.3); TIER.A.forEach((c, k) => TVAL[c] = 87.4 - k * 0.35); TIER.B.forEach((c, k) => TVAL[c] = 84.4 - k * 0.28);
+const TVAL = {}; TIER.S.forEach((c, k) => TVAL[c] = 89.6 - k * 0.15 * k); TIER.A.forEach((c, k) => TVAL[c] = 87.4 - k * 0.35); TIER.B.forEach((c, k) => TVAL[c] = 84.4 - k * 0.28);
 CLUBS.forEach(c => { if (TVAL[c] == null) TVAL[c] = 80; });
 // 没进威超 S01 的俱乐部：W40 之后逐渐衰落（财政困难、卖掉主力）
-const prest = (c, w) => { const v = wave[c], lam = clamp((w - 38) / 10, 0, 0.8); return (1 - lam) * (TVAL[c] + v.amp * Math.sin(v.ph + w * v.fr) + v.tilt) + lam * base[c] - (S1.includes(c) ? 0 : Math.max(0, w - 38) * 0.9); };
+const prest = (c, w) => { if (c === '威尔福特' && w >= 44) return prest0(c, w) + Math.min(3, (w - 43) * 0.8); return prest0(c, w); };
+const prest0 = (c, w) => { const v = wave[c], lam = clamp((w - 38) / 10, 0, 0.8); return (1 - lam) * (TVAL[c] + v.amp * Math.sin(v.ph + w * v.fr) + v.tilt) + lam * base[c] - (S1.includes(c) ? 0 : Math.max(0, w - 38) * 0.9); };
 
 /* ---------- 球员 ---------- */
 const P = [];   // { name, nat, pos, born, pid, peak, pAge, club, ret, mult:{g,a}, curve }
@@ -106,6 +107,10 @@ PL.forEach((pp, pid) => {
   }
   if (p.club == null) return;
   if (lore && ['范文西@威龙', '基尔特斯@威龙', '罗纳德@威龙'].includes(lore.key)) lore.legend = 'VJR 三叉戟';
+  if (lore && ['金格森@猎豹', '梅东斯@猎豹', '本泰克@猎豹'].includes(lore.key)) lore.legend = '猎豹三叉戟';
+  if (lore && lore.key === '沃夫伦@威尔福特') lore.legend = '威尔福特三叉戟';
+  // 威尔福特 W45 崛起：萨科、沃夫伦、马尔科姆的进攻三叉戟（马尔科姆 16 岁 W46 出道）
+  if (pid === 771 || pid === 770) { p.lore = { legend: '威尔福特三叉戟' }; p.club = '威尔福特'; if (pid === 770) p.debut = 46; }
   if (!lore && !S1.includes(p.club)) { const sim = S1.slice().sort((x, y) => Math.abs(base[x] - base[p.club]) - Math.abs(base[y] - base[p.club])); p.club = sim[Math.floor(rnd() * 4)]; p.s01Club = firstSq[pid].team; }
   const m = (PARAMS.mult || {})[pid]; if (m) p.mult = { g: m[0], a: m[1] };
   P.push(p); MOD[pid] = P.length - 1;
@@ -120,7 +125,7 @@ const LEGENDS = [
   // 威龙 历史最强右后卫
   ['巴赫雷拉', 'RB', '西班牙', '威龙', 43, 43, 50, 50, 94.5, '历史最强右后卫'],
   // 猎豹 威联赛时期最强双中场
-  ['曼祖基奇', 'CM', '克罗地亚', '猎豹', 19, 23, 31, 34, 93.5, '最强双中场'], ['沃尔斯特', 'CM', '德国', '猎豹', 19, 23, 31, 34, 93.5, '最强双中场'],
+  ['曼祖基奇', 'CM', '克罗地亚', '猎豹', 35, 40, 50, 50, 93.5, '最强双中场'], ['沃尔斯特', 'CM', '德国', '猎豹', 35, 40, 50, 50, 93.5, '最强双中场'],
   // 猛龙 威联赛时期最强进攻三叉戟「3佩」，W50 落幕
   ['佩德洛', 'LW', '西班牙', '猛龙', 36, 43, 50, 50, 94, '3佩 三叉戟'], ['佩雷斯', 'ST', '阿根廷', '猛龙', 36, 43, 50, 50, 94, '3佩 三叉戟'], ['佩德格', 'RW', '葡萄牙', '猛龙', 36, 43, 50, 50, 94, '3佩 三叉戟'],
 ];
@@ -172,7 +177,7 @@ function playMatch(h, a, w, opt = {}) {
   // opt.cup: 计入杯赛数据；h/a 可以是外赛区队名（不记个人数据）
   const side = c => {
     if (CI[c] == null) { const f = FSTR[c]; return { foreign: true, c, str: domTop(w) - 1.4 + f.b * 0.6 + Math.sin(f.ph + w * 0.1) * 1.2 + gauss() * 0.6 }; }
-    const L = pickXI(c, w, i => !(injured[i] > 0)); return { c, ...L };
+    const L = pickXI(c, w, i => !(injured[i] > 0)); if (c === '威尔福特' && w >= 45) L.str += Math.min(2.6, (w - 44) * 0.9); return { c, ...L };
   };
   const H = side(h), A = side(a);
   const adv = opt.neutral ? 0 : 0.14;
@@ -289,7 +294,17 @@ function runAll(seed) {
   return null;
 }
 const OUT = [];
-for (let w = 1; w <= W; w++) { const t0 = Date.now(); OUT.push(simSeason(w)); if (process.env.WLDBG) console.error("W" + w, Date.now() - t0, "ms players", P.length); }
+for (let w = 1; w <= W - 2; w++) OUT.push(simSeason(w));
+// 最后两季：衔接威超 S01（W50 前 17 名 + 升级 3 队 = S01 的 20 队）。接不上就用别的随机数重踢 W49–W50，前面 48 季不变
+{
+  const snap = { sq: JSON.stringify(squads), inj: JSON.stringify(injured), lg: league.slice(), n: P.length, pm: P.map(p => [p.club, p.moveAt, p.startClub]), names: new Set(usedNames) };
+  const okNow = () => { const L = OUT[W - 1], k = L.order.slice(0, 17), s1 = new Set(S1); return k.every(c => s1.has(c)) && S1.filter(c => !k.includes(c)).every(c => L.lower.includes(c) || L.up.includes(c)); };
+  for (let t = 0; t < 600; t++) {
+    if (t) { Object.keys(squads).forEach(c => delete squads[c]); Object.assign(squads, JSON.parse(snap.sq)); Object.keys(injured).forEach(k => delete injured[k]); Object.assign(injured, JSON.parse(snap.inj)); league = snap.lg.slice(); P.length = snap.n; P.forEach((p, i) => { [p.club, p.moveAt, p.startClub] = snap.pm[i]; }); usedNames.clear(); snap.names.forEach(n => usedNames.add(n)); OUT.length = W - 2; rnd = mkRng(SEED * 13 + t * 7919); }
+    OUT.push(simSeason(W - 1)); OUT.push(simSeason(W));
+    if (okNow()) break;
+  }
+}
 // 收尾检查
 const last = OUT[W - 1], keep = last.order.slice(0, 17), s1set = new Set(S1);
 const ok = keep.every(c => s1set.has(c)) && S1.filter(c => !keep.includes(c)).every(c => last.lower.includes(c) || last.up.includes(c));
@@ -327,17 +342,18 @@ function finalize() {
   const A = OUT.map(awards);
   // 金球：W37–W50 按设定名额分给传奇。用动态规划找「爆冷最少」的分配：每季得主和当季最高分的差距总和最小
   const forced = {}; const Q = Object.entries(quotaB).map(([i, n]) => ({ i: +i, n }));
-  const gap = (w, i) => { const L = A[w - 1].ballon, k = L.findIndex(x => x.i === i); if (k < 0) return 1e6; const top = L.filter(x => !quotaB[x.i] || true)[0].sc; return Math.max(0, top - L[k].sc) + k * 0.05; };
-  const memo = new Map();
+  const gap = (w, i) => { const L = A[w - 1].ballon, k = L.findIndex(x => x.i === i); if (k < 0) return 1e6; if (ageOf(P[i], w) < MINAGE) return 1e6; if (P[i].pid === 783 && w > 46) return 1e6; const top = L.filter(x => !quotaB[x.i] || true)[0].sc; return Math.max(0, top - L[k].sc) + k * 0.05; };
+  const memo = new Map(); var MINAGE;
   const solve = (w, rem) => { if (w > 50) return rem.every(x => x === 0) ? { c: 0, pick: [] } : { c: 1e9 }; const key = w + '|' + rem.join(','); if (memo.has(key)) return memo.get(key); let best = { c: 1e9 }; const left = rem.reduce((a, b) => a + b, 0); if (left > 51 - w) { memo.set(key, best); return best; }
     Q.forEach((q, k) => { if (!rem[k]) return; const g = gap(w, q.i); if (g >= 1e6) return; const r2 = rem.slice(); r2[k]--; const sub = solve(w + 1, r2); if (sub.c + g < best.c) best = { c: sub.c + g, pick: [q.i].concat(sub.pick) }; });
     if (left < 51 - w) { const sub = solve(w + 1, rem); if (sub.c < best.c) best = { c: sub.c, pick: [null].concat(sub.pick) }; }
     memo.set(key, best); return best; };
-  const sol = solve(37, Q.map(q => q.n));
+  let sol; for (MINAGE of [18, 17, 16, 0]) { memo.clear(); sol = solve(37, Q.map(q => q.n)); if (sol.c < 1e8) break; }
   (sol.pick || []).forEach((i, k) => { if (i != null) forced[37 + k] = i; });
   if (process.env.WLDBG2) console.error('ballon DP cost', sol.c.toFixed(1), JSON.stringify(forced));
   const quotaSet = new Set(Object.keys(quotaB).map(Number));
-  A.forEach((a, k) => { const w = k + 1; let L = a.ballon.slice(); if (forced[w] != null) { const j = L.findIndex(x => x.i === forced[w]); const it = j >= 0 ? L.splice(j, 1)[0] : { i: forced[w], sc: 0 }; it.sc = Math.max(it.sc, (L[0] ? L[0].sc : 0) + 1.2); L.unshift(it); } else { while (L.length && quotaSet.has(L[0].i)) L.push(L.shift()); } a.ballon = L; });
+  const natCnt = {};
+  A.forEach((a, k) => { const w = k + 1; let L = a.ballon.slice(); if (forced[w] != null) { const j = L.findIndex(x => x.i === forced[w]); const it = j >= 0 ? L.splice(j, 1)[0] : { i: forced[w], sc: 0 }; it.sc = Math.max(it.sc, (L[0] ? L[0].sc : 0) + 1.2); L.unshift(it); } else { let g = 0; while (L.length && (quotaSet.has(L[0].i) || (natCnt[L[0].i] || 0) >= 5) && g++ < L.length) L.push(L.shift()); if (L[0]) natCnt[L[0].i] = (natCnt[L[0].i] || 0) + 1; } a.ballon = L; });
   // 金手套：奥兹兰等按名额拿下表现最好的几季
   Object.entries(quotaG).forEach(([i, n]) => { const ws = OUT.map((S, k) => ({ k, r: S.rows[i] })).filter(x => x.r && x.r.apps >= 20).sort((a, b) => b.r.cs - a.r.cs).slice(0, n), set = new Set(ws.map(x => x.k)); ws.forEach(x => A[x.k].glove = +i);
     OUT.forEach((S, k) => { if (A[k].glove == +i && !set.has(k)) { const alt = Object.entries(S.rows).filter(([j, r]) => +j != i && LINE(P[j].pos) === 'GK' && r.apps >= 20 && S.order.includes(r.club)).sort((a, b) => b[1].cs - a[1].cs)[0]; A[k].glove = alt ? +alt[0] : null; } }); });
