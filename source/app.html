@@ -2071,15 +2071,40 @@ function awardsOf(s) {
 const AWARD_NAMES = { ballon: '金球奖', world: '世界足球先生', def: '铁卫奖', goal: '最佳进球', mvp: '威超最佳球员', boot: '威超金靴', assist: '威超助攻王', glove: '威超金手套', young: '金童奖', xi: '年度最佳阵容' };
 function awardsOfPid(pid, uid) {
   const out = [], K = pid != null ? 'p' + pid : 'u' + uid; const is = p => p && akey(p) === K;
-  SEASONS.forEach(s => { const A = awardsOf(s); if (!A) return; if (is(A.ballon[0])) out.push(['金球奖', s]); if (is(A.ballon[1])) out.push(['金球奖亚军', s]); if (is(A.ballon[2])) out.push(['金球奖季军', s]); ['world', 'mvp', 'boot', 'assist', 'def', 'glove', 'young'].forEach(k => { if (is(A[k])) out.push([AWARD_NAMES[k], s]); }); if (A.xi.some(is)) out.push(['年度最佳阵容', s]); if (A.goal && A.goal[0] && A.goal[0].pid === pid) out.push(['最佳进球', s]); });
+  SEASONS.concat(isPending(SEASON) ? [SEASON] : []).forEach(s => { const A = awardsOf(s); if (!A) return; if (is(A.ballon[0])) out.push(['金球奖', s]); if (is(A.ballon[1])) out.push(['金球奖亚军', s]); if (is(A.ballon[2])) out.push(['金球奖季军', s]); ['world', 'mvp', 'boot', 'assist', 'def', 'glove', 'young'].forEach(k => { if (is(A[k])) out.push([AWARD_NAMES[k], s]); }); if (A.xi.some(is)) out.push(['年度最佳阵容', s]); if (A.goal && A.goal[0] && A.goal[0].pid === pid) out.push(['最佳进球', s]); });
   return out;
+}
+// 球员资料里的「荣誉」：个人奖项（含杯赛 MVP、金球奖最高排名）+ 团队荣誉（效力球队拿到的冠军）
+function playerHonours(pid, uid) {
+  const K = pid != null ? 'p' + pid : 'u' + uid, is = p => p && akey(p) === K;
+  const ind = awardsOfPid(pid, uid).slice(), team = [], seasons = SEASONS.concat(isPending(SEASON) ? [SEASON] : []);
+  let best = null, noms = 0;
+  seasons.forEach(s => { const A = awardsOf(s); if (!A) return; const i = (A.ballonVotes || []).findIndex(is); if (i >= 0) { noms++; if (!best || i + 1 < best.rk) best = { rk: i + 1, s: [s], pct: A.ballonVotes[i].pct }; else if (i + 1 === best.rk) best.s.push(s); } });
+  const rows = pid != null ? personSeasons(pid).filter(([s]) => seasons.includes(s)) : [];
+  rows.forEach(([s, r]) => {
+    const H = HS[s], C = cupsOf(s) || {};
+    if (H && H.table && H.table[0].team === r.team) team.push(['威超冠军', s, r.team]);
+    else if (H && H.table && H.table[1] && H.table[1].team === r.team) team.push(['威超亚军', s, r.team]);
+    CUP_KS.forEach(k => { const c = C[k]; if (!c) return; if (c.winner === r.team) { team.push([k + '冠军', s, r.team]); if (c.mvp === r.name) ind.push([k + ' MVP', s]); } else if (c.runner === r.team && (k === '世联赛' || k === '全联冠')) team.push([k + '亚军', s, r.team]); });
+  });
+  return { ind, team, best, noms };
 }
 function awardChips(pid, uid) {
   if (pid == null && !uid) return '';
-  const l = awardsOfPid(pid, uid); if (!l.length) return '';
-  const by = {}; l.forEach(([k, s]) => (by[k] = by[k] || []).push(s));
-  const order = ['金球奖', '金球奖亚军', '金球奖季军', '世界足球先生', '威超最佳球员', '最佳进球', '铁卫奖', '威超金靴', '威超助攻王', '威超金手套', '金童奖', '年度最佳阵容'];
-  return `<div><div class="eyebrow" style="margin-bottom:8px">个人荣誉</div><div class="btns" style="gap:6px">${order.filter(k => by[k]).map(k => `<span class="chip ${k === '金球奖' ? 'gold' : ''}" title="${by[k].map(SN).join('、')}">${k}${by[k].length > 1 ? ' ×' + by[k].length : ''} <span class="dim" style="font-size:10.5px">${by[k].map(SN).join(' ')}</span></span>`).join('')}</div></div>`;
+  const H = playerHonours(pid, uid);
+  const group = l => { const by = {}; l.forEach(([k, s, t]) => (by[k] = by[k] || []).push([s, t])); return by; };
+  const chip = (k, L, gold) => `<span class="chip ${gold ? 'gold' : ''}" title="${L.map(([s, t]) => SN(s) + (t ? ' ' + t : '')).join('、')}">${esc(k)}${L.length > 1 ? ' ×' + L.length : ''} <span class="dim" style="font-size:10.5px">${L.map(([s]) => SN(s)).join(' ')}</span></span>`;
+  const bi = group(H.ind), bt = group(H.team);
+  const oi = ['金球奖', '金球奖亚军', '金球奖季军', '世界足球先生', '威超最佳球员', '世联赛 MVP', '全联冠 MVP', '全联杯 MVP', '全协联 MVP', '威联赛杯 MVP', '社区杯 MVP', '最佳进球', '铁卫奖', '威超金靴', '威超助攻王', '威超金手套', '金童奖', '年度最佳阵容'];
+  const ot = ['威超冠军', '世联赛冠军', '全联冠冠军', '全联杯冠军', '全协联冠军', '威联赛杯冠军', '社区杯冠军', '威超亚军', '世联赛亚军', '全联冠亚军'];
+  const ballon = H.best ? `<span class="chip ${H.best.rk === 1 ? 'gold' : ''}">金球奖最高排名：第 ${H.best.rk} 名 <span class="dim" style="font-size:10.5px">${H.best.s.map(SN).join(' ')}</span></span><span class="chip">金球奖入围 ${H.noms} 次</span>` : (H.ind.length || H.team.length ? '<span class="chip">金球奖：未曾入围</span>' : '');
+  const indL = oi.filter(k => bi[k]).map(k => chip(k, bi[k], /^金球奖$|世界足球先生|威超最佳球员|世联赛 MVP|全联冠 MVP/.test(k))).join('');
+  const teamL = ot.filter(k => bt[k]).map(k => chip(k, bt[k], /冠军$/.test(k) && !/威联赛杯|社区杯|全协联/.test(k))).join('');
+  if (!indL && !teamL && !ballon) return '';
+  const nT = H.team.filter(x => /冠军$/.test(x[0])).length;
+  return `<div><div class="eyebrow" style="margin-bottom:8px">荣誉 · 个人 ${H.ind.length} 项 · 团队冠军 ${nT} 座</div>
+    <div class="note" style="margin:0 0 4px">个人荣誉</div><div class="btns" style="gap:6px">${ballon}${indL || '<span class="dim" style="font-size:12px">暂无个人奖项</span>'}</div>
+    <div class="note" style="margin:8px 0 4px">团队荣誉（效力球队当季夺得）</div><div class="btns" style="gap:6px">${teamL || '<span class="dim" style="font-size:12px">暂无团队荣誉</span>'}</div></div>`;
 }
 // 奖项提名：每人的优势（数据 + 团队荣誉 + 杯赛 MVP），得主显示获奖原因和得票率
 function strengthChips(p, kind) {
