@@ -1939,22 +1939,29 @@ function awardsOf(s) {
     Object.entries(C).forEach(([k, r]) => { if (!r) return; if (r.winner === t) { sc += CUP_BONUS[k] || 0; L.push(k + '冠军'); } else if (r.runner === t && (k === '世联赛' || k === '全联冠')) { sc += 4; L.push(k + '亚军'); }
       if (r.mvp === p.name && r.winner === t) { sc += k === '世联赛' || k === '全联冠' ? 6 : 2; L.push(k + ' MVP'); }
       const row = (r.scorers || []).find(x => x[0] === p.name && x[1] === t); if (row) sc += row[2] * 0.3 + row[3] * 0.15; });
-    const major = L.some(x => /冠军$/.test(x) && !/威联赛杯|社区杯|全协联/.test(x));
-    if (!major) sc -= 6;
-    return { sc, L }; };
+    const majors = L.filter(x => /冠军$/.test(x) && !/威联赛杯|社区杯|全协联|亚军/.test(x)).length;
+    if (!majors) sc -= 3; else sc += (majors - 1) * 2.5; // 双冠、三冠王额外加分
+    return { sc: sc * 0.75, L }; };
   const base = p => p.avg * 10 + p.g * 0.45 + p.a * 0.35 + p.motm * 0.35 + (p.line === 'GK' ? p.cs * 0.3 - 2 : p.line === 'DF' ? p.cs * 0.15 : 0);
   const bsc = p => base(p) + p.g * 0.35 + p.a * 0.15;
   const pick = (l, f) => l.slice().sort((a, b) => f(b) - f(a));
   const extLeagueChamp = {}; EXT_LEAGUES.forEach(L => { if (L.short !== '其他') extLeagueChamp[extTable(L, s)[0]] = 1; });
+  // 威超 MVP 只看威超联赛：个人联赛数据 + 球队联赛名次 + 联赛单项榜首，不计杯赛和洲际赛
+  const rk = Object.fromEntries(HS[s].table.map((r, i) => [r.team, i + 1])), nT = HS[s].table.length;
+  const lead = k => { const mx = Math.max(0, ...rows.map(p => p[k])); return mx > 0 ? mx : -1; }, gMax = lead('g'), aMax = lead('a'), mMax = lead('motm');
+  const rkBonus = t => { const r = rk[t] || nT; return r === 1 ? 3 : r === 2 ? 1.8 : r === 3 ? 1.2 : r === 4 ? 0.8 : r > nT - 3 ? -1.5 : 0; };
+  const mvpSc = p => base(p) + rkBonus(p.team) + (p.g === gMax ? 1.5 : 0) + (p.a === aMax ? 1 : 0) + (p.motm === mMax ? 1 : 0);
+  const lgTags = p => { const r = rk[p.team], L = [r === 1 ? '威超冠军' : `威超第 ${r} 名`]; if (p.g === gMax) L.push('威超射手榜第一'); if (p.a === aMax) L.push('威超助攻榜第一'); if (p.motm === mMax) L.push('全场最佳次数最多'); return L; };
+  const mvpVotes = voteShares(capTeam(pick(rows, mvpSc), 6, 2), mvpSc, 3).map(p => ({ ...p, _lg: lgTags(p), _rk: rk[p.team] }));
   const ext = extRowsFor(s).filter(p => p.apps >= 20).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]); return { ...p, _sc: bsc(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + h.sc, _hon: h.L, _honSc: h.sc }; });
-  let ballon = rows.map(p => { const h = honOfP(p, false); return { ...p, _sc: bsc(p) + h.sc, _hon: h.L, _honSc: h.sc }; }).concat(ext).sort((a, b) => b._sc - a._sc);
+  const mvpId = mvpVotes[0] && mvpVotes[0].pid, bootG = gMax;
+  let ballon = rows.map(p => { const h = honOfP(p, false); if (p.pid === mvpId) h.L.unshift('威超 MVP'); if (p.g === bootG) h.L.push('威超金靴'); return { ...p, _sc: bsc(p) + h.sc + (p.pid === mvpId ? 4 : 0) + (p.g === bootG ? 2 : 0), _hon: h.L, _honSc: h.sc }; }).concat(ext).sort((a, b) => b._sc - a._sc);
   // 提名名单每队最多 3 人（世界足球先生 3 人、MVP 和铁卫奖 2 人），避免整队包揽；队内第二、三人的团队荣誉加成打折
   { const seen = {}; ballon.forEach(p => { const k = seen[p.team] = (seen[p.team] || 0) + 1; if (k > 1) p._sc -= (p._honSc || 0) * (k === 2 ? 0.25 : 0.4); }); ballon.sort((a, b) => b._sc - a._sc); }
   { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
   ballon = capTeam(ballon, 10, 3);
-  const ballonVotes = voteShares(ballon, p => p._sc, 5);
+  const ballonVotes = voteShares(ballon, p => p._sc, 6);
   ballon = ballon.slice(0, 3);
-  const mvpVotes = voteShares(capTeam(pick(rows, p => base(p) + (p.team === champ ? 2 : 0)), 6, 2), p => base(p) + (p.team === champ ? 2 : 0), 3);
   const mvp = mvpVotes[0];
   const goal = bestGoalOf(s);
   const defSc = p => p.avg * 10 + p.cs * 0.35 + p.tk * 0.03 + p.int * 0.04 + p.g * 0.3 + p.a * 0.15 + (p.team === champ ? 1.5 : 0);
@@ -1988,10 +1995,11 @@ function awardChips(pid, uid) {
 // 奖项提名：每人的优势（数据 + 团队荣誉 + 杯赛 MVP），得主显示获奖原因和得票率
 function strengthChips(p, kind) {
   const st = kind === 'def' ? [`${p.cs} 场零封`, `${p.tk} 抢断`, `${p.int} 拦截`, `评分 ${p.avg.toFixed(2)}`] : p.line === 'GK' ? [`${p.cs} 场零封`, `${p.sv || 0} 次扑救`, `评分 ${p.avg.toFixed(2)}`] : [`${p.g} 球`, `${p.a} 助攻`, `评分 ${p.avg.toFixed(2)}`, ...(p.motm ? [`${p.motm} 次全场最佳`] : [])];
-  const hon = (p._hon || []).map(h => `<span class="chip ${/MVP|冠军$/.test(h) && !/威联赛杯|社区杯|全协联/.test(h) ? 'gold' : ''}" style="font-size:10.5px;padding:0 6px">${esc(h)}</span>`).join(' ');
+  const hon = (kind === 'mvp' ? (p._lg || []) : (p._hon || [])).map(h => `<span class="chip ${/MVP|冠军$|第一|最多/.test(h) && !/威联赛杯|社区杯|全协联/.test(h) ? 'gold' : ''}" style="font-size:10.5px;padding:0 6px">${esc(h)}</span>`).join(' ');
   return `<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span class="muted mono" style="font-size:11.5px">${st.join(' · ')}</span>${hon}</div>`;
 }
 function awardReason(p, kind) {
+  if (kind === 'mvp') { const L = (p._lg || []).slice(1); return `威超联赛 ${p.apps} 场 ${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}${p._rk === 1 ? `，率领${p.team}夺得威超冠军` : p._rk ? `，帮助${p.team}拿到威超第 ${p._rk} 名` : ''}${L.length ? `，并且是${L.join('、')}` : ''}。（只计威超联赛表现）`; }
   const team = p.team, H = p._hon || [], champs = H.filter(h => /冠军$/.test(h)), mvps = H.filter(h => /MVP/.test(h));
   const stat = kind === 'def' ? `${p.cs} 场零封、${p.tk} 次抢断、${p.int} 次拦截，场均 ${p.avg.toFixed(2)} 分` : p.line === 'GK' ? `${p.cs} 场零封，场均 ${p.avg.toFixed(2)} 分` : `${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}`;
   return `${stat}${champs.length ? `，帮助${team}拿下${champs.join('、')}` : '，个人表现力压群雄'}${mvps.length ? `，并当选${mvps.join('、')}` : ''}。`;
