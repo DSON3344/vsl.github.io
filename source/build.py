@@ -19,7 +19,7 @@ for f in sorted(os.listdir(d + 'assets/logos')):
     b = open(d + 'assets/logos/' + f, 'rb').read(); h = hashlib.md5(b).hexdigest()[:8]
     name = h + '.webp'; open(d + '../logos/' + name, 'wb').write(b); logo_urls[f[:-5]] = 'logos/' + name
 logos = {}
-data = (open(d + 'player_data.js').read() + '\n'
+data = (open(d + 'lzstring.min.js').read() + '\n' + open(d + 'player_data.js').read() + '\n'
         + '(' + mjson(open(d + 'extra_players.json').read()) + ').forEach(p => PLAYER_DATABASE[p.team].push(p));\n'
         + open(d + 'teams_data.js').read() + '\n' + open(d + 'roster_overrides.js').read()
         + '\nconst TEAMS_DATA = window.TEAMS_DATA;\nconst HISTORY = ' + mjson(open(d + 'history.json').read())
