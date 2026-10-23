@@ -34,9 +34,13 @@ const CI = Object.fromEntries(CLUBS.map((c, i) => [c, i]));
 const S1 = HIST.s1.slice();
 // 俱乐部底蕴：S01 名单前 11 人均分；早年按随机的「黄金时代」起伏，越接近 W50 越贴近 S01 的实力
 const base = {}; CLUBS.forEach(c => { const l = ((HIST.squads['1'] || {})[c] || []).map(x => x[2]).sort((a, b) => b - a).slice(0, 11); base[c] = l.length ? l.reduce((a, b) => a + b, 0) / l.length : 80; });
-const wave = {}; CLUBS.forEach(c => { wave[c] = { ph: rnd() * 6.28, fr: 0.06 + rnd() * 0.12, amp: 4 + rnd() * 5, tilt: gauss() * 3 }; });
+const wave = {}; CLUBS.forEach(c => { wave[c] = { ph: rnd() * 6.28, fr: 0.06 + rnd() * 0.12, amp: 2 + rnd() * 1.8, tilt: gauss() * 0.5 }; });
+// DSON 设定的威联赛时期（W01–W50）俱乐部纵观实力，按综合实力排序
+const TIER = { S: ['威龙', '猎豹', '金狮', '猛虎', '狂蜂'], A: ['威尔福特', '切狐', '阿尔法骑士', '猛龙', '罗联', '森利西亚虎'], B: ['花豹', '蜜蜂', '飞鹰', '炎狼', '华尔兹', '龙王宫殿', '科摩多尊龙', '沃特梅兹', '泽尼联', '普雷斯顿', '岚', '罗杰剧院', '雷克夏', '威廉斯', '拉普兰德', '威尔顿联'] };
+const TVAL = {}; TIER.S.forEach((c, k) => TVAL[c] = 89.6 - k * 0.3); TIER.A.forEach((c, k) => TVAL[c] = 87.4 - k * 0.35); TIER.B.forEach((c, k) => TVAL[c] = 84.4 - k * 0.28);
+CLUBS.forEach(c => { if (TVAL[c] == null) TVAL[c] = 80; });
 // 没进威超 S01 的俱乐部：W40 之后逐渐衰落（财政困难、卖掉主力）
-const prest = (c, w) => { const v = wave[c], lam = clamp((w - 22) / 26, 0.12, 1), mean = 83.5; return mean + (base[c] - mean) * lam + (1 - lam * 0.85) * (v.amp * Math.sin(v.ph + w * v.fr) + v.tilt) - (S1.includes(c) ? 0 : Math.max(0, w - 40) * 0.6); };
+const prest = (c, w) => { const v = wave[c], lam = clamp((w - 38) / 10, 0, 0.8); return (1 - lam) * (TVAL[c] + v.amp * Math.sin(v.ph + w * v.fr) + v.tilt) + lam * base[c] - (S1.includes(c) ? 0 : Math.max(0, w - 38) * 0.9); };
 
 /* ---------- 球员 ---------- */
 const P = [];   // { name, nat, pos, born, pid, peak, pAge, club, ret, mult:{g,a}, curve }
@@ -59,7 +63,7 @@ function newGen(club, w, line, star) {
   const name = genName(nat) || genName('英格兰');
   const age = 17 + Math.floor(rnd() * 3);
   const pr = prest(club, w + 6);
-  const peak = star ? 92 + rnd() * 4 : clamp(pr - 1.5 + gauss() * 3.4, 70, 93.5);
+  const peak = star ? (line === 'DF' ? 90 + rnd() * 2 : 91 + rnd() * 3) : clamp(pr - 1.5 + gauss() * 3.4, 70, line === 'DF' ? 92 : 93);
   const p = { name, nat, pos: one(POS_OF[line]), born: w - age, pid: -1, peak: Math.round(peak), pAge: 26 + Math.floor(rnd() * 4), club, ret: 33 + Math.floor(rnd() * 5), mult: { g: 1, a: 1 }, kind: 'gen' };
   P.push(p); return P.length - 1;
 }
@@ -101,9 +105,30 @@ PL.forEach((pp, pid) => {
     p.rf = a => Math.round(clamp(rF - Math.max(0, top - a) * 1.45, 56, 99));
   }
   if (p.club == null) return;
+  if (lore && ['范文西@威龙', '基尔特斯@威龙', '罗纳德@威龙'].includes(lore.key)) lore.legend = 'VJR 三叉戟';
   if (!lore && !S1.includes(p.club)) { const sim = S1.slice().sort((x, y) => Math.abs(base[x] - base[p.club]) - Math.abs(base[y] - base[p.club])); p.club = sim[Math.floor(rnd() * 4)]; p.s01Club = firstSq[pid].team; }
   const m = (PARAMS.mult || {})[pid]; if (m) p.mult = { g: m[0], a: m[1] };
   P.push(p); MOD[pid] = P.length - 1;
+});
+
+// DSON 设定的威联赛专属球星（只在威联赛时期效力，W50 前退役）
+const LEGENDS = [
+  // 威龙 第一代进攻三叉戟「MVP」W05–W09
+  ['摩德赛', 'LW', '葡萄牙', '威龙', 2, 5, 9, 12, 93, 'MVP 三叉戟'], ['凡恩', 'ST', '荷兰', '威龙', 2, 5, 9, 12, 93, 'MVP 三叉戟'], ['佩雷拉', 'RW', '巴西', '威龙', 2, 5, 9, 12, 92.5, 'MVP 三叉戟'],
+  // 威龙 第二代进攻三叉戟「3M」W20–W30
+  ['穆斯科茨', 'LW', '苏格兰', '威龙', 17, 20, 30, 32, 93, '3M 三叉戟'], ['莫林', 'ST', '法国', '威龙', 17, 20, 30, 32, 93, '3M 三叉戟'], ['迈凯伦', 'RW', '英格兰', '威龙', 17, 20, 30, 32, 92.5, '3M 三叉戟'],
+  // 威龙 历史最强右后卫
+  ['巴赫雷拉', 'RB', '西班牙', '威龙', 43, 43, 50, 50, 94.5, '历史最强右后卫'],
+  // 猎豹 威联赛时期最强双中场
+  ['曼祖基奇', 'CM', '克罗地亚', '猎豹', 19, 23, 31, 34, 93.5, '最强双中场'], ['沃尔斯特', 'CM', '德国', '猎豹', 19, 23, 31, 34, 93.5, '最强双中场'],
+  // 猛龙 威联赛时期最强进攻三叉戟「3佩」，W50 落幕
+  ['佩德洛', 'LW', '西班牙', '猛龙', 36, 43, 50, 50, 94, '3佩 三叉戟'], ['佩雷斯', 'ST', '阿根廷', '猛龙', 36, 43, 50, 50, 94, '3佩 三叉戟'], ['佩德格', 'RW', '葡萄牙', '猛龙', 36, 43, 50, 50, 94, '3佩 三叉戟'],
+];
+LEGENDS.forEach(([name, pos, nat, club, debut, pf, pt, last, peak, tag]) => {
+  usedNames.add(name);
+  const rf = a => { const w = a + born; return Math.round(clamp(w < pf ? peak - (pf - w) * 1.7 : w > pt ? peak - (w - pt) * 2.2 : peak, 60, 99)); };
+  const born = debut - (name === '巴赫雷拉' ? 24 : 18);
+  P.push({ name, nat, pos, born, pid: -1, peak: Math.round(peak), club, kind: 'mod', mult: { g: LINE(pos) === 'FW' ? 1.35 : pos === 'RB' ? 1.6 : 1, a: LINE(pos) === 'MF' ? 1.4 : pos === 'RB' ? 9 : 1 }, debut, last, lore: { legend: tag }, rf });
 });
 
 /* ---------- 外赛区对手（洲际赛） ---------- */
@@ -200,10 +225,10 @@ function simSeason(w) {
   ROW = {}; DOMTOP = {}; RCACHE = {};
   // 年龄、退役、新人
   CLUBS.forEach(c => {
-    squads[c] = squads[c].filter(i => { const p = P[i]; if (p.kind === 'mod') return true; const a = ageOf(p, w), r = ratingOf(p, w); return !(a >= p.ret || (a > 29 && r < 66)); });
+    squads[c] = squads[c].filter(i => { const p = P[i]; if (p.kind === 'mod') return !(p.last && w > p.last); const a = ageOf(p, w), r = ratingOf(p, w); return !(a >= p.ret || (a > 29 && r < 66)); });
   });
   // 现代球员出道 / 回到 S01 的俱乐部
-  P.forEach((p, i) => { if (p.kind !== 'mod' || w < p.debut) return; const cur = CLUBS.find(c => squads[c].includes(i)); if (cur) return; let c = p.club; if (!p.lore && rnd() < 0.35 && w < 47) { const others = CLUBS.filter(x => Math.abs(prest(x, w) - prest(c, w)) < 4 && x !== c); if (others.length) c = one(others); p.moveAt = w + 2 + Math.floor(rnd() * 5); p.startClub = c; } squads[c].push(i); });
+  P.forEach((p, i) => { if (p.kind !== 'mod' || w < p.debut || (p.last && w > p.last)) return; const cur = CLUBS.find(c => squads[c].includes(i)); if (cur) return; let c = p.club; if (!p.lore && rnd() < 0.35 && w < 47) { const others = CLUBS.filter(x => Math.abs(prest(x, w) - prest(c, w)) < 4 && x !== c); if (others.length) c = one(others); p.moveAt = w + 2 + Math.floor(rnd() * 5); p.startClub = c; } squads[c].push(i); });
   P.forEach((p, i) => { if (p.kind === 'mod' && p.moveAt === w) { CLUBS.forEach(c => squads[c] = squads[c].filter(x => x !== i)); squads[p.club].push(i); } });
   // 转会：原创球员里的好手被底蕴更强的球队买走
   if (w > 1) CLUBS.forEach(c => squads[c].slice().forEach(i => { const p = P[i]; if (p.kind === 'mod') return; const r = ratingOf(p, w); const crisis = w >= 43 && !S1.includes(c) && r >= 76; if (!crisis && (r < prest(c, w) + 3 || rnd() > 0.35)) return; if (crisis && rnd() > 0.55) return; const buyers = CLUBS.filter(x => prest(x, w) > prest(c, w) + 1.5 && squads[x].length < 26); if (!buyers.length) return; const to = wpick(buyers, x => Math.pow(prest(x, w) - 80, 2) + 1); squads[c] = squads[c].filter(x => x !== i); squads[to].push(i); p.club = to; }));
@@ -279,12 +304,15 @@ function finalize() {
   // 1) 传奇数据精确对齐：差额从同季同队的非传奇队友那里挪（球队总进球 / 助攻不变）
   Object.entries(LORE_BY_PID).forEach(([pid, L]) => {
     const i = MOD[pid]; if (i == null) return;
+    // 在队但没上场的赛季也算进来（补出场时用）
+    OUT.forEach(S => { const c = Object.keys(S.sq).find(t => S.sq[t].includes(i)); if (c && !S.rows[i] && S.order.includes(c)) S.rows[i] = { club: c, apps: 0, g: 0, a: 0, rs: 0, motm: 0, cs: 0, capps: 0, cg: 0, ca: 0, crs: 0 }; });
     const seasonsOf = () => OUT.map((S, k) => ({ S, k, r: S.rows[i] })).filter(x => x.r);
     const adjust = (field, cfield, target) => {
       let cur = 0; seasonsOf().forEach(x => cur += x.r[field] + x.r[cfield]); let d = target - cur, guard = 0;
-      while (d !== 0 && guard++ < 5000) {
+      while (d !== 0 && guard++ < 40000) {
         const L2 = seasonsOf(); if (!L2.length) break; const x = L2[guard % L2.length]; const useCup = guard % 3 === 0 && x.r.capps > 0; const f = useCup ? cfield : field;
         const mates = Object.entries(x.S.rows).filter(([j, r]) => +j !== i && r.club === x.r.club && !P[j].lore && (d > 0 ? r[f] > 0 : (useCup ? r.capps : r.apps) > 0)).sort((a, b) => d > 0 ? b[1][f] - a[1][f] : (LINE(P[b[0]].pos) === 'FW') - (LINE(P[a[0]].pos) === 'FW') || b[1].apps - a[1].apps);
+        if (!mates.length && d > 0 && x.r.capps > 0 && guard > 20000) { if (f === 'g' || f === 'cg') x.r.cg++; else x.r.ca++; d--; continue; } // 联赛里没人可让时，算进杯赛（杯赛没有积分表约束）
         if (!mates.length) { if (d > 0 && f !== 'g' && f !== 'cg') { const gf = f === 'a' ? 'g' : 'cg'; const team = Object.values(x.S.rows).filter(r => r.club === x.r.club); if (team.reduce((s2, r) => s2 + r[f], 0) < team.reduce((s2, r) => s2 + r[gf], 0)) { x.r[f]++; d--; } } continue; }
         const m = mates[0][1];
         if (d > 0) { m[f]--; x.r[f]++; d--; } else { if (x.r[f] <= 0) continue; m[f]++; x.r[f]--; d++; }
@@ -318,10 +346,14 @@ function finalize() {
 }
 function exportWL() {
   const A = finalize();
+  // 名字修正：避免「巴巴巴巴」「马丁内内斯」这类叠字（模拟已跑完，换名不影响任何结果）
+  { const keep = rnd, bad = n => !n || (/(.)\1/.test(n) && !/^巴巴.$/.test(n)); P.forEach((p, i) => { if (p.kind !== 'gen' || !bad(p.name)) return; usedNames.delete(p.name); for (let t = 0; t < 30; t++) { rnd = mkRng(777000 + i * 31 + t); const n = genName(p.nat) || genName('英格兰'); if (!bad(n)) { p.name = n; break; } if (n) usedNames.delete(n); }
+    if (bad(p.name)) { const d = p.name.replace(/(.)\1+/g, '$1'); const tries = [d, d + '特', d + '森', d.slice(0, -1) + '维' + d.slice(-1)]; const ok = tries.find(x => !usedNames.has(x) && !bad(x)); if (ok) p.name = ok; }
+    usedNames.add(p.name); }); rnd = keep; }
   const used = new Set(); OUT.forEach(S => { Object.keys(S.rows).forEach(i => used.add(+i)); Object.values(S.sq).forEach(l => l.forEach(i => used.add(i))); });
   const ids = [...used].sort((a, b) => a - b), NID = {}; ids.forEach((i, k) => NID[i] = k);
   const b36 = n => Math.round(n).toString(36);
-  const pl = ids.map(i => { const p = P[i]; return [p.name, p.nat, p.pos, p.born, p.pid, p.kind === 'mod' ? 0 : p.peak]; });
+  const pl = ids.map(i => { const p = P[i]; return [p.name, p.nat, p.pos, p.born, p.pid, p.kind === 'mod' && p.pid >= 0 ? 0 : p.peak, p.lore && p.lore.legend ? p.lore.legend : '']; });
   const seasons = OUT.map((S, k) => {
     const w = k + 1, a = A[k];
     const rows = [];

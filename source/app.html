@@ -3200,7 +3200,7 @@ const WL_CUPS = ['世联赛', '全联杯', '威联赛杯', '社区杯'];
 const WN = w => 'W' + String(w).padStart(2, '0');
 function wlDecode(D) {
   const p36 = x => parseInt(x, 36);
-  const pl = D.pl.map(([name, nat, pos, born, pid, peak], id) => ({ id, name, nat, pos, born, pid, peak, line: ENGINE.LINE(pos) }));
+  const pl = D.pl.map(([name, nat, pos, born, pid, peak, tag], id) => ({ id, name, nat, pos, born, pid, peak, tag: tag || '', line: ENGINE.LINE(pos) }));
   const byPid = {}; pl.forEach(p => { if (p.pid >= 0) byPid[p.pid] = p.id; });
   const car = {};
   const S = D.s.map((s, k) => {
@@ -3240,13 +3240,14 @@ function wlCareer(id) {
 }
 function wlCareerHTML(id, title = '威联赛时代（W01–W50）') {
   const C = wlCareer(id); if (!C.L.length) return '';
+  const tg = wlP(id).tag;
   const by = {}; C.hon.forEach(([k, w]) => (by[k] = by[k] || []).push(w));
   const ord = ['金球奖', '金球奖亚军', '金球奖季军', '威联赛 MVP', '世联赛 MVP', '全联杯 MVP', '威联赛杯 MVP', '社区杯 MVP', '威联赛金靴', '威联赛助攻王', '威联赛金手套', '金童奖', '威联赛冠军', '世联赛冠军', '全联杯冠军', '威联赛杯冠军', '社区杯冠军'];
   const chips = ord.filter(k => by[k]).map(k => `<span class="chip ${/^金球奖$|威联赛冠军|世联赛冠军|威联赛 MVP/.test(k) ? 'gold' : ''}" title="${by[k].map(WN).join('、')}">${k}${by[k].length > 1 ? ' ×' + by[k].length : ''} <span class="dim" style="font-size:10.5px">${by[k].length > 4 ? WN(by[k][0]) + '…' + WN(by[k][by[k].length - 1]) : by[k].map(WN).join(' ')}</span></span>`).join('');
   const t = C.tot, cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
   return `<div><div class="eyebrow" style="margin-bottom:6px">${title} · ${WN(C.L[0][0])}–${WN(C.L[C.L.length - 1][0])}</div>
     <div class="stats3">${cell(t.apps + t.capps, '出场（全部赛事）')}${cell(t.g + t.cg, '进球')}${cell(t.a + t.ca, '助攻')}</div>
-    <div class="btns" style="gap:6px;margin-top:8px">${C.best ? `<span class="chip ${C.best.rk === 1 ? 'gold' : ''}">威联赛时代金球奖最高排名：第 ${C.best.rk} 名 <span class="dim" style="font-size:10.5px">${WN(C.best.w)}</span></span>` : '<span class="chip">威联赛时代金球奖：未曾入围</span>'}${chips}</div>
+    <div class="btns" style="gap:6px;margin-top:8px">${tg && wlP(id).pid >= 0 ? `<span class="chip gold">${esc(WL_TAGS[tg] ? WL_TAGS[tg].title : tg)}</span>` : ''}${C.best ? `<span class="chip ${C.best.rk === 1 ? 'gold' : ''}">威联赛时代金球奖最高排名：第 ${C.best.rk} 名 <span class="dim" style="font-size:10.5px">${WN(C.best.w)}</span></span>` : '<span class="chip">威联赛时代金球奖：未曾入围</span>'}${chips}</div>
     <details style="margin-top:8px"><summary class="note" style="cursor:pointer">逐季数据（联赛 + 杯赛）</summary><div class="tw" style="margin-top:6px"><table><thead><tr><th class="l">赛季</th><th class="l">球队</th><th>年龄</th><th>评分</th><th>联赛 场/球/助</th><th>联赛评分</th><th>杯赛 场/球/助</th><th>全场最佳</th></tr></thead><tbody>
     ${C.L.map(([w, r]) => `<tr><td class="l mono">${WN(w)}</td><td class="l">${esc(r.team)}${r.inLg ? '' : ' <span class="dim" style="font-size:11px">次级联赛</span>'}</td><td>${wlAge(wlP(id), w)}</td><td>${r.rt}</td><td>${r.apps} / ${r.g} / ${r.a}</td><td>${r.apps ? r.avg.toFixed(2) : '–'}</td><td>${r.capps} / ${r.cg} / ${r.ca}</td><td>${r.motm}</td></tr>`).join('')}
     <tr style="font-weight:800"><td class="l">合计</td><td class="l">${C.L.length} 季</td><td></td><td></td><td>${t.apps} / ${t.g} / ${t.a}</td><td>${t.apps ? t.avg.toFixed(2) : '–'}</td><td>${t.capps} / ${t.cg} / ${t.ca}</td><td>${t.motm}</td></tr></tbody></table></div></details></div>`;
@@ -3259,7 +3260,7 @@ function openWLPlayer(id) {
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(peak)}">${peak}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(p.pos)}</span></div>
     <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(p.name)}</h3>
-    <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">威联赛时代球员</span><span class="chip">${C.L[0][0] === 1 ? `W01（威联赛首季）已在队 · ${wlAge(p, 1)} 岁` : `${WN(C.L[0][0])} 出道 · ${wlAge(p, C.L[0][0])} 岁`}</span><span class="chip">${WN(C.L[C.L.length - 1][0])} 后${C.L[C.L.length - 1][0] === 50 ? '退出' : '退役'} · ${wlAge(p, C.L[C.L.length - 1][0])} 岁</span></div></div></div>
+    <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span>${p.tag ? `<span class="chip gold">${esc(WL_TAGS[p.tag] ? WL_TAGS[p.tag].title : p.tag)}</span>` : ''}<span class="chip">威联赛时代球员</span><span class="chip">${C.L[0][0] === 1 ? `W01（威联赛首季）已在队 · ${wlAge(p, 1)} 岁` : `${WN(C.L[0][0])} ${wlAge(p, C.L[0][0]) > 21 ? '加盟' : '出道'} · ${wlAge(p, C.L[0][0])} 岁`}</span><span class="chip">${WN(C.L[C.L.length - 1][0])} 后${C.L[C.L.length - 1][0] === 50 && !p.tag ? '随威联赛落幕' : '退役'} · ${wlAge(p, C.L[C.L.length - 1][0])} 岁</span></div></div></div>
     ${wlCareerHTML(id, '威联赛生涯')}</div>`;
   if (!d.open) d.showModal();
 }
@@ -3276,6 +3277,21 @@ function wlTeamPanel(t) {
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Wei League era · W01–W50</div><h2>威联赛时代</h2></div><button class="btn ghost" data-go="wl">威联赛栏目 →</button></div>
     <div class="btns" style="gap:6px"><span class="chip ${titles.length ? 'gold' : ''}">威联赛冠军 ×${titles.length}${titles.length ? ` <span class="dim" style="font-size:10.5px">${titles.map(WN).join(' ')}</span>` : ''}</span>${WL_CUPS.filter(k => cups[k]).map(k => `<span class="chip">${k}冠军 ×${cups[k].length}</span>`).join('')}<span class="chip">威联赛 ${seasons.length} 季</span>${best ? `<span class="chip">最好名次 第 ${best} 名</span>` : ''}</div>
     ${top.length ? `<div class="eyebrow" style="margin:12px 0 6px">威联赛时代队史射手（全部赛事）</div><div class="rank-list">${top.map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n">${i + 1}</span><span>${wlLink(o.id)} <span class="dim" style="font-size:11px">${o.apps} 场</span></span><span class="v mono">${o.g} 球</span></div>`).join('')}</div>` : ''}</div>`;
+}
+const WL_TAGS = {
+  'MVP 三叉戟': { title: '威龙第一代进攻三叉戟「MVP」', club: '威龙', note: 'W05–W09' },
+  '3M 三叉戟': { title: '威龙第二代进攻三叉戟「3M」', club: '威龙', note: 'W20–W30' },
+  'VJR 三叉戟': { title: '威龙第三代进攻三叉戟「VJR」· 史上最强进攻三叉戟', club: '威龙', note: '威联赛后期至威超初期' },
+  '历史最强右后卫': { title: '威龙 · 历史最强右后卫', club: '威龙', note: 'W43–W50，W50 正式退役' },
+  '最强双中场': { title: '猎豹 · 威联赛时期最强双中场', club: '猎豹', note: '' },
+  '3佩 三叉戟': { title: '猛龙 · 威联赛时期最强进攻三叉戟「3佩」', club: '猛龙', note: '威联赛后期，W50 落幕' },
+};
+function wlLegendsHTML() {
+  const groups = {}; WL.pl.forEach(p => { if (p.tag) (groups[p.tag] = groups[p.tag] || []).push(p); });
+  const order = ['MVP 三叉戟', '3M 三叉戟', '最强双中场', 'VJR 三叉戟', '历史最强右后卫', '3佩 三叉戟'].filter(k => groups[k]);
+  if (!order.length) return '';
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Legends</div><h2>威联赛传奇组合</h2></div><span class="note">只在威联赛时期效力的球星 · 以及跨入威超的 VJR</span></div><div class="grid g-2" style="gap:14px">${order.map(k => { const T = WL_TAGS[k] || { title: k }, M = groups[k].map(p => ({ p, C: wlCareer(p.id) })); const ws = M.flatMap(x => x.C.L.map(y => y[0])); const tot = M.reduce((a, x) => ({ g: a.g + x.C.tot.g + x.C.tot.cg, a: a.a + x.C.tot.a + x.C.tot.ca }), { g: 0, a: 0 }); const titles = new Set(); M.forEach(x => x.C.hon.forEach(([h, w]) => { if (h === '威联赛冠军') titles.add(w); }));
+    return `<div class="panel" style="padding:12px 14px"><div class="tname" style="gap:8px">${crest(T.club || M[0].C.L[0][1].team, 28)}<b style="font-size:14px">${esc(T.title)}</b></div><p class="note" style="margin:4px 0 8px">${WN(Math.min(...ws))}–${WN(Math.max(...ws))}${T.note ? ' · ' + esc(T.note) : ''} · 合计 ${tot.g} 球 ${tot.a} 助攻 · 期间 ${titles.size} 座威联赛冠军</p><div class="rank-list">${M.map(x => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>${wlLink(x.p.id)} <span class="dim" style="font-size:11px">${esc(x.p.pos)} · 巅峰 ${Math.max(...x.C.L.map(y => y[1].rt))}</span></span><span class="v mono" style="font-size:12px">${x.C.tot.apps + x.C.tot.capps} 场 ${x.C.tot.g + x.C.tot.cg} 球 ${x.C.tot.a + x.C.tot.ca} 助</span></div>`).join('')}</div></div>`; }).join('')}</div></div>`;
 }
 let WLV = { tab: 'season', s: 50 };
 function vWL() {
@@ -3326,7 +3342,7 @@ function wlRecordsHTML() {
   const ball = {}; WL.S.forEach(S => { const b = S.aw.ballon[0]; if (b) ball[b.id] = (ball[b.id] || 0) + 1; });
   const list = (f, n, unit, sub) => `<div class="rank-list">${L.filter(o => f(o) > 0).sort((a, b) => f(b) - f(a)).slice(0, n).map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n">${i + 1}</span><span>${wlLink(o.id)} <span class="dim" style="font-size:11px">${esc([...o.teams].join('、'))} · ${sub(o)}</span></span><span class="v mono">${f(o)}${unit}</span></div>`).join('')}</div>`;
   const clubs = WL.clubs.map(t => { const o = { t, lg: 0, seasons: 0, pts: 0, cups: {} }; WL.S.forEach(S => { const r = S.tb.find(x => x.team === t); if (r) { o.seasons++; o.pts += r.pts; } if (S.order[0] === t) o.lg++; WL_CUPS.forEach(k => { if (S.cups[k] && S.cups[k].w === t) o.cups[k] = (o.cups[k] || 0) + 1; }); }); return o; }).sort((a, b) => b.lg - a.lg || (b.cups['世联赛'] || 0) - (a.cups['世联赛'] || 0) || b.pts - a.pts);
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Honours</div><h2>俱乐部荣誉榜（威联赛时代）</h2></div></div><div class="tw"><table><thead><tr><th class="l">球队</th><th>威联赛冠军</th>${WL_CUPS.map(k => `<th>${k}</th>`).join('')}<th>威联赛季数</th><th>累计积分</th></tr></thead><tbody>
+  return wlLegendsHTML() + `<div class="panel"><div class="ph"><div><div class="eyebrow">Honours</div><h2>俱乐部荣誉榜（威联赛时代）</h2></div></div><div class="tw"><table><thead><tr><th class="l">球队</th><th>威联赛冠军</th>${WL_CUPS.map(k => `<th>${k}</th>`).join('')}<th>威联赛季数</th><th>累计积分</th></tr></thead><tbody>
     ${clubs.map(o => `<tr><td class="l">${tlink(o.t, 20)}</td><td>${o.lg ? `<b style="color:var(--gold)">${o.lg}</b>` : '<span class="dim">0</span>'}</td>${WL_CUPS.map(k => `<td>${o.cups[k] || '<span class="dim">0</span>'}</td>`).join('')}<td>${o.seasons}</td><td>${o.pts}</td></tr>`).join('')}</tbody></table></div></div>
   <div class="grid g-2" style="align-items:start">
     <div class="panel"><div class="ph"><div><div class="eyebrow">All-time scorers</div><h2>历史射手榜</h2></div><span class="note">全部赛事</span></div>${list(o => o.g, 25, ' 球', o => `${o.apps} 场 · 联赛 ${o.lg} 球`)}</div>
