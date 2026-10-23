@@ -368,10 +368,14 @@ const pct = x => Math.round(x * 100) + '%';
 /* ---------- 赛季状态 ---------- */
 const KEY = 'ves-league-s01-v1';
 let S;
+// 每个赛季的随机种子：赛季开始时用真随机抽出并存进进度，场外新闻、资本、杯赛、换帅都按它推算（重开网页不变，重踢/回溯会重新抽）
+const newSalt = () => Math.random().toString(36).slice(2, 10);
+const saltOf = s => (S && S.salt && S.salt[s]) || '';
+function rollSalt(s) { S.salt = S.salt || {}; S.salt[s] = newSalt(); OFF_CACHE = {}; CAP_CACHE = null; Object.keys(AWARD_CACHE).forEach(k => delete AWARD_CACHE[k]); }
 function newSeason() {
   const teams = HIST.s1.slice();
   const fx = ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null })));
-  return { season: 1, teams, promoted: [], fx, demo: false, archive: [] };
+  return { season: 1, teams, promoted: [], fx, demo: false, archive: [], salt: { 1: newSalt() } };
 }
 const DIRTY = new Set();
 function save() { S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} cloudQueue(); }
@@ -1065,7 +1069,7 @@ function maybeEndSeason(force) {
   A.relegated = relegated; A.next = promoted;
   S.archive.push(A); registerArchive(A);
   const teams = stay.concat(promoted);
-  S.season = SEASON + 1; SEASON = S.season; applyGrowth();
+  S.season = SEASON + 1; SEASON = S.season; rollSalt(SEASON); applyGrowth();
   S.teams = teams; S.promoted = promoted; S.demo = false;
   S.fx = ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null })));
   for (let i = 0; i < 38; i++) DIRTY.add(i);
@@ -1190,7 +1194,7 @@ const STRIKE_WHY = ['不满主帅{c}的轮换安排', '与主帅{c}在训练场�
 const FLAVOR = ['{p}在社交媒体晒出新纹身，引发球迷热议', '{p}探望儿童医院的小球迷', '{t}主帅{c}：「我们只专注下一场比赛」', '{p}代言的球鞋上市，首日售罄', '{p}在训练中打进一记倒钩，视频疯传', '{t}球迷为{p}制作巨幅 TIFO', '{p}透露自己最崇拜的球员是{t}的前辈', '{p}与队友在更衣室为生日的队友庆生', '{t}更衣室气氛融洽，{p}称「这是最团结的一季」', '{p}被拍到深夜加练射门'];
 function offField() {
   if (!S || !S.teams) return [];
-  const key = SEASON + '|' + S.teams.join(','); if (OFF_CACHE.key === key) return OFF_CACHE.list;
+  const key = SEASON + '|' + saltOf(SEASON) + '|' + S.teams.join(','); if (OFF_CACHE.key === key) return OFF_CACHE.list;
   const list = [], sqOf = t => (PDB[t] || []).slice().sort((a, b) => b.rating - a.rating).slice(0, 16);
   for (let i = 0; i < 38; i++) {
     const rnd = seeded('off|' + key + '|' + i), team = () => S.teams[Math.floor(rnd() * S.teams.length)];
@@ -1760,7 +1764,7 @@ function cupPlayerStats(matches, rnd) {
 function cupFinish(o, rnd) { const M = CUP_REC || []; CUP_REC = null; o.games = M.filter(m => !m[4]).length; o.goals = M.reduce((a, m) => a + m[2] + m[3], 0); o.scorers = cupPlayerStats(M, rnd); const best = o.scorers.filter(x => x[1] === o.winner).sort((u, v) => (v[2] * 2 + v[3]) - (u[2] * 2 + u[3]))[0]; if (best) o.mvp = best[0]; return o; }
 function simulateCups(s, finalTable) {
   const prevS = CUP_S; CUP_S = s;
-  const rnd = seeded('cups|' + s), E = cupEntrants(s), out = {};
+  const rnd = seeded('cups|' + s + saltOf(s)), E = cupEntrants(s), out = {};
   { const T = E['世联赛'], pts = {}, w = {}, d = {}, l = {}, gf = {}, ga = {}; T.forEach(t => { pts[t] = 0; w[t] = d[t] = l[t] = gf[t] = ga[t] = 0; }); CUP_REC = [];
     T.forEach(a => T.forEach(b => { if (a === b) return; const [x, y] = cupMatch(a, b, rnd); gf[a] += x; ga[a] += y; gf[b] += y; ga[b] += x; if (x > y) { pts[a] += 3; w[a]++; l[b]++; } else if (x < y) { pts[b] += 3; w[b]++; l[a]++; } else { pts[a]++; pts[b]++; d[a]++; d[b]++; } }));
     const tb = T.slice().sort((a, b) => pts[b] - pts[a] || (gf[b] - ga[b]) - (gf[a] - ga[a]) || gf[b] - gf[a]);
@@ -1798,7 +1802,7 @@ function buildHistCups() {
       let cand = null;
       if (c.table && !c.ko) { const row = c.table.slice(1, 4).find(x => TD[x[0]] && (CUP_QUOTA[x[0]] || {})[tr] > 0); if (row) { cand = row[0]; const i = c.table.indexOf(row), t0 = c.table[0][0]; c.table[0][0] = cand; c.table[i][0] = t0; c.runner = c.table[1][0]; const W = c.table[0]; c.detail = `38 轮 ${W[2]} 胜 ${W[3]} 平 ${W[4]} 负，${W[1]} 分`; } }
       else if (TD[c.runner] && (CUP_QUOTA[c.runner] || {})[tr] > 0) { cand = c.runner; c.runner = c.winner; if (c.ko && c.ko['决赛']) { const f = c.ko['决赛'][0]; c.ko['决赛'][0] = { ...f, w: cand, l: c.runner }; c.detail = `决赛 ${f.score} ${c.runner}`; } }
-      if (cand) { c.winner = cand; CUP_QUOTA[cand][tr]--; CUP_S = s; c.mvp = cupMvp(cand, seeded('mvp|' + k + s)); CUP_S = null; }
+      if (cand) { c.winner = cand; CUP_QUOTA[cand][tr]--; CUP_S = s; c.mvp = cupMvp(cand, seeded('mvp|' + k + s + saltOf(s))); CUP_S = null; }
     }
   });
   CUP_QUOTA = null;
@@ -1880,6 +1884,7 @@ function galacticoHTML() {
   </div></div>`;
 }
 // 投票：按评分换算成得票率（第一名通常 30–50%）
+const capTeam = (list, n, k) => { const c = {}, out = []; for (const p of list) { if (out.length >= n) break; if ((c[p.team] = (c[p.team] || 0) + 1) <= k) out.push(p); } return out; };
 function voteShares(list, f, T) {
   if (!list.length) return [];
   const top = f(list[0]), w = list.map(p => Math.exp((f(p) - top) / T)), sum = w.reduce((a, b) => a + b, 0);
@@ -1889,7 +1894,7 @@ function voteShares(list, f, T) {
 const GOAL_DESC = ['禁区外 30 米远射挂死角', '连过三人后冷静推射', '凌空倒钩破门', '直接任意球绕过人墙', '禁区外凌空抽射', '从中场带球奔袭 60 米破门', '外脚背弧线球', '单刀挑射吊门', '脚后跟妙传后的一脚抽射', '角球直接旋进球门', '头球鱼跃冲顶', '一脚触球的团队配合破门'];
 function bestGoalOf(s) {
   const H2 = HS[s]; if (!H2 || !H2.rounds) return null;
-  const rnd = seeded('goal|' + s), cands = [];
+  const rnd = seeded('goal|' + s + saltOf(s)), cands = [];
   H2.rounds.forEach((rd, ri) => rd.forEach(m => m[6].forEach(g => { if (g[4] || g[2] == null || g[2] < 0) return; const team = H2.teams[g[1] ? m[1] : m[0]], opp = H2.teams[g[1] ? m[0] : m[1]]; const pp = PL[g[2]]; if (!pp) return; const late = g[0] >= 85 ? 1.6 : 1, w = Math.pow((pp[7] || 80) / 85, 6) * late * (/W|AM|ST/.test(pp[1]) ? 1.3 : 1) * rnd(); cands.push({ pid: g[2], name: pp[0], team, opp, ri, min: g[0], score: g[1] ? `${m[3]}–${m[2]}` : `${m[2]}–${m[3]}`, w }); })));
   const top = cands.sort((a, b) => b.w - a.w).slice(0, 3).map((c, i) => ({ ...c, desc: GOAL_DESC[Math.floor(rnd() * GOAL_DESC.length)], v: 10 + rnd() * 6 - i * 1.2 }));
   return top.length ? voteShares(top.sort((a, b) => b.v - a.v), x => x.v, 1.6) : null;
@@ -1914,19 +1919,22 @@ function awardsOf(s) {
   const bsc = p => base(p) + p.g * 0.35 + p.a * 0.15;
   const pick = (l, f) => l.slice().sort((a, b) => f(b) - f(a));
   const extLeagueChamp = {}; EXT_LEAGUES.forEach(L => { if (L.short !== '其他') extLeagueChamp[extTable(L, s)[0]] = 1; });
-  const ext = extRowsFor(s).filter(p => p.apps >= 20).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]); return { ...p, _sc: bsc(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + h.sc, _hon: h.L }; });
-  let ballon = rows.map(p => { const h = honOfP(p, false); return { ...p, _sc: bsc(p) + h.sc, _hon: h.L }; }).concat(ext).sort((a, b) => b._sc - a._sc);
+  const ext = extRowsFor(s).filter(p => p.apps >= 20).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]); return { ...p, _sc: bsc(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + h.sc, _hon: h.L, _honSc: h.sc }; });
+  let ballon = rows.map(p => { const h = honOfP(p, false); return { ...p, _sc: bsc(p) + h.sc, _hon: h.L, _honSc: h.sc }; }).concat(ext).sort((a, b) => b._sc - a._sc);
+  // 提名名单每队最多 3 人（世界足球先生 3 人、MVP 和铁卫奖 2 人），避免整队包揽；队内第二、三人的团队荣誉加成打折
+  { const seen = {}; ballon.forEach(p => { const k = seen[p.team] = (seen[p.team] || 0) + 1; if (k > 1) p._sc -= (p._honSc || 0) * (k === 2 ? 0.25 : 0.4); }); ballon.sort((a, b) => b._sc - a._sc); }
   { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
-  const ballonVotes = voteShares(ballon.slice(0, 10), p => p._sc, 5);
+  ballon = capTeam(ballon, 10, 3);
+  const ballonVotes = voteShares(ballon, p => p._sc, 5);
   ballon = ballon.slice(0, 3);
-  const mvpVotes = voteShares(pick(rows, p => base(p) + (p.team === champ ? 2 : 0)).slice(0, 6), p => base(p) + (p.team === champ ? 2 : 0), 3);
+  const mvpVotes = voteShares(capTeam(pick(rows, p => base(p) + (p.team === champ ? 2 : 0)), 6, 2), p => base(p) + (p.team === champ ? 2 : 0), 3);
   const mvp = mvpVotes[0];
   const goal = bestGoalOf(s);
   const defSc = p => p.avg * 10 + p.cs * 0.35 + p.tk * 0.03 + p.int * 0.04 + p.g * 0.3 + p.a * 0.15 + (p.team === champ ? 1.5 : 0);
-  const defVotes = voteShares(pick(rows.filter(p => p.line === 'DF'), defSc).slice(0, 5), defSc, 2.5), def = defVotes[0] || null;
+  const defVotes = voteShares(capTeam(pick(rows.filter(p => p.line === 'DF'), defSc), 5, 2), defSc, 2.5), def = defVotes[0] || null;
   const wsc = p => p._w;
   const worldPool = rows.map(p => ({ ...p, _w: bsc(p) + bonus(p.team) * 0.4 })).concat(extRowsFor(s).filter(p => p.apps >= 20).map(p => ({ ...p, _w: bsc(p) * (LEAGUE_COEF[(LEAGUE_OF[p.team] || {}).short] || 0.85) + (extLeagueChamp[p.team] ? 2.5 : 0) + bonus(p.team) * 0.4 })));
-  const worldVotes = voteShares(pick(worldPool, wsc).slice(0, 8), wsc, 6), world = worldVotes[0] || null;
+  const worldVotes = voteShares(capTeam(pick(worldPool, wsc), 8, 3), wsc, 6), world = worldVotes[0] || null;
   [ballonVotes, mvpVotes, defVotes, worldVotes].forEach(L => L.forEach(p => { if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
   const boot = pick((HPS[s] || []), p => p.g * 1000 - p.apps)[0];
   const assist = pick((HPS[s] || []), p => p.a * 1000 - p.apps)[0];
@@ -2067,7 +2075,7 @@ function coachHistory() {
   const strengthRank = s => { const T = teamsInSeason(s) || []; const v = t => s === SEASON ? ENGINE.strength(t).ovr : (xiAvgAt(t, s) || 75); return T.slice().sort((a, b) => v(b) - v(a)); };
   const hire = (t, s, r, why) => {
     const avail = pool.filter(c => s >= c.from && s <= c.to && !busy(c.id) && !stints.some(x => x.id === c.id && x.team === t && x.s1 >= s - 3));
-    const want = clubBaseApprox(t), rnd = seeded('hire|' + t + '|' + s + '|' + r);
+    const want = clubBaseApprox(t), rnd = seeded('hire|' + t + '|' + s + '|' + r + saltOf(s));
     let best = null, bv = -1e9;
     avail.forEach(c => { const C = COACH_REG[c.id]; const Tt = TRIDENT.has(t) ? coachTactics(c.id) : null; const v = C.rep - Math.abs(C.rep - want - 4) * 0.6 + (C.clubs.has(t) ? 7 : 0) + (Tt && isTrident(Tt.form) ? 5 : 0) + rnd() * 6; if (v > bv) { bv = v; best = c.id; } });
     if (!best || bv < want - 12 || rnd() < 0.35) best = genCoach(t, s, r);
@@ -2081,12 +2089,12 @@ function coachHistory() {
     order.forEach(t => { if (!cur[t]) { hire(t, s, 0, s === 1 ? 'first' : 'new'); if (s > 1) log.push({ s, r: 0, team: t, inn: cur[t].id }); } });
     const exp = strengthRank(s);
     const mid = leagueTableAt(s, 19);
-    if (mid) T.forEach(t => { const rk = mid.indexOf(t), e = exp.indexOf(t), rnd = seeded('mid|' + t + '|' + s);
+    if (mid) T.forEach(t => { const rk = mid.indexOf(t), e = exp.indexOf(t), rnd = seeded('mid|' + t + '|' + s + saltOf(s));
       const p = rk >= 17 && e <= 11 ? 0.5 : rk >= 15 && e <= 5 ? 0.35 : 0;
       if (p && rnd() < p && !(cur[t].s0 === s)) { leave(t, s, 19, `半程排第 ${rk + 1}，下课`); hire(t, s, 19, 'mid'); log.push({ s, r: 19, team: t, inn: cur[t].id }); } });
     if (!HS[s]) break;
     const fin = leagueTableAt(s, 38), next = teamsInSeason(s + 1) || [];
-    Object.keys(TD).forEach(t => { const c = cur[t]; if (!c) return; const rk = fin.indexOf(t), e = exp.indexOf(t), ten = s - c.s0 + 1, rnd = seeded('end|' + t + '|' + s), C = COACH_REG[c.id];
+    Object.keys(TD).forEach(t => { const c = cur[t]; if (!c) return; const rk = fin.indexOf(t), e = exp.indexOf(t), ten = s - c.s0 + 1, rnd = seeded('end|' + t + '|' + s + saltOf(s)), C = COACH_REG[c.id];
       let why = null;
       if (rk >= 17 && rnd() < 0.75) why = '球队降级，下课';
       else if (rk >= 0 && rk - e >= 6 && rnd() < 0.45) why = `排第 ${rk + 1}，低于预期，下课`;
@@ -2247,10 +2255,10 @@ function ensureTactics() {
 const INVESTORS = ['海湾主权投资基金', '北美私募 Apex 资本', '东方科技集团', '本地地产大亨', '欧洲能源巨头', '亚洲电商集团', '美国体育娱乐集团', '中东王室财团', '北欧航运家族', '新加坡投资财团'];
 let CAP_CACHE = null;
 function capitalHistory() {
-  const key = SEASON + '|' + SEASONS.length; if (CAP_CACHE && CAP_CACHE.key === key) return CAP_CACHE;
+  const key = SEASON + '|' + SEASONS.length + '|' + JSON.stringify((S && S.salt) || {}); if (CAP_CACHE && CAP_CACHE.key === key) return CAP_CACHE;
   const own = {}, ev = [];
   for (let s = 2; s <= SEASON; s++) {
-    const rnd = seeded('cap|' + s), r = rnd();
+    const rnd = seeded('cap|' + s + saltOf(s)), r = rnd();
     if (r > 0.22) continue;
     const owned = Object.keys(own).filter(t => own[t]);
     if (owned.length && rnd() < 0.4) { const t = owned[Math.floor(rnd() * owned.length)], inv = own[t]; delete own[t]; ev.push({ s, team: t, kind: 'out', inv: inv.inv, since: inv.since, why: ['母公司财务危机', '与球迷关系破裂', '投资回报不如预期', '受制裁影响被迫出售'][Math.floor(rnd() * 4)] }); }
@@ -2964,7 +2972,7 @@ async function persistAndReload(msg) {
 function rewindTo(s) {
   const A = S.archive.find(x => x.s === s); if (!A && s !== SEASON) return;
   const teams = A ? A.teams.slice() : S.teams.slice(), target = Math.max(S.target || 0, SEASON);
-  S = { season: s, teams, promoted: A ? (A.promoted || []).slice() : (S.promoted || []), fx: ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))), demo: false, archive: S.archive.filter(x => x.s < s), edits: S.edits || {}, target: target > s ? target : null, updated: Date.now() };
+  S = { season: s, teams, promoted: A ? (A.promoted || []).slice() : (S.promoted || []), fx: ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))), demo: false, archive: S.archive.filter(x => x.s < s), edits: S.edits || {}, salt: Object.fromEntries(Object.entries(S.salt || {}).filter(([k]) => +k < s).concat([[s, newSalt()]])), target: target > s ? target : null, updated: Date.now() };
   S.reset = S.updated;
   persistAndReload(`回到 ${SN(s)}…`);
 }
@@ -3048,7 +3056,7 @@ document.addEventListener('click', e => {
   if (act === 'calendar') return openCalendar();
   if (act === 'newsAll') { newsAll = !newsAll; return render(); }
   if (act === 'doResetAll') { $('#dlg').close(); doResetAll(); return; }
-  if (act === 'doReset') { S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
+  if (act === 'doReset') { rollSalt(SEASON); S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
   if (act === 'sync') openSync();
   if (act === 'search') openSearch();
@@ -3137,7 +3145,7 @@ async function cloudFlush() {
     }
     for (let k = CLOUD.arch || 0; k < S.archive.length; k++) await CLOUD.meta.collection('archive').doc('s' + S.archive[k].s).set({ a: JSON.stringify(S.archive[k]) });
     CLOUD.arch = S.archive.length;
-    await CLOUD.meta.set({ key: KEY, season: S.season, teams: S.teams, promoted: S.promoted || [], updated: S.updated || Date.now(), arch: S.archive.length, edits: JSON.stringify(S.edits || {}), target: S.target || null });
+    await CLOUD.meta.set({ key: KEY, season: S.season, teams: S.teams, promoted: S.promoted || [], updated: S.updated || Date.now(), arch: S.archive.length, edits: JSON.stringify(S.edits || {}), salt: JSON.stringify(S.salt || {}), target: S.target || null });
     setSync('cloud');
   } catch (e) { setSync('error'); }
   CLOUD.busy = false;
@@ -3150,8 +3158,8 @@ async function cloudPull(meta) {
   if (rounds.filter(Boolean).length !== 38) return false;
   let archive = [];
   if (meta.arch) { const qa = await CLOUD.meta.collection('archive').get(); archive = qa.docs.map(d => { try { return JSON.parse(d.data().a); } catch (e) { return null; } }).filter(Boolean).filter(A => A.s < meta.season).sort((x, y) => x.s - y.s); if (archive.length < meta.arch) return false; }
-  let edits = {}; try { edits = JSON.parse(meta.edits || '{}'); } catch (e) {}
-  S = { season: meta.season, teams: meta.teams, promoted: meta.promoted, demo: false, updated: meta.updated, fx: JSON.parse(JSON.stringify(rounds)), archive, edits, target: meta.target || null };
+  let edits = {}, salt = {}; try { edits = JSON.parse(meta.edits || '{}'); salt = JSON.parse(meta.salt || '{}'); } catch (e) {}
+  S = { season: meta.season, teams: meta.teams, promoted: meta.promoted, demo: false, updated: meta.updated, fx: JSON.parse(JSON.stringify(rounds)), archive, edits, salt, target: meta.target || null };
   applyState(); CLOUD.arch = archive.length;
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
   return true;
@@ -3276,6 +3284,7 @@ const h0 = (location.hash || '').slice(1);
 go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
 setSync('local'); cloudInit();
 if (/vesdebug/.test(location.hash)) window.__ves = {
+  ev: f => eval('(' + f + ')')(),
   simSeason() { S.fx.forEach((r, i) => playRound(i)); save(); maybeEndSeason(true); return SEASON; },
   cups: s => cupsOf(s), season: () => SEASON, awards: s => { const A = awardsOf(s); return A && A.ballon.map(p => p.name + '@' + p.team + '[' + (p._hon || []).join('/') + '] ' + p.g + 'g'); },
   names: () => [...Object.values(PDB).flat(), ...Object.values(FDB).flat()].map(p => p.name),
