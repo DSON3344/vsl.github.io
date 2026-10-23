@@ -1871,6 +1871,17 @@ function statsForComps(se) {
 }
 // 球员资料里的「全部赛事」：最近一季分赛事明细 + 历年合计
 // 职业生涯总计：威联赛时代（联赛 + 杯赛）+ 威超（联赛 + 杯赛），分段列出再合计
+// 职业生涯合计（全部赛事、含威联赛时代）：team 有值时只算在该队的部分
+function careerAllRow(pid, team) {
+  const parts = [];
+  personSeasons(pid).forEach(([s, r]) => { if (team && r.team !== team) return; parts.push(r); if (cupsOf(s)) Object.values(allComps(s, r).cups).forEach(c => parts.push(c)); });
+  let wlN = 0, wlS = null;
+  const id = WL && pid != null ? WL.byPid[pid] : null;
+  if (id != null) wlCareer(id).L.forEach(([w, r]) => { if (team && r.team !== team) return; if (r.apps + r.capps) { wlN++; wlS = wlS || [w, w]; wlS[0] = Math.min(wlS[0], w); wlS[1] = Math.max(wlS[1], w); }
+    parts.push({ apps: r.apps, starts: r.apps, min: r.apps * 88, g: r.g, a: r.a, motm: r.motm, cs: r.cs, rs: r.avg * r.apps }); parts.push({ apps: r.capps, starts: r.capps, min: r.capps * 88, g: r.cg, a: r.ca, rs: r.cavg * r.capps }); });
+  return { row: sumRows(parts), wlN, wlS };
+}
+const careerNote = (C, base) => C.wlN ? `${base}，含威联赛 ${WN(C.wlS[0])}–${WN(C.wlS[1])}（${C.wlN} 季）与全部杯赛 / 洲际赛。射门、传球、过人、抢断等细项只统计威超时期` : `${base}，含全部杯赛 / 洲际赛`;
 function careerTotalHTML(pid) {
   if (pid == null) return '';
   const Z = () => ({ apps: 0, g: 0, a: 0, motm: 0, cs: 0, rs: 0, ra: 0, s0: null, s1: null });
@@ -1884,8 +1895,8 @@ function careerTotalHTML(pid) {
   const span = (o, f) => o.s0 == null ? '' : ` <span class="dim" style="font-size:11px">${f(o.s0)}${o.s1 !== o.s0 ? '–' + f(o.s1) : ''}</span>`;
   const gk = (PL[pid] || [])[1] === 'GK';
   const tr = (name, o, bold) => o.apps ? `<tr ${bold ? 'style="font-weight:800"' : ''}><td class="l">${name}</td><td>${o.apps}</td><td>${bold ? `<span style="color:var(--gold)">${o.g}</span>` : o.g}</td><td>${o.a}</td>${gk ? `<td>${o.cs}</td>` : ''}<td>${o.motm}</td><td>${o.ra ? (o.rs / o.ra).toFixed(2) : '–'}</td></tr>` : '';
-  return `<div><div class="eyebrow" style="margin-bottom:6px">职业生涯总计 · 威联赛 + 威超</div><div class="tw"><table><thead><tr><th class="l">阶段</th><th>出场</th><th>进球</th><th>助攻</th>${gk ? '<th>零封</th>' : ''}<th>全场最佳</th><th>场均评分</th></tr></thead><tbody>
-    ${tr('威联赛 · 联赛' + span(wl, WN), wl)}${tr('威联赛 · 杯赛 / 洲际赛' + span(wc, WN), wc)}${tr('威超 · 联赛' + span(sl, SN), sl)}${tr('威超 · 杯赛 / 洲际赛' + span(sc, SN), sc)}${tr('职业生涯合计', tot, true)}
+  return `<div><div class="eyebrow" style="margin-bottom:6px">职业生涯总计（威联赛 + 威超，全部赛事）</div><div class="tw"><table><thead><tr><th class="l">阶段</th><th>出场</th><th>进球</th><th>助攻</th>${gk ? '<th>零封</th>' : ''}<th>全场最佳</th><th>场均评分</th></tr></thead><tbody>
+    ${tr('职业生涯合计（全部赛事）', tot, true)}${tr('　其中 威联赛 · 联赛' + span(wl, WN), wl)}${tr('　其中 威联赛 · 杯赛 / 洲际赛' + span(wc, WN), wc)}${tr('　其中 威超 · 联赛' + span(sl, SN), sl)}${tr('　其中 威超 · 杯赛 / 洲际赛' + span(sc, SN), sc)}
   </tbody></table></div><p class="note" style="margin:4px 0 0">威联赛杯赛没有逐场的全场最佳记录；威超的杯赛数据从全部赛事统计开始后才有。</p></div>`;
 }
 function careerCompsHTML(pid) {
@@ -2753,7 +2764,7 @@ function openPersonInner(pid, noRedirect) {
       <div class="btns" style="margin-top:8px">${statusChips(pid)}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const ph = phaseOf(pid), sp = spanOf(pid); if (ph.k === 'future') return `<span class="chip">${SN(ph.first)} 出道</span>`; if (ph.k === 'gap') return `<span class="chip">目前不在任何球队</span>`; const last = ph.last || (sp && sp[1]); return (sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span>` : '') + (last ? `<span class="chip">${SN(last)} 赛季后退役</span>` : ''); })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
     ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, pf.f1 && pf.debutAge != null ? (pf.preEra ? `威联赛时代出道 · ${SN(pf.f1)} 时 ${pf.debutAge} 岁` : `${SN(pf.f1)} 出道 · ${pf.debutAge} 岁`) : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : SN(pf.lastS)} 退役 · ${pf.endAge} 岁` : pf.ageNowP != null && !(pf.f1 > SEASON) ? `现年 ${pf.ageNowP} 岁` : '', `巅峰身价 ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
       <div><div class="eyebrow" style="margin-bottom:8px">巅峰能力</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div></div>`; })()}
-    ${(() => { const rows = personSeasons(pid); if (!rows.length) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; return scopeTabs('pp', [{ label: '威超生涯', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...byT.map(t => ({ label: t, note: `效力 ${esc(t)} 期间`, html: statGrid(sumRows(rows.filter(r => r[1].team === t).map(r => r[1])), ENGINE.LINE(pos)) }))]); })()}
+    ${(() => { const rows = personSeasons(pid); if (!rows.length && !(WL && WL.byPid[pid] != null)) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; const CA = careerAllRow(pid); const wlT = WL && WL.byPid[pid] != null ? wlCareer(WL.byPid[pid]).L.map(x => x[1].team) : []; const allT = [...new Set(wlT.concat(byT))]; return scopeTabs('pp', [{ label: '职业生涯', note: careerNote(CA, '所有球队合计'), html: statGrid(CA.row, ENGINE.LINE(pos)) }, { label: '威超联赛', note: '只算威超联赛', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...allT.map(t => { const C = careerAllRow(pid, t); return { label: t, note: careerNote(C, `效力 ${esc(t)} 期间`), html: statGrid(C.row, ENGINE.LINE(pos)) }; })]); })()}
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(PID_UID[pid] || 'H|' + pid)}" style="padding:5px 10px;font-size:12px">✎ 编辑资料</button>${cmpBtn('p:' + pid, name)}</div>
     ${awardChips(pid)}${careerTotalHTML(pid)}${careerCompsHTML(pid)}${wlCareerForPid(pid)}${loreHTML(pid)}${growthHTML(pid, null)}${careerHTML(pid)}${transferHTML(pid)}</div>`;
   if (!d.open) d.showModal();
@@ -2793,15 +2804,14 @@ function openPlayer(team, name) {
       if (!TD[team]) return '';
       return (out ? `<div class="btns"><span class="chip bad">${out.why === 'inj' ? `伤病中 · 还缺 ${out.left} 轮` : out.why === 'strike' ? `罢赛中 · 还缺 ${out.left} 场` : `停赛 · 还要停 ${out.left} 场`}</span></div>` : '') + scopeTabs('pl', [
         { label: `${SN(SEASON)} 本赛季`, note: s ? `本赛季联赛（模拟），出场 ${s.apps} 场` : '', html: s ? statGrid(s, line) : '<div class="empty">本赛季还没有出场</div>' },
-        { label: '本队生涯', note: `在 ${esc(team)} 的威超出场（${clubRows.length} 个赛季）`, html: statGrid(sumRows(clubRows), line) },
-        { label: '威超生涯', note: `所有球队合计（${rows.length} 个赛季）`, html: statGrid(sumRows(rows.map(r => r[1])), line) },
+        ...(() => { const CT = careerAllRow(pid, team), CA = careerAllRow(pid); return [{ label: '本队生涯', note: careerNote(CT, `在 ${esc(team)} 的全部出场`), html: statGrid(CT.row, line) }, { label: '职业生涯', note: careerNote(CA, '所有球队合计'), html: statGrid(CA.row, line) }, { label: '威超联赛', note: `只算威超联赛（${rows.length} 个赛季）`, html: statGrid(sumRows(rows.map(r => r[1])), line) }]; })(),
       ]);
     })()}
     ${careerHTML(pid)}
     ${pid != null ? transferHTML(pid) : ''}
-    ${(() => { const rows = pid != null ? personSeasons(pid) : (s ? [[SEASON, s]] : []); const car = sumRows(rows.map(r => r[1])), club = sumRows(rows.filter(r => r[1].team === team).map(r => r[1]));
+    ${(() => { const rows = pid != null ? personSeasons(pid) : (s ? [[SEASON, s]] : []); const car = pid != null ? careerAllRow(pid).row : sumRows(rows.map(r => r[1])), club = pid != null ? careerAllRow(pid, team).row : sumRows(rows.filter(r => r[1].team === team).map(r => r[1]));
       const cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
-      return `<div><div class="eyebrow" style="margin-bottom:8px">生涯总计（含威超以外的比赛）</div><div class="stats3">${cell(Math.max(p.cGP || 0, car.apps), '生涯出场')}${cell(Math.max(p.cG || 0, car.g), '生涯进球')}${cell(Math.max(p.cA || 0, car.a), '生涯助攻')}${cell(Math.max(p.tGP || 0, club.apps), '本队出场')}${cell(Math.max(p.tG || 0, club.g), '本队进球')}${cell(Math.max(p.tA || 0, club.a), '本队助攻')}</div></div>`; })()}
+      return `<div><div class="eyebrow" style="margin-bottom:8px">生涯总计（含威联赛时代与全部杯赛 / 洲际赛）</div><div class="stats3">${cell(Math.max(p.cGP || 0, car.apps), '生涯出场')}${cell(Math.max(p.cG || 0, car.g), '生涯进球')}${cell(Math.max(p.cA || 0, car.a), '生涯助攻')}${cell(Math.max(p.tGP || 0, club.apps), '本队出场')}${cell(Math.max(p.tG || 0, club.g), '本队进球')}${cell(Math.max(p.tA || 0, club.a), '本队助攻')}</div></div>`; })()}
   </div>`;
   if (!d.open) d.showModal();
   bindScopes(d);
