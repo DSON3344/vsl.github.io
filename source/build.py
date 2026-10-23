@@ -3,21 +3,27 @@
   node build_history.js   # 重新还原 S01–S17（改了球员/官网数据时才需要）
   python3 build.py        # 生成 ../index.html
 """
-import base64, os, json
+import base64, os, json, sys, hashlib
 d = os.path.dirname(os.path.abspath(__file__)) + '/'
+sys.path.insert(0, d)
+from minify import mjson, minify_html
 hist_d = json.load(open(d + 'hist.json'))
 site = json.load(open(d + 'site_data.json'))
 hist_d['s18'] = [r['team'] for r in site['standings']['18']]
 for pos, t in json.load(open(d + 'realign.json')).get('18', {}).items(): hist_d['s18'][int(pos) - 1] = t  # S18 名单合理化
 hist = json.dumps(hist_d, ensure_ascii=False, separators=(',', ':'))
-logos = {}
+# 队徽输出成单独文件（浏览器可长期缓存），页面里只放文件地址
+os.makedirs(d + '../logos', exist_ok=True)
+logo_urls = {}
 for f in sorted(os.listdir(d + 'assets/logos')):
-    logos[f[:-5]] = base64.b64encode(open(d + 'assets/logos/' + f, 'rb').read()).decode()
+    b = open(d + 'assets/logos/' + f, 'rb').read(); h = hashlib.md5(b).hexdigest()[:8]
+    name = h + '.webp'; open(d + '../logos/' + name, 'wb').write(b); logo_urls[f[:-5]] = 'logos/' + name
+logos = {}
 data = (open(d + 'player_data.js').read() + '\n'
-        + '(' + open(d + 'extra_players.json').read() + ').forEach(p => PLAYER_DATABASE[p.team].push(p));\n'
+        + '(' + mjson(open(d + 'extra_players.json').read()) + ').forEach(p => PLAYER_DATABASE[p.team].push(p));\n'
         + open(d + 'teams_data.js').read() + '\n' + open(d + 'roster_overrides.js').read()
-        + '\nconst TEAMS_DATA = window.TEAMS_DATA;\nconst HISTORY = ' + open(d + 'history.json').read()
-        + ';\nconst HIST = ' + hist + ';\nconst EXT_REAL = ' + open(d + 'ext_squads.json').read() + ';\nconst EXT_CAREERS = ' + open(d + 'ext_careers.json').read() + ';\nconst LORE = ' + open(d + 'lore.json').read() + ';\nconst LOGOS_B64 = ' + json.dumps(logos) + ';\n')
+        + '\nconst TEAMS_DATA = window.TEAMS_DATA;\nconst HISTORY = ' + mjson(open(d + 'history.json').read())
+        + ';\nconst HIST = ' + hist + ';\nconst EXT_REAL = ' + mjson(open(d + 'ext_squads.json').read()) + ';\nconst EXT_CAREERS = ' + mjson(open(d + 'ext_careers.json').read()) + ';\nconst LORE = ' + mjson(open(d + 'lore.json').read()) + ';\nconst LOGO_URLS = ' + json.dumps(logo_urls, ensure_ascii=False) + ';\nconst LOGOS_B64 = {};\n')
 body = open(d + 'app.html').read().replace('/*__DATA__*/', data).replace('/*__ENGINE__*/', open(d + 'engine.js').read())
 head = '''<!doctype html>
 <html lang="zh-CN">
@@ -33,5 +39,6 @@ head = '''<!doctype html>
 '''
 i = body.index('</style>') + len('</style>')
 html = head + body[:i] + '\n</head>\n<body>\n' + body[i:] + '\n</body>\n</html>\n'
+html = minify_html(html)
 open(d + '../index.html', 'w').write(html)
 print('index.html', round(len(html) / 1e6, 2), 'MB')
