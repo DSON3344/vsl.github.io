@@ -3054,7 +3054,7 @@ function openPlayer(team, name) {
     <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${TD[team] ? crest(team, 20) : ecrest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}${TD[team] ? '' : ' · ' + esc(extTag(team))}</span></div><h3>${esc(p.name)}</h3>
-      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
+      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageOf(p.rating))}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(p.uid || '')}" style="padding:5px 10px;font-size:12px" ${p.uid ? '' : 'disabled'}>✎ 编辑资料</button>${cmpBtn(pid != null ? 'p:' + pid : 't:' + team + '|' + p.name, p.name)}${mktActive() && PDB[team] && p.uid && typeof p.age0 === 'number' ? (mktGet().listed[p.uid] ? '<span class="chip">已挂牌</span>' : `<button class="btn ghost" data-act="mkList" data-id="${esc(p.uid)}" style="padding:5px 10px;font-size:12px">挂牌出售</button>`) : ''}${typeof p.age === 'number' && p.age <= 20 ? `<button class="btn ghost" ${scoutBtn({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team, uid: p.uid })} style="padding:5px 10px;font-size:12px">🔍 球探报告</button>` : ''}</div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${awardChips(pid, p.uid)}
@@ -3334,6 +3334,21 @@ function prizeOf(s) {
   if (C['社区杯']) { add(C['社区杯'].winner, '社区杯', 100, '冠军'); add(C['社区杯'].runner, '社区杯', 50, '亚军'); }
   if (!isP) PZ_CACHE[ck] = o; return o;
 }
+// 年薪（百万）：按能力指数增长（每高 1 分贵约 28%），顶级球星很贵、普通球员便宜；
+// 全联赛的工资总额定为当季国内俱乐部奖金总额的 85%，所以整体收支大致平衡：奖金拿得多的球队有盈余，阵容贵但成绩差的会亏钱
+const wageW = r => Math.exp(0.25 * ((r || 75) - 80));
+const WAGE_C = {};
+function squadRatings(s) { const A = (S.archive || []).find(x => x.s === s), o = {};
+  Object.keys(TD).forEach(t => { let rows = null; if (A && A.sq && A.sq[t]) rows = A.sq[t].map(x => x[5]); else if (s === SEASON) rows = (PDB[t] || []).map(p => p.rating); else if (HIST.squads && HIST.squads[s] && HIST.squads[s][t]) rows = HIST.squads[s][t].map(x => x[2]); if (rows) o[t] = rows; });
+  return o; }
+function wageScale(s) { let P = prizeOf(s); for (let k = s - 1; !P && k >= 1; k--) P = prizeOf(k); if (!P) return 3; const pool = Object.values(P).reduce((a, x) => a + x.total, 0) * 0.85; const R = squadRatings(s); const w = Object.values(R).reduce((a, L) => a + L.reduce((b, r) => b + wageW(r), 0), 0); return w ? pool / w : 3; }
+function wagesOf(s) {
+  const A = (S.archive || []).find(x => x.s === s), ck = s + '|' + (A ? 'a' : 'l' + MOD_VER_SEASON + isPending(s));
+  if (WAGE_C[ck]) return WAGE_C[ck];
+  const k = wageScale(s), R = squadRatings(s), o = {}; Object.entries(R).forEach(([t, L]) => o[t] = Math.round(L.reduce((a, r) => a + wageW(r) * k, 0)));
+  WAGE_C[ck] = o; o.k = k; return o;
+}
+const wageOf = r => Math.max(1, Math.round(wageW(r) * wagesOf(SEASON).k));
 const finStart = t => { const v = (PDB0[t] || []).map(p => p.rating).sort((a, b) => b - a).slice(0, 11); const str = v.length ? v.reduce((a, b) => a + b, 0) / v.length : 78; return Math.max(100, Math.round(300 + (str - 82) * 45)); };
 // 俱乐部在第 s 季转会窗时的财务：余额（开局资金 + 历年奖金 + 卖人 − 买人）、管理层给的转会预算、本窗剩余
 let FIN_C = null;
@@ -3342,9 +3357,10 @@ function finState() {
   const ck = [SEASON, S.archive.length, isPending(SEASON), TRANSFERS.length, MK ? MK.offers.filter(o => o.st === 'a').length + '|' + (MK.free || []).length + '|' + MK.seq : 0].join('/');
   if (FIN_C && FIN_C.k === ck) return FIN_C.v;
   const F = {}; Object.keys(TD).forEach(t => F[t] = { start: finStart(t), prize: 0, sell: 0, buy: 0, seasonPrize: 0, hist: [] });
-  for (let s = 1; s <= SEASON; s++) { const P = prizeOf(s); if (!P) continue; Object.entries(P).forEach(([t, x]) => { F[t].prize += x.total; if (s === SEASON) F[t].seasonPrize = x.total; F[t].hist.push([s, x.total]); }); }
+Object.values(F).forEach(f => { f.wage = 0; f.seasonWage = 0; });
+  for (let s = 1; s <= SEASON; s++) { const P = prizeOf(s); if (!P) continue; const W = wagesOf(s); Object.keys(F).forEach(t => { const pz = P[t] ? P[t].total : 0, wg = W[t] || 0; F[t].prize += pz; F[t].wage += wg; if (s === SEASON) { F[t].seasonPrize = pz; F[t].seasonWage = wg; } if (pz || wg) F[t].hist.push([s, pz, wg]); }); }
   TRANSFERS.forEach(x => { if (x.s > SEASON || !x.fee) return; if (F[x.to]) F[x.to].buy += x.fee; if (F[x.from]) F[x.from].sell += x.fee; });
-  Object.entries(F).forEach(([t, f]) => { f.bal0 = f.start + f.prize + f.sell - f.buy; f.frac = 0.35 + ghash('bud|' + t + '|' + SEASON) * 0.35; f.budget = Math.max(0, Math.round(f.bal0 * f.frac)); f.wBuy = 0; f.wSell = 0; });
+  Object.entries(F).forEach(([t, f]) => { f.bal0 = f.start + f.prize - f.wage + f.sell - f.buy; f.frac = 0.35 + ghash('bud|' + t + '|' + SEASON) * 0.35; f.budget = Math.max(0, Math.round(f.bal0 * f.frac)); f.wBuy = 0; f.wSell = 0; });
   if (MK) MK.offers.filter(o => o.st === 'a').forEach(o => { if (F[o.to]) F[o.to].wBuy += o.fee; if (F[o.from]) F[o.from].wSell += o.fee; });
   Object.values(F).forEach(f => { f.bal = f.bal0 - f.wBuy + f.wSell; f.rem = Math.round(f.budget + f.wSell * 0.5 - f.wBuy); });
   FIN_C = { k: ck, v: F }; return F;
@@ -3493,20 +3509,21 @@ function mktFinalize(s) {
 function finPanel() {
   const F = finState(), rows = Object.keys(TD).map(t => ({ t, ...F[t], n: mktActive() ? projSize(t) : (PDB[t] || []).length })).sort((a, b) => b.bal - a.bal);
   const P = prizeOf(SEASON);
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club finances</div><h2>俱乐部财务</h2></div><span class="note">余额 = 开局资金 + 历年奖金 + 卖人收入 − 买人支出 · 转会预算由管理层按余额的 35–70% 拨出（每季不同），本窗卖人收入的一半可以再投入</span></div>
-    <div class="tw"><table><thead><tr><th class="l">球队</th><th>余额</th><th>${SN(SEASON)} 奖金</th><th>累计奖金</th><th>转会预算</th><th>本窗买入</th><th>本窗卖出</th><th>剩余预算</th><th>人数</th></tr></thead><tbody>
-    ${rows.map(r => `<tr><td class="l"><span class="tname">${crest(r.t, 18)}<span>${esc(r.t)}</span></span></td><td class="mono"><b>${money(r.bal)}</b></td><td class="mono">${P && P[r.t] ? money(P[r.t].total) : '<span class="dim">–</span>'}</td><td class="mono dim">${money(r.prize)}</td><td class="mono">${money(r.budget)} <span class="dim" style="font-size:11px">${Math.round(r.frac * 100)}%</span></td><td class="mono">${r.wBuy ? money(r.wBuy) : '–'}</td><td class="mono">${r.wSell ? money(r.wSell) : '–'}</td><td class="mono" style="color:${r.rem < 0 ? '#e66' : 'inherit'}">${money(r.rem)}</td><td class="mono" style="color:${r.n > SQUAD_MAX ? '#e66' : 'inherit'}">${r.n}/${SQUAD_MAX}</td></tr>`).join('')}
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club finances</div><h2>俱乐部财务</h2></div><span class="note">余额 = 开局资金 + 历年奖金 − 历年工资 + 卖人收入 − 买人支出 · 工资按阵容每人年薪计，顶级球星最贵 · 转会预算由管理层按余额的 35–70% 拨出（每季不同），本窗卖人收入的一半可以再投入</span></div>
+    <div class="tw"><table><thead><tr><th class="l">球队</th><th>余额</th><th>${SN(SEASON)} 奖金</th><th>${SN(SEASON)} 工资</th><th>本季盈亏</th><th>转会预算</th><th>本窗买入</th><th>本窗卖出</th><th>剩余预算</th><th>人数</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td class="l"><span class="tname">${crest(r.t, 18)}<span>${esc(r.t)}</span></span></td><td class="mono"><b style="color:${r.bal < 0 ? '#e66' : 'inherit'}">${money(r.bal)}</b></td><td class="mono">${P && P[r.t] ? money(P[r.t].total) : '<span class="dim">–</span>'}</td><td class="mono dim">${r.seasonWage ? money(r.seasonWage) : '–'}</td><td class="mono" style="color:${r.seasonPrize - r.seasonWage < 0 ? '#e66' : 'var(--win,#3c9)'}">${r.seasonWage ? money(r.seasonPrize - r.seasonWage) : '–'}</td><td class="mono">${money(r.budget)} <span class="dim" style="font-size:11px">${Math.round(r.frac * 100)}%</span></td><td class="mono">${r.wBuy ? money(r.wBuy) : '–'}</td><td class="mono">${r.wSell ? money(r.wSell) : '–'}</td><td class="mono" style="color:${r.rem < 0 ? '#e66' : 'inherit'}">${money(r.rem)}</td><td class="mono" style="color:${r.n > SQUAD_MAX ? '#e66' : 'inherit'}">${r.n}/${SQUAD_MAX}</td></tr>`).join('')}
     </tbody></table></div>
-    <details style="margin-top:10px"><summary class="note" style="cursor:pointer">各项赛事奖金标准</summary><div class="rank-list" style="margin-top:8px">${PRIZE_RULES.map(([k, lv, txt]) => `<div class="rk" style="grid-template-columns:90px minmax(0,1fr)"><b>${k}</b><span><span class="chip" style="font-size:10px;padding:0 5px">${lv}</span> <span class="muted" style="font-size:12.5px">${txt}</span></span></div>`).join('')}</div><p class="note" style="margin:8px 0 0">奖金在每季 38 轮和所有杯赛踢完时结算，下一个转会窗就能用。开局资金按 S01 前的球队实力给 1–6 亿不等。</p></details></div>`;
+    <details style="margin-top:10px"><summary class="note" style="cursor:pointer">各项赛事奖金标准</summary><div class="rank-list" style="margin-top:8px">${PRIZE_RULES.map(([k, lv, txt]) => `<div class="rk" style="grid-template-columns:90px minmax(0,1fr)"><b>${k}</b><span><span class="chip" style="font-size:10px;padding:0 5px">${lv}</span> <span class="muted" style="font-size:12.5px">${txt}</span></span></div>`).join('')}</div><p class="note" style="margin:8px 0 0">奖金在每季 38 轮和所有杯赛踢完时结算，下一个转会窗就能用。开局资金按 S01 前的球队实力给 1–6 亿不等。工资：能力每高 1 分年薪贵约 28%（96 分球星约是 80 分球员的 55 倍）；全联赛工资总额定为当季国内俱乐部奖金总额的 85%，每季踢完时扣除。余额为负时管理层不批转会预算，只能卖人。</p></details></div>`;
 }
 function teamFinPanel(t) {
   if (!TD[t]) return ''; const F = finState()[t]; if (!F) return '';
   const P = prizeOf(SEASON) || {}, cur = P[t], last = F.hist.slice(-8).reverse();
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Finances</div><h2>俱乐部财务</h2></div><span class="note">单位：亿 / 万元</span></div>
     <div class="troph recs" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:12px">
-      <div class="on"><b>${money(F.bal)}</b><span>当前余额</span></div><div><b>${money(F.budget)}</b><span>${SN(SEASON)} 转会预算</span></div><div><b>${money(F.prize)}</b><span>累计奖金</span></div><div><b>${money(F.sell)}</b><span>累计卖人收入</span></div><div><b>${money(F.buy)}</b><span>累计买人支出</span></div></div>
+      <div class="on"><b>${money(F.bal)}</b><span>当前余额</span></div><div><b>${money(F.budget)}</b><span>${SN(SEASON)} 转会预算</span></div><div><b>${money(F.prize)}</b><span>累计奖金</span></div><div><b>${money(F.wage)}</b><span>累计工资</span></div><div><b>${money(wagesOf(SEASON)[t] || 0)}</b><span>${SN(SEASON)} 工资总额</span></div><div><b>${money(F.sell)}</b><span>累计卖人收入</span></div><div><b>${money(F.buy)}</b><span>累计买人支出</span></div></div>
     ${cur ? `<div class="eyebrow" style="margin-bottom:6px">${SN(SEASON)} 奖金 · ${money(cur.total)}</div><div class="rank-list">${cur.items.map(([k, m, why]) => `<div class="rk" style="grid-template-columns:90px minmax(0,1fr) auto"><span class="muted">${k}</span><span>${esc(why)}</span><span class="v mono">${money(m)}</span></div>`).join('')}</div>` : `<p class="note" style="margin:0">${SN(SEASON)} 赛季的奖金在 38 轮和杯赛全部踢完时结算。</p>`}
-    ${last.length ? `<div class="eyebrow" style="margin:12px 0 6px">历年奖金</div><div class="btns">${last.map(([s, m]) => `<span class="chip">${SN(s)} ${money(m)}</span>`).join('')}</div>` : ''}</div>`;
+    ${last.length ? `<div class="eyebrow" style="margin:12px 0 6px">历年收支（奖金 − 工资）</div><div class="btns">${last.map(([s, m, w]) => `<span class="chip" title="奖金 ${money(m)} · 工资 ${money(w)}">${SN(s)} <span style="color:${m - w < 0 ? '#e66' : 'var(--win,#3c9)'}">${m - w >= 0 ? '+' : ''}${money(m - w)}</span></span>`).join('')}</div>` : ''}
+    ${(() => { const L = (PDB[t] || []).slice().sort((a, b) => b.rating - a.rating).slice(0, 5); return L.length ? `<div class="eyebrow" style="margin:12px 0 6px">薪水最高</div><div class="btns">${L.map(p => `<span class="chip">${esc(p.name)} ${money(wageOf(p.rating))}/年</span>`).join('')}</div>` : ''; })()}</div>`;
 }
 let MKLIM = 30;
 function marketPanel() {
