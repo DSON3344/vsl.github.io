@@ -27,9 +27,11 @@ export async function PUT(req) {
   if (!authed(req)) return json({ error: 'unauthorized' }, 401);
   let body;
   try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
-  const s = body && body.s;
-  if (!body.key || !s || !Array.isArray(s.fx) || s.fx.length !== 38 || !Array.isArray(s.teams)) return json({ error: 'bad state' }, 400);
-  const res = await put(PATH, JSON.stringify({ key: body.key, s }), {
+  // 新版网页上传压缩后的进度（z）；旧版上传原样的 s，两种都收
+  const s = body && body.s, z = body && body.z;
+  const okS = s && Array.isArray(s.fx) && s.fx.length === 38 && Array.isArray(s.teams), okZ = typeof z === 'string' && z.length > 200;
+  if (!body.key || (!okS && !okZ)) return json({ error: 'bad state' }, 400);
+  const res = await put(PATH, JSON.stringify(okZ ? { key: body.key, z, season: body.season, played: body.played } : { key: body.key, s }), {
     access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json',
   });
   return json({ ok: true, etag: res.etag || null });
