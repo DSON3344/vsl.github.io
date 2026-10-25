@@ -164,13 +164,13 @@ const ENGINE = (() => {
   const shoOf = s => (s.p && s.p.attributes && s.p.attributes.sho) || s.rating;
   const pasOf = s => (s.p && s.p.attributes && s.p.attributes.pas) || s.rating;
   function goalScorer(on) {
-    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 2) * Math.pow(s.rating / 85, 2));
+    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 3) * Math.pow(s.rating / 85, 5));
     return pick(on, w);
   }
   function assister(on, scorer) {
     if (rnd() < 0.22) return null;
     const pool = on.filter(s => s !== scorer); if (!pool.length) return null;
-    const w = pool.map(s => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 3));
+    const w = pool.map(s => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 3) * Math.pow(s.rating / 85, 5));
     return pick(pool, w);
   }
   function carder(on) {
@@ -225,7 +225,7 @@ const ENGINE = (() => {
     const res = o.gf > o.ga ? 0.3 : o.gf < o.ga ? -0.3 : 0;
     const cs = o.ga === 0;
     const ROLE_BASE = { GK: 6.25, CB: 6.5, FB: 6.35, DM: 6.15, CM: 6.5, WM: 6.45, AM: 6.2, W: 6.1, ST: 6.35 };
-    let v = ROLE_BASE[r.role] + (r.ovr - 82) * 0.035 + res + gauss() * 0.22;
+    let v = ROLE_BASE[r.role] + (r.ovr - 82) * 0.055 + res + gauss() * 0.2;
     switch (r.role) {
       case 'GK': v += r.sv * 0.22 + (cs ? 0.9 : 0) - o.ga * 0.32; break;
       case 'CB': v += r.tk * 0.10 + r.int * 0.12 + (cs ? 0.6 : 0) - o.ga * 0.22 + r.g * 0.9 + r.a * 0.6; break;
@@ -251,11 +251,11 @@ const ENGINE = (() => {
     (o.pmiss || []).forEach(([pi, saved]) => { if (pi >= 0) { rows[pi].pm++; rows[pi].sh++; if (saved) rows[pi].ot++; } });
     const gf = o.goals.length;
     const used = rows.reduce((a, r) => a + r.sh, 0), usedOt = rows.reduce((a, r) => a + r.ot, 0);
-    const shW = X.map((x, k) => x.line === 'GK' ? 0 : (Math.sqrt(POS_GOAL(x.slot)) * att(x, 'sho') / 80 + 0.25) * mf(k));
+    const shW = X.map((x, k) => x.line === 'GK' ? 0 : (Math.sqrt(POS_GOAL(x.slot)) * att(x, 'sho') / 80 + 0.25) * Math.pow(x.r / 85, 2) * mf(k));
     const extra = [];
     for (let n = Math.max(0, o.shots - used); n > 0; n--) { const k = X.indexOf(pick(X, shW)); rows[k].sh++; extra.push(k); }
     for (let n = Math.max(0, o.ot - usedOt); n > 0 && extra.length; n--) { const j = Math.floor(rnd() * extra.length); rows[extra[j]].ot++; extra.splice(j, 1); }
-    const kpW = X.map((x, k) => POS_AST(x.slot) * Math.pow(att(x, 'pas') / 80, 2) * mf(k));
+    const kpW = X.map((x, k) => POS_AST(x.slot) * Math.pow(att(x, 'pas') / 80, 2) * Math.pow(x.r / 85, 3) * mf(k));
     for (let n = Math.max(0, Math.round(o.shots * 0.7) - rows.reduce((a, r) => a + r.kp, 0)); n > 0; n--) rows[X.indexOf(pick(X, kpW))].kp++;
     const tkW = X.map((x, k) => (x.line === 'GK' ? 0.02 : x.line === 'DF' ? 2.8 : /DM/.test(x.slot) ? 3.4 : x.line === 'MF' ? 1.8 : 0.6) * Math.pow(att(x, 'def') / 75, 2) * mf(k));
     const tk = Math.max(6, Math.round(15 + gauss() * 3.5 + (o.press ? 3 : 0) + (50 - o.poss) * 0.12));
