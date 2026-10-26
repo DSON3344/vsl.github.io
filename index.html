@@ -699,8 +699,10 @@
     const stadium = Math.round(crowd * (season <= SEASON ? 0.9 : 0.7));
     const prizeData = prizeOf(season);
     const prize = prizeData && prizeData[team] ? prizeData[team].total : 0;
-    const sold = (TRANSFERS || []).filter(x => x.s === season && x.from === team && x.fee && season >= 18).reduce((a,x)=>a+x.fee,0);
-    const bought = (TRANSFERS || []).filter(x => x.s === season && x.to === team && x.fee && season >= 18).reduce((a,x)=>a+x.fee,0);
+    const market = S.market && S.market[season] || {};
+    const completed = (market.offers || []).filter(x => x.st === 'a' && !x.sched && x.fee);
+    const sold = completed.filter(x => x.from === team).reduce((a,x)=>a+x.fee,0);
+    const bought = completed.filter(x => x.to === team).reduce((a,x)=>a+x.fee,0);
     const inv = Math.round(Math.max(0, avg - 82) * 1.5 + (rank <= 5 ? 12 : 0));
     const wage = season === SEASON ? (wagesOf(season)[team] || 0) : archived ? (wagesOf(season)[team] || 0) : 0;
     const income = { '卖人收入': sold, '周边商品营收': merch, '投资方赞助': inv, '广告营收': ads, '球场营收': stadium, '比赛奖金': prize, '商业赞助': sponsor };
@@ -721,19 +723,19 @@
     return base + financeBars(ledger, esc(team)+' · 每季收入与支出');
   };
   const transferSummary = () => {
-    const rows = Object.keys(TD).map(team => {
-      const deals = (TRANSFERS || []).filter(x => x.s === SEASON && x.s >= 18 && (x.from === team || x.to === team));
-      const mk = (S.market && S.market[SEASON]) || {};
-      const accepted = (mk.offers || []).filter(o => o.st === 'a' && !o.sched && (o.from === team || o.to === team));
-      const incoming = accepted.filter(o=>o.to===team), outgoing=accepted.filter(o=>o.from===team);
-      const bought = deals.filter(x=>x.to===team).concat(incoming).reduce((a,x)=>a+(x.fee||0),0);
-      const sold = deals.filter(x=>x.from===team).concat(outgoing).reduce((a,x)=>a+(x.fee||0),0);
-      return {team, incoming:incoming.length+deals.filter(x=>x.to===team).length, outgoing:outgoing.length+deals.filter(x=>x.from===team).length, bought, sold,
-        namesIn:incoming.map(x=>x.name).concat(deals.filter(x=>x.to===team).map(x=>x.name)),
-        namesOut:outgoing.map(x=>x.name).concat(deals.filter(x=>x.from===team).map(x=>x.name))};
-    });
-    return '<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer ledger</div><h2>'+SN(SEASON)+' 各队转会汇总</h2></div><span class="note">仅计入新模拟期的真实成交；待处理报价不计入</span></div><div class="tw"><table><thead><tr><th class="l">球队</th><th>买入人数</th><th class="l">买入球员</th><th>卖出人数</th><th class="l">卖出球员</th><th>总支出</th><th>总收益</th></tr></thead><tbody>'+
-      rows.map(x=>'<tr><td class="l">'+esc(x.team)+'</td><td>'+x.incoming+'</td><td class="l">'+(x.namesIn.length?x.namesIn.map(esc).join('、'):'–')+'</td><td>'+x.outgoing+'</td><td class="l">'+(x.namesOut.length?x.namesOut.map(esc).join('、'):'–')+'</td><td>'+money(x.bought)+'</td><td>'+money(x.sold)+'</td></tr>').join('')+'</tbody></table></div></div>';
+    const seasons = Array.from({length:Math.max(1,SEASON)},(_,i)=>i+1).reverse();
+    const oneSeason = season => {
+      const market = S.market && S.market[season] || {};
+      const completed = (market.offers || []).filter(o => o.st === 'a' && !o.sched);
+      const rows = Object.keys(TD).map(team => {
+        const incoming = completed.filter(o=>o.to===team), outgoing=completed.filter(o=>o.from===team);
+        const bought = incoming.reduce((a,x)=>a+(x.fee||0),0), sold=outgoing.reduce((a,x)=>a+(x.fee||0),0);
+        return {team,incoming,outgoing,bought,sold};
+      });
+      return '<details '+(season===SEASON?'open':'')+' style="margin-top:10px"><summary style="cursor:pointer"><b>'+SN(season)+'</b> <span class="note">买入 '+completed.filter(o=>TD[o.to]).length+' 人 · 卖出 '+completed.filter(o=>TD[o.from]).length+' 人</span></summary><div class="tw" style="margin-top:8px"><table><thead><tr><th class="l">球队</th><th>买入人数</th><th class="l">买入球员</th><th>卖出人数</th><th class="l">卖出球员</th><th>总支出</th><th>总收益</th></tr></thead><tbody>'+
+        rows.map(x=>'<tr><td class="l">'+esc(x.team)+'</td><td>'+x.incoming.length+'</td><td class="l">'+(x.incoming.length?x.incoming.map(o=>esc(o.name)).join('、'):'–')+'</td><td>'+x.outgoing.length+'</td><td class="l">'+(x.outgoing.length?x.outgoing.map(o=>esc(o.name)).join('、'):'–')+'</td><td>'+money(x.bought)+'</td><td>'+money(x.sold)+'</td></tr>').join('')+'</tbody></table></div></details>';
+    };
+    return '<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer ledger</div><h2>各赛季各队转会汇总</h2></div><span class="note">只计入新模拟期实际成交；旧历史预设交易不计入</span></div>'+seasons.map(oneSeason).join('')+'</div>';
   };
   const oldMarketPanel = marketPanel;
   marketPanel = function() { return oldMarketPanel() + transferSummary(); };
