@@ -9,7 +9,8 @@
     for (const ch of String(value)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
     return (h >>> 0).toString(16).padStart(8, '0').toUpperCase();
   };
-  const identityByLegacyUid = Object.fromEntries(((PLAYER_IDENTITY_INDEX && PLAYER_IDENTITY_INDEX.players) || []).map(p => [p.uid, p]));
+  const identitySource = typeof PLAYER_IDENTITY_INDEX !== 'undefined' ? PLAYER_IDENTITY_INDEX : (window.__PLAYER_IDENTITY_INDEX__ || {});
+  const identityByLegacyUid = Object.fromEntries(((identitySource && identitySource.players) || []).map(p => [p.uid, p]));
   const assign = (p, team, kind) => {
     if (!p || typeof p !== 'object') return;
     let pid = p.uid != null ? UIDPID[p.uid] : null;
