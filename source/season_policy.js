@@ -9,12 +9,16 @@
     for (const ch of String(value)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
     return (h >>> 0).toString(16).padStart(8, '0').toUpperCase();
   };
+  const identityByLegacyUid = Object.fromEntries(((PLAYER_IDENTITY_INDEX && PLAYER_IDENTITY_INDEX.players) || []).map(p => [p.uid, p]));
   const assign = (p, team, kind) => {
     if (!p || typeof p !== 'object') return;
-    const key = String(p.uid || [kind, team || p.team || '', p.name || '', p.pos || '', p.nat || '', p.age0 ?? p.age ?? '', p.s0 ?? ''].join('|'));
+    let pid = p.uid != null ? UIDPID[p.uid] : null;
+    if (pid == null && /^H\\|\\d+$/.test(String(p.uid || ''))) pid = Number(String(p.uid).slice(2));
+    const identity = pid != null ? identityByLegacyUid['H|' + pid] : null;
+    const key = String(identity ? identity.uid : (p.uid || [kind, team || p.team || '', p.name || '', p.pos || '', p.nat || '', p.age0 ?? p.age ?? '', p.s0 ?? ''].join('|')));
     let id = registry[key];
     if (!id) {
-      const base = 'PLY-' + hash(key);
+      const base = identity ? 'PLY-' + String(pid + 1).padStart(6, '0') : 'PLY-' + hash(key);
       id = base;
       let n = 2;
       while (used.has(id)) id = base + '-' + n++;
@@ -22,16 +26,9 @@
       used.add(id);
     }
     p.identityUid = id;
-    // Preserve only the earliest season in which this identity appeared in the historical roster index.
     if (p.firstSeason == null) {
-      const pid = p.uid != null ? UIDPID[p.uid] : null;
-      if (pid != null) {
-        const seasons = Object.keys((HIST && HIST.squads) || {}).filter(s =>
-          (((HIST.squads[s] || {})[team]) || []).some(row => row[0] === pid)
-        ).map(Number);
-        if (seasons.length) p.firstSeason = Math.min(...seasons);
-      }
-      if (p.firstSeason == null && Number.isFinite(p.s0)) p.firstSeason = p.s0;
+      if (identity && identity.firstSeason != null) p.firstSeason = identity.firstSeason;
+      else if (Number.isFinite(p.s0)) p.firstSeason = p.s0;
     }
   };
   const assignAll = () => {
