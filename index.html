@@ -566,7 +566,117 @@
     <div><div class="eyebrow">Season ${SEASON} progress</div><h2 style="font-size:20px;font-weight:900;margin-top:4px">进度同步</h2></div>
     ${a?WEB.key?'<p class="muted" style="margin:0">已解锁。这台设备的模拟结果会自动存到云端，手机和电脑打开 ves.dson.site 都会看到同一份进度。</p><div class="btns"><button class="btn ghost" data-act="lockSync">在这台设备上锁定</button></div>':`<p class="muted" style="margin:0">所有人都能看到云端的 S${SEASON} 进度。输入同步密码后，这台设备的模拟结果才会写入云端；不输入的话，模拟结果只留在这台设备。</p><div class="btns"><input id="syncKey" type="password" placeholder="同步密码" autocomplete="current-password" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:7px 10px;font-size:13px;color:var(--fg)"><button class="btn" data-act="unlockSync">解锁</button></div>`:s?`<p class="muted" style="margin:0">这个页面在 Claude 里打开，S${SEASON} 进度会自动存到你的账号，用同一个账号在手机或电脑打开这个页面，进度会自动同步。</p>`:'<p class="muted" style="margin:0">现在打开的网站只能把进度存在这台设备的浏览器里，换设备不会自动同步。可以在这里导出进度文件，到另一台设备上导入。</p>'}
     <div class="btns"><button class="btn" data-act="exportSave">导出进度文件</button><label class="btn" style="cursor:pointer">导入进度文件<input type="file" id="importSave" accept="application/json,.json" hidden></label></div>
-    <p class="note" style="margin:0" id="syncMsg">已模拟 ${playedRounds()} 轮 · 上次保存 ${S.updated?new Date(S.updated).toLocaleString("zh-CN"):"—"}</p></div>`,t.open||t.showModal();const e=$("#syncKey");e&&e.addEventListener("keydown",n=>{n.key==="Enter"&&unlockSync()}),$("#importSave").addEventListener("change",n=>{const i=n.target.files[0];if(!i)return;const l=new FileReader;l.onload=()=>{try{const o=JSON.parse(l.result);if(o.key!==KEY||!o.state||!Array.isArray(o.state.fx)||o.state.fx.length!==38)throw 0;S=o.state,applyState();for(let c=0;c<38;c++)DIRTY.add(c);save(),t.close(),M=null,render(),toast("进度已导入")}catch{$("#syncMsg").textContent="这个文件不是威超的进度文件，请重新选择。"}},l.readAsText(i)})}async function exportSave(){const t=new Blob([JSON.stringify({key:KEY,exported:new Date().toISOString(),state:S})],{type:"application/json"}),s=`威超S${SEASON}进度_第${playedRounds()}轮.json`;try{const n=window.claude&&typeof window.claude.use=="function"?await window.claude.use("downloads"):null;if(n){await n.save({filename:s,data:t});const i=$("#syncMsg");i&&(i.textContent="已导出进度文件。");return}}catch{const i=$("#syncMsg");i&&(i.textContent="没有导出。");return}const a=document.createElement("a");a.href=URL.createObjectURL(t),a.download=`威超S${SEASON}进度_第${playedRounds()}轮.json`,document.body.appendChild(a),a.click(),a.remove();const e=$("#syncMsg");e&&(e.textContent="已导出。若没有开始下载，说明当前页面不允许下载文件。")}MIGRATED&&setTimeout(()=>toast("S18 参赛名单已更新（泽尼联回到威超），赛季进度重新开始"),400);const h0=(location.hash||"").slice(1);go(VIEWS.includes(h0)?h0:"overview",null,!1),setSync("local"),cloudInit(),/vesdebug/.test(location.hash)&&(window.__ves={health:()=>{const t=healthReport();return{err:t.err.length,warn:t.warn.length,e:t.err.slice(0,15),w:t.warn.slice(0,15),stats:t.stats}},ev:f=>eval("("+f+")")(),simSeason(){return S.fx.forEach((t,s)=>playRound(s)),save(),maybeEndSeason(!0),SEASON},cups:t=>cupsOf(t),season:()=>SEASON,awards:t=>{const s=awardsOf(t);return s&&s.ballon.map(a=>a.name+"@"+a.team+"["+(a._hon||[]).join("/")+"] "+a.g+"g")},names:()=>[...Object.values(PDB).flat(),...Object.values(FDB).flat()].map(t=>t.name),strengths:()=>Object.keys(TD).map(t=>[t,+clubStrAt(t,SEASON).toFixed(1)]).sort((t,s)=>s[1]-t[1]).slice(0,6).concat(["阿罗拉","蛮城","皇族马"].map(t=>[t,+clubStrAt(t,SEASON).toFixed(1)])),logs:()=>({RET_LOG,TR_LOG}),future:()=>FUTURE,chkGoals:()=>{let t=[];return S.fx.forEach((s,a)=>s.forEach(e=>{if(!e.r)return;const n=e.r.ev.filter(l=>l[1]==="goal"&&l[2]==="h").length,i=e.r.ev.filter(l=>l[1]==="goal"&&l[2]==="a").length;(n!==e.r.hg||i!==e.r.ag)&&t.push(a+":"+e.h+" "+e.r.hg+"-"+e.r.ag+" ev "+n+"-"+i)})),t},chkArch:()=>{const t=[];return SEASONS.forEach(s=>{const a=HS[s],e={};a.rounds.forEach(i=>i.forEach(l=>{const o=a.teams[l[0]],c=a.teams[l[1]];e[o]=(e[o]||0)+(l[2]>l[3]?3:l[2]===l[3]?1:0),e[c]=(e[c]||0)+(l[3]>l[2]?3:l[2]===l[3]?1:0),(l[6].filter(d=>d[1]===0).length!==l[2]||l[6].filter(d=>d[1]===1).length!==l[3])&&t.push(s+" goals "+o+" "+l[2]+"-"+l[3])})),a.table.forEach(i=>{e[i.team]!==i.pts&&t.push(s+" pts "+i.team)});const n=cupsOf(s)||{};Object.entries(n).forEach(([i,l])=>{l&&l.ko&&Object.entries(l.ko).forEach(([o,c])=>c.forEach(d=>{const r=/^(\d+)–(\d+)/.exec(d.score||"");r&&+r[1]<+r[2]&&t.push(s+" "+i+o+" "+d.w+" "+d.score+" "+d.l)}))})}),t},extClub:t=>(FDB[t]||[]).map(s=>s.name+s.age+"/"+s.rating).join(" "),cap:()=>capitalHistory().ev,benchCheck:()=>(ensureTactics(),Object.keys(TD).map(t=>{const s=TD[t].roster,a=s.map(i=>i.name),e=PDB[t]||[],n=e.filter(i=>!a.includes(i.name)&&s.some(l=>{const o=e.find(c=>c.name===l.name);return o&&slotVal(l.pos,i)-slotVal(l.pos,o)>=3}));return n.length?t+":"+n.map(i=>i.name+i.rating+i.pos).join(","):""}).filter(Boolean)),card:t=>(openPerson(t),$("#dlg").innerText),cardP:(t,s)=>(openPlayer(t,s),$("#dlg").innerText),pids:()=>PL.map((t,s)=>t?s:-1).filter(t=>t>=0),allp:()=>ALL_PLAYERS.map(t=>({name:t.name,team:t.team,nat:t.nat,age:t.age,h:t.height,w:t.weight,no:t.no,v:t.value,pos:t.pos,r:t.rating,at:t.attributes?Object.keys(t.attributes).length:0,extra:t.extra,kind:t.uid?t.uid[0]:""})),ext:()=>Object.values(FDB).flat().map(t=>({name:t.name,team:t.team,nat:t.nat,age:t.age,h:t.height,w:t.weight,no:t.no,v:t.value,pos:t.pos,r:t.rating})),champ:t=>HS[t]&&HS[t].table.slice(0,3).map(s=>s.team+s.pts).join(" ")+" | 降 "+(S.archive.find(s=>s.s===t)||{}).relegated+" 升 "+(S.archive.find(s=>s.s===t)||{}).next,top:t=>(HPS[t]||[]).slice().sort((s,a)=>a.g-s.g).slice(0,4).map(s=>s.name+"/"+s.team+"/"+s.g).join(" "),teams:()=>S.teams.join(",")})})();</script>
+    <p class="note" style="margin:0" id="syncMsg">已模拟 ${playedRounds()} 轮 · 上次保存 ${S.updated?new Date(S.updated).toLocaleString("zh-CN"):"—"}</p></div>`,t.open||t.showModal();const e=$("#syncKey");e&&e.addEventListener("keydown",n=>{n.key==="Enter"&&unlockSync()}),$("#importSave").addEventListener("change",n=>{const i=n.target.files[0];if(!i)return;const l=new FileReader;l.onload=()=>{try{const o=JSON.parse(l.result);if(o.key!==KEY||!o.state||!Array.isArray(o.state.fx)||o.state.fx.length!==38)throw 0;S=o.state,applyState();for(let c=0;c<38;c++)DIRTY.add(c);save(),t.close(),M=null,render(),toast("进度已导入")}catch{$("#syncMsg").textContent="这个文件不是威超的进度文件，请重新选择。"}},l.readAsText(i)})}async function exportSave(){const t=new Blob([JSON.stringify({key:KEY,exported:new Date().toISOString(),state:S})],{type:"application/json"}),s=`威超S${SEASON}进度_第${playedRounds()}轮.json`;try{const n=window.claude&&typeof window.claude.use=="function"?await window.claude.use("downloads"):null;if(n){await n.save({filename:s,data:t});const i=$("#syncMsg");i&&(i.textContent="已导出进度文件。");return}}catch{const i=$("#syncMsg");i&&(i.textContent="没有导出。");return}const a=document.createElement("a");a.href=URL.createObjectURL(t),a.download=`威超S${SEASON}进度_第${playedRounds()}轮.json`,document.body.appendChild(a),a.click(),a.remove();const e=$("#syncMsg");e&&(e.textContent="已导出。若没有开始下载，说明当前页面不允许下载文件。")}MIGRATED&&setTimeout(()=>toast("S18 参赛名单已更新（泽尼联回到威超），赛季进度重新开始"),400);/* VES season policy foundation.
+ * Legacy uid is preserved because existing saves and transfer logs reference it.
+ */
+(function installSeasonPolicy() {
+  const registry = S.identityRegistry || (S.identityRegistry = {});
+  const used = new Set(Object.values(registry));
+  const hash = value => {
+    let h = 2166136261;
+    for (const ch of String(value)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(16).padStart(8, '0').toUpperCase();
+  };
+  const assign = (p, team, kind) => {
+    if (!p || typeof p !== 'object') return;
+    const key = String(p.uid || [kind, team || p.team || '', p.name || '', p.pos || '', p.nat || '', p.age0 ?? p.age ?? '', p.s0 ?? ''].join('|'));
+    let id = registry[key];
+    if (!id) {
+      const base = 'PLY-' + hash(key);
+      id = base;
+      let n = 2;
+      while (used.has(id)) id = base + '-' + n++;
+      registry[key] = id;
+      used.add(id);
+    }
+    p.identityUid = id;
+    if (p.firstSeason == null && Number.isFinite(p.s0)) p.firstSeason = p.s0;
+  };
+  const assignAll = () => {
+    Object.entries(PDB || {}).forEach(([t, list]) => (list || []).forEach(p => assign(p, t, 'player')));
+    Object.entries(FDB || {}).forEach(([t, list]) => (list || []).forEach(p => assign(p, t, 'external')));
+    Object.entries(ACAD || {}).forEach(([t, list]) => (list || []).forEach(p => assign(p, t, 'academy')));
+  };
+  const rosterStatus = team => {
+    const count = (PDB[team] || []).length;
+    return { team, count, max: 32, min: 28, over: count > 32, short: count < 28, canBuy: count <= 32 };
+  };
+  const academyEligible = (kid, season = SEASON) => {
+    const age = season - kid.born;
+    return kid.status === 'academy' && (age >= 18 || (age >= 16 && Number(kid.pot) >= 90));
+  };
+  const rosterPanel = team => {
+    const st = rosterStatus(team);
+    const kids = (ACAD[team] || []).filter(k => k.status === 'academy');
+    const color = st.over ? '#e66' : st.short ? 'var(--gold)' : 'var(--line)';
+    const msg = st.over ? '超出 32 人上限：必须先处理冗员，买人交易应中止。' :
+      st.short ? '一线队少于 28 人：应优先提拔符合年龄/天赋规则的青训球员。' : '一线队人数正常。';
+    const rows = kids.map(k => {
+      const age = SEASON - k.born;
+      const eligible = academyEligible(k);
+      return '<tr><td class="l">' + esc(k.name) + '</td><td>' + esc(k.pos || k.line || '—') + '</td><td>' + age +
+        '</td><td>' + (Number(k.pot) || '—') + '</td><td>' + (eligible ? '<span class="chip good">可提拔</span>' : '<span class="muted">青训梯队</span>') +
+        '</td><td class="mono">' + esc(k.id || k.identityUid || '—') + '</td></tr>';
+    }).join('');
+    return '<div class="panel" style="border-color:' + color + '"><div class="ph"><div><div class="eyebrow">Squad policy · ' +
+      SN(SEASON) + '</div><h2>一线队与青训名单</h2></div><span class="chip ' + (st.over ? 'bad' : st.short ? 'gold' : 'good') +
+      '">' + st.count + '/32</span></div><p class="note" style="margin:0 0 10px;' + (st.over ? 'color:#e66;font-weight:800' : '') +
+      '">' + msg + '</p><div class="tw"><table><thead><tr><th class="l">青训球员</th><th>位置</th><th>年龄</th><th>潜力</th><th>状态</th><th>青训 ID</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="6" class="muted">暂无青训梯队球员记录</td></tr>') +
+      '</tbody></table></div><p class="note" style="margin:8px 0 0">常规提拔年龄为 18 岁；16–17 岁仅在潜力达到 90 以上时符合天才球员例外。此版本先加入 UID 与名单诊断；自动提拔和所有交易入口的硬性阻断仍需后续接入结算流程。</p></div>';
+  };
+  assignAll();
+  const oldTeamDetail = teamDetail;
+  teamDetail = function(team) {
+    return oldTeamDetail(team).replace('</section>', rosterPanel(team) + '</section>');
+  };
+  const oldVTeams = vTeams;
+  vTeams = function() {
+    const html = oldVTeams();
+    if (teamSel) return html;
+    const rows = S.teams.map(t => {
+      const st = rosterStatus(t);
+      return '<tr><td class="l">' + esc(t) + '</td><td>' + st.count + '/32</td><td>' +
+        (st.over ? '<span class="chip bad">超员 · 禁止买人</span>' : st.short ? '<span class="chip gold">少于 28 人</span>' : '<span class="chip good">正常</span>') +
+        '</td></tr>';
+    }).join('');
+    return html.replace('</section>', '<div class="panel"><div class="ph"><div><div class="eyebrow">Squad compliance</div><h2>一线队人数检查</h2></div><span class="note">最多 32 人 · 少于 28 人触发青训补员规则</span></div><div class="tw"><table><thead><tr><th class="l">球队</th><th>一线队人数</th><th>名单状态</th></tr></thead><tbody>' + rows + '</tbody></table></div></div></section>');
+  };
+  const oldOpenPlayer = openPlayer;
+  openPlayer = function(team, name) {
+    const result = oldOpenPlayer(team, name);
+    const p = (PDB[team] || []).find(x => x.name === name) || (FDB[team] || []).find(x => x.name === name);
+    if (p && p.identityUid) {
+      const card = document.querySelector('#dlg .pcard');
+      if (card && !card.querySelector('[data-identity-uid]')) {
+        const badge = document.createElement('span');
+        badge.className = 'chip mono';
+        badge.dataset.identityUid = '1';
+        badge.textContent = 'UID ' + p.identityUid;
+        card.appendChild(badge);
+      }
+    }
+    return result;
+  };
+  window.__VES_SEASON_POLICY__ = {
+    version: 1,
+    rosterStatus,
+    academyEligible,
+    assignAll,
+    identityMap: () => Object.entries(registry).map(([source, identityUid]) => ({ source, identityUid })),
+    duplicateIdentityUids: () => {
+      const seen = new Set(), dup = new Set();
+      Object.values(PDB || {}).flat().forEach(p => {
+        if (!p.identityUid) return;
+        if (seen.has(p.identityUid)) dup.add(p.identityUid);
+        seen.add(p.identityUid);
+      });
+      return [...dup];
+    }
+  };
+})();
+
+const h0=(location.hash||"").slice(1);go(VIEWS.includes(h0)?h0:"overview",null,!1),setSync("local"),cloudInit(),/vesdebug/.test(location.hash)&&(window.__ves={health:()=>{const t=healthReport();return{err:t.err.length,warn:t.warn.length,e:t.err.slice(0,15),w:t.warn.slice(0,15),stats:t.stats}},ev:f=>eval("("+f+")")(),simSeason(){return S.fx.forEach((t,s)=>playRound(s)),save(),maybeEndSeason(!0),SEASON},cups:t=>cupsOf(t),season:()=>SEASON,awards:t=>{const s=awardsOf(t);return s&&s.ballon.map(a=>a.name+"@"+a.team+"["+(a._hon||[]).join("/")+"] "+a.g+"g")},names:()=>[...Object.values(PDB).flat(),...Object.values(FDB).flat()].map(t=>t.name),strengths:()=>Object.keys(TD).map(t=>[t,+clubStrAt(t,SEASON).toFixed(1)]).sort((t,s)=>s[1]-t[1]).slice(0,6).concat(["阿罗拉","蛮城","皇族马"].map(t=>[t,+clubStrAt(t,SEASON).toFixed(1)])),logs:()=>({RET_LOG,TR_LOG}),future:()=>FUTURE,chkGoals:()=>{let t=[];return S.fx.forEach((s,a)=>s.forEach(e=>{if(!e.r)return;const n=e.r.ev.filter(l=>l[1]==="goal"&&l[2]==="h").length,i=e.r.ev.filter(l=>l[1]==="goal"&&l[2]==="a").length;(n!==e.r.hg||i!==e.r.ag)&&t.push(a+":"+e.h+" "+e.r.hg+"-"+e.r.ag+" ev "+n+"-"+i)})),t},chkArch:()=>{const t=[];return SEASONS.forEach(s=>{const a=HS[s],e={};a.rounds.forEach(i=>i.forEach(l=>{const o=a.teams[l[0]],c=a.teams[l[1]];e[o]=(e[o]||0)+(l[2]>l[3]?3:l[2]===l[3]?1:0),e[c]=(e[c]||0)+(l[3]>l[2]?3:l[2]===l[3]?1:0),(l[6].filter(d=>d[1]===0).length!==l[2]||l[6].filter(d=>d[1]===1).length!==l[3])&&t.push(s+" goals "+o+" "+l[2]+"-"+l[3])})),a.table.forEach(i=>{e[i.team]!==i.pts&&t.push(s+" pts "+i.team)});const n=cupsOf(s)||{};Object.entries(n).forEach(([i,l])=>{l&&l.ko&&Object.entries(l.ko).forEach(([o,c])=>c.forEach(d=>{const r=/^(\d+)–(\d+)/.exec(d.score||"");r&&+r[1]<+r[2]&&t.push(s+" "+i+o+" "+d.w+" "+d.score+" "+d.l)}))})}),t},extClub:t=>(FDB[t]||[]).map(s=>s.name+s.age+"/"+s.rating).join(" "),cap:()=>capitalHistory().ev,benchCheck:()=>(ensureTactics(),Object.keys(TD).map(t=>{const s=TD[t].roster,a=s.map(i=>i.name),e=PDB[t]||[],n=e.filter(i=>!a.includes(i.name)&&s.some(l=>{const o=e.find(c=>c.name===l.name);return o&&slotVal(l.pos,i)-slotVal(l.pos,o)>=3}));return n.length?t+":"+n.map(i=>i.name+i.rating+i.pos).join(","):""}).filter(Boolean)),card:t=>(openPerson(t),$("#dlg").innerText),cardP:(t,s)=>(openPlayer(t,s),$("#dlg").innerText),pids:()=>PL.map((t,s)=>t?s:-1).filter(t=>t>=0),allp:()=>ALL_PLAYERS.map(t=>({name:t.name,team:t.team,nat:t.nat,age:t.age,h:t.height,w:t.weight,no:t.no,v:t.value,pos:t.pos,r:t.rating,at:t.attributes?Object.keys(t.attributes).length:0,extra:t.extra,kind:t.uid?t.uid[0]:""})),ext:()=>Object.values(FDB).flat().map(t=>({name:t.name,team:t.team,nat:t.nat,age:t.age,h:t.height,w:t.weight,no:t.no,v:t.value,pos:t.pos,r:t.rating})),champ:t=>HS[t]&&HS[t].table.slice(0,3).map(s=>s.team+s.pts).join(" ")+" | 降 "+(S.archive.find(s=>s.s===t)||{}).relegated+" 升 "+(S.archive.find(s=>s.s===t)||{}).next,top:t=>(HPS[t]||[]).slice().sort((s,a)=>a.g-s.g).slice(0,4).map(s=>s.name+"/"+s.team+"/"+s.g).join(" "),teams:()=>S.teams.join(",")})})();</script>
 
 </body>
 </html>
