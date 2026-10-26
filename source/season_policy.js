@@ -22,7 +22,17 @@
       used.add(id);
     }
     p.identityUid = id;
-    if (p.firstSeason == null && Number.isFinite(p.s0)) p.firstSeason = p.s0;
+    // Preserve only the earliest season in which this identity appeared in the historical roster index.
+    if (p.firstSeason == null) {
+      const pid = p.uid != null ? UIDPID[p.uid] : null;
+      if (pid != null) {
+        const seasons = Object.keys((HIST && HIST.squads) || {}).filter(s =>
+          (((HIST.squads[s] || {})[team]) || []).some(row => row[0] === pid)
+        ).map(Number);
+        if (seasons.length) p.firstSeason = Math.min(...seasons);
+      }
+      if (p.firstSeason == null && Number.isFinite(p.s0)) p.firstSeason = p.s0;
+    }
   };
   const assignAll = () => {
     Object.entries(PDB || {}).forEach(([t, list]) => (list || []).forEach(p => assign(p, t, 'player')));
@@ -58,6 +68,20 @@
       '</tbody></table></div><p class="note" style="margin:8px 0 0">常规提拔年龄为 18 岁；16–17 岁仅在潜力达到 90 以上时符合天才球员例外。此版本先加入 UID 与名单诊断；自动提拔和所有交易入口的硬性阻断仍需后续接入结算流程。</p></div>';
   };
   assignAll();
+  // Enforce the 32-player cap at the point a user accepts an incoming transfer offer.
+  // The existing next-season check remains as a second safety net.
+  const oldMktAct = mktAct;
+  mktAct = function(kind, id) {
+    if (kind === 'accept') {
+      const market = mktGet();
+      const offer = (market.offers || []).find(o => o.id === id);
+      if (offer && TD[offer.to] && projSize(offer.to) >= 32) {
+        toast(offer.to + ' 一线队已达 32 人上限，必须先处理冗员；本次交易已中止。');
+        return;
+      }
+    }
+    return oldMktAct(kind, id);
+  };
   const oldTeamDetail = teamDetail;
   teamDetail = function(team) {
     return oldTeamDetail(team).replace('</section>', rosterPanel(team) + '</section>');
