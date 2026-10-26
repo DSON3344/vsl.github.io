@@ -39,7 +39,7 @@ data = (
     + open(d + 'teams_data.js', encoding='utf-8').read() + '\\n'
     + open(d + 'roster_overrides.js', encoding='utf-8').read()
     + '\\nconst TEAMS_DATA = window.TEAMS_DATA;\\nconst HISTORY = ' + mjson(open(d + 'history.json', encoding='utf-8').read())
-    + ';\\nconst HIST = ' + hist + ';\\nconst EXT_REAL = ' + mjson(open(d + 'ext_squads.json', encoding='utf-8').read())
+    + ';\\nconst HIST = ' + hist + ';\\nconst PLAYER_IDENTITY_INDEX = ' + mjson(open(d + 'player_identity_index.json', encoding='utf-8').read()) + ';\\nconst EXT_REAL = ' + mjson(open(d + 'ext_squads.json', encoding='utf-8').read())
     + ';\\nconst EXT_CAREERS = ' + mjson(open(d + 'ext_careers.json', encoding='utf-8').read())
     + ';\\nconst LORE = ' + mjson(open(d + 'lore.json', encoding='utf-8').read())
     + ';\\nconst LOGO_URLS = ' + json.dumps(logo_urls, ensure_ascii=False)
