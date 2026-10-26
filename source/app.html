@@ -1044,7 +1044,7 @@ function applyGrowth() {
   if (GROWN && GROWN !== SEASON && ALLP_READY) syncAllPlayers();
   GROWN = SEASON;
 }
-const MIGRATED = migrateState(); if (MIGRATED) { localSave(); }
+const MIGRATED = migrateState(); if (MIGRATED) { localSave(); setTimeout(() => cloudQueue(), 0); }
 if (!S.archive) S.archive = [];
 SEASON = S.season || 1;
 applyGrowth();
