@@ -378,7 +378,7 @@ function rollSalt(s) { S.salt = S.salt || {}; S.salt[s] = newSalt(); OFF_CACHE =
 function newSeason() {
   const teams = HIST.s1.slice();
   const fx = ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null })));
-  return { season: 1, teams, promoted: [], fx, demo: false, archive: [], salt: { 1: newSalt() } };
+  return { season: 1, teams, promoted: [], fx, demo: false, archive: [], salt: { 1: newSalt() }, rebootVersion: 1, identityRegistry: {} };
 }
 const DIRTY = new Set();
 // 本机存档：先按原样存；空间不够时改存压缩版（约原大小的 1/5），读档时自动解压
@@ -433,9 +433,23 @@ S = load();
 if (!S) { S = newSeason(); S.updated = 0; localSave(); }
 // S18 参赛名单改过（泽尼联回到威超、飞鹰不升级）：旧名单的 S18 进度作废，重新开始
 const sameTeams = (a, b) => a && b && a.length === b.length && a.slice().sort().join() === b.slice().sort().join();
-function migrateState() { return false;
-  const a18 = (S.archive || []).find(A => A.s === 18);
-  if ((S.season === 18 && !sameTeams(S.teams, HIST.s18)) || (a18 && !sameTeams(a18.teams, HIST.s18))) { S = newSeason(); S.updated = Date.now(); for (let i = 0; i < 38; i++) DIRTY.add(i); S.migrated = 1; return true; }
+function migrateState() {
+  // First launch of the clean-simulation model: discard prior simulated seasons and match results,
+  // while keeping user-edited player profiles. Stable identity/first-appearance metadata is rebuilt
+  // from the immutable roster index in HIST, not from the old simulated statistics.
+  if (!(S && S.rebootVersion >= 1)) {
+    const edits = S && S.edits ? S.edits : {};
+    const resetAt = Date.now();
+    S = newSeason();
+    S.rebootVersion = 1;
+    S.identityRegistry = {};
+    S.edits = edits;
+    S.updated = resetAt;
+    S.reset = resetAt;
+    S.migrated = 1;
+    PEND = null;
+    return true;
+  }
   return false;
 }
 function applyState() { if (migrateState()) { localSave(); setTimeout(() => cloudQueue(), 0); } if (!S.archive) S.archive = []; SEASON = S.season || 1; if (GROWN !== SEASON) applyGrowth(); S.archive.forEach(A => { if (!HS[A.s] || HS[A.s].sim) registerArchive(A); }); }
