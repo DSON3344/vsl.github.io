@@ -67,6 +67,44 @@
       (rows || '<tr><td colspan="6" class="muted">暂无青训梯队球员记录</td></tr>') +
       '</tbody></table></div><p class="note" style="margin:8px 0 0">常规提拔年龄为 18 岁；16–17 岁仅在潜力达到 90 以上时符合天才球员例外。此版本先加入 UID 与名单诊断；自动提拔和所有交易入口的硬性阻断仍需后续接入结算流程。</p></div>';
   };
+
+  const promoteEligibleAcademy = () => {
+    if (!S) return;
+    S.academyPromotions = S.academyPromotions || {};
+    const records = S.academyPromotions;
+    const makePlayer = (team, kid, season) => {
+      const age = season - kid.born, rating = kidRating(kid, season);
+      return { no: 30, team, pos:kid.pos, nat:kid.nat, name:kid.name, rating, height:kid.height, weight:kid.weight,
+        age, cGP:0,cG:0,cA:0,tGP:0,tG:0,tA:0,value:'ⰵ'+valueM(rating,age)+'M',attributes:kidAttrs(kid,season),
+        youth:1,acad:kid.id,potFix:kid.pot,rating0:rating,age0:age,s0:season,uid:'Y|'+team+'|'+kid.id,cEnd:season+3 };
+    };
+    Object.entries(records).forEach(([team, list]) => (list || []).forEach(saved => {
+      if (!TD[team] || (PDB[team] || []).some(p => p.uid === saved.uid)) return;
+      const p = { ...saved, age: saved.age0 + Math.max(0, SEASON - saved.s0) };
+      try { p.rating = growthOf(p).at(p.age); p.value = 'ⰵ'+valueM(p.rating,p.age)+'M'; } catch {}
+      PDB[team] = PDB[team] || []; PDB[team].push(p);
+    }));
+    Object.keys(TD).forEach(team => {
+      PDB[team] = PDB[team] || [];
+      let guard = 0;
+      while (PDB[team].length < 28 && guard++ < 8) {
+        const candidates = (ACAD[team] || []).filter(k => k.status === 'academy' &&
+          (SEASON - k.born >= 18 || (SEASON - k.born < 17 && SEASON - k.born >= 15 && k.pot >= 90)) &&
+          !(records[team] || []).some(p => p.acad === k.id));
+        candidates.sort((a,b) => kidRating(b,SEASON)-kidRating(a,SEASON) || b.pot-a.pot);
+        let kid = candidates[0];
+        if (!kid) break;
+        kid.status = 'first'; kid.promoted = SEASON;
+        const p = makePlayer(team,kid,SEASON);
+        (records[team] = records[team] || []).push(p);
+        PDB[team].push(p);
+      }
+      PDB[team].forEach(p => { p.team = team; if (p.uid) { BY_TN[team+'|'+p.name]=p; TEAM_OF_UID[p.uid]=team; } });
+    });
+  };
+  const oldApplyGrowth = applyGrowth;
+  applyGrowth = function() { oldApplyGrowth(); promoteEligibleAcademy(); assignAll(); };
+  promoteEligibleAcademy();
   assignAll();
   // Enforce the 32-player cap at the point a user accepts an incoming transfer offer.
   // The existing next-season check remains as a second safety net.
