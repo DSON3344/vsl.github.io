@@ -114,6 +114,61 @@
     }
     return result;
   };
+
+  // Deterministic per-season finance model. Monetary units follow the existing game economy
+  // (100 units = 1 hundred million in the UI formatter).
+  const financeLedger = (team, season) => {
+    const archived = (S.archive || []).find(a => a.s === season);
+    const rank = archived ? (archived.table.findIndex(r => r.team === team) + 1) : (season === SEASON ? (table().findIndex(r => r.team === team) + 1) : 10);
+    const ratings = archived && archived.sq && archived.sq[team]
+      ? archived.sq[team].map(p => p[5]).filter(Number.isFinite)
+      : (PDB[team] || []).map(p => p.rating).filter(Number.isFinite);
+    const avg = ratings.length ? ratings.reduce((a,b)=>a+b,0)/ratings.length : 75;
+    const crowd = Math.max(18, Math.round(22 + avg * 0.55 + (21 - rank) * 1.8));
+    const merch = Math.round(18 + avg * 0.9 + (21-rank)*1.1);
+    const sponsor = Math.round(45 + avg * 1.35 + (rank <= 4 ? 24 : rank <= 10 ? 10 : 0));
+    const ads = Math.round(18 + avg * 0.55 + crowd * 0.22);
+    const stadium = Math.round(crowd * (season <= SEASON ? 0.9 : 0.7));
+    const prizeData = prizeOf(season);
+    const prize = prizeData && prizeData[team] ? prizeData[team].total : 0;
+    const sold = (TRANSFERS || []).filter(x => x.s === season && x.from === team && x.fee && season >= 18).reduce((a,x)=>a+x.fee,0);
+    const bought = (TRANSFERS || []).filter(x => x.s === season && x.to === team && x.fee && season >= 18).reduce((a,x)=>a+x.fee,0);
+    const inv = Math.round(Math.max(0, avg - 82) * 1.5 + (rank <= 5 ? 12 : 0));
+    const wage = season === SEASON ? (wagesOf(season)[team] || 0) : archived ? (wagesOf(season)[team] || 0) : 0;
+    const income = { '卖人收入': sold, '周边商品营收': merch, '投资方赞助': inv, '广告营收': ads, '球场营收': stadium, '比赛奖金': prize, '商业赞助': sponsor };
+    const expense = { '周边商品生产': Math.round(merch * 0.38), '税务': Math.round((sponsor+ads+stadium+merch+prize) * 0.12), '球场维护': Math.round(12 + crowd * 0.18), '买人支出': bought, '球员工资': wage };
+    return { team, season, rank, income, expense, totalIncome:Object.values(income).reduce((a,b)=>a+b,0), totalExpense:Object.values(expense).reduce((a,b)=>a+b,0) };
+  };
+  const financeBars = (ledger, title) => {
+    if (!ledger.length) return '';
+    const max = Math.max(1, ...ledger.flatMap(x => [x.totalIncome,x.totalExpense]));
+    return '<div class="panel"><div class="ph"><div><div class="eyebrow">Season finance</div><h2>'+title+'</h2></div><span class="note">不含威联赛时期 · 单位沿用俱乐部财务</span></div>' +
+      ledger.slice().reverse().map(x => '<div style="display:grid;grid-template-columns:54px minmax(0,1fr) 82px;gap:8px;align-items:center;margin:10px 0"><span class="mono">'+SN(x.season)+'</span><div style="display:grid;gap:4px"><div style="height:8px;background:var(--line);border-radius:2px;overflow:hidden"><i title="收入 '+money(x.totalIncome)+'" style="display:block;height:100%;width:'+Math.min(100,x.totalIncome/max*100)+'%;background:var(--win)"></i></div><div style="height:8px;background:var(--line);border-radius:2px;overflow:hidden"><i title="支出 '+money(x.totalExpense)+'" style="display:block;height:100%;width:'+Math.min(100,x.totalExpense/max*100)+'%;background:var(--loss)"></i></div></div><span class="mono" style="font-size:11px;text-align:right">'+(x.totalIncome-x.totalExpense>=0?'+':'')+money(x.totalIncome-x.totalExpense)+'</span></div>' +
+      '<details style="margin-top:8px"><summary class="note" style="cursor:pointer">'+SN(x.season)+' 收入 '+money(x.totalIncome)+' · 支出 '+money(x.totalExpense)+'</summary><div class="grid g-2" style="margin-top:8px"><div><b>收入明细</b>'+Object.entries(x.income).map(([k,v])=>'<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>'+k+'</span><span class="v">'+money(v)+'</span></div>').join('')+'</div><div><b>支出明细</b>'+Object.entries(x.expense).map(([k,v])=>'<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>'+k+'</span><span class="v">'+money(v)+'</span></div>').join('')+'</div></div></details>').join('')+'</div>';
+  };
+  const oldTeamFinPanel = teamFinPanel;
+  teamFinPanel = function(team) {
+    const base = oldTeamFinPanel(team);
+    const ledger = Array.from({length:Math.max(1,SEASON)},(_,i)=>financeLedger(team,i+1));
+    return base + financeBars(ledger, esc(team)+' · 每季收入与支出');
+  };
+  const transferSummary = () => {
+    const rows = Object.keys(TD).map(team => {
+      const deals = (TRANSFERS || []).filter(x => x.s === SEASON && x.s >= 18 && (x.from === team || x.to === team));
+      const mk = (S.market && S.market[SEASON]) || {};
+      const accepted = (mk.offers || []).filter(o => o.st === 'a' && !o.sched && (o.from === team || o.to === team));
+      const incoming = accepted.filter(o=>o.to===team), outgoing=accepted.filter(o=>o.from===team);
+      const bought = deals.filter(x=>x.to===team).concat(incoming).reduce((a,x)=>a+(x.fee||0),0);
+      const sold = deals.filter(x=>x.from===team).concat(outgoing).reduce((a,x)=>a+(x.fee||0),0);
+      return {team, incoming:incoming.length+deals.filter(x=>x.to===team).length, outgoing:outgoing.length+deals.filter(x=>x.from===team).length, bought, sold,
+        namesIn:incoming.map(x=>x.name).concat(deals.filter(x=>x.to===team).map(x=>x.name)),
+        namesOut:outgoing.map(x=>x.name).concat(deals.filter(x=>x.from===team).map(x=>x.name))};
+    });
+    return '<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer ledger</div><h2>'+SN(SEASON)+' 各队转会汇总</h2></div><span class="note">仅计入新模拟期的真实成交；待处理报价不计入</span></div><div class="tw"><table><thead><tr><th class="l">球队</th><th>买入人数</th><th class="l">买入球员</th><th>卖出人数</th><th class="l">卖出球员</th><th>总支出</th><th>总收益</th></tr></thead><tbody>'+
+      rows.map(x=>'<tr><td class="l">'+esc(x.team)+'</td><td>'+x.incoming+'</td><td class="l">'+(x.namesIn.length?x.namesIn.map(esc).join('、'):'–')+'</td><td>'+x.outgoing+'</td><td class="l">'+(x.namesOut.length?x.namesOut.map(esc).join('、'):'–')+'</td><td>'+money(x.bought)+'</td><td>'+money(x.sold)+'</td></tr>').join('')+'</tbody></table></div></div>';
+  };
+  const oldMarketPanel = marketPanel;
+  marketPanel = function() { return oldMarketPanel() + transferSummary(); };
   window.__VES_SEASON_POLICY__ = {
     version: 1,
     rosterStatus,
