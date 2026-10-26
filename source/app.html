@@ -3504,7 +3504,6 @@ function mktFinalize(s) {
   MK.offers.filter(o => o.st === 'p' && !o.sched && TD[o.to] && !canAfford(o.to, o.fee)).forEach(o => { o.st = 'r'; o.log.push('买方预算不足'); });
   MK.offers.filter(o => o.st === 'p').forEach(o => (by[o.uid] = by[o.uid] || []).push(o));
   Object.values(by).forEach(L => { const sc = L.find(o => o.sched); L.sort((a, b) => b.fee - a.fee); const best = sc || L[0]; L.forEach(o => { if (o === best && (o.sched || (s > 17 && o.fee >= o.v * 0.95))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); });
-  mktAutoTrim();
   if (s > 17) return;
   // 历史时期：把和历史不同的决定记成叠加层 ov，实际发生的转会记成 done
   const ns = s + 1, ov = [], done = [], pids = new Set(MK.offers.map(o => o.pid).concat((MK.hexp || []).map(h => h.pid)));
@@ -4058,12 +4057,12 @@ document.addEventListener('click', e => {
   if (act === 'seeCups') { cupSeason = SEASON; return go('cups'); }
   if (act === 'mkMore') { MKLIM += 30; return render(); }
   if (act === 'mkRel') return mktAct('rel', el.dataset.id);
-  if (act === 'mkTrim') { mktAutoTrim(); save(); $('#dlg').close(); if (maybeEndSeason(true)) render(); return; }
+  if (act === 'mkTrim') { $('#dlg').close(); toast('不会自动解约球员。请手动出售或解约冗员后再进入下一季。'); return go('transfers'); }
   if (act === 'mkA') return mktAct('accept', el.dataset.id);
   if (act === 'mkR') return mktAct('reject', el.dataset.id);
   if (act === 'mkRenew') return mktAct('renew', el.dataset.id);
   if (act === 'mkList') { mktAct('list', el.dataset.id); if ($('#dlg').open) $('#dlg').close(); return; }
-  if (act === 'nextSeason' && mktActive() && overCap().length) { const oc = overCap(), d = $('#dlg'); d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">还有球队超过 ${SQUAD_MAX} 人</h2><p class="muted" style="margin:0">${oc.map(([t, n]) => `${esc(t)} 预计 ${n} 人`).join('、')}。可以回转会市场解约或卖人，也可以让系统把能力最低的球员解约。</p><div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn ghost" data-go="transfers">去转会市场处理</button><button class="btn primary" data-act="mkTrim">系统自动解约并进入下一季</button></div></div>`; if (!d.open) d.showModal(); return; }
+  if (act === 'nextSeason' && mktActive() && overCap().length) { const oc = overCap(), d = $('#dlg'); d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">还有球队超过 ${SQUAD_MAX} 人</h2><p class="muted" style="margin:0">${oc.map(([t, n]) => `${esc(t)} 预计 ${n} 人`).join('、')}。可以回转会市场解约或卖人，系统不会自动解约球员，必须由你处理冗员。</p><div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn ghost" data-go="transfers">去转会市场处理</button><button class="btn primary" data-act="mkTrim">去转会市场处理冗员</button></div></div>`; if (!d.open) d.showModal(); return; }
   if (act === 'nextSeason') { if (maybeEndSeason(true)) render(); return; }
   if (act === 'autoTarget') return autoSimTo(S.target);
   if (act === 'dropTarget') { S.target = null; save(); return render(); }
