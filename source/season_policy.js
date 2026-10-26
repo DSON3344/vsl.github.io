@@ -63,7 +63,7 @@
       '">' + st.count + '/32</span></div><p class="note" style="margin:0 0 10px;' + (st.over ? 'color:#e66;font-weight:800' : '') +
       '">' + msg + '</p><div class="tw"><table><thead><tr><th class="l">青训球员</th><th>位置</th><th>年龄</th><th>潜力</th><th>状态</th><th>青训 ID</th></tr></thead><tbody>' +
       (rows || '<tr><td colspan="6" class="muted">暂无青训梯队球员记录</td></tr>') +
-      '</tbody></table></div><p class="note" style="margin:8px 0 0">常规提拔年龄为 18 岁；16–17 岁仅在潜力达到 90 以上时符合天才球员例外。此版本先加入 UID 与名单诊断；自动提拔和所有交易入口的硬性阻断仍需后续接入结算流程。</p></div>';
+      '</tbody></table></div><p class="note" style="margin:8px 0 0">常规提拔年龄为 18 岁；16–17 岁仅在潜力达到 90 以上时符合天才球员例外。系统会在名单不足 28 人时自动提拔符合条件的青训球员；接受买入报价时会检查 32 人上限，进入下一季前还会再次检查预计名单。</p></div>';
   };
 
   const promoteEligibleAcademy = () => {
