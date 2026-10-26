@@ -378,7 +378,7 @@ function rollSalt(s) { S.salt = S.salt || {}; S.salt[s] = newSalt(); OFF_CACHE =
 function newSeason() {
   const teams = HIST.s1.slice();
   const fx = ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null })));
-  return { season: 1, teams, promoted: [], fx, demo: false, archive: [], salt: { 1: newSalt() } };
+  return { season: 1, teams, promoted: [], fx, demo: false, archive: [], salt: { 1: newSalt() }, rebootVersion: 1, identityRegistry: {} };
 }
 const DIRTY = new Set();
 // 本机存档：先按原样存；空间不够时改存压缩版（约原大小的 1/5），读档时自动解压
@@ -433,9 +433,22 @@ S = load();
 if (!S) { S = newSeason(); S.updated = 0; localSave(); }
 // S18 参赛名单改过（泽尼联回到威超、飞鹰不升级）：旧名单的 S18 进度作废，重新开始
 const sameTeams = (a, b) => a && b && a.length === b.length && a.slice().sort().join() === b.slice().sort().join();
-function migrateState() { return false;
-  const a18 = (S.archive || []).find(A => A.s === 18);
-  if ((S.season === 18 && !sameTeams(S.teams, HIST.s18)) || (a18 && !sameTeams(a18.teams, HIST.s18))) { S = newSeason(); S.updated = Date.now(); for (let i = 0; i < 38; i++) DIRTY.add(i); S.migrated = 1; return true; }
+function migrateState() {
+  // First launch of the clean-simulation model: discard prior simulated seasons and match results,
+  // while keeping user-edited player profiles. Stable identity/first-appearance metadata is rebuilt
+  // from the immutable roster index in HIST, not from the old simulated statistics.
+  if (!(S && S.rebootVersion >= 1)) {
+    const edits = S && S.edits ? S.edits : {};
+    const resetAt = Date.now();
+    S = newSeason();
+    S.rebootVersion = 1;
+    S.identityRegistry = {};
+    S.edits = edits;
+    S.updated = resetAt;
+    S.reset = resetAt;
+    S.migrated = 1;
+    return true;
+  }
   return false;
 }
 function applyState() { if (migrateState()) { localSave(); setTimeout(() => cloudQueue(), 0); } if (!S.archive) S.archive = []; SEASON = S.season || 1; if (GROWN !== SEASON) applyGrowth(); S.archive.forEach(A => { if (!HS[A.s] || HS[A.s].sim) registerArchive(A); }); }
@@ -611,7 +624,7 @@ function acadKid(t, born, k) {
 const kidRating = (k, s) => Math.round(Math.max(40, k.pot - Math.max(0, 22 - (s - k.born)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2));
 function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR_TPL[k.line]).forEach(([a, d]) => o[a] = Math.max(20, Math.min(99, Math.round(r + d + (k.prof[a] || 0))))); return o; }
 function acadCohort(t, born) { const n = 2 + (ghash('acn|' + t + '|' + born) < 0.35 ? 1 : 0); for (let k = 0; k < n; k++) ACAD[t].push(acadKid(t, born, k)); }
-function acadInit() { ACAD = {}; Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 18 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); }
+function acadInit() { ACAD = {}; const base = SEASON || 18; Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = base - 20; b <= base - 15; b++) acadCohort(t, b); }); }
 function acadNext(s) { Object.keys(TD).forEach(t => { ACAD[t].forEach(k => { if (k.status === 'academy' && s - k.born > 20) k.status = 'released'; }); acadCohort(t, s - 15); }); }
 let HIST_FIRST = null;
 function histFirst() { if (HIST_FIRST) return HIST_FIRST; HIST_FIRST = {}; Object.keys(HIST.squads || {}).map(Number).sort((a, b) => a - b).forEach(s => Object.entries(HIST.squads[s]).forEach(([t, l]) => l.forEach(([pid, , r]) => { if (!HIST_FIRST[pid]) HIST_FIRST[pid] = { s, t, r }; }))); return HIST_FIRST; }
@@ -1031,7 +1044,7 @@ function applyGrowth() {
   if (GROWN && GROWN !== SEASON && ALLP_READY) syncAllPlayers();
   GROWN = SEASON;
 }
-const MIGRATED = migrateState(); if (MIGRATED) { localSave(); }
+const MIGRATED = migrateState(); if (MIGRATED) { localSave(); setTimeout(() => cloudQueue(), 0); }
 if (!S.archive) S.archive = [];
 SEASON = S.season || 1;
 applyGrowth();
@@ -3491,7 +3504,6 @@ function mktFinalize(s) {
   MK.offers.filter(o => o.st === 'p' && !o.sched && TD[o.to] && !canAfford(o.to, o.fee)).forEach(o => { o.st = 'r'; o.log.push('买方预算不足'); });
   MK.offers.filter(o => o.st === 'p').forEach(o => (by[o.uid] = by[o.uid] || []).push(o));
   Object.values(by).forEach(L => { const sc = L.find(o => o.sched); L.sort((a, b) => b.fee - a.fee); const best = sc || L[0]; L.forEach(o => { if (o === best && (o.sched || (s > 17 && o.fee >= o.v * 0.95))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); });
-  mktAutoTrim();
   if (s > 17) return;
   // 历史时期：把和历史不同的决定记成叠加层 ov，实际发生的转会记成 done
   const ns = s + 1, ov = [], done = [], pids = new Set(MK.offers.map(o => o.pid).concat((MK.hexp || []).map(h => h.pid)));
@@ -4045,12 +4057,12 @@ document.addEventListener('click', e => {
   if (act === 'seeCups') { cupSeason = SEASON; return go('cups'); }
   if (act === 'mkMore') { MKLIM += 30; return render(); }
   if (act === 'mkRel') return mktAct('rel', el.dataset.id);
-  if (act === 'mkTrim') { mktAutoTrim(); save(); $('#dlg').close(); if (maybeEndSeason(true)) render(); return; }
+  if (act === 'mkTrim') { $('#dlg').close(); toast('不会自动解约球员。请手动出售或解约冗员后再进入下一季。'); return go('transfers'); }
   if (act === 'mkA') return mktAct('accept', el.dataset.id);
   if (act === 'mkR') return mktAct('reject', el.dataset.id);
   if (act === 'mkRenew') return mktAct('renew', el.dataset.id);
   if (act === 'mkList') { mktAct('list', el.dataset.id); if ($('#dlg').open) $('#dlg').close(); return; }
-  if (act === 'nextSeason' && mktActive() && overCap().length) { const oc = overCap(), d = $('#dlg'); d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">还有球队超过 ${SQUAD_MAX} 人</h2><p class="muted" style="margin:0">${oc.map(([t, n]) => `${esc(t)} 预计 ${n} 人`).join('、')}。可以回转会市场解约或卖人，也可以让系统把能力最低的球员解约。</p><div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn ghost" data-go="transfers">去转会市场处理</button><button class="btn primary" data-act="mkTrim">系统自动解约并进入下一季</button></div></div>`; if (!d.open) d.showModal(); return; }
+  if (act === 'nextSeason' && mktActive() && overCap().length) { const oc = overCap(), d = $('#dlg'); d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">还有球队超过 ${SQUAD_MAX} 人</h2><p class="muted" style="margin:0">${oc.map(([t, n]) => `${esc(t)} 预计 ${n} 人`).join('、')}。可以回转会市场解约或卖人，系统不会自动解约球员，必须由你处理冗员。</p><div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn ghost" data-go="transfers">去转会市场处理</button><button class="btn primary" data-act="mkTrim">去转会市场处理冗员</button></div></div>`; if (!d.open) d.showModal(); return; }
   if (act === 'nextSeason') { if (maybeEndSeason(true)) render(); return; }
   if (act === 'autoTarget') return autoSimTo(S.target);
   if (act === 'dropTarget') { S.target = null; save(); return render(); }
