@@ -624,7 +624,7 @@ function acadKid(t, born, k) {
 const kidRating = (k, s) => Math.round(Math.max(40, k.pot - Math.max(0, 22 - (s - k.born)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2));
 function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR_TPL[k.line]).forEach(([a, d]) => o[a] = Math.max(20, Math.min(99, Math.round(r + d + (k.prof[a] || 0))))); return o; }
 function acadCohort(t, born) { const n = 2 + (ghash('acn|' + t + '|' + born) < 0.35 ? 1 : 0); for (let k = 0; k < n; k++) ACAD[t].push(acadKid(t, born, k)); }
-function acadInit() { ACAD = {}; Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 18 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); }
+function acadInit() { ACAD = {}; const base = SEASON || 18; Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = base - 20; b <= base - 15; b++) acadCohort(t, b); }); }
 function acadNext(s) { Object.keys(TD).forEach(t => { ACAD[t].forEach(k => { if (k.status === 'academy' && s - k.born > 20) k.status = 'released'; }); acadCohort(t, s - 15); }); }
 let HIST_FIRST = null;
 function histFirst() { if (HIST_FIRST) return HIST_FIRST; HIST_FIRST = {}; Object.keys(HIST.squads || {}).map(Number).sort((a, b) => a - b).forEach(s => Object.entries(HIST.squads[s]).forEach(([t, l]) => l.forEach(([pid, , r]) => { if (!HIST_FIRST[pid]) HIST_FIRST[pid] = { s, t, r }; }))); return HIST_FIRST; }
