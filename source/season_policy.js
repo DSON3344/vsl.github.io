@@ -87,7 +87,7 @@
       let guard = 0;
       while (PDB[team].length < 28 && guard++ < 8) {
         const candidates = (ACAD[team] || []).filter(k => k.status === 'academy' &&
-          (SEASON - k.born >= 18 || (SEASON - k.born < 17 && SEASON - k.born >= 15 && k.pot >= 90)) &&
+          (SEASON - k.born >= 18 || (SEASON - k.born >= 16 && SEASON - k.born < 18 && Number(k.pot) >= 90)) &&
           !(records[team] || []).some(p => p.acad === k.id));
         candidates.sort((a,b) => kidRating(b,SEASON)-kidRating(a,SEASON) || b.pot-a.pot);
         let kid = candidates[0];
