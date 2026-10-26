@@ -668,6 +668,7 @@
       }
       PDB[team].forEach(p => { p.team = team; if (p.uid) { BY_TN[team+'|'+p.name]=p; TEAM_OF_UID[p.uid]=team; } });
     });
+    if (typeof buildAllPlayers === 'function') buildAllPlayers();
   };
   const oldApplyGrowth = applyGrowth;
   applyGrowth = function() { oldApplyGrowth(); promoteEligibleAcademy(); assignAll(); };
