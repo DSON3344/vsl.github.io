@@ -4256,7 +4256,7 @@ function winterPanel() {
   const MK = S.market && S.market[winKey(SEASON)];
   if (!MK || isPending(SEASON)) return playedRounds() < WIN_A && !isPending(SEASON) ? `<div class="panel"><div class="ph"><div><div class="eyebrow">Winter window</div><h2>冬窗</h2></div><span class="note">第 ${WIN_A} 轮踢完后开启</span></div><p class="note" style="margin:0">赛季过半时，各队会按上半程战绩做战术评估：成绩不如预期或身陷降级区的球队，会针对阵容分析报告里优先级高的位置补强。冬窗开到第 ${WIN_B} 轮前，期间你可以替卖方接受或拒绝报价，成交后球员马上换队。</p></div>` : '';
   const open = winActive(), cl = (t, tip) => TD[t] ? `<span class="tname" style="display:inline-flex;vertical-align:middle" data-tip="${esc(tip || 'plan:' + t)}">${crest(t, 18)}<span>${esc(t)}</span></span>` : `<span class="muted">${esc(t)}<span class="dim" style="font-size:11px"> ${esc(extTag(t))}</span></span>`;
-  const pend = MK.offers.filter(o => o.st === 'p'), done = MK.offers.filter(o => o.st !== 'p'), ST = { a: ['成交', 'good'], r: ['未成交', ''] };
+  const pend = MK.offers.filter(o => o.st === 'p'), done = MK.offers.filter(o => o.st !== 'p'), ST = { a: ['成交', 'good'], r: ['未成交', ''], x: ['另选下家', ''] };
   return `<div class="panel" style="${open ? 'border-color:var(--gold)' : ''}"><div class="ph"><div><div class="eyebrow">Winter window</div><h2>冬窗 · ${SN(SEASON)} 第 ${WIN_A + 1}–${WIN_B} 轮</h2></div><span class="note">${open ? `开放中 · ${pend.length} 份报价待处理 · 第 ${WIN_B} 轮踢完关窗，没处理的按卖方常规决定` : '已关窗'}</span></div>
     <details ${open ? 'open' : ''}><summary class="note" style="cursor:pointer">上半程战术评估（${MK.eval.length} 队）</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th class="l">球队</th><th>名次</th><th>按实力预期</th><th>积分</th><th class="l">管理层评估</th><th class="l">补强方向</th></tr></thead><tbody>
     ${MK.eval.slice().sort((a, b) => a.rk - b.rk).map(e => `<tr><td class="l">${cl(e.t)}</td><td>${e.rk}</td><td class="dim">${e.ex}</td><td>${e.pts}</td><td class="l" style="font-size:12px;color:${e.diff >= 2 || e.rk >= 16 ? '#e66' : 'inherit'}">${esc(e.mood)}</td><td class="l muted" style="font-size:12px">${e.needs.join('、') || '–'}</td></tr>`).join('')}
@@ -4437,23 +4437,82 @@ function mktLoanIn(uid, t) {
   MK.offers.forEach(x => { if (x.uid === uid && x !== o && x.st === 'p') { x.st = 'x'; x.log.push('另选下家'); } });
   toast(`${T.p.name} 租借至 ${t}（一季）`); save(); GROWN = 0; applyGrowth(); render();
 }
-// 你替这支球队出价：按卖方开价买，球员愿意、预算够、名单没满就马上成交
-function mktBuy(uid, t) {
-  const W = winActive() ? S.market[winKey(SEASON)] : null, late = mktLate(); if (!W && !mktActive()) return;
-  const MK = W || mktGet(), C = W ? winC() : mktCtx(MS()), T = buyTargets(t, MK, C, !!W).find(x => x.p.uid === uid);
-  if (!T) { toast('这名球员现在买不到'); return render(); }
-  const size = W || late ? (PDB[t] || []).length : projSize(t);
-  if (TD[t] && size + 1 > SQUAD_MAX) { toast(`⚠ ${t} 一线队已满 ${SQUAD_MAX} 人，先在下方「清理冗员」解约或挂牌再买人`); return render(); }
-  if (TD[t] && !canAfford(t, T.ask)) { toast(`${t} 转会预算不够（卖方要价 ${fee$(T.ask)}）`); return render(); }
-  if (T.will < WILL_MIN) { toast(`${T.p.name} 不愿加盟 ${t}（意愿只有 ${Math.round(T.will * 100)}%）`); return render(); }
-  const pid = UIDPID[uid] ?? (String(uid).startsWith('H|') ? +String(uid).slice(2) : null);
-  let o;
-  if (W) { o = { id: 'w' + (++W.seq), uid, pid, name: T.p.name, pos: T.p.pos, a: T.a, r: T.r, v: T.v, from: T.from, to: t, fee: T.ask, max: T.ask, round: 1, st: 'a', log: [], need: T.G.name, ext: T.ext, will: T.will, user: 1 }; W.offers.push(o); }
-  else { o = mktOffer(MK, T.p, T.from, t, C, seeded('buy|' + uid + '|' + t + '|' + SEASON), 1, 1); o.fee = T.ask; o.max = T.ask; o.v = T.v; o.user = 1; o.st = 'a'; if (T.ext) o.ext = 1; if (late) o.late = 1; if (MK.listed) delete MK.listed[uid]; }
-  o.log.push(`${t} 按卖方要价 ${fee$(T.ask)} 出价`, '成交');
+/* ---------- 谈判：我方出价（卖方同意 / 还价 / 拒绝），对方来买时我方可以抬价 ---------- */
+function bidCtx(uid, t) { const W = winActive() ? S.market[winKey(SEASON)] : null, late = mktLate(); if (!W && !mktActive()) return null; const MK = W || mktGet(), C = W ? winC() : mktCtx(MS()); return { W, late, MK, C, T: buyTargets(t, MK, C, !!W).find(x => x.p.uid === uid) }; }
+const bidKey = (uid, t) => uid + '|' + t + '|' + (winActive() ? 'w' : 's') + SEASON;
+function bidState(uid, t) { S.bids = S.bids || {}; Object.keys(S.bids).forEach(k => { if (S.bids[k].season !== SEASON) delete S.bids[k]; }); return S.bids[bidKey(uid, t)] || null; }
+const sellerReserve = (T, t) => Math.max(1, Math.round(T.ask * (0.92 + seeded('res|' + T.p.uid + '|' + t + '|' + SEASON + saltOf(SEASON))() * 0.16)));
+const bidWill = (T, fee) => Math.min(0.95, T.will + Math.max(0, Math.min(0.25, (fee / Math.max(1, T.v) - 1) * 0.6)));
+function bidCheck(X, t, fee) {
+  if (!X || !X.T) return '这名球员现在买不到';
+  const size = X.W || X.late ? (PDB[t] || []).length : projSize(t); if (TD[t] && size + 1 > SQUAD_MAX) return `${t} 一线队已满 ${SQUAD_MAX} 人，先在「清理冗员」解约或挂牌`;
+  if (TD[t] && !canAfford(t, fee)) return `${t} 转会预算不够（剩 ${money(finState()[t].rem)}）`; return null;
+}
+function bidDeal(X, t, fee) {
+  const { W, late, MK, C, T } = X, uid = T.p.uid, pid = UIDPID[uid] ?? (String(uid).startsWith('H|') ? +String(uid).slice(2) : null); let o;
+  if (W) { o = { id: 'w' + (++W.seq), uid, pid, name: T.p.name, pos: T.p.pos, a: T.a, r: T.r, v: T.v, from: T.from, to: t, fee, max: fee, round: 1, st: 'a', log: [], need: T.G.name, ext: T.ext, will: T.will, user: 1 }; W.offers.push(o); }
+  else { o = mktOffer(MK, T.p, T.from, t, C, seeded('buy|' + uid + '|' + t + '|' + SEASON), 1, 1); o.fee = fee; o.max = fee; o.v = T.v; o.user = 1; o.st = 'a'; if (T.ext) o.ext = 1; if (late) o.late = 1; if (MK.listed) delete MK.listed[uid]; }
+  const B = bidState(uid, t); o.log.push(`${t} 出价 ${fee$(fee)}${B && B.n > 1 ? `（谈了 ${B.n} 轮）` : ''}`, '成交'); delete S.bids[bidKey(uid, t)];
   MK.offers.forEach(x => { if (x.uid === uid && x !== o && x.st === 'p') { x.st = 'x'; x.log.push('另选下家'); } });
-  toast(`${T.p.name} 以 ${fee$(T.ask)} 加盟 ${t}`);
+  toast(`${T.p.name} 以 ${fee$(fee)} 加盟 ${t}`);
   if (W) return winApply(); if (late) return mktLateApply(MS()); save(); render();
+}
+// 卖方回应：报价到心理价位就同意（球员也要愿意）；差一点就还价；差太多就拒绝；谈 4 轮还谈不拢就不谈了
+function bidSubmit(uid, t, fee) {
+  const X = bidCtx(uid, t), err = bidCheck(X, t, fee); if (err) return { res: 'err', why: err };
+  const T = X.T, k = bidKey(uid, t); S.bids = S.bids || {}; const B = S.bids[k] = S.bids[k] || { uid, t, name: T.p.name, from: T.from, n: 0, season: SEASON };
+  if (B.n >= 4 || B.closed) { B.closed = 1; save(); return { res: 'reject', why: `${T.from} 已经不想再谈了（这个转会窗谈了 ${B.n} 轮）` }; }
+  B.n++; B.last = fee; const res = sellerReserve(T, t), w = bidWill(T, fee);
+  if (fee >= res) { if (w < WILL_MIN) { save(); return { res: 'reject', why: `${T.from} 同意这个价，但 ${T.p.name} 不愿加盟 ${t}（意愿 ${Math.round(w * 100)}%）。报价再高一点他可能会改变主意。` }; } bidDeal(X, t, fee); return { res: 'accept', fee }; }
+  if (fee >= res * 0.8) { const c = Math.max(fee + 1, Math.round(res * (B.n >= 3 ? 1 : 1.04 + seeded('ctr|' + k + B.n)() * 0.06))); B.counter = c; save(); return { res: 'counter', fee: c, why: `${T.from} 觉得报价偏低，还价 ${fee$(c)}` + (w < WILL_MIN ? `（${T.p.name} 现在意愿只有 ${Math.round(w * 100)}%）` : '') }; }
+  B.counter = null; save(); return { res: 'reject', why: `${T.from} 拒绝：报价太低，连还价都不想谈` + (B.n >= 3 ? `（已经谈了 ${B.n} 轮，最多 4 轮）` : '') };
+}
+function bidAcceptCounter(uid, t) { const B = bidState(uid, t); if (!B || !B.counter) return { res: 'err', why: '对方没有还价' }; const X = bidCtx(uid, t), err = bidCheck(X, t, B.counter); if (err) return { res: 'err', why: err }; const w = bidWill(X.T, B.counter); if (w < WILL_MIN) return { res: 'reject', why: `${X.T.p.name} 不愿加盟（意愿 ${Math.round(w * 100)}%）` }; bidDeal(X, t, B.counter); return { res: 'accept', fee: B.counter }; }
+const amtBox = (id, v, step) => `<div class="btns" style="gap:6px;align-items:center"><button class="btn ghost" data-act="amtStep" data-for="${id}" data-d="${-step}" style="padding:4px 12px;font-size:16px">−</button><span style="font-size:18px;color:var(--gold)">ⰵ</span><input id="${id}" type="number" min="1" step="1" value="${v}" style="width:110px;font-size:18px;padding:6px 8px;background:var(--bg-2,#11151c);color:inherit;border:1px solid var(--line-2,#333);border-radius:8px;text-align:right"><span style="font-size:16px">M</span><button class="btn ghost" data-act="amtStep" data-for="${id}" data-d="${step}" style="padding:4px 12px;font-size:16px">+</button></div>`;
+function bidDlg(uid, t) {
+  const X = bidCtx(uid, t); if (!X || !X.T) { toast('这名球员现在买不到'); return; } const T = X.T, B = bidState(uid, t), F = TD[t] ? finState()[t] : null, step = Math.max(1, Math.round(T.v * 0.05));
+  const lo = Math.round(T.ask * 0.9), hi = Math.round(T.ask * 1.1), d = $('#dlg'); window.__bid = { uid, t };
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:560px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div><div class="eyebrow">${X.W ? '冬窗' : '转会窗'} · ${esc(t)} 出价</div><h2 style="font-size:20px;font-weight:900;margin:4px 0">${esc(T.p.name)} <span class="dim" style="font-size:13px;font-weight:400">${esc(T.p.pos)} · ${T.a} 岁 · 能力 ${T.r} / 潜力 ${T.pot}</span></h2>
+    <p class="note" style="margin:0">现属 ${esc(T.from)}（${esc(T.imp)}${T.tag ? ' · ' + T.tag : ''}）· 身价 ${fee$(T.v)} · 卖方预计要价约 ${fee$(lo)}–${fee$(hi)} · 球员加盟意愿 ${Math.round(T.will * 100)}%${F ? ` · ${esc(t)} 预算剩余 ${money(F.rem)}` : ''}</p></div>
+    ${amtBox('bidAmt', B && B.counter ? B.counter : B && B.last ? B.last : T.v, step)}
+    <p class="note" style="margin:0">用 − / + 调整（每次 ${fee$(step)}），或直接输入金额。报价越高，球员越愿意来；卖方最多谈 4 轮${B ? `（已谈 ${B.n} 轮）` : ''}。</p>
+    <div id="bidRes">${B && B.counter ? `<div style="padding:10px 12px;border:1px solid var(--gold);border-radius:10px">上一轮 ${esc(T.from)} 还价 <b style="color:var(--gold)">${fee$(B.counter)}</b> <button class="btn primary" data-act="bidAccC" style="padding:4px 10px;font-size:12px;margin-left:8px">接受还价</button></div>` : ''}</div>
+    <div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="bidGo">提出报价</button></div></div>`;
+  if (!d.open) d.showModal();
+}
+function bidShow(r) {
+  const el = $('#bidRes'); if (!el) return; const col = { accept: 'var(--win,#3c9)', counter: 'var(--gold)', reject: '#e66', err: '#e66' }[r.res];
+  el.innerHTML = `<div style="padding:10px 12px;border:2px solid ${col};border-radius:10px"><b style="color:${col}">${r.res === 'accept' ? `成交！${fee$(r.fee)}` : r.res === 'counter' ? '对方还价' : r.res === 'err' ? '无法出价' : '被拒绝'}</b><p style="margin:4px 0 0;font-size:13px">${esc(r.res === 'accept' ? '交易完成，球员已加入。' : r.why)}</p>${r.res === 'counter' ? `<button class="btn primary" data-act="bidAccC" style="padding:4px 10px;font-size:12px;margin-top:6px">接受还价 ${fee$(r.fee)}</button> <span class="note">或者调整金额再出价</span>` : ''}</div>`;
+  if (r.res === 'counter') { const i = $('#bidAmt'); if (i) i.value = r.fee; }
+  if (r.res === 'accept') document.querySelectorAll('#dlg [data-act="bidGo"]').forEach(b => b.remove());
+}
+function bidGo() { const B = window.__bid, i = $('#bidAmt'); if (!B || !i) return; const fee = Math.max(1, Math.round(+i.value || 0)), el = $('#bidRes'), btn = document.querySelector('#dlg [data-act="bidGo"]');
+  if (el) el.innerHTML = `<div class="note" style="padding:10px 12px;border:1px dashed var(--line-2,#333);border-radius:10px">已向对方提出 ${fee$(fee)}，等待回应…</div>`; if (btn) btn.disabled = true;
+  setTimeout(() => { const r = bidSubmit(B.uid, B.t, fee); bidShow(r); if (btn && r.res !== 'accept') btn.disabled = false; if (r.res !== 'accept') render(); }, 900); }
+// 对方来买我方球员：抬价（说一个价）→ 买方能接受就成交，不能接受可能出到他的上限，或者放弃
+function ctrDlg(id, win) {
+  const MK = win ? S.market[winKey(SEASON)] : mktGet(), o = MK && MK.offers.find(x => x.id === id); if (!o || o.st !== 'p') return; const d = $('#dlg'), step = Math.max(1, Math.round(o.v * 0.05)); window.__ctr = { id, win };
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:540px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div><div class="eyebrow">抬高报价</div><h2 style="font-size:20px;font-weight:900;margin:4px 0">${esc(o.name)} → ${esc(o.to)}</h2><p class="note" style="margin:0">${esc(o.to)} 现在出 ${fee$(o.fee)} · 身价 ${fee$(o.v)}${o.round > 1 ? ` · 已加价 ${o.round - 1} 次` : ''}。说出你的要价：对方能接受就马上成交；超出对方承受范围的话，对方可能出到他的上限，也可能直接放弃。</p></div>
+    ${amtBox('ctrAmt', Math.round(o.fee * 1.15), step)}
+    <div id="ctrRes"></div>
+    <div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="ctrGo">提出要价</button></div></div>`;
+  if (!d.open) d.showModal();
+}
+function ctrGo() {
+  const C2 = window.__ctr, i = $('#ctrAmt'); if (!C2 || !i) return; const MK = C2.win ? S.market[winKey(SEASON)] : mktGet(), o = MK.offers.find(x => x.id === C2.id); if (!o || o.st !== 'p') return;
+  const fee = Math.max(1, Math.round(+i.value || 0)), el = $('#ctrRes'), btn = document.querySelector('#dlg [data-act="ctrGo"]'); if (btn) btn.disabled = true;
+  if (el) el.innerHTML = `<div class="note" style="padding:10px 12px;border:1px dashed var(--line-2,#333);border-radius:10px">已向 ${esc(o.to)} 开价 ${fee$(fee)}，等待回应…</div>`;
+  setTimeout(() => {
+    if (TD[o.to] && !o.sched) o.max = Math.min(o.max, Math.max(o.fee, finState()[o.to].rem));
+    const rnd = seeded('ctr|' + o.id + '|' + o.round + '|' + fee + '|' + SEASON); let msg, col;
+    if (fee <= o.fee) { msg = '这个价不比对方现在的报价高，直接按「接受」就行。'; col = 'var(--gold)'; }
+    else if (fee <= o.max) { o.log.push(`卖方要价 ${fee$(fee)}，买方同意`); o.fee = fee; o.round++; msg = `${o.to} 同意 ${fee$(fee)}！`; col = 'var(--win,#3c9)'; if (C2.win) winAct('accept', o.id); else mktAct('accept', o.id); if (o.st !== 'a') msg += `但交易没成：${o.log[o.log.length - 1]}`; }
+    else if (o.max > o.fee && rnd() < 0.6) { o.log.push(`卖方要价 ${fee$(fee)}，买方最多出到 ${fee$(o.max)}`); o.fee = o.max; o.round++; msg = `${o.to} 说出不了 ${fee$(fee)}，最多出到 ${fee$(o.max)}。可以接受，或者拒绝。`; col = 'var(--gold)'; save(); render(); }
+    else { o.st = 'r'; o.log.push(`卖方要价 ${fee$(fee)}，买方觉得太贵，放弃`); msg = `${o.to} 觉得 ${fee$(fee)} 太贵，放弃了。`; col = '#e66'; save(); render(); }
+    if (el) el.innerHTML = `<div style="padding:10px 12px;border:2px solid ${col};border-radius:10px;font-size:13px">${esc(msg)}</div>`; if (btn) btn.remove();
+  }, 900);
 }
 function offerGroupsHtml(pend, win, sellerCol) {
   if (!pend.length) return '';
@@ -4462,7 +4521,7 @@ function offerGroupsHtml(pend, win, sellerCol) {
   return `<div class="tw"><table><thead><tr><th class="l">球员 / 买方</th><th>报价</th><th>身价</th><th>球员意愿</th><th>买方剩余预算</th><th class="l">决定</th></tr></thead><tbody>${G.map(L => { const o0 = L[0];
     return `<tr style="background:rgba(255,255,255,.03)"><td class="l" colspan="5">${mkPl(o0)}${sellerCol ? ` · 卖方 ${mkCl(o0.from, 'imp:' + o0.uid + ':' + o0.from + ':sell')}` : ` <span class="dim" style="font-size:11px" data-tip="imp:${esc(o0.uid)}:${esc(o0.from)}:sell">· 对本队的重要性（悬停）</span>`} <span class="dim" style="font-size:11px">· ${L.length} 家报价</span></td><td class="l">${!win && L.length >= 2 ? `<button class="btn ghost" data-act="mkBid" data-id="${esc(o0.uid)}" style="padding:3px 9px;font-size:12px">发起竞价</button>` : ''}</td></tr>` +
       L.slice().sort((a, b) => b.fee - a.fee).map(o => { const wl = o.will == null ? null : Math.round(willNow(o) * 100);
-        return `<tr><td class="l" style="padding-left:24px">→ ${mkCl(o.to, 'imp:' + o.uid + ':' + o.to + ':buy')}${o.sched ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">历史</span>' : ''}${kindChip(o)}${o.round > 1 ? ` <span class="chip" style="font-size:10px;padding:0 5px">第 ${o.round} 次报价</span>` : ''}${o.need ? ` <span class="dim" style="font-size:11px">补${esc(o.need)}</span>` : ''}</td><td class="mono"><b style="color:var(--gold)">${fee$(o.fee)}</b></td><td class="mono dim">${fee$(o.v)}</td><td>${wl == null ? '–' : `<span style="color:${wl >= 60 ? 'var(--win,#3c9)' : wl >= WILL_MIN * 100 ? 'var(--gold)' : '#e66'}">${wl}%</span>${wl < WILL_MIN * 100 && !o.sched ? ' <span class="dim" style="font-size:10px">不愿去</span>' : ''}`}</td><td class="mono" style="font-size:12px">${TD[o.to] ? (() => { const r = finState()[o.to].rem; return `<span style="color:${r < o.fee && !o.sched ? '#e66' : 'inherit'}">${money(r)}</span>`; })() : '<span class="dim">外赛区</span>'}</td><td class="l"><span class="btns" style="gap:6px">${mkBtn(A[0], o.id, '🤖 助手')}${mkBtn(A[1], o.id, '接受', 1)}${mkBtn(A[2], o.id, '拒绝')}</span></td></tr>`; }).join(''); }).join('')}</tbody></table></div>`;
+        return `<tr><td class="l" style="padding-left:24px">→ ${mkCl(o.to, 'imp:' + o.uid + ':' + o.to + ':buy')}${o.sched ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">历史</span>' : ''}${kindChip(o)}${o.round > 1 ? ` <span class="chip" style="font-size:10px;padding:0 5px">第 ${o.round} 次报价</span>` : ''}${o.need ? ` <span class="dim" style="font-size:11px">补${esc(o.need)}</span>` : ''}</td><td class="mono"><b style="color:var(--gold)">${fee$(o.fee)}</b></td><td class="mono dim">${fee$(o.v)}</td><td>${wl == null ? '–' : `<span style="color:${wl >= 60 ? 'var(--win,#3c9)' : wl >= WILL_MIN * 100 ? 'var(--gold)' : '#e66'}">${wl}%</span>${wl < WILL_MIN * 100 && !o.sched ? ' <span class="dim" style="font-size:10px">不愿去</span>' : ''}`}</td><td class="mono" style="font-size:12px">${TD[o.to] ? (() => { const r = finState()[o.to].rem; return `<span style="color:${r < o.fee && !o.sched ? '#e66' : 'inherit'}">${money(r)}</span>`; })() : '<span class="dim">外赛区</span>'}</td><td class="l"><span class="btns" style="gap:6px">${mkBtn(A[0], o.id, '🤖 助手')}${mkBtn(A[1], o.id, '接受', 1)}${mkBtn('ctrOpen', o.id, '抬价', 0, win ? 'data-bw="1"' : '')}${mkBtn(A[2], o.id, '再考虑', 0, 'title="拒绝这个价，除非对方提高报价（对方可能加价，也可能放弃）"')}${mkBtn('rejFinal', o.id, '拒绝', 0, (win ? 'data-bw="1" ' : '') + 'title="直接拒绝，不卖"')}</span></td></tr>`; }).join(''); }).join('')}</tbody></table></div>`;
 }
 function teamTransferPanel(t) {
   const sum = mktActive(), W = winActive() && S.market && S.market[winKey(SEASON)], R2 = squadReport(t), col = { 高: '#e66', 中: 'var(--gold)', 低: 'var(--win,#3c9)' };
@@ -4490,8 +4549,8 @@ function teamTransferPanel(t) {
     ${sell.length ? offerGroupsHtml(sell, !!W, false) : '<p class="note" style="margin:0">暂时没有球队来买这支球队的球员。想卖人可以在下面合同到期区或冗员区挂牌，也可以在球员资料里挂牌。</p>'}
     ${!W && !late ? `<h3 style="font-size:14px;margin:14px 0 6px">合同到期 · ${exp.length} 人</h3>${exp.length ? `<div class="tw"><table><thead><tr><th class="l">球员</th><th>年龄</th><th>评分</th><th>留队意愿</th><th class="l">决定</th></tr></thead><tbody>${exp.map(expRow).join('')}</tbody></table></div>` : '<p class="note" style="margin:0">本季没有合同到期的球员。</p>'}` : ''}
     <h3 style="font-size:14px;margin:14px 0 6px">引援目标 · 按需要补强的位置</h3>
-    ${T.length ? `<div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">补强位置</th><th class="l">现属</th><th>能力 / 潜力</th><th>身价</th><th>卖方要价</th><th>加盟意愿</th><th class="l"></th></tr></thead><tbody>${T.map(x => { const wl = Math.round(x.will * 100), cant = (F && x.ask > F.rem) || x.will < WILL_MIN;
-      return `<tr><td class="l"><button class="lnk" ${plink(x.from, x.p.name)}><b>${esc(x.p.name)}</b></button> <span class="dim mono" style="font-size:11px">${esc(x.p.pos)} · ${x.a}岁</span>${x.tag ? ` <span class="chip" style="font-size:10px;padding:0 5px">${x.tag}</span>` : ''}</td><td class="l" style="font-size:12px">${x.G.name} <b style="color:${col[x.G.pri]}">${x.G.pri}</b></td><td class="l" style="font-size:12px">${mkCl(x.from)} <span class="dim">${esc(x.imp)}</span></td><td class="mono">${x.r} / ${x.pot}</td><td class="mono dim">${fee$(x.v)}</td><td class="mono"><b style="color:var(--gold)">${fee$(x.ask)}</b></td><td><span style="color:${wl >= 60 ? 'var(--win,#3c9)' : wl >= WILL_MIN * 100 ? 'var(--gold)' : '#e66'}">${wl}%</span></td><td class="l">${cant ? `<span class="dim" style="font-size:11px">${x.will < WILL_MIN ? '球员不愿来' : '预算不够'}</span>` : `<span class="btns" style="gap:4px"><button class="btn primary" data-act="mkBuy" data-id="${esc(x.p.uid)}" data-t="${esc(t)}" style="padding:4px 10px;font-size:12px">按要价买</button>${!W && !late && TD[x.from] && x.a <= 24 && (x.imp === '边缘球员' || x.imp === '重要轮换') ? `<button class="btn ghost" data-act="mkLoan" data-id="${esc(x.p.uid)}" data-t="${esc(t)}" style="padding:4px 10px;font-size:12px" title="租借一季，租借费约为身价的一成">租借 ${fee$(Math.max(1, Math.round(x.v * 0.1)))}</button>` : ''}</span>`}</td></tr>`; }).join('')}</tbody></table></div><p class="note" style="margin:6px 0 0">卖方要价按球员在原队的地位、年龄、潜力和合同算（挂牌的打 85 折，合同到期的打 7 折）。点「按要价买」：球员愿意、预算够、名单没满就马上成交。</p>` : '<p class="note" style="margin:0">阵容没有明显短板，或者市场上暂时没有合适的球员。</p>'}
+    ${T.length ? `<div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">补强位置</th><th class="l">现属</th><th>能力 / 潜力</th><th>身价</th><th>预计要价</th><th>加盟意愿</th><th class="l"></th></tr></thead><tbody>${T.map(x => { const wl = Math.round(x.will * 100), cant = F && x.v * 0.6 > F.rem, B = bidState(x.p.uid, t);
+      return `<tr><td class="l"><button class="lnk" ${plink(x.from, x.p.name)}><b>${esc(x.p.name)}</b></button> <span class="dim mono" style="font-size:11px">${esc(x.p.pos)} · ${x.a}岁</span>${x.tag ? ` <span class="chip" style="font-size:10px;padding:0 5px">${x.tag}</span>` : ''}</td><td class="l" style="font-size:12px">${x.G.name} <b style="color:${col[x.G.pri]}">${x.G.pri}</b></td><td class="l" style="font-size:12px">${mkCl(x.from)} <span class="dim">${esc(x.imp)}</span></td><td class="mono">${x.r} / ${x.pot}</td><td class="mono dim">${fee$(x.v)}</td><td class="mono" style="font-size:12px">${fee$(Math.round(x.ask * 0.9))}–${fee$(Math.round(x.ask * 1.1))}${B && B.counter ? `<br><span style="color:var(--gold)">还价 ${fee$(B.counter)}</span>` : B && B.closed ? '<br><span style="color:#e66">不谈了</span>' : ''}</td><td><span style="color:${wl >= 60 ? 'var(--win,#3c9)' : wl >= WILL_MIN * 100 ? 'var(--gold)' : '#e66'}">${wl}%</span></td><td class="l">${cant ? '<span class="dim" style="font-size:11px">预算不够</span>' : `<span class="btns" style="gap:4px"><button class="btn primary" data-act="bidOpen" data-id="${esc(x.p.uid)}" data-t="${esc(t)}" style="padding:4px 10px;font-size:12px">${B && B.counter ? '继续谈' : '出价'}</button>${!W && !late && TD[x.from] && x.a <= 24 && (x.imp === '边缘球员' || x.imp === '重要轮换') ? `<button class="btn ghost" data-act="mkLoan" data-id="${esc(x.p.uid)}" data-t="${esc(t)}" style="padding:4px 10px;font-size:12px" title="租借一季，租借费约为身价的一成">租借 ${fee$(Math.max(1, Math.round(x.v * 0.1)))}</button>` : ''}</span>`}</td></tr>`; }).join('')}</tbody></table></div><p class="note" style="margin:6px 0 0">点「出价」输入金额（或用 − / + 调整）向对方提出报价，等待回应：报价到卖方心理价位就成交，差一点会还价，差太多会被拒绝；最多谈 4 轮。卖方要价看球员在原队的地位、年龄、潜力和合同（挂牌的便宜一些，合同到期的更便宜）。</p>` : '<p class="note" style="margin:0">阵容没有明显短板，或者市场上暂时没有合适的球员。</p>'}
     ${(() => { const Ls = allLoans().filter(l => (l.from === t || l.to === t) && l.until >= SEASON && l.s0 <= SEASON + 1); if (!Ls.length) return ''; const winS = !W && !late;
       return `<h3 style="font-size:14px;margin:14px 0 6px">租借 · ${Ls.length}</h3><div class="rank-list">${Ls.map(l => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>${l.from === t ? '<b style="color:#c9a">租出</b>' : '<b style="color:#8ad">租入</b>'} <b>${esc(l.name)}</b> <span class="dim" style="font-size:12px">${l.from === t ? '→ ' + esc(l.to) : '← ' + esc(l.from)} · S${String(l.s0).padStart(2, '0')}–S${String(l.until).padStart(2, '0')}${l.s0 > SEASON ? '（下季开始）' : ''}</span></span><span>${winS && l.from === t && l.until === SEASON ? `<button class="btn ghost" data-act="loanExt" data-id="${esc(l.id)}" style="padding:3px 9px;font-size:12px">续租一季</button> <span class="dim" style="font-size:11px">不处理就回归</span>` : ''}</span></div>`).join('')}</div>`; })()}
     ${mine.length ? `<h3 style="font-size:14px;margin:14px 0 6px">本队在谈的引援 · ${mine.length}</h3><div class="rank-list">${mine.map(o => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>${mkPl(o)} <span class="dim" style="font-size:12px">← ${esc(o.from)}</span>${kindChip(o)}</span><span class="mono" style="color:var(--gold)">${fee$(o.fee)} <span class="dim" style="font-size:11px">等卖方决定</span></span></div>`).join('')}</div>` : ''}
@@ -5068,7 +5127,13 @@ document.addEventListener('click', e => {
   if (act === 'mkBid') return mktAct('bid', el.dataset.id);
   if (act === 'tTab') { TEAM_TAB = el.dataset.tab; return render(); }
   if (act === 'tGo') { teamSel = el.dataset.t; TEAM_TAB = 'trans'; if ($('#dlg').open) $('#dlg').close(); return go('teams'); }
-  if (act === 'mkBuy') return mktBuy(el.dataset.id, el.dataset.t);
+  if (act === 'bidOpen') return bidDlg(el.dataset.id, el.dataset.t);
+  if (act === 'bidGo') return bidGo();
+  if (act === 'bidAccC') { const B = window.__bid; if (!B) return; const r = bidAcceptCounter(B.uid, B.t); return bidShow(r); }
+  if (act === 'amtStep') { const i = document.getElementById(el.dataset.for); if (i) i.value = Math.max(1, Math.round((+i.value || 0) + (+el.dataset.d))); return; }
+  if (act === 'ctrOpen') return ctrDlg(el.dataset.id, el.dataset.bw === '1');
+  if (act === 'ctrGo') return ctrGo();
+  if (act === 'rejFinal') { const MK = el.dataset.bw === '1' ? S.market[winKey(SEASON)] : mktGet(), o = MK && MK.offers.find(x => x.id === el.dataset.id); if (o && o.st === 'p') { o.st = 'r'; o.log.push('卖方拒绝出售'); toast(`拒绝了 ${o.to} 对 ${o.name} 的报价`); save(); } return render(); }
   if (act === 'mkLoan') return mktLoanIn(el.dataset.id, el.dataset.t);
   if (act === 'loanExt') return loanExtend(el.dataset.id);
   if (act === 'kidAct') return kidDecide(el.dataset.id, el.dataset.k, el.dataset.to, +el.dataset.fee || 0);
