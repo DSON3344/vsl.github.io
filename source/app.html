@@ -2479,10 +2479,9 @@ const coachName = (seed, nat) => { const rnd = seeded('coach|' + seed); for (let
 // 球员转教练：没有执教经验，起步能力偏弱（随执教季数成长）；影响力看球员时代的成就（金球、梯队、名宿身份、巅峰）
 const wlHonOf2 = pid => WL && WL.byPid[pid] != null ? wlCareer(WL.byPid[pid]).hon.filter(h => h[0] === '金球奖').length : 0;
 function legendInfluence(pid, pk, clubs) {
-  // 只看这次模拟里的成就（威超金球）和威联赛时代的金球、在各队的名宿地位
-  let ballon = 0; try { ballon = awardsOfPid(pid).filter(x => x[0] === '金球奖').length; } catch (e) {}
-  try { if (WL && WL.byPid[pid] != null) ballon += (wlHonOf2(pid) || 0); } catch (e) {}
-  let tier = 0, legendClubs = 0; [...(clubs || [])].forEach(t => { try { const o = clubLegends(t).find(x => x.pid === pid); if (o) { legendClubs++; tier = Math.max(tier, o.tag === '队史传奇' ? 9 : o.tag === '名宿' ? 5 : 2); } } catch (e) {} });
+  // 只看威联赛时代的金球和在各队的出场（不能依赖本季的模拟结果，否则会和赛事模拟互相调用）
+  let ballon = 0, tier = 0, legendClubs = 0;
+  try { if (WL && WL.byPid[pid] != null) { const K = wlCareer(WL.byPid[pid]); ballon = K.hon.filter(h => h[0] === '金球奖').length; const by = {}; K.L.forEach(([, r]) => by[r.team] = (by[r.team] || 0) + r.apps + r.capps); [...(clubs || [])].forEach(t => { const n = by[t] || 0; if (n >= 150) { legendClubs++; tier = Math.max(tier, n >= 400 ? 9 : n >= 250 ? 5 : 2); } }); } } catch (e) {}
   return Math.round(Math.max(66, Math.min(99, 68 + (pk - 86) * 1.1 + ballon * 3.5 + tier + Math.min(2, legendClubs) * 1.5 + ghash('ci|' + pid) * 4)));
 }
 // 执教能力 = 基础能力 + 执教经验（名宿每执教一季 +1.5，最多 +14；职业教练本来就有经验）
