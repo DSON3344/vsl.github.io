@@ -477,6 +477,7 @@ JP[1].push('大和', '海斗', '莲', '阳翔', '湊', '凉', '颯太', '优斗'
 // 年龄 age0 是第 s0 季（默认 S18）的年龄；25 岁前朝潜力成长，26–30 岁巅峰，31 岁起逐年下滑
 function growthOf(p) {
   if (p._g) return p._g;
+  if (p.cv != null && rrOf(p.cv)) { const at = a => rateAtR(p.cv, a); return (p._g = { pot: peakR(p.cv), at, past: at }); }
   const A0 = p.age0, R0 = p.rating0, h = ghash('pot|' + p.name);
   const pot = p.potFix ? Math.max(R0, p.potFix) : A0 < 25 ? Math.min(97, R0 + Math.round((25 - A0) * (p.youth ? 1.4 + h * 1.8 : 0.5 + h * 0.9))) : R0;
   const dec = a => { let d = 0; for (let y = 31; y <= a; y++) d += 0.6 + (y - 31) * 0.45 + ghash(p.name + 'd' + y) * 0.5; return d; };
@@ -498,6 +499,45 @@ function growthOf(p) {
 }
 // 退役：34–36 岁（顶级球员多踢一年、门将多踢两年），33 岁后评分跌破 74 也会挂靴
 function retiresAt(p, age, rating) { const lim = 34 + Math.floor(ghash('ret|' + p.name) * 3) + (p.rating0 >= 90 ? 1 : 0) + (p.pos === 'GK' ? 2 : 0); return age >= lim || (age >= 33 && rating < 74) || age >= 39; }
+/* ---------- 能力重新推演（build_rerate.js 生成的 RERATE）：旧资料只留名字、位置、国籍、年龄和每季在哪队 ----------
+   S18 初始阵容的能力、属性、身价全部按同一条能力曲线重算；部分球员因伤病或个人原因没能兑现天赋 */
+const curveP = (P, pAge, a) => a < pAge ? P - Math.pow(pAge - a, 1.2) * 0.8 : a <= pAge + 2 ? P : P - Math.pow(a - pAge - 2, 1.45) * 0.85;
+const RR_GEN = {};
+function rrOf(key) { // 历史球员用 RERATE；资料库里没有编号的球员按名字固定生成一份
+  if (typeof key === 'number') return RERATE.p[key] || null;
+  if (RR_GEN[key]) return RR_GEN[key];
+  const [, t, name, age] = key.split('|'), k = 'rr|' + key, g = (() => { const u = Math.max(1e-6, ghash(k + 'u')), v = ghash(k + 'v'); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); })();
+  const tb = ['威龙', '猎豹', '金狮', '猛虎', '狂蜂'].includes(t) ? 3 : ['威尔福特', '切狐', '阿尔法骑士', '猛龙', '罗联', '森利西亚虎'].includes(t) ? 1 : -1.5;
+  let pot = Math.round(Math.max(70, Math.min(93, 83.5 + tb + 5 * g))), bt = 0, ba = 0, loss = 0;
+  if (pot >= 83 && ghash(k + 'b') < 0.14) { bt = ghash(k + 'bt') < 0.55 ? 1 : 2; ba = 20 + Math.floor(ghash(k + 'ba') * (bt === 1 ? 6 : 4)); loss = bt === 1 ? 5 + Math.floor(ghash(k + 'bl') * 8) : 4 + Math.floor(ghash(k + 'bl') * 6); }
+  return (RR_GEN[key] = [pot, 26 + Math.floor(ghash(k + 'pa') * 3), 18 - (+age || 25), bt, ba, loss]);
+}
+function rateAtR(key, a) {
+  const X = rrOf(key); if (!X) return null; const [pot, pAge, , bt, ba, loss] = X;
+  let P = pot; if (bt === 1 && a >= ba) P = pot - loss; else if (bt === 2 && a >= ba) P = pot - loss * Math.min(1, (a - ba + 1) / 3);
+  return Math.max(50, Math.min(99, Math.round(curveP(P, pAge, a) + (ghash('rn|' + key + '|' + a) - 0.5) * 1.6)));
+}
+const peakR = key => { let m = 0; for (let a = 17; a <= 38; a++) m = Math.max(m, rateAtR(key, a) || 0); return m; };
+const BUST_TXT = { 1: ['重伤', ['十字韧带断裂', '跟腱断裂', '膝盖半月板反复受伤', '脚踝粉碎性骨折', '慢性腰伤']], 2: ['个人因素', ['训练态度散漫', '场外风波不断', '心理压力过大、状态起伏', '与主帅长期不和', '沉迷夜生活']] };
+function bustChip(key, ageNow, kb) {
+  let B = null; if (kb) { const L = BUST_TXT[kb.type][1]; B = { type: BUST_TXT[kb.type][0], why: L[Math.floor(ghash('bw|' + kb.key) * L.length)], age: kb.age, pot: kb.pot, loss: kb.loss }; } else if (key != null) B = bustInfo(key);
+  if (!B || ageNow == null || ageNow < B.age) return '';
+  return `<span class="chip bad" title="原本潜力 ${B.pot}，${B.age} 岁起受${B.type}影响，上限降了约 ${B.loss} 分">天赋未兑现 · ${B.age} 岁${esc(B.why)}（${B.type}）</span>`;
+}
+function bustInfo(key) { const X = rrOf(key); if (!X || !X[3]) return null; const [pot, , , bt, ba, loss] = X, L = BUST_TXT[bt][1]; return { type: BUST_TXT[bt][0], why: L[Math.floor(ghash('bw|' + key) * L.length)], age: ba, pot, loss }; }
+(function rerateBase() {
+  const tpl = (line, pos) => { const t = { ...{ GK: { div: 3, han: 2, kic: 0, ref: 3, spd: -12, pos_s: 2 }, DF: { spd: -2, sho: -22, pas: -6, dri: -10, def: 4, phy: 3, men: 0, sta: 0 }, MF: { spd: 0, sho: -5, pas: 4, dri: 2, def: -8, phy: -3, men: 1, sta: 3 }, FW: { spd: 3, sho: 5, pas: -4, dri: 3, def: -30, phy: 0, men: 0, sta: -2 } }[line] }; if (/W|AM/.test(pos)) { t.dri = (t.dri || 0) + 3; t.spd = (t.spd || 0) + 3; } return t; };
+  Object.entries(PLAYER_DATABASE).forEach(([t, L]) => L.forEach(p => {
+    const pid = (() => { const i = HIST.players.findIndex(x => x && x[3] === t && x[0] === p.name); return i >= 0 ? i : null; })();
+    const key = pid != null && RERATE.p[pid] ? pid : 'n|' + t + '|' + p.name + '|' + p.age; p.cv = key;
+    p.rating = rateAtR(key, p.age); const line = ENGINE.LINE(p.pos), T = tpl(line, p.pos), A = {};
+    Object.entries(T).forEach(([k, d]) => A[k] = Math.max(25, Math.min(99, Math.round(p.rating + d + (ghash('at|' + key + '|' + k) - 0.5) * 10))));
+    p.attributes = A; p.value = 'ⰵ' + Math.max(1, Math.round(15 * Math.exp(0.17 * (p.rating - 80)) * (p.age < 24 ? 1.4 : p.age <= 28 ? 1.15 : p.age <= 30 ? 0.95 : 0.75))) + 'M'; p.cGP = p.cG = p.cA = p.tGP = p.tG = p.tA = 0;
+  }));
+  // 首发按新能力重排（阵型的位置不变）
+  Object.entries(TEAMS_DATA).forEach(([t, T]) => { const L = (PLAYER_DATABASE[t] || []).slice(); if (!L.length || !T.roster) return; const used = new Set();
+    T.roster = T.roster.map(r => { const ln = ENGINE.LINE(String(r.pos).replace(/^[LR](?=(CB|CM|DM|AM|ST|WB))/, '')); const c = L.filter(p => !used.has(p.name)).sort((a, b) => (ENGINE.LINE(b.pos) === ln) - (ENGINE.LINE(a.pos) === ln) || b.rating - a.rating)[0]; if (!c) return r; used.add(c.name); return { pos: r.pos, name: c.name, rating: c.rating }; }); });
+})();
 const PDB0 = {}; Object.entries(PDB).forEach(([t, l]) => PDB0[t] = l.map(p => JSON.parse(JSON.stringify(p))));
 const ROSTER0 = {}; Object.entries(TD).forEach(([t, T]) => ROSTER0[t] = T.roster.map(r => ({ ...r })));
 const STYLE0 = {}, COORDS0 = {}, FORMS = {}, FORM_OF0 = {};
@@ -581,7 +621,7 @@ const kidEligible = (k, season) => { const a = season - k.born; return k.status 
 function promoteKid(team, kid, season, no, rnd) {
   kid.status = 'first'; kid.promoted = season;
   const rating = kidRating(kid, season), age = season - kid.born;
-  const Y = { no, team, pos: kid.pos, nat: kid.nat, name: kid.name, rating, height: kid.height, weight: kid.weight, age, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: 'ⰵ' + valueM(rating, age) + 'M', attributes: kidAttrs(kid, season), youth: 1, acad: kid.id, potFix: kid.pot, rating0: rating, age0: age, s0: season, uid: 'Y|' + kid.name + (YOUTH_UID.has('Y|' + kid.name) ? '|' + team + season : ''), cEnd: season + 2 + Math.floor(rnd() * 2) };
+  const Y = { no, team, pos: kid.pos, nat: kid.nat, name: kid.name, rating, height: kid.height, weight: kid.weight, age, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: 'ⰵ' + valueM(rating, age) + 'M', attributes: kidAttrs(kid, season), youth: 1, acad: kid.id, potFix: kid.bt ? kid.pot - kid.loss : kid.pot, kidBust: kid.bt ? { type: kid.bt, age: kid.born + kid.ba - season + age, pot: kid.pot, loss: kid.loss, key: kid.id } : null, rating0: rating, age0: age, s0: season, uid: 'Y|' + kid.name + (YOUTH_UID.has('Y|' + kid.name) ? '|' + team + season : ''), cEnd: season + 2 + Math.floor(rnd() * 2) };
   YOUTH_UID.add(Y.uid); return Y;
 }
 // 转会窗延续期（下季前 4 轮）里成交的转会和解约：在整个夏窗推算完之后再执行
@@ -630,9 +670,12 @@ function acadKid(t, born, k) {
   let pot = 70 + rnd() * 13 + (acadBase(t) - 84) * 0.45; const g = rnd(); if (g < 0.015) pot = 92 + rnd() * 4; else if (g < 0.08) pot += 7 + rnd() * 4;
   pot = Math.round(Math.max(62, Math.min(96, pot)));
   const prof = {}; Object.keys(ATTR_TPL[line]).forEach(a => prof[a] = Math.round((rnd() - 0.5) * 14));
-  return { id: 'A|' + t + '|' + born + '|' + k, team: t, name, nat, pos, line, born, pot, prof, height: line === 'GK' ? 183 + Math.floor(rnd() * 12) : 168 + Math.floor(rnd() * 22), weight: 60 + Math.floor(rnd() * 20), status: 'academy' };
+  const id = 'A|' + t + '|' + born + '|' + k, bh = ghash(id + '|bust'); let bt = 0, ba = 0, loss = 0;
+  if (pot >= 84 && bh < 0.12) { bt = ghash(id + '|bt') < 0.55 ? 1 : 2; ba = 17 + Math.floor(ghash(id + '|ba') * 6); loss = bt === 1 ? 5 + Math.floor(ghash(id + '|bl') * 8) : 4 + Math.floor(ghash(id + '|bl') * 6); }
+  return { id, team: t, name, nat, pos, line, born, pot, bt, ba, loss, prof, height: line === 'GK' ? 183 + Math.floor(rnd() * 12) : 168 + Math.floor(rnd() * 22), weight: 60 + Math.floor(rnd() * 20), status: 'academy' };
 }
-const kidRating = (k, s) => Math.round(Math.max(40, k.pot - Math.max(0, 22 - (s - k.born)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2));
+const kidPot = (k, s) => { const a = s - k.born; return !k.bt || a < k.ba ? k.pot : k.pot - (k.bt === 1 ? k.loss : k.loss * Math.min(1, (a - k.ba + 1) / 3)); };
+const kidRating = (k, s) => Math.round(Math.max(40, kidPot(k, s) - Math.max(0, 22 - (s - k.born)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2));
 function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR_TPL[k.line]).forEach(([a, d]) => o[a] = Math.max(20, Math.min(99, Math.round(r + d + (k.prof[a] || 0))))); return o; }
 function acadCohort(t, born) { const n = 2 + (ghash('acn|' + t + '|' + born) < 0.35 ? 1 : 0); for (let k = 0; k < n; k++) ACAD[t].push(acadKid(t, born, k)); }
 function acadInit() { ACAD = {}; Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 18 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); }
@@ -3113,7 +3156,7 @@ function openPersonInner(pid, noRedirect) {
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(pos)}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(name)}</h3>
-      <div class="btns" style="margin-top:8px">${statusChips(pid)}<span class="chip mono" style="font-size:11px">${plyId(pid)}</span>${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const ph = phaseOf(pid), sp = spanOf(pid); if (ph.k === 'future') return `<span class="chip">${SN(ph.first)} 出道</span>`; if (ph.k === 'gap') return `<span class="chip">目前不在任何球队</span>`; const last = ph.last || (sp && sp[1]); return (sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span>` : '') + (last ? `<span class="chip">${SN(last)} 赛季后退役</span>` : ''); })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
+      <div class="btns" style="margin-top:8px">${statusChips(pid)}<span class="chip mono" style="font-size:11px">${plyId(pid)}</span>${bustChip(pid, ageAtSeason(pid, Math.min(SEASON, (lastSquadSeason(pid) || SEASON))))}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const ph = phaseOf(pid), sp = spanOf(pid); if (ph.k === 'future') return `<span class="chip">${SN(ph.first)} 出道</span>`; if (ph.k === 'gap') return `<span class="chip">目前不在任何球队</span>`; const last = ph.last || (sp && sp[1]); return (sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span>` : '') + (last ? `<span class="chip">${SN(last)} 赛季后退役</span>` : ''); })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
     ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, pf.f1 && pf.debutAge != null ? (pf.preEra ? `威联赛时代出道 · ${SN(pf.f1)} 时 ${pf.debutAge} 岁` : `${SN(pf.f1)} 出道 · ${pf.debutAge} 岁`) : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : SN(pf.lastS)} 退役 · ${pf.endAge} 岁` : pf.ageNowP != null && !(pf.f1 > SEASON) ? `现年 ${pf.ageNowP} 岁` : '', `巅峰身价 ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
       <div><div class="eyebrow" style="margin-bottom:8px">巅峰能力</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div></div>`; })()}
     ${(() => { const rows = personSeasons(pid); if (!rows.length && !(WL && WL.byPid[pid] != null)) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; const CA = careerAllRow(pid); const wlT = WL && WL.byPid[pid] != null ? wlCareer(WL.byPid[pid]).L.map(x => x[1].team) : []; const allT = [...new Set(wlT.concat(byT))]; return scopeTabs('pp', [{ label: '职业生涯', note: careerNote(CA, '所有球队合计'), html: statGrid(CA.row, ENGINE.LINE(pos)) }, { label: '威超联赛', note: '只算威超联赛', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...allT.map(t => { const C = careerAllRow(pid, t); return { label: t, note: careerNote(C, `效力 ${esc(t)} 期间`), html: statGrid(C.row, ENGINE.LINE(pos)) }; })]); })()}
@@ -3139,7 +3182,7 @@ function openPlayer(team, name) {
     <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${TD[team] ? crest(team, 20) : ecrest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}${TD[team] ? '' : ' · ' + esc(extTag(team))}</span></div><h3>${esc(p.name)}</h3>
-      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageOf(p.rating, team))}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
+      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageOf(p.rating, team))}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${bustChip(p.cv != null ? p.cv : pid, p.age, p.kidBust)}${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(p.uid || '')}" style="padding:5px 10px;font-size:12px" ${p.uid ? '' : 'disabled'}>✎ 编辑资料</button>${cmpBtn(pid != null ? 'p:' + pid : 't:' + team + '|' + p.name, p.name)}${mktActive() && PDB[team] && p.uid && typeof p.age0 === 'number' ? (mktGet().listed[p.uid] ? '<span class="chip">已挂牌</span>' : `<button class="btn ghost" data-act="mkList" data-id="${esc(p.uid)}" style="padding:5px 10px;font-size:12px">挂牌出售</button>`) : ''}${typeof p.age === 'number' && p.age <= 20 ? `<button class="btn ghost" ${scoutBtn({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team, uid: p.uid })} style="padding:5px 10px;font-size:12px">🔍 球探报告</button>` : ''}</div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${awardChips(pid, p.uid)}
