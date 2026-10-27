@@ -1009,9 +1009,17 @@ function openEditor(uid) {
   $('#edPos').addEventListener('change', ev => { D_POS = pos; pos = ev.target.value; regen(); });
   d.querySelector('[data-act="edAuto"]').addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); D_POS = pos; regen(); }, true);
 }
-function saveEditor(uid) {
+function saveEditor(uid, swap) {
   const cur = Object.values(BY_TN).find(q => q.uid === uid), old = (S.edits || {})[uid] || {}, v = id => { const el = $('#' + id); return el ? el.value.trim() : null; };
   const num = id => { const x = v(id); return x === '' || x == null ? null : +x; };
+  // 球衣号码被队友占用：先问要不要和他交换号码
+  const newNo = num('edNo'), team = cur && cur.team, mate = team && newNo != null && newNo !== cur.no ? [...(PDB[team] || []), ...(FDB[team] || [])].find(q => q !== cur && q.no === newNo) : null;
+  if (mate && !swap) {
+    let box = $('#edSwapBox'); if (!box) { box = document.createElement('div'); box.id = 'edSwapBox'; $('#dlg .dlg').appendChild(box); }
+    box.innerHTML = `<div style="padding:12px 14px;border:2px solid var(--gold);border-radius:10px;background:rgba(216,180,95,.08)"><b>${newNo} 号已经是 ${esc(mate.name)}（${esc(mate.pos)}）的号码。</b><p class="note" style="margin:4px 0 8px">是否与他更换球衣号码？${esc(mate.name)} 会改穿 ${cur.no} 号。</p><div class="btns"><button class="btn primary" data-act="edSwap" data-uid="${esc(uid)}">交换号码并保存</button><button class="btn ghost" data-act="edSwapNo">取消</button></div></div>`;
+    box.scrollIntoView({ block: 'nearest' }); return;
+  }
+  if (mate && swap && mate.uid) { S.edits = S.edits || {}; const me = S.edits[mate.uid] || {}; S.edits[mate.uid] = { ...me, no: cur.no }; }
   const e = { orig: old.orig, origPos: old.origPos, origNat: old.origNat };
   const nm = v('edName'); if (nm) e.name = nm; e.pos = v('edPos'); e.nat = v('edNat');
   e.no = num('edNo'); e.height = num('edH'); e.weight = num('edW');
@@ -4308,6 +4316,8 @@ document.addEventListener('click', e => {
   if (act === 'rewind') return confirmRewind(+el.dataset.s);
   if (act === 'editP') return openEditor(el.dataset.uid);
   if (act === 'edSave') return saveEditor(el.dataset.uid);
+  if (act === 'edSwap') return saveEditor(el.dataset.uid, true);
+  if (act === 'edSwapNo') { const b = $('#edSwapBox'); if (b) b.remove(); return; }
   if (act === 'edReset') { const e = S.edits[el.dataset.uid]; const pid = UIDPID[el.dataset.uid] ?? (el.dataset.uid.startsWith('H|') ? +el.dataset.uid.slice(2) : null); if (e && pid != null) { if (e.orig != null) PL[pid][0] = e.orig; if (e.origPos != null) PL[pid][1] = e.origPos; if (e.origNat != null) PL[pid][2] = e.origNat; } delete S.edits[el.dataset.uid]; refreshAfterEdit(); return toast('已恢复原始资料'); }
   if (act === 'doRewind') { $('#dlg').close(); return rewindTo(+el.dataset.s); }
   if (act === 'seeCups') { cupSeason = SEASON; return go('cups'); }
