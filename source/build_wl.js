@@ -40,7 +40,9 @@ const TIER = { S: ['威龙', '猎豹', '金狮', '猛虎', '狂蜂'], A: ['威�
 const TVAL = {}; TIER.S.forEach((c, k) => TVAL[c] = 89.6 - k * 0.15 * k); TIER.A.forEach((c, k) => TVAL[c] = 87.4 - k * 0.35); TIER.B.forEach((c, k) => TVAL[c] = 84.4 - k * 0.28);
 CLUBS.forEach(c => { if (TVAL[c] == null) TVAL[c] = 80; });
 // 没进威超 S01 的俱乐部：W40 之后逐渐衰落（财政困难、卖掉主力）
-const prest = (c, w) => { if (c === '威尔福特' && w >= 44) return prest0(c, w) + Math.min(3, (w - 43) * 0.8); return prest0(c, w); };
+// 各队的黄金年代：猛龙「3佩」时期、罗联和阿尔法骑士也各有一段巅峰（DSON：这些球队也夺过威联赛冠军）
+const GOLD = { 猛龙: [43, 48, 1.8], 罗联: [11, 16, 2.4], 阿尔法骑士: [25, 30, 2.4] };
+const prest = (c, w) => { let v = prest0(c, w); if (c === '威尔福特' && w >= 44) v += Math.min(3, (w - 43) * 0.8); const g = GOLD[c]; if (g && w >= g[0] && w <= g[1]) v += g[2]; return v; };
 const prest0 = (c, w) => { const v = wave[c], lam = clamp((w - 38) / 10, 0, 0.8); return (1 - lam) * (TVAL[c] + v.amp * Math.sin(v.ph + w * v.fr) + v.tilt) + lam * base[c] - (S1.includes(c) ? 0 : Math.max(0, w - 38) * 0.9); };
 
 /* ---------- 球员 ---------- */

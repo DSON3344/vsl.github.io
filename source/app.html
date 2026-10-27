@@ -2522,7 +2522,7 @@ function coachHistory() {
     const coachExpAt = (cid, s2) => stints.filter(x => x.id === cid).reduce((n, x) => n + Math.max(0, Math.min(x.s1 || s2, s2) - x.s0), 0);
     const want = clubBaseApprox(t), rnd = seeded('hire|' + t + '|' + s + '|' + r + saltOf(s));
     let best = null, bv = -1e9;
-    avail.forEach(c => { const C = COACH_REG[c.id]; const Tt = TRIDENT.has(t) ? coachTactics(c.id) : null; const eff = C.kind === '名宿' ? C.rep + Math.min(14, coachExpAt(c.id, s) * 1.5) + (C.infl - 75) * 0.5 : C.rep; const v = eff - Math.abs(eff - want - 4) * 0.4 + (C.clubs.has(t) ? (C.kind === '名宿' ? 17 : 9) : 0) + (Tt && isTrident(Tt.form) ? 5 : 0) + rnd() * 6; if (v > bv) { bv = v; best = c.id; } });
+    avail.forEach(c => { const C = COACH_REG[c.id]; const Tt = TRIDENT.has(t) ? coachTactics(c.id) : null; const eff = C.kind === '名宿' ? C.rep + Math.min(14, coachExpAt(c.id, s) * 1.5) + (C.infl - 75) * 0.5 : C.rep; const v = eff - Math.abs(eff - want - 4) * 0.4 + (C.clubs.has(t) ? (C.kind === '名宿' ? 17 : 9) : 0) + (Tt && isTrident(Tt.form) ? 5 : 0) + (starPower(t) >= 3 ? (C.infl - 75) * 0.45 : 0) + rnd() * 6; if (v > bv) { bv = v; best = c.id; } });
     if (!best || bv < want - 16 || rnd() < 0.35) best = genCoach(t, s, r);
     cur[t] = { id: best, team: t, s0: s, r0: r, why };
     stints.push(cur[t]);
@@ -2794,6 +2794,15 @@ function formOf(t) {
   const res = []; for (let ri = 0; ri < S.fx.length; ri++) S.fx[ri].forEach(m => { if (!m.r || (m.h !== t && m.a !== t)) return; const gf = m.h === t ? m.r.hg : m.r.ag, ga = m.h === t ? m.r.ag : m.r.hg; res.push({ ri, p: gf > ga ? 3 : gf === ga ? 1 : 0 }); });
   return res;
 }
+// 更衣室：大牌球星多的球队，主帅的影响力 / 能力镇不住就不服从（90 分以上算球星，88–89 算半个）
+const starPower = t => (PDB[t] || []).reduce((a, p) => a + (p.rating >= 90 ? 1 : p.rating >= 88 ? 0.5 : 0), 0);
+function dressingRoom(t, c) {
+  const sp = starPower(t); if (!c || sp < 3) return null;
+  const need = Math.min(95, 74 + sp * 2.2), auth = 0.6 * (c.infl || 70) + 0.4 * coachAbility(c), gap = need - auth;
+  if (gap > 0) return { d: -Math.min(6, 0.8 + gap * 0.6), sp, need: Math.round(need), auth: Math.round(auth), txt: `更衣室不服主帅（${sp} 名大牌，主帅威望 ${Math.round(auth)} 不到 ${Math.round(need)}）` };
+  if (gap < -6) return { d: 0.6, sp, need: Math.round(need), auth: Math.round(auth), txt: '大牌球星信服主帅' };
+  return null;
+}
 function teamMorale(t) {
   const k = t + '|' + SEASON + '|' + MOD_VER; if (MOD_CACHE[k]) return MOD_CACHE[k];
   const c = coachOf(t), f = formOf(t), last = f.slice(-5), infl = c ? c.infl || 70 : 70;
@@ -2803,7 +2812,7 @@ function teamMorale(t) {
   const bounce = c && c.s0 === SEASON && c.r0 > 0 && since < 5 ? 2.5 : 0;
   const abil = c ? (coachAbility(c) - 78) * 0.22 : 0;
   const lv = mor >= 3 ? '高涨' : mor >= 1 ? '良好' : mor > -1 ? '一般' : mor > -3 ? '低落' : '谷底';
-  return (MOD_CACHE[k] = { abil: Math.max(-4.5, Math.min(4.5, abil)), mor: Math.max(-5, Math.min(5, mor)), bounce, lv, ppg, played, coach: c });
+  return (MOD_CACHE[k] = { abil: Math.max(-4.5, Math.min(4.5, abil)), mor: Math.max(-5, Math.min(5, mor)), bounce, lv, ppg, played, coach: c, room: dressingRoom(t, c) });
 }
 ENGINE.setTeamMod(t => {
   if (!TD[t] || !S || !S.fx) return [];
@@ -2811,6 +2820,7 @@ ENGINE.setTeamMod(t => {
   if (M.coach && Math.abs(M.abil) >= 0.3) out.push({ txt: `主帅${M.coach.name}${M.abil > 0 ? '执教加成' : '执教一般'}`, d: +M.abil.toFixed(1) });
   if (Math.abs(M.mor) >= 0.5) out.push({ txt: '士气' + M.lv, d: +M.mor.toFixed(1) });
   if (M.bounce) out.push({ txt: '新帅效应', d: M.bounce });
+  if (M.room) out.push({ txt: M.room.txt, d: +M.room.d.toFixed(1) });
   const cap = capitalEffect(t); if (cap) out.push({ txt: cap.txt, d: +cap.d.toFixed(1) });
   return out;
 });
@@ -2957,7 +2967,7 @@ function teamDetail(t) {
         <div><dt>执教战绩</dt><dd class="mono" style="font-size:12px">${R ? `${R.w}胜 ${R.d}平 ${R.l}负 · ${stintTxt(c).replace(/ – 至今$/, ' 上任')}` : '—'}</dd></div>
         <div><dt>执教能力 / 影响力</dt><dd class="mono">${c ? `${coachAbility(c)} / ${c.infl}` : '—'}</dd></div>
         ${(() => { const cp = capitalEffect(t); const own = capitalHistory().own[t]; return own || cp ? `<div><dt>资本</dt><dd>${own ? `${esc(own.inv)}（${SN(own.since)} 入主）` : '—'}${cp ? ` <span class="dim mono" style="font-size:11px">${cp.d > 0 ? '+' : ''}${cp.d.toFixed(1)}%</span>` : ''}</dd></div>` : ''; })()}
-        ${(() => { const M = teamMorale(t); return `<div><dt>士气</dt><dd>${M.lv} <span class="dim mono" style="font-size:11px">${M.mor >= 0 ? '+' : ''}${M.mor.toFixed(1)}%${M.bounce ? ' · 新帅效应' : ''}</span></dd></div>`; })()}`; })()}
+        ${(() => { const M = teamMorale(t); return `<div><dt>士气</dt><dd>${M.lv} <span class="dim mono" style="font-size:11px">${M.mor >= 0 ? '+' : ''}${M.mor.toFixed(1)}%${M.bounce ? ' · 新帅效应' : ''}</span></dd></div>${M.room ? `<div><dt>更衣室</dt><dd style="color:${M.room.d < 0 ? '#e66' : 'var(--win,#3c9)'}">${M.room.d < 0 ? '不服主帅' : '信服主帅'} <span class="dim mono" style="font-size:11px">${M.room.d > 0 ? '+' : ''}${M.room.d.toFixed(1)}% · ${M.room.sp} 名大牌 · 威望 ${M.room.auth}/${M.room.need}</span></dd></div>` : ''}`; })()}`; })()}
         <div><dt>队长</dt><dd>${esc(capNow || '—')}</dd></div>
         <div><dt>主场</dt><dd>${esc(D.stadium)}</dd></div>
         <div><dt>最佳状态</dt><dd>${esc((P.best || '—').replace('；', ' · '))}</dd></div>
