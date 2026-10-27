@@ -820,13 +820,16 @@ function transferWindow(s, log) {
   // 玩家在转会市场里做的决定（续约、接受的报价、自由球员签约）先执行；没处理的再交给系统
   if (MK) {
     const find = uid => { for (const t of Object.keys(PDB)) { const p = PDB[t].find(q => q.uid === uid); if (p) return [p, t]; } return [null, null]; };
+    const findX = uid => { for (const c of Object.keys(FDB)) { const p = FDB[c].find(q => q.uid === uid); if (p) return [p, c]; } return [null, null]; };
     Object.entries(MK.renew || {}).forEach(([uid, d]) => { const [p] = find(uid); if (!p) return; handled.add(p); if (d.ok) p.cEnd = s + d.yrs; });
     (MK.offers || []).forEach(o => { const [p] = find(o.uid); if (p) handled.add(p); });
     Object.keys(MK.listed || {}).forEach(uid => { const [p] = find(uid); if (p) handled.add(p); });
     const small = () => EXT_LEAGUES[Math.floor(ghash('rl|' + s + '|' + handled.size) * EXT_LEAGUES.length)].clubs.slice(-1)[0][0];
     Object.keys(MK.rel || {}).forEach(uid => { if (MK.rel[uid].late) return; const [p, t] = find(uid); if (!p) return; handled.add(p); goAbroad({ p, t, r: ratN(p), a: ageN(p), free: true }, small()); log[log.length - 1].fee = 0; log[log.length - 1].rel = 1; outN[t] = Math.max(0, (outN[t] || 1) - 1); });
     const moves = (MK.offers || []).filter(o => o.st === 'a' && !o.late).map(o => ({ uid: o.uid, to: o.to, fee: o.fee, free: false })).concat((MK.free || []).filter(f => f.to).map(f => ({ uid: f.uid, to: f.to, fee: 0, free: true })));
-    moves.forEach(mv => { const [p, t] = find(mv.uid); if (!p || t === mv.to) return; handled.add(p); const a = ageN(p), r = ratN(p);
+    moves.forEach(mv => { let [p, t] = find(mv.uid);
+      if (!p) { const [q, c] = findX(mv.uid); if (q && PDB[mv.to]) { const a = ageN(q), r = ratN(q); FDB[c].splice(FDB[c].indexOf(q), 1); PDB[mv.to].push(q); q.team = mv.to; q.fromClub = c; (q.stints = q.stints || [[c, -99]]).push([mv.to, ns]); q.cEnd = ns + 1 + Math.floor(ghash('mk|' + q.uid + '|' + s) * 4); inCnt[mv.to] = (inCnt[mv.to] || 0) + 1; log.push({ uid: q.uid, name: q.name, pos: q.pos, age: a, rating: r, from: c, to: mv.to, fee: mv.fee, free: false, mk: 1, ext: 1 }); } return; }
+      if (t === mv.to) return; handled.add(p); const a = ageN(p), r = ratN(p);
       if (!PDB[mv.to]) { if (!FDB[mv.to] && !EXT_CLUB[mv.to]) return; goAbroad({ p, t, r, a, free: mv.free }, mv.to); log[log.length - 1].fee = mv.fee; log[log.length - 1].mk = 1; return; }
       PDB[t].splice(PDB[t].indexOf(p), 1); PDB[mv.to].push(p); p.team = mv.to; p.cEnd = ns + 1 + Math.floor(ghash('mk|' + p.uid + '|' + s) * 4); inCnt[mv.to] = (inCnt[mv.to] || 0) + 1; outN[t] = (outN[t] || 0) + 1;
       log.push({ uid: p.uid, name: p.name, pos: p.pos, age: a, rating: r, from: t, to: mv.to, fee: mv.fee, free: mv.free, mk: 1 }); });
@@ -3649,16 +3652,20 @@ function stayProb(p, t, C) {
 }
 function mktBuyers(p, t, C, relax) {
   const line = ENGINE.LINE(p.pos), r = C.ratN(p);
-  const dom = Object.keys(PDB).filter(t2 => t2 !== t && TD[t2] && !(PDB[t2] || []).some(q => q.name === p.name) && C.str[t2] >= C.str[t] - (relax ? 7 : 2) && (PDB[t2] || []).filter(q => ENGINE.LINE(q.pos) === line && typeof q.age0 === 'number' && C.ratN(q) >= r).length < LINE_NEED[line] + (relax ? 1 : 0));
-  const ext = r >= (relax ? 82 : 87) ? Object.entries(EXT_CLUB).filter(([c, x]) => !x.alias && FDB[c] && x.str >= r - (relax ? 6 : 3)).map(([c]) => c) : [];
+  // 豪门（实力 86+）要的是年轻、有即战力的球员：30 岁以上或已经开始下滑的不买；33 岁以上只有弱队或外赛区小球队要
+  const a = C.ageN(p), declining = a >= 28 && r < (p.rating || r), big = x => x >= 86;
+  const ageOK = sx => !(big(sx) && (a >= 30 || declining)) && !(a >= 33 && sx >= 82);
+  const dom = Object.keys(PDB).filter(t2 => t2 !== t && TD[t2] && !(PDB[t2] || []).some(q => q.name === p.name) && C.str[t2] >= C.str[t] - (relax ? 7 : 2) && ageOK(C.str[t2]) && (PDB[t2] || []).filter(q => ENGINE.LINE(q.pos) === line && typeof q.age0 === 'number' && C.ratN(q) >= r).length < LINE_NEED[line] + (relax ? 1 : 0));
+  const ext = r >= (relax ? 80 : 84) ? Object.entries(EXT_CLUB).filter(([c, x]) => !x.alias && FDB[c] && x.str >= r - (relax ? 7 : 5) && x.str <= r + 4 && ageOK(x.str)).map(([c]) => c) : [];
   return { dom, ext };
 }
 function mktPick(list, rnd, C) { if (!list.length) return null; const w = list.map(t2 => TD[t2] ? Math.pow(Math.max(1, C.str[t2] - 68), 2) * (S.teams.includes(t2) ? 2 : 1) : 60); let x = rnd() * w.reduce((a, b) => a + b, 0), k = 0; for (; k < list.length - 1; k++) { x -= w[k]; if (x <= 0) break; } return list[k]; }
 // 球员对买方的转会意愿：球队实力、能不能踢上主力、球队成绩、外赛区、在原队的年数
 function willOf(p, from, to, C) {
   const r = C.ratN(p), a = C.ageN(p); let w = 0.5;
-  const sf = C.str[from] != null ? C.str[from] : 80, st = TD[to] ? (C.str[to] != null ? C.str[to] : 80) : ((EXT_CLUB[to] || {}).str || 80);
-  w += Math.max(-0.3, Math.min(0.3, (st - sf) * 0.06));
+  const sf = TD[from] ? (C.str[from] != null ? C.str[from] : 80) : ((EXT_CLUB[from] || {}).str || 80), st = TD[to] ? (C.str[to] != null ? C.str[to] : 80) : ((EXT_CLUB[to] || {}).str || 80);
+  // 往弱队走的意愿很低（除非报价开得够高，见 willNow）
+  w += st >= sf ? Math.min(0.3, (st - sf) * 0.06) : Math.max(-0.45, (st - sf) * 0.09);
   if (TD[to]) { const g = posGroup(p.pos), G = (PDB[to] || []).filter(q => posGroup(q.pos) === g).map(q => q.rating).sort((x, y) => y - x), need = POS_GROUPS[g][3], bar = G.length >= need ? G[need - 1] : 60; w += r >= bar ? 0.15 : r >= bar - 3 ? -0.05 : -0.22; }
   const A = isPending(SEASON) ? pendingArchive() : null; if (A && TD[to]) { const k = A.table.findIndex(x => x.team === to); if (k >= 0 && k < 4) w += 0.1; else if (k >= A.table.length - 3) w -= 0.15; }
   if (!TD[to]) w += a >= 29 ? 0.05 : -0.05;
@@ -3667,6 +3674,8 @@ function willOf(p, from, to, C) {
   return Math.max(0.05, Math.min(0.95, Math.round(w * 100) / 100));
 }
 const WILL_MIN = 0.45;
+// 当前意愿：买方每加一次价、报价高出身价越多（意味着薪资更高），球员越愿意去
+const willNow = o => o.will == null ? null : Math.max(0.05, Math.min(0.95, o.will + Math.max(0, (o.round || 1) - 1) * 0.05 + Math.max(0, Math.min(0.25, (o.fee / Math.max(1, o.v) - 1) * 0.6))));
 // 球员对某支球队的重要性（卖方：在队里的地位；买方：来了能不能当主力、补不补到高优先级位置）
 function importanceOf(p, t, side) {
   if (!p || !TD[t]) return '';
@@ -3697,8 +3706,14 @@ function mktGet(s = MS()) {
     const to = useExt ? B.ext[Math.floor(rnd() * B.ext.length)] : mktPick(B.dom, rnd, C); if (!to) return;
     mktOfferB(MK, p, t, to, C, rnd, 0.82, 1.12);
     // 竞拍：常常不止一家来抢
-    const used = new Set([to]); for (let k = 0; k < 2; k++) { if (rnd() > 0.5) break; const rest = B.dom.concat(B.ext.slice(0, 2)).filter(x => !used.has(x)); const t2 = mktPick(rest, rnd, C); if (!t2) break; used.add(t2); mktOfferB(MK, p, t, t2, C, rnd, 0.85, 1.18); }
+    const used = new Set([to]); for (let k = 0; k < 2; k++) { if (rnd() > 0.5) break; const rest = B.dom.concat(B.ext.slice(0, 3)).filter(x => !used.has(x)); const t2 = mktPick(rest, rnd, C); if (!t2) break; used.add(t2); mktOfferB(MK, p, t, t2, C, rnd, 0.85, 1.18); }
   });
+  // 外赛区豪门也来抢人：顶级球员额外收到外赛区报价
+  cand.forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false); if (B.ext.length && !MK.offers.some(o => o.uid === p.uid && !TD[o.to]) && rnd() < 0.3) mktOfferB(MK, p, t, B.ext[Math.floor(rnd() * B.ext.length)], C, rnd, 0.95, 1.3); });
+  // 从外赛区买人：引援计划里有高优先级位置的球队，去外赛区找合适的球员（豪门只要 27 岁以下的）
+  S.teams.forEach(t => { const rnd = seeded('xb|' + t + '|' + s + salt), R2 = squadReport(t).filter(g => g.pri === '高'); if (!R2.length || rnd() > 0.6) return; const g = R2[0], bar = g.st.length ? g.st[g.st.length - 1].rating + 1 : 70, big = C.str[t] >= 86, pool = [];
+    Object.entries(FDB).forEach(([c, L]) => { if (!EXT_CLUB[c]) return; L.forEach(p => { if (typeof p.age0 !== 'number') return; const a = C.ageN(p), r = C.ratN(p); if (posGroup(p.pos) !== g.gi || r < bar || r > bar + 6 || a > (big ? 27 : 30)) return; pool.push({ p, c, r }); }); });
+    pool.sort((x, y) => y.r - x.r); const pk = pool.slice(0, 5)[Math.floor(rnd() * Math.min(5, pool.length))]; if (!pk) return; const o = mktOfferB(MK, pk.p, pk.c, t, C, rnd, 0.9, 1.2); if (o) o.ext = 1; });
   save(); return MK;
 }
 // 历史时期（S01–S17）的转会窗：历史上本来要发生的转会变成报价（不处理就照历史走），再加上系统按实力生成的额外报价
@@ -3723,7 +3738,7 @@ function mktGenHist(MK, s, C, salt) {
     const a = C.ageN(p), r = p.rating, rnd = seeded('hm|' + pid + '|' + s + salt);
     if (ghash('hc|' + pid + '|' + s) < 0.16) MK.hexp.push({ uid: p.uid, pid, from: t });
     const pr = a <= 31 && r >= C.str[t] + 4 ? 0.2 : a <= 29 && r >= C.str[t] + 1 ? 0.04 : 0; if (rnd() < pr) cand.push({ p, t, r, rnd }); }); });
-  cand.sort((x, y) => y.r - x.r).slice(0, 10).forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false), used = new Set(); for (let k = 0; k < 3; k++) { if (k && rnd() > 0.45) break; const to = mktPick(B.dom.filter(x => !used.has(x)), rnd, C); if (!to) break; used.add(to); mktOfferB(MK, p, t, to, C, rnd, 0.85, 1.15); } });
+  cand.sort((x, y) => y.r - x.r).slice(0, 10).forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false), used = new Set(); for (let k = 0; k < 3; k++) { if (k && rnd() > 0.45) break; const to = mktPick(B.dom.filter(x => !used.has(x)), rnd, C); if (!to) break; used.add(to); mktOfferB(MK, p, t, to, C, rnd, 0.85, 1.15); } if (B.ext.length && rnd() < 0.4) mktOfferB(MK, p, t, B.ext[Math.floor(rnd() * B.ext.length)], C, rnd, 0.95, 1.3); });
 }
 function mktExp(MK, C) {
   if (C.hist) return (MK.hexp || []).map(h => { const [p, t] = mktFind(h.uid); return p ? { p, t, r: p.rating, a: C.ageN(p), pr: stayProb(p, t, C) } : null; }).filter(Boolean);
@@ -3732,7 +3747,7 @@ function mktExp(MK, C) {
 function mktAct(kind, id) {
   const s0 = MS(), late = mktLate(), MK = mktGet(s0), C = mktCtx(s0), salt = saltOf(s0);
   if (kind === 'accept') { const o = MK.offers.find(x => x.id === id); if (!o || o.st !== 'p') return;
-    if (!o.sched && o.will != null && o.will < WILL_MIN) { o.st = 'x'; o.log.push(`球员不愿加盟（意愿 ${Math.round(o.will * 100)}%）`); toast(`${o.name} 不愿加盟 ${o.to}（意愿只有 ${Math.round(o.will * 100)}%）`); save(); return render(); }
+    if (!o.sched && o.will != null && willNow(o) < WILL_MIN) { o.st = 'x'; o.log.push(`球员不愿加盟（意愿 ${Math.round(willNow(o) * 100)}%）`); toast(`${o.name} 不愿加盟 ${o.to}（意愿只有 ${Math.round(willNow(o) * 100)}%）`); save(); return render(); }
     if (!o.sched && !canAfford(o.to, o.fee)) { o.st = 'r'; o.log.push('买方预算不足，交易取消'); toast(`${o.to} 转会预算不够，交易取消`); save(); return render(); }
     if (TD[o.to] && projSize(o.to) + 1 > SQUAD_MAX) { MK.capWarn = o.to; o.log.push('买方超员，交易中止'); toast(`⚠ ${o.to} 一线队已满 ${SQUAD_MAX} 人，必须先清除冗员（解约或卖人）才能买人，这笔交易已中止`); save(); return render(); }
     if (MK.capWarn === o.to) delete MK.capWarn; o.st = 'a'; if (late) o.late = 1; o.log.push('成交 ' + fee$(o.fee)); MK.offers.forEach(x => { if (x.uid === o.uid && x !== o && x.st === 'p') { x.st = 'x'; x.log.push('另选下家'); } }); delete MK.listed[o.uid]; toast(`${o.name} 以 ${fee$(o.fee)} 转会 ${o.to}`); if (late) return mktLateApply(s0); }
@@ -3789,7 +3804,7 @@ function mktSysResolve(MK, all, s) {
   return n;
 }
 // 卖方俱乐部按常规挑买方：历史转会照历史；否则只考虑球员愿意去的买方，报价不低于身价时选「报价 × 球员意愿」最好的那家
-function sysDecide(L, s) { { const sc = L.find(o => o.sched); const ok = L.filter(o => o.will == null || o.will >= WILL_MIN); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (b.will || 0.5)) - a.fee * (0.6 + 0.4 * (a.will || 0.5))); const best = sc || ok[0]; L.forEach(o => { if (o === best && (o.sched || (s > 17 && o.fee >= o.v * 0.95))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
+function sysDecide(L, s) { { const sc = L.find(o => o.sched); const ok = L.filter(o => o.will == null || willNow(o) >= WILL_MIN); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || ok[0]; L.forEach(o => { if (o === best && (o.sched || (s > 17 && o.fee >= o.v * 0.95))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
 // 历史时期：把和历史不同的决定记成叠加层 ov，实际发生的转会记成 done（转会窗延续期间新成交的也会重新算）
 function mktCompute(s) {
   if (s > 17) return; const MK = mktGet(s);
@@ -3800,7 +3815,7 @@ function mktCompute(s) {
     const dest = a ? a.to : fr ? fr.to : seller; // 这名球员下季实际去哪
     if (acc.length) acc.forEach(o => done.push({ s: ns, pid, from: o.from, to: o.to, fee: o.fee, late: o.late ? 1 : 0 })); else if (fr) done.push({ s: ns, pid, from: seller, to: dest, fee: 0, free: true });
     const hdest = hist || seller; if (!dest || dest === hdest) return;
-    if (TD[hdest]) ov.push({ pid, from: hdest, to: dest, s: ns }); else if (TD[dest]) ov.push({ pid, abs: 1, to: dest, s: ns });
+    if (TD[hdest]) ov.push({ pid, from: hdest, to: TD[dest] ? dest : null, s: ns }); else if (TD[dest]) ov.push({ pid, abs: 1, to: dest, s: ns });
   });
   Object.keys(MK.rel || {}).forEach(uid => { const pid = UIDPID[uid] ?? (String(uid).startsWith('H|') ? +String(uid).slice(2) : null); if (pid == null) return; const hdest = MK.sched[pid] || MK.rel[uid].from; if (TD[hdest]) ov.push({ pid, from: hdest, to: null, s: ns }); done.push({ s: ns, pid, from: MK.rel[uid].from, to: '解约', fee: 0, rel: 1, late: MK.rel[uid].late ? 1 : 0 }); });
   MK.ov = ov; MK.done = done;
@@ -3904,7 +3919,7 @@ function winGen() {
       const v = valueM(pick.p.rating, pick.p.age || 26), fee = Math.round(v * (1.15 + rnd() * 0.25));
       if (TD[e.t] && !canAfford(e.t, fee)) return;
       const o = { id: 'w' + (++MK.seq), uid: pick.p.uid, pid: UIDPID[pick.p.uid] ?? (String(pick.p.uid).startsWith('H|') ? +String(pick.p.uid).slice(2) : null), name: pick.p.name, pos: pick.p.pos, a: pick.p.age, r: pick.p.rating, v, from: pick.t2, to: e.t, fee, max: Math.round(fee * (1.1 + rnd() * 0.3)), round: 1, st: 'p', log: [], need: g.name, ext: pick.ext ? 1 : 0 };
-      o.sys = pick.ext ? rnd() < 0.7 : !pick.key && fee >= v * 1.1 && rnd() < 0.75; MK.offers.push(o);
+      o.will = willOf(pick.p, pick.t2, e.t, C); o.sys = (pick.ext ? rnd() < 0.7 : !pick.key && fee >= v * 1.1 && rnd() < 0.75) && willNow(o) >= WILL_MIN; MK.offers.push(o);
     });
   });
   save(); return MK;
@@ -3914,6 +3929,7 @@ function winAct(kind, id) {
   if (kind === 'accept') {
     if (TD[o.to] && !canAfford(o.to, o.fee)) { o.st = 'r'; o.log.push('买方预算不足'); toast(`${o.to} 转会预算不够，交易取消`); save(); return render(); }
     if (TD[o.to] && (PDB[o.to] || []).length + 1 > SQUAD_MAX) { o.log.push('买方超员，交易中止'); toast(`⚠ ${o.to} 一线队已满 ${SQUAD_MAX} 人，必须先清除冗员才能买人，这笔交易已中止`); save(); return render(); }
+    if (o.will != null && willNow(o) < WILL_MIN) { o.st = 'r'; o.log.push(`球员不愿加盟（意愿 ${Math.round(willNow(o) * 100)}%）`); toast(`${o.name} 不愿加盟 ${o.to}`); save(); return render(); }
     o.st = 'a'; o.log.push('成交 ' + fee$(o.fee)); toast(`${o.name} 冬窗加盟 ${o.to}`); return winApply();
   }
   const rnd = seeded('wr|' + o.id + '|' + o.round + '|' + SEASON + saltOf(SEASON)); o.log.push('拒绝 ' + fee$(o.fee));
@@ -3957,9 +3973,52 @@ function winterPanel() {
     <details ${open ? 'open' : ''}><summary class="note" style="cursor:pointer">上半程战术评估（${MK.eval.length} 队）</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th class="l">球队</th><th>名次</th><th>按实力预期</th><th>积分</th><th class="l">管理层评估</th><th class="l">补强方向</th></tr></thead><tbody>
     ${MK.eval.slice().sort((a, b) => a.rk - b.rk).map(e => `<tr><td class="l">${cl(e.t)}</td><td>${e.rk}</td><td class="dim">${e.ex}</td><td>${e.pts}</td><td class="l" style="font-size:12px;color:${e.diff >= 2 || e.rk >= 16 ? '#e66' : 'inherit'}">${esc(e.mood)}</td><td class="l muted" style="font-size:12px">${e.needs.join('、') || '–'}</td></tr>`).join('')}
     </tbody></table></div></details>
-    ${pend.length && open ? `<h3 style="font-size:14px;margin:12px 0 6px">报价</h3><div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">卖方</th><th class="l">买方</th><th class="l">补强位置</th><th>报价</th><th>身价</th><th class="l">决定</th></tr></thead><tbody>${pend.map(o => `<tr><td class="l"><button class="lnk" ${plink(o.from, o.name)}><b>${esc(o.name)}</b></button> <span class="dim mono" style="font-size:11px">${esc(o.pos)} · ${o.a}岁 · ${o.r}</span></td><td class="l">${cl(o.from, 'imp:' + o.uid + ':' + o.from + ':sell')}</td><td class="l">${cl(o.to, 'imp:' + o.uid + ':' + o.to + ':buy')}</td><td class="l muted" style="font-size:12px">${esc(o.need)}</td><td class="mono"><b style="color:var(--gold)">${fee$(o.fee)}</b></td><td class="mono dim">${fee$(o.v)}</td><td class="l"><span class="btns" style="gap:6px"><button class="btn primary" data-act="wA" data-id="${o.id}" style="padding:4px 10px;font-size:12px">接受</button><button class="btn ghost" data-act="wR" data-id="${o.id}" style="padding:4px 10px;font-size:12px">拒绝</button></span></td></tr>`).join('')}</tbody></table></div>` : open ? '<p class="note">各队暂时没有补强报价。</p>' : ''}
+    ${pend.length && open ? `<h3 style="font-size:14px;margin:12px 0 6px">报价</h3><div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">卖方</th><th class="l">买方</th><th class="l">补强位置</th><th>报价</th><th>身价</th><th class="l">决定</th></tr></thead><tbody>${pend.map(o => `<tr><td class="l"><button class="lnk" ${plink(o.from, o.name)}><b>${esc(o.name)}</b></button> <span class="dim mono" style="font-size:11px">${esc(o.pos)} · ${o.a}岁 · ${o.r}</span></td><td class="l">${cl(o.from, 'imp:' + o.uid + ':' + o.from + ':sell')}</td><td class="l">${cl(o.to, 'imp:' + o.uid + ':' + o.to + ':buy')}</td><td class="l muted" style="font-size:12px">${esc(o.need)}</td><td class="mono"><b style="color:var(--gold)">${fee$(o.fee)}</b></td><td class="mono dim">${fee$(o.v)}</td><td class="l"><span class="btns" style="gap:6px"><button class="btn ghost" data-act="wHelp" data-id="${o.id}" style="padding:4px 8px;font-size:12px">🤖 助手</button><button class="btn primary" data-act="wA" data-id="${o.id}" style="padding:4px 10px;font-size:12px">接受</button><button class="btn ghost" data-act="wR" data-id="${o.id}" style="padding:4px 10px;font-size:12px">拒绝</button></span></td></tr>`).join('')}</tbody></table></div>` : open ? '<p class="note">各队暂时没有补强报价。</p>' : ''}
     ${done.length ? `<h3 style="font-size:14px;margin:12px 0 6px">冬窗结果</h3><div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">卖方</th><th class="l">买方</th><th>转会费</th><th class="l">结果</th></tr></thead><tbody>${done.map(o => `<tr><td class="l">${esc(o.name)} <span class="dim mono" style="font-size:11px">${esc(o.pos)} · ${o.r}</span></td><td class="l">${cl(o.from)}</td><td class="l">${cl(o.to)}</td><td class="mono">${fee$(o.fee)}</td><td class="l"><span class="chip ${ST[o.st][1]}" style="font-size:11px">${ST[o.st][0]}</span> <span class="dim" style="font-size:11px">${esc(o.log.join(' → '))}</span></td></tr>`).join('')}</tbody></table></div>` : ''}
   </div>`;
+}
+/* ---------- 转会小助手：分析一份报价该同意、要求加价还是拒绝 ---------- */
+function assistOffer(id, win) {
+  const MK = win ? S.market[winKey(SEASON)] : mktGet(), o = MK && MK.offers.find(x => x.id === id); if (!o) return;
+  let p = null; Object.values(PDB).some(L => (p = L.find(q => q.uid === o.uid)) != null); if (!p) Object.values(FDB).some(L => (p = L.find(q => q.uid === o.uid)) != null); if (!p) return;
+  const tb = isPending(SEASON) ? (pendingArchive() || {}).table : table(), rk = t => tb ? tb.findIndex(r => r.team === t) + 1 : 0;
+  const strOf = t => TD[t] ? ENGINE.strength(t).ovr : (EXT_CLUB[t] || {}).str || 80, sf = strOf(o.from), st = strOf(o.to);
+  const ratio = o.fee / Math.max(1, o.v), wl = o.will == null ? null : willNow(o), age = p.age || o.a, r = p.rating;
+  const g = posGroup(p.pos), SR = TD[o.from] ? squadReport(o.from)[g] : null, BR = TD[o.to] ? squadReport(o.to)[g] : null;
+  const all = TD[o.from] ? (PDB[o.from] || []).slice().sort((a, b) => b.rating - a.rating) : [], rank = all.findIndex(q => q.uid === p.uid) + 1;
+  const isSt = SR && SR.st.some(q => q.uid === p.uid), lv = !SR ? '外赛区球员' : isSt && rank <= 3 ? '核心主力' : isSt ? '主力' : SR.st.length && r >= SR.st[SR.st.length - 1].rating - 2 ? '重要轮换' : '边缘球员';
+  const repl = SR && isSt ? SR.bench[0] : null;
+  const pot = potentialOf(p), young = age <= 23 && pot >= r + 4, declining = typeof p.age0 === 'number' && age >= 28 && growthOf(p).at(age + 1) < r;
+  const yrsLeft = p.cEnd != null ? p.cEnd - SEASON : null;
+  const top6 = tb ? tb.slice(0, 6).map(x => x.team) : [], rival = TD[o.to] && TD[o.from] && top6.includes(o.to) && top6.includes(o.from);
+  const wNow = TD[o.from] ? wageOf(r, o.from) : wageOf(r), wNew = TD[o.to] ? wageOf(r, o.to) : Math.round(wageOf(r) * Math.max(0.7, Math.min(1.5, Math.exp((st - 82) * 0.05))));
+  let thr = { 核心主力: 1.35, 主力: 1.15, 重要轮换: 1.0, 边缘球员: 0.85, 外赛区球员: 1.0 }[lv]; const why = [], add = (d, t) => { thr += d; why.push(t); };
+  if (young) add(0.15, `${age} 岁、潜力 ${pot}，还有升值空间，卖便宜了亏`);
+  if (age >= 31) add(-0.12, `${age} 岁，身价只会越来越低`);
+  if (declining) add(-0.08, '能力已经开始下滑');
+  if (yrsLeft != null && yrsLeft <= 1) add(-0.15, '合同只剩 1 年，不卖明年可能免费走人');
+  if (rival) add(0.1, `${o.to} 是联赛直接竞争对手，卖给他等于帮对手补强`);
+  if (isSt && !repl) add(0.1, '这个位置没有合适替补，卖了要另外花钱补');
+  if (TD[o.from] && (PDB[o.from] || []).length > SQUAD_MAX) add(-0.1, '本队超员，需要卖人');
+  const headroom = o.max > o.fee * 1.05 && (o.round || 1) < 4, target = Math.round(thr * o.v);
+  let verdict, color, tip;
+  if (o.sched) { verdict = '历史转会'; color = 'var(--gold)'; tip = '这笔是历史上本来就会发生的转会：同意就照历史走；拒绝的话球员会留队，历史从这里开始改变。'; }
+  else if (wl != null && wl < WILL_MIN) { verdict = headroom ? '先拒绝，等对方加价' : '球员不愿去'; color = '#e66'; tip = `球员对 ${o.to} 的意愿只有 ${Math.round(wl * 100)}%，现在同意也会被球员拒绝。${headroom ? '买方每加一次价球员意愿会提高，可以先拒绝看对方加不加。' : '对方也没什么加价空间了，基本谈不成。'}`; }
+  else if (ratio >= thr) { verdict = '建议同意'; color = 'var(--win,#3c9)'; tip = `报价是身价的 ${ratio.toFixed(2)} 倍，高于这名球员的合理出售价（约 ${fee$(target)}）。`; }
+  else if (headroom) { verdict = '建议要求加价'; color = 'var(--gold)'; tip = `报价偏低（合理价约 ${fee$(target)}）。对方看起来还有加价空间，拒绝一次，买方大概率会加价，球员意愿也会跟着上升。`; }
+  else { verdict = '建议拒绝'; color = '#e66'; tip = `报价低于合理价（约 ${fee$(target)}），而且对方已经接近出价上限。`; }
+  const row = (k, v) => `<div class="rk" style="grid-template-columns:110px minmax(0,1fr)"><span class="muted">${k}</span><span>${v}</span></div>`;
+  const d = $('#dlg');
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:640px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div><div class="eyebrow">转会小助手</div><h2 style="font-size:20px;font-weight:900;margin:4px 0">${esc(o.name)} → ${esc(o.to)}</h2><span class="dim mono" style="font-size:12px">${esc(p.pos)} · ${age} 岁 · 能力 ${r} · 潜力 ${pot}</span></div>
+    <div style="padding:12px 14px;border:2px solid ${color};border-radius:10px"><b style="color:${color};font-size:16px">${verdict}</b><p style="margin:6px 0 0;font-size:13px;line-height:1.7">${tip}</p></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">报价</div><div class="rank-list">${row('报价 / 身价', `${fee$(o.fee)} / ${fee$(o.v)}（${ratio.toFixed(2)} 倍）`)}${row('合理出售价', `约 ${fee$(target)}`)}${row('加价空间', o.sched ? '–' : headroom ? '对方看起来还能再加' : '对方已接近上限')}${o.round > 1 ? row('已加价', `${o.round - 1} 次（每次加价都会提高球员意愿）`) : ''}</div></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">薪资</div><div class="rank-list">${row('现在年薪', money(wNow))}${row(`去${esc(o.to)}后`, `约 ${money(wNew)}${wNew > wNow * 1.05 ? ' <span style="color:var(--win,#3c9)">涨薪</span>' : wNew < wNow * 0.95 ? ' <span style="color:#e66">降薪</span>' : ''}`)}</div></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">买方 · ${esc(o.to)}</div><div class="rank-list">${row('实力 / 名气', `${st.toFixed(1)}${st >= 86 ? ' · 豪门' : st >= 82 ? ' · 中上游' : ' · 中下游'}${TD[o.to] ? '' : ' · ' + esc(extTag(o.to))}`)}${TD[o.to] ? row('联赛排名', rk(o.to) ? `第 ${rk(o.to)} 名` : '–') : ''}${BR ? row('队内竞争', `${BR.name}现有主力 ${BR.st.map(q => esc(q.name) + ' ' + q.rating).join('、') || '无'} → ${r >= (BR.st.length ? BR.st[BR.st.length - 1].rating : 0) + 3 ? '他来了能直接当主力' : r >= (BR.st.length ? BR.st[BR.st.length - 1].rating : 0) ? '要和主力竞争' : '多半坐替补'}；引援优先级 ${BR.pri}`) : ''}${TD[o.to] ? row('剩余预算', money(finState()[o.to].rem)) : ''}${row('球员意愿', wl == null ? '–' : `${Math.round(wl * 100)}%${st < sf - 1 ? '（往实力更弱的球队，意愿天生偏低，要靠高报价打动）' : ''}`)}</div></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">卖方 · ${esc(o.from)}</div><div class="rank-list">${row('队内地位', `${lv}${rank ? ` · 全队能力第 ${rank} 名` : ''}`)}${SR ? row('卖了之后', isSt ? (repl ? `${esc(repl.name)}（${repl.rating}）顶上` : '这个位置没人顶') : '影响不大') : ''}${yrsLeft != null ? row('合同', `${yrsLeft <= 0 ? '本季到期' : `还剩 ${yrsLeft} 年`}`) : ''}${TD[o.from] ? row('联赛排名', rk(o.from) ? `第 ${rk(o.from)} 名` : '–') : ''}</div></div>
+    ${why.length ? `<div><div class="eyebrow" style="margin-bottom:6px">考虑因素</div><ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.8">${why.map(w => `<li>${w}</li>`).join('')}</ul></div>` : ''}
+    ${o.st === 'p' ? `<div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="${win ? 'wR' : 'mkR'}" data-id="${o.id}">拒绝 / 要求加价</button><button class="btn primary" data-act="${win ? 'wA' : 'mkA'}" data-id="${o.id}">同意</button></div>` : ''}</div>`;
+  if (!d.open) d.showModal();
 }
 let MKLIM = 30;
 function marketPanel() {
@@ -3989,7 +4048,7 @@ function marketPanel() {
     <h3 style="font-size:14px;margin:6px 0">报价</h3>
     ${(() => { const c = mktCfg(); return `<div class="btns" style="gap:6px;margin:0 0 10px;align-items:center"><span class="note">处理方式：</span><button class="btn ${c.auto ? 'primary' : 'ghost'}" data-act="mkMode" data-m="auto" style="padding:4px 10px;font-size:12px">全部交给系统</button><button class="btn ${!c.auto ? 'primary' : 'ghost'}" data-act="mkMode" data-m="manual" style="padding:4px 10px;font-size:12px">我来选要管的球队</button>${pend.length ? `<button class="btn ghost" data-act="mkAllSys" style="padding:4px 10px;font-size:12px">剩下的交给系统处理</button>` : ''}</div>${!c.auto ? `<div class="btns" style="gap:4px;margin:0 0 10px"><span class="note" style="margin-right:4px">我负责的球队（卖方是这些球队的报价由你决定，其他球队由系统马上处理）：</span>${S.teams.map(t => `<button class="chip ${mktManaged(t) ? 'gold' : ''}" data-act="mkTeam" data-t="${esc(t)}" style="cursor:pointer;font-size:11px">${esc(t)}</button>`).join('')}<button class="lnk" data-act="mkTeam" data-t="*" style="font-size:12px;margin-left:6px">全选</button></div>` : '<p class="note" style="margin:0 0 10px">系统会替所有球队处理报价；合同到期球员由系统按常规决定续约或离队。</p>'}`; })()}
     ${(() => { if (!pend.length) return '<p class="note">暂时没有待处理的报价。</p>'; const G = []; const by = {}; pend.forEach(o => { if (!by[o.uid]) { by[o.uid] = []; G.push(by[o.uid]); } by[o.uid].push(o); });
-      return `<div class="tw"><table><thead><tr><th class="l">球员 / 买方</th><th>报价</th><th>身价</th><th>球员意愿</th><th>买方剩余预算</th><th class="l">决定</th></tr></thead><tbody>${G.slice(0, MKLIM).map(L => { const o0 = L[0]; return `<tr style="background:rgba(255,255,255,.03)"><td class="l" colspan="5">${pl(o0)} · 卖方 ${cl(o0.from, 'imp:' + o0.uid + ':' + o0.from + ':sell')} <span class="dim" style="font-size:11px">· ${L.length} 家报价</span></td><td class="l">${L.length >= 2 ? `<button class="btn ghost" data-act="mkBid" data-id="${esc(o0.uid)}" style="padding:3px 9px;font-size:12px">发起竞价</button>` : ''}</td></tr>` + L.slice().sort((a, b) => b.fee - a.fee).map(o => { const wl = o.will == null ? null : Math.round(o.will * 100); return `<tr><td class="l" style="padding-left:24px">→ ${cl(o.to, 'imp:' + o.uid + ':' + o.to + ':buy')}${o.sched ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">历史</span>' : ''}${o.round > 1 ? ` <span class="chip" style="font-size:10px;padding:0 5px">第 ${o.round} 次报价</span>` : ''}</td><td class="mono"><b style="color:var(--gold)">${fee$(o.fee)}</b></td><td class="mono dim">${fee$(o.v)}</td><td>${wl == null ? '–' : `<span style="color:${wl >= 60 ? 'var(--win,#3c9)' : wl >= WILL_MIN * 100 ? 'var(--gold)' : '#e66'}">${wl}%</span>${wl < WILL_MIN * 100 && !o.sched ? ' <span class="dim" style="font-size:10px">不愿去</span>' : ''}`}</td><td class="mono" style="font-size:12px">${TD[o.to] ? (() => { const r = finState()[o.to].rem; return `<span style="color:${r < o.fee && !o.sched ? '#e66' : 'inherit'}">${money(r)}</span>`; })() : '<span class="dim">外赛区</span>'}</td><td class="l"><span class="btns" style="gap:6px"><button class="btn primary" data-act="mkA" data-id="${o.id}" style="padding:4px 10px;font-size:12px">接受</button><button class="btn ghost" data-act="mkR" data-id="${o.id}" style="padding:4px 10px;font-size:12px">拒绝</button></span></td></tr>`; }).join(''); }).join('')}</tbody></table></div>${G.length > MKLIM ? `<div style="text-align:center;margin-top:10px"><button class="btn" data-act="mkMore">再显示 30 名球员（还有 ${G.length - MKLIM} 名）</button></div>` : ''}<p class="note" style="margin:6px 0 0">同一名球员常有多家球队报价：可以先「发起竞价」让买方互相加价，再挑一家接受。球员也有自己的意愿，意愿低于 ${Math.round(WILL_MIN * 100)}% 的球队他不会去。鼠标停在球队名字上，可以看这名球员对卖方 / 买方的重要性。</p>`; })()}
+      return `<div class="tw"><table><thead><tr><th class="l">球员 / 买方</th><th>报价</th><th>身价</th><th>球员意愿</th><th>买方剩余预算</th><th class="l">决定</th></tr></thead><tbody>${G.slice(0, MKLIM).map(L => { const o0 = L[0]; return `<tr style="background:rgba(255,255,255,.03)"><td class="l" colspan="5">${pl(o0)} · 卖方 ${cl(o0.from, 'imp:' + o0.uid + ':' + o0.from + ':sell')} <span class="dim" style="font-size:11px">· ${L.length} 家报价</span></td><td class="l">${L.length >= 2 ? `<button class="btn ghost" data-act="mkBid" data-id="${esc(o0.uid)}" style="padding:3px 9px;font-size:12px">发起竞价</button>` : ''}</td></tr>` + L.slice().sort((a, b) => b.fee - a.fee).map(o => { const wl = o.will == null ? null : Math.round(willNow(o) * 100); return `<tr><td class="l" style="padding-left:24px">→ ${cl(o.to, 'imp:' + o.uid + ':' + o.to + ':buy')}${o.sched ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">历史</span>' : ''}${o.round > 1 ? ` <span class="chip" style="font-size:10px;padding:0 5px">第 ${o.round} 次报价</span>` : ''}</td><td class="mono"><b style="color:var(--gold)">${fee$(o.fee)}</b></td><td class="mono dim">${fee$(o.v)}</td><td>${wl == null ? '–' : `<span style="color:${wl >= 60 ? 'var(--win,#3c9)' : wl >= WILL_MIN * 100 ? 'var(--gold)' : '#e66'}">${wl}%</span>${wl < WILL_MIN * 100 && !o.sched ? ' <span class="dim" style="font-size:10px">不愿去</span>' : ''}`}</td><td class="mono" style="font-size:12px">${TD[o.to] ? (() => { const r = finState()[o.to].rem; return `<span style="color:${r < o.fee && !o.sched ? '#e66' : 'inherit'}">${money(r)}</span>`; })() : '<span class="dim">外赛区</span>'}</td><td class="l"><span class="btns" style="gap:6px"><button class="btn ghost" data-act="mkHelp" data-id="${o.id}" title="转会小助手" style="padding:4px 8px;font-size:12px">🤖 助手</button><button class="btn primary" data-act="mkA" data-id="${o.id}" style="padding:4px 10px;font-size:12px">接受</button><button class="btn ghost" data-act="mkR" data-id="${o.id}" style="padding:4px 10px;font-size:12px">拒绝</button></span></td></tr>`; }).join(''); }).join('')}</tbody></table></div>${G.length > MKLIM ? `<div style="text-align:center;margin-top:10px"><button class="btn" data-act="mkMore">再显示 30 名球员（还有 ${G.length - MKLIM} 名）</button></div>` : ''}<p class="note" style="margin:6px 0 0">同一名球员常有多家球队报价：可以先「发起竞价」让买方互相加价，再挑一家接受。球员也有自己的意愿，意愿低于 ${Math.round(WILL_MIN * 100)}% 的球队他不会去。鼠标停在球队名字上，可以看这名球员对卖方 / 买方的重要性。</p>`; })()}
     ${late ? '' : `<h3 style="font-size:14px;margin:14px 0 6px">合同到期 · ${exp.length} 人</h3>`}
     ${late ? '' : exp.length ? `<div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">球队</th><th>年龄</th><th>评分</th><th>留队意愿</th><th class="l">决定</th></tr></thead><tbody>${exp.map(expRow).join('')}</tbody></table></div>` : '<p class="note">本季没有合同到期的球员。</p>'}
     ${(() => { const oc = overCap(); if (!oc.length) return ''; const busy = new Set(MK.offers.filter(o => o.st === 'a' || o.st === 'p').map(o => o.uid));
@@ -4513,13 +4572,15 @@ document.addEventListener('click', e => {
   if (act === 'mkTeam') { const c = mktCfg(), t = el.dataset.t; if (t === '*') c.teams = null; else { const cur = c.teams || S.teams.slice(); c.teams = cur.includes(t) ? cur.filter(x => x !== t) : cur.concat([t]); } save(); return render(); }
   if (act === 'mkAllSys') { const n = mktSysResolve(mktGet(), true, MS()); toast(`系统处理了 ${n} 份报价`); if (mktLate()) return mktLateApply(MS()); save(); return render(); }
   if (act === 'mkBid') return mktAct('bid', el.dataset.id);
-  if (act === 'wA') return winAct('accept', el.dataset.id);
-  if (act === 'wR') return winAct('reject', el.dataset.id);
+  if (act === 'mkHelp') return assistOffer(el.dataset.id, false);
+  if (act === 'wHelp') return assistOffer(el.dataset.id, true);
+  if (act === 'wA') { if ($('#dlg').open) $('#dlg').close(); return winAct('accept', el.dataset.id); }
+  if (act === 'wR') { if ($('#dlg').open) $('#dlg').close(); return winAct('reject', el.dataset.id); }
   if (act === 'mkMore') { MKLIM += 30; return render(); }
   if (act === 'mkRel') return mktAct('rel', el.dataset.id);
   if (act === 'mkTrim') { mktAutoTrim(); save(); $('#dlg').close(); if (maybeEndSeason(true)) render(); return; }
-  if (act === 'mkA') return mktAct('accept', el.dataset.id);
-  if (act === 'mkR') return mktAct('reject', el.dataset.id);
+  if (act === 'mkA') { if ($('#dlg').open) $('#dlg').close(); return mktAct('accept', el.dataset.id); }
+  if (act === 'mkR') { if ($('#dlg').open) $('#dlg').close(); return mktAct('reject', el.dataset.id); }
   if (act === 'mkRenew') return mktAct('renew', el.dataset.id);
   if (act === 'mkList') { mktAct('list', el.dataset.id); if ($('#dlg').open) $('#dlg').close(); return; }
   if (act === 'nextSeason' && mktActive() && overCap().length) { const oc = overCap(), d = $('#dlg'); d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">还有球队超过 ${SQUAD_MAX} 人</h2><p class="muted" style="margin:0">${oc.map(([t, n]) => `${esc(t)} 预计 ${n} 人`).join('、')}。可以回转会市场解约或卖人，也可以让系统把能力最低的球员解约。</p><div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn ghost" data-go="transfers">去转会市场处理</button><button class="btn primary" data-act="mkTrim">系统自动解约并进入下一季</button></div></div>`; if (!d.open) d.showModal(); return; }
