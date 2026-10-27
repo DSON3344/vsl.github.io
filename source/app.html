@@ -2637,7 +2637,62 @@ function coachPreHTML(id) {
   return `<div><div class="eyebrow" style="margin-bottom:8px">来威超之前 · ${P.out.length} 支球队 · ${hon.length} 项荣誉</div><p class="note" style="margin:0 0 6px">${kLabel(P.first)} 来到威超时 ${P.age0 - Math.max(0, SEASON - P.first)} 岁左右。球员时代在${esc(P.play.league)}踢${P.play.pos}，职业生涯 ${P.play.yrs} 季。</p>
     <div class="tw"><table><thead><tr><th class="l">球队</th><th class="l">任期</th><th class="l">联赛名次</th><th class="l">荣誉</th></tr></thead><tbody>${P.out.slice().reverse().map(x => `<tr><td class="l">${esc(x.club)} <span class="dim" style="font-size:11px">${esc(x.league)}</span></td><td class="l mono" style="font-size:12px">${kLabel(x.k1)}–${kLabel(x.k2)}</td><td class="l mono" style="font-size:12px">${x.fin.map(n => n === 1 ? '<span style="color:var(--gold)">冠</span>' : n).join(' · ')}</td><td class="l" style="font-size:12px">${x.hon.length ? x.hon.map(esc).join('、') : '<span class="dim">–</span>'}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
+/* ---------- 威联赛时代的主帅（按威联赛资料推演，固定）＋ 球队功勋主帅 ----------
+   设定：奥根芬尼（意大利，已退休）执教过多支球队，在威联赛时期的威龙战绩和荣誉最出色，是威龙历史最佳主帅 */
+let WLC = null;
+function wlCoaches() {
+  if (WLC || !WL) return WLC; const reg = {}, stints = [], names = new Set(Object.values(COACH_REG).map(c => c.name));
+  const lgTitles = (t, w) => WL.S[w - 1].order[0] === t ? 1 : 0, cupT = (t, w) => WL_CUPS.filter(k => WL.S[w - 1].cups[k] && WL.S[w - 1].cups[k].w === t).length;
+  // 奥根芬尼在威龙：威龙荣誉最多的一段（11–13 季）
+  let best = null; for (let L = 11; L <= 13; L++) for (let a = 1; a + L - 1 <= 50; a++) { let v = 0; for (let w = a; w < a + L; w++) v += lgTitles('威龙', w) * 3 + cupT('威龙', w); if (!best || v > best.v) best = { a, b: a + L - 1, v }; }
+  const OG = 'WC|奥根芬尼'; reg[OG] = { id: OG, name: '奥根芬尼', nat: '意大利', retired: true, legend: '威龙历史最佳主帅', era: 'wl' }; names.add('奥根芬尼');
+  const preT = ['罗联', '阿尔法骑士', '猛龙', '切狐'].map(t => { let v = 0; for (let w = Math.max(1, best.a - 4); w < best.a; w++) { const r = WL.S[w - 1].tb.find(x => x.team === t); v += r ? r.pts : 0; } return [t, v]; }).sort((x, y) => y[1] - x[1])[0][0];
+  const fixed = { 威龙: [[best.a, best.b, OG]] }; if (best.a > 4) fixed[preT] = [[best.a - 4, best.a - 1, OG]];
+  WL.clubs.forEach(t => {
+    const nat = TD[t] ? TEAM_NAT(t) : '英格兰', F = (fixed[t] || []).slice().sort((x, y) => x[0] - y[0]); let w = 1, k = 0;
+    const add = (a, b, id) => { if (a > b) return; stints.push({ id, team: t, w1: a, w2: b }); };
+    const gen = (a, b) => { while (a <= b) { const L = Math.min(b - a + 1, 2 + Math.floor(ghash('wcl|' + t + '|' + a) * 5)); const id = 'WC|' + t + '|' + a; let nm = coachName('wl' + t + a, ghash('wcn|' + t + a) < 0.6 ? nat : ['意大利', '德国', '荷兰', '西班牙', '英格兰', '葡萄牙', '阿根廷', '法国'][Math.floor(ghash('wcx|' + t + a) * 8)]); let q = 0; while (names.has(nm) && q++ < 20) nm = coachName('wl' + t + a + 'x' + q, nat); names.add(nm); reg[id] = { id, name: nm, nat, retired: true, era: 'wl' }; add(a, a + L - 1, id); a += L; k++; } };
+    F.forEach(([a, b, id]) => { gen(w, a - 1); add(a, b, id); w = b + 1; }); gen(w, 50);
+  });
+  stints.forEach(st => { let W2 = 0, Dd = 0, Lw = 0, gf = 0, ga = 0; const hon = [], fin = []; for (let w = st.w1; w <= st.w2; w++) { const S2 = WL.S[w - 1], r = S2.tb.find(x => x.team === st.team); if (r) { W2 += r.w; Dd += r.d; Lw += r.l; gf += r.gf; ga += r.ga; fin.push([w, r.pos]); } if (S2.order[0] === st.team) hon.push(['威联赛冠军', w]); WL_CUPS.forEach(k => { if (S2.cups[k] && S2.cups[k].w === st.team) hon.push([CUP_TROPHY[k] === '世联赛冠军' ? '世联赛冠军' : CUP_TROPHY[k], w]); }); } Object.assign(st, { w: W2, d: Dd, l: Lw, gf, ga, hon, fin }); });
+  return (WLC = { reg, stints, og: { id: OG, best, preT } });
+}
+// 球队功勋主帅：威联赛时代 + 威超，只看在这支球队的成绩
+function clubCoaches(t) {
+  const out = {}, add = (key, o) => { const x = out[key] || (out[key] = { ...o, w: 0, d: 0, l: 0, seasons: 0, hon: [], spans: [] }); x.w += o.w; x.d += o.d; x.l += o.l; x.seasons += o.seasons; x.hon.push(...o.hon); x.spans.push(o.span); };
+  const C = wlCoaches(); if (C) C.stints.filter(st => st.team === t).forEach(st => add(st.id, { id: st.id, name: C.reg[st.id].name, nat: C.reg[st.id].nat, era: 'wl', w: st.w, d: st.d, l: st.l, seasons: st.w2 - st.w1 + 1, hon: st.hon, span: `${WN(st.w1)}–${WN(st.w2)}`, legend: t === '威龙' ? C.reg[st.id].legend : null, retired: true }));
+  try { coachHistory().stints.filter(st => st.team === t).forEach(st => { const R2 = coachRecord(st), K = COACH_REG[st.id]; add(st.id, { id: st.id, name: K.name, nat: K.nat, era: 'ves', w: R2.w, d: R2.d, l: R2.l, seasons: Math.max(0.5, ((st.s1 || SEASON) - st.s0) + ((st.r1 != null ? st.r1 : 38) - (st.r0 || 0)) / 38), hon: stintHonours(st), span: stintTxt(st) }); }); } catch (e) {}
+  const L = Object.values(out).map(o => { const n = o.w + o.d + o.l, lg = o.hon.filter(h => /^(威联赛冠军|威超冠军)$/.test(h[0])).length, cups = o.hon.length - lg; return { ...o, n, lg, cups, pct: n ? o.w / n : 0, score: lg * 10 + cups * 4 + o.seasons * 1.2 + (n ? (o.w / n - 0.4) * 20 : 0) + (o.legend ? 1000 : 0) }; })
+    .filter(o => o.lg || o.cups || o.seasons >= 4).sort((a, b) => b.score - a.score).slice(0, 8);
+  L.forEach((o, i) => { o.tag = o.legend ? o.legend : i === 0 && (o.lg >= 2 || o.cups >= 4) ? '队史最佳主帅' : o.lg >= 2 || o.lg + o.cups >= 5 ? '传奇主帅' : '功勋主帅'; });
+  return L;
+}
+function clubCoachesPanel(t) {
+  if (!WL) { try { loadWL(); } catch (e) {} }
+  const L = clubCoaches(t); if (!L.length) return '';
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Legendary managers</div><h2>功勋主帅</h2></div><span class="note">只看在${esc(t)}的成绩：联赛冠军、其他冠军、执教季数、胜率 · 威联赛 + 威超</span></div>
+    <div class="tw"><table><thead><tr><th class="l">主帅</th><th class="l">时代</th><th class="l">任期</th><th>季数</th><th>胜</th><th>平</th><th>负</th><th>胜率</th><th>联赛冠军</th><th>其他冠军</th><th class="l">地位</th></tr></thead><tbody>
+    ${L.map(o => `<tr><td class="l"><button class="lnk" data-coach="${esc(o.id)}"><b>${esc(o.name)}</b></button> <span class="dim" style="font-size:11px">${esc(o.nat || '')}${o.retired ? ' · 已退休' : ''}</span></td><td class="l muted" style="font-size:12px">${o.era === 'wl' ? '威联赛时代' : '威超'}</td><td class="l mono" style="font-size:12px">${o.spans.map(esc).join('、')}</td><td>${Math.round(o.seasons)}</td><td>${o.w}</td><td>${o.d}</td><td>${o.l}</td><td>${o.n ? Math.round(o.pct * 100) + '%' : '–'}</td><td>${o.lg || '–'}</td><td>${o.cups || '–'}</td><td class="l"><span class="chip ${/最佳|传奇/.test(o.tag) ? 'gold' : ''}" style="font-size:11px">${esc(o.tag)}</span></td></tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+function openWLCoach(id) {
+  const C = wlCoaches(); if (!C || !C.reg[id]) return; const K = C.reg[id], L = C.stints.filter(st => st.id === id);
+  const tot = L.reduce((a, st) => ({ w: a.w + st.w, d: a.d + st.d, l: a.l + st.l }), { w: 0, d: 0, l: 0 }), n = tot.w + tot.d + tot.l, hon = L.flatMap(st => st.hon);
+  const og = id === C.og.id;
+  const d = $('#dlg');
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:820px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div><div class="eyebrow">主帅档案 · 威联赛时代${K.nat ? ' · ' + esc(K.nat) : ''} · 已退休</div><h2 style="font-size:24px;font-weight:900;margin:4px 0">${esc(K.name)}</h2>${K.legend ? `<span class="chip gold">${esc(K.legend)}</span>` : ''}</div>
+    ${og ? `<p class="note" style="margin:0">意大利籍名帅。先在${esc(C.og.preT)}执教，${WN(C.og.best.a)} 入主威龙，带队 ${C.og.best.b - C.og.best.a + 1} 季，是威龙战绩和荣誉最出色的主帅。${C.og.best.b >= 49 ? `一直执教到威联赛最后一季（${WN(C.og.best.b)}），威超成立前宣布退休。` : '离开威龙后回到意大利执教国际梅兰两季，随后退休，没有赶上威超时代。'}</p>` : ''}
+    <div class="stats3">${[[n, '执教场次'], [`${tot.w}-${tot.d}-${tot.l}`, '胜-平-负'], [n ? Math.round(tot.w / n * 100) + '%' : '–', '胜率'], [hon.filter(h => h[0] === '威联赛冠军').length, '威联赛冠军'], [hon.length, '冠军总数']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
+    <div><div class="eyebrow" style="margin-bottom:8px">荣誉</div><div class="btns" style="gap:6px">${honChips(hon)}</div></div>
+    <div><div class="eyebrow" style="margin-bottom:8px">执教履历</div><div class="tw"><table><thead><tr><th class="l">球队</th><th class="l">任期</th><th>胜</th><th>平</th><th>负</th><th class="l">联赛名次</th><th class="l">荣誉</th></tr></thead><tbody>
+    ${L.map(st => `<tr><td class="l">${TD[st.team] ? tlink(st.team, 18) : esc(st.team)}</td><td class="l mono" style="font-size:12px">${WN(st.w1)}–${WN(st.w2)}</td><td>${st.w}</td><td>${st.d}</td><td>${st.l}</td><td class="l mono" style="font-size:12px">${st.fin.map(([, p2]) => p2 === 1 ? '<span style="color:var(--gold)">冠</span>' : p2).join(' · ') || '<span class="dim">次级联赛</span>'}</td><td class="l">${honChips(st.hon, true)}</td></tr>`).join('')}
+    ${og && C.og.best.b < 49 ? `<tr><td class="l">国际梅兰 <span class="dim" style="font-size:11px">壹甲联赛</span></td><td class="l mono" style="font-size:12px">${WN(Math.min(49, C.og.best.b + 1))}–${WN(Math.min(50, C.og.best.b + 2))}</td><td colspan="5" class="l dim">外赛区（退休前最后一站）</td></tr>` : ''}
+    </tbody></table></div></div></div>`;
+  if (!d.open) d.showModal();
+}
 function openCoach(id) {
+  if (String(id).startsWith('WC|')) return openWLCoach(id);
   const C = COACH_REG[id]; if (!C) return;
   const K = coachCareer(id), tot = K.tot, n = tot.w + tot.d + tot.l, ab = coachAbility(C), exp = coachSeasons(id);
   const pct = (w, n2) => n2 ? Math.round(w / n2 * 100) + '%' : '–';
@@ -2987,6 +3042,7 @@ function teamDetail(t) {
   ${wlTeamPanel(t)}
   ${teamFinPanel(t)}
   ${clubLegendsPanel(t)}
+  ${clubCoachesPanel(t)}
   ${clubLeaders(t)}
   ${academyPanel(t)}
   <div class="grid g-2" style="align-items:start">${movesPanel(t)}${coachPanel(t)}</div>
