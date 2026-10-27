@@ -686,7 +686,7 @@ function histFirst() { if (HIST_FIRST) return HIST_FIRST; HIST_FIRST = {}; Objec
 function academyOf(t, s = SEASON) {
   const out = [];
   if (s >= 18) (ACAD[t] || []).forEach(k => { const a = s - k.born; if (k.status !== 'academy' || a < 15 || a > 20) return; out.push({ key: k.id, kind: 'acad', name: k.name, nat: k.nat, pos: k.pos, line: k.line, age: a, rating: kidRating(k, s), pot: k.pot, attrs: kidAttrs(k, s), height: k.height, weight: k.weight, team: t }); });
-  else { const F = histFirst(); Object.entries(F).forEach(([pid, f]) => { pid = +pid; const pp = PL[pid]; if (!pp || f.t !== t || f.s <= s || pp[9] == null) return; const a = pp[9] - (f.s - s); if (a < 15 || a > 20) return; const pot = Math.max(pp[7] || f.r, f.r), rating = Math.round(Math.max(40, f.r - (f.s - s) * 2.4)); let attrs = {}; try { const base = personProfile(pid).attrs; Object.entries(base).forEach(([k, v]) => attrs[k] = Math.max(20, Math.round(v - (pot - rating) * 0.9))); } catch (e) {}
+  else { const F = histFirst(); Object.entries(F).forEach(([pid, f]) => { pid = +pid; const pp = PL[pid]; if (!pp || f.t !== t || f.s <= s || pp[9] == null) return; const a = pp[9] - (f.s - s); if (a < 15 || a > 20 || pp[9] > 21) return; const X = rrOf(pid), pot = X ? X[0] : Math.max(pp[7] || f.r, f.r), rating = X ? Math.max(40, rateAtR(pid, a)) : Math.round(Math.max(40, f.r - (f.s - s) * 2.4)); let attrs = {}; try { const base = personProfile(pid).attrs; Object.entries(base).forEach(([k, v]) => attrs[k] = Math.max(20, Math.round(v - (pot - rating) * 0.9))); } catch (e) {}
     out.push({ key: 'H' + pid, kind: 'hist', pid, name: pp[0], nat: pp[2], pos: pp[1], line: ENGINE.LINE(pp[1]), age: a, rating, pot, attrs, team: t, debut: f.s }); }); }
   (PDB[t] || []).forEach(p => { if (typeof p.age !== 'number' || p.age > 20) return; out.push({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team: t, homegrown: !!(p.youth || p.acad), uid: p.uid }); });
   return out.sort((a, b) => b.pot - a.pot || b.rating - a.rating);
@@ -1349,7 +1349,9 @@ function seasonEndDialog(A) {
     <div class="btns" style="justify-content:flex-end"><button class="btn primary" data-act="close">开始 ${SN(A.s + 1)}</button></div></div>`;
   if (!d.open) d.showModal();
 }
-function peakRating(pid) { if (PL[pid] && PL[pid][7]) return PL[pid][7]; let m = 0; SEASONS.forEach(s => Object.values(HS[s].xi).forEach(x => x.forEach(([id, , r]) => { if (id === pid && r > m) m = r; }))); return m || null; }
+function peakRating(pid) { // 至今为止的最高能力（还没发生的不算）
+  if (rrOf(pid)) { const a = ageAtSeason(pid, SEASON); if (a != null) { let m = 0; for (let x = 15; x <= Math.min(40, a); x++) m = Math.max(m, rateAtR(pid, x) || 0); if (m) return m; } }
+  if (PL[pid] && PL[pid][7]) return PL[pid][7]; let m = 0; SEASONS.forEach(s => Object.values(HS[s].xi).forEach(x => x.forEach(([id, , r]) => { if (id === pid && r > m) m = r; }))); return m || null; }
 // 球员在当前赛季处于哪个阶段：未出道 / 在役 / 暂别 / 已退役（按 S01–S18 的阵容资料）
 function phaseOf(pid) {
   const pp = PL[pid] || [], first = pp[8] || null, isDB = !!pp[3], last = isDB ? 99 : lastSquadSeason(pid);
@@ -2596,7 +2598,7 @@ const PRE_C = {};
 function preCareer(pid) {
   if (pid == null || !PL[pid]) return null; if (PRE_C[pid] !== undefined) return PRE_C[pid];
   const hf = histFirst()[pid], f = (hf && hf.s) || PL[pid][8] || ((typeof spanOf === 'function' && spanOf(pid)) || [])[0];
-  const a = f != null ? ageAtSeason(pid, f) : null; if (f == null || a == null || a <= 18) return (PRE_C[pid] = null);
+  const a = f != null ? ageAtSeason(pid, f) : null; if (f == null || a == null || a <= 21) return (PRE_C[pid] = null); // 21 岁前就在威超出道的，出道前都在本队青训
   const wlSet = new Set(); if (WL && WL.byPid && WL.byPid[pid] != null) { try { wlCareer(WL.byPid[pid]).L.forEach(x => wlSet.add(x[0] - 50)); } catch (e) {} }
   const r0 = (hf && hf.r) || peakCache(pid) || 78, pos = PL[pid][1], line = ENGINE.LINE(pos), rows = [];
   const clubs = Object.entries(EXT_CLUB).filter(([, x]) => !x.alias).map(([c, x]) => [c, x.str]);
@@ -2619,7 +2621,7 @@ function preCareerHTML(pid) {
   const L = preCareer(pid); if (!L) return '';
   const T = L.filter(x => !x.cur).reduce((o, x) => (o.apps += x.apps, o.g += x.g, o.a += x.a, o), { apps: 0, g: 0, a: 0 });
   const now = L.find(x => x.cur), clubs = [...new Set(L.map(x => x.club))];
-  return `<div><div class="eyebrow" style="margin-bottom:8px">来威超之前 · 外赛区经历 · ${clubs.length} 支球队${T.apps ? ` · ${T.apps} 场 ${T.g} 球 ${T.a} 助攻` : ''}</div>${now ? `<p class="note" style="margin:0 0 6px">目前效力 <b>${esc(now.club)}</b>（${esc(now.league)}），${SN(histFirst()[pid] ? histFirst()[pid].s : PL[pid][8])} 来到威超。</p>` : ''}
+  return `<div><div class="eyebrow" style="margin-bottom:8px">来威超之前 · 外赛区经历 · ${clubs.length} 支球队${T.apps ? ` · ${T.apps} 场 ${T.g} 球 ${T.a} 助攻` : ''}</div>${now ? `<p class="note" style="margin:0 0 6px">目前效力 <b>${esc(now.club)}</b>（${esc(now.league)}）。</p>` : ''}
     <div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">球队</th><th>年龄</th><th>能力</th><th>出场</th><th>进球</th><th>助攻</th><th>评分</th></tr></thead><tbody>${L.slice().reverse().map(x => `<tr><td class="l mono">${kLabel(x.k)}${x.cur ? ' <span class="chip" style="font-size:10px;padding:0 5px">本季</span>' : ''}</td><td class="l">${esc(x.club)} <span class="dim" style="font-size:11px">${esc(x.league)}</span></td><td>${x.age}</td><td>${x.r}</td><td>${x.cur ? '–' : x.apps}</td><td>${x.cur ? '–' : x.g}</td><td>${x.cur ? '–' : x.a}</td><td>${x.cur ? '–' : x.avg.toFixed(2)}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
 /* 主帅来威超之前的执教履历：职业教练在外赛区（威联赛时代的也算）带过的球队；名宿主帅则是刚从球员转型 */
@@ -3150,9 +3152,8 @@ function growthHTML(pid, p) {
   const pts = Object.entries(past).map(([s, r]) => ({ s: +s, r, k: 'past' })).filter(x => x.s < SEASON);
   let pot = null, future = [];
   if (p && typeof p.age0 === 'number') {
-    const g = growthOf(p); pot = Math.max(g.pot, p.rating);
+    pot = potentialOf(p);
     pts.push({ s: SEASON, r: p.rating, k: 'now' });
-    for (let s = SEASON + 1, a = p.age + 1; a <= 36 && s <= SEASON + 8; s++, a++) future.push({ s, r: g.at(p.age0 + (s - 18)), k: 'fut' });
   }
   const all = pts.concat(future).sort((a, b) => a.s - b.s);
   if (all.length < 2) return '';
@@ -3172,7 +3173,7 @@ function growthHTML(pid, p) {
   g += all.map(q => `<circle cx="${x(q.s)}" cy="${y(q.r)}" r="${q.k === 'now' ? 4.5 : 2.6}" fill="${q.k === 'fut' ? 'var(--bg)' : q.k === 'now' ? 'var(--accent-2)' : 'var(--accent)'}" stroke="${q.k === 'fut' ? 'var(--fg-3)' : 'none'}" stroke-width="1.3"><title>${SN(q.s)}${q.k === 'fut' ? '（预测）' : ''}：${q.r}</title></circle>`).join('');
   const futPeak = future.length ? future.reduce((m, q) => q.r > m.r ? q : m) : null;
   const chips = p && typeof p.age0 === 'number'
-    ? [`当前 ${p.rating}`, `潜力 ${pot}`, pot > p.rating && futPeak ? `预计 ${SN(futPeak.s)} 前后到达 ${futPeak.r}` : p.age >= 31 ? '已过巅峰期，逐年下滑' : '处在巅峰期']
+    ? [`当前 ${p.rating}`, `潜力 ${pot}`, pot > p.rating + 1 && p.age < 27 ? '还在成长期，上限看潜力' : p.age >= 31 ? '已过巅峰期，逐年下滑' : '处在巅峰期']
     : [`巅峰 ${peak.r}（${SN(peak.s)}）`];
   return `<div><div class="eyebrow" style="margin-bottom:8px">能力成长曲线</div>
     <div class="btns" style="gap:6px;margin-bottom:8px">${chips.map((c, i) => `<span class="chip ${i === 1 && p ? 'gold' : ''}">${c}</span>`).join('')}</div>
@@ -3205,7 +3206,7 @@ function personProfile(pid) {
   const wt = base ? base.weight : Math.round(ht - 105 + h('w') * 12);
   const nos = { GK: [1, 12, 13, 22], DF: [2, 3, 4, 5, 6, 15, 23], MF: [6, 8, 10, 14, 16, 18, 20], FW: [7, 9, 11, 17, 19, 21] }[line];
   const no = base ? base.no : nos[Math.floor(h('n') * nos.length)];
-  let attrs = base ? base.attributes : null;
+  let attrs = base ? Object.fromEntries(Object.entries(base.attributes).map(([k, v]) => [k, Math.max(25, Math.min(99, v + pk - base.rating))])) : null;
   if (!attrs) { attrs = {}; const tpl = { ...ATTR_TPL[line] }; if (/W|AM/.test(pos)) { tpl.dri = (tpl.dri || 0) + 3; tpl.spd = (tpl.spd || 0) + 3; } Object.entries(tpl).forEach(([k, d]) => attrs[k] = Math.max(30, Math.min(99, Math.round(pk + d + (h('at' + k) - 0.5) * 8)))); }
   const E = (S && S.edits && (S.edits[uid || ''] || S.edits['H|' + pid])) || null;
   if (E && E.ret) { return { no: E.no ?? no, ht: E.height ?? ht, wt: E.weight ?? wt, attrs: E.attrs || attrs, debutAge, endAge, ret, preEra: !!preEra, f1, lastS, ageNowP, peakValue: valueM(pk, 27), nat: nat || (base && base.nat) || '' }; }
@@ -3227,11 +3228,11 @@ function openPersonInner(pid, noRedirect) {
   const pk = peakCache(pid);
   const d = $('#dlg');
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
-    <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(pos)}</span></div>
+    <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">${phaseOf(pid).k === 'future' ? '目前' : phaseOf(pid).k === 'retired' ? '巅峰' : '至今最佳'} · ${esc(pos)}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(name)}</h3>
-      <div class="btns" style="margin-top:8px">${statusChips(pid)}<span class="chip mono" style="font-size:11px">${plyId(pid)}</span>${bustChip(pid, ageAtSeason(pid, Math.min(SEASON, (lastSquadSeason(pid) || SEASON))))}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const ph = phaseOf(pid), sp = spanOf(pid); if (ph.k === 'future') return `<span class="chip">${SN(ph.first)} 出道</span>`; if (ph.k === 'gap') return `<span class="chip">目前不在任何球队</span>`; const last = ph.last || (sp && sp[1]); return (sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span>` : '') + (last ? `<span class="chip">${SN(last)} 赛季后退役</span>` : ''); })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
-    ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, pf.f1 && pf.debutAge != null ? (pf.preEra ? `威联赛时代出道 · ${SN(pf.f1)} 时 ${pf.debutAge} 岁` : `${SN(pf.f1)} 出道 · ${pf.debutAge} 岁`) : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : SN(pf.lastS)} 退役 · ${pf.endAge} 岁` : pf.ageNowP != null && !(pf.f1 > SEASON) ? `现年 ${pf.ageNowP} 岁` : '', `巅峰身价 ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
-      <div><div class="eyebrow" style="margin-bottom:8px">巅峰能力</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div></div>`; })()}
+      <div class="btns" style="margin-top:8px">${statusChips(pid)}<span class="chip mono" style="font-size:11px">${plyId(pid)}</span>${bustChip(pid, ageAtSeason(pid, Math.min(SEASON, (lastSquadSeason(pid) || SEASON))))}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const ph = phaseOf(pid), sp = spanOf(pid); if (ph.k === 'future') { const pc = preCareer(pid), now = pc && pc.find(x => x.cur); const hf = histFirst()[pid], ag = ageAtSeason(pid, SEASON), acad = hf && TD[hf.t] && ageAtSeason(pid, hf.s) <= 21 && ag >= 15; return `<span class="chip">${now ? '效力 ' + esc(now.club) + '（' + esc(now.league) + '）' : acad ? esc(hf.t) + ' 青训梯队' : '青训 / 业余阶段'}</span>`; } if (ph.k === 'gap') return `<span class="chip">目前不在任何球队</span>`; const last = ph.last || (sp && sp[1]); return (sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span>` : '') + (last ? `<span class="chip">${SN(last)} 赛季后退役</span>` : ''); })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
+    ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, pf.f1 > SEASON ? (ageAtSeason(pid, SEASON) != null ? `现年 ${ageAtSeason(pid, SEASON)} 岁` : '') : pf.f1 && pf.debutAge != null ? (pf.preEra ? `威联赛时代出道 · ${SN(pf.f1)} 时 ${pf.debutAge} 岁` : `${SN(pf.f1)} 出道 · ${pf.debutAge} 岁`) : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : SN(pf.lastS)} 退役 · ${pf.endAge} 岁` : pf.ageNowP != null && !(pf.f1 > SEASON) ? `现年 ${pf.ageNowP} 岁` : '', (phaseOf(pid).k === 'retired' ? '巅峰身价' : '身价') + ` ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
+      <div><div class="eyebrow" style="margin-bottom:8px">${phaseOf(pid).k === 'retired' ? '巅峰能力' : phaseOf(pid).k === 'future' ? '目前能力' : '至今最佳能力'}</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div></div>`; })()}
     ${(() => { const rows = personSeasons(pid); if (!rows.length && !(WL && WL.byPid[pid] != null)) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; const CA = careerAllRow(pid); const wlT = WL && WL.byPid[pid] != null ? wlCareer(WL.byPid[pid]).L.map(x => x[1].team) : []; const allT = [...new Set(wlT.concat(byT))]; return scopeTabs('pp', [{ label: '职业生涯', note: careerNote(CA, '所有球队合计'), html: statGrid(CA.row, ENGINE.LINE(pos)) }, { label: '威超联赛', note: '只算威超联赛', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...allT.map(t => { const C = careerAllRow(pid, t); return { label: t, note: careerNote(C, `效力 ${esc(t)} 期间`), html: statGrid(C.row, ENGINE.LINE(pos)) }; })]); })()}
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(PID_UID[pid] || 'H|' + pid)}" style="padding:5px 10px;font-size:12px">✎ 编辑资料</button>${cmpBtn('p:' + pid, name)}</div>
     ${awardChips(pid)}${careerTotalHTML(pid)}${careerCompsHTML(pid)}${wlCareerForPid(pid)}${preCareerHTML(pid)}${loreHTML(pid)}${growthHTML(pid, null)}${careerHTML(pid)}${transferHTML(pid)}</div>`;
@@ -3454,7 +3455,11 @@ const hashOf = str => { let h = 2166136261; for (let i = 0; i < str.length; i++)
 // 合同到期赛季：按年龄和名字固定生成；到期后若还在队里，视为续约 2–4 年
 function contractEnd(p, team) { const o = BY_TN[(team || p.team) + '|' + p.name] || p; return o.cEnd != null ? o.cEnd : SEASON + 1; }
 const ageNow = p => typeof p.age === 'number' ? p.age : null;
-function potentialOf(p) { return typeof p.age0 === 'number' ? Math.max(p.rating, growthOf(p).pot) : p.rating; }
+function potentialOf(p) { // 球探眼中的潜力：伤病 / 个人问题还没发生之前看不出来
+  if (typeof p.age0 !== 'number') return p.rating;
+  if (p.cv != null && rrOf(p.cv)) { const X = rrOf(p.cv), hit = X[3] && p.age >= X[4]; return Math.max(p.rating, hit ? Math.round(X[0] - X[5]) : X[0]); }
+  if (p.kidBust && p.age < p.kidBust.age) return Math.max(p.rating, p.kidBust.pot);
+  return Math.max(p.rating, growthOf(p).pot); }
 // 有意的球队：实力更强、该位置首发不如他的威超球队
 function suitorsOf(p, n = 2) {
   const myOvr = ENGINE.strength(p.team).ovr, line = ENGINE.LINE(p.pos);
@@ -4080,7 +4085,7 @@ function wlCareerHTML(id, title = '威联赛时代（W01–W50）') {
     ${C.L.map(([w, r]) => `<tr><td class="l mono">${WN(w)}</td><td class="l">${esc(r.team)}${r.inLg ? '' : ' <span class="dim" style="font-size:11px">次级联赛</span>'}</td><td>${wlAge(wlP(id), w)}</td><td>${r.rt}</td><td>${r.apps}</td><td>${r.g}</td><td>${r.a}</td><td>${r.apps ? r.avg.toFixed(2) : '–'}</td><td>${r.capps}</td><td>${r.cg}</td><td>${r.ca}</td><td>${r.motm}</td></tr>`).join('')}
     <tr style="font-weight:800"><td class="l">合计</td><td class="l">${C.L.length} 季</td><td></td><td></td><td>${t.apps}</td><td>${t.g}</td><td>${t.a}</td><td>${t.apps ? t.avg.toFixed(2) : '–'}</td><td>${t.capps}</td><td>${t.cg}</td><td>${t.ca}</td><td>${t.motm}</td></tr></tbody></table></div></details></div>`;
 }
-function wlCareerForPid(pid) { if (!WL || pid == null) return ''; const id = WL.byPid[pid]; return id != null ? wlCareerHTML(id) : ''; }
+function wlCareerForPid(pid) { if (!WL || pid == null) return ''; { const id0 = WL.byPid[pid]; if (id0 != null) { const T = wlCareer(id0).tot; if (!T.apps && !T.capps) return ''; } } const id = WL.byPid[pid]; return id != null ? wlCareerHTML(id) : ''; }
 function openWLPlayer(id) {
   const p = wlP(id); if (!p) return; if (p.pid >= 0) return openPerson(p.pid);
   const C = wlCareer(id), teams = [...new Set(C.L.map(x => x[1].team))], peak = Math.max(...C.L.map(x => x[1].rt));
@@ -4416,7 +4421,7 @@ function cmpData(ref) {
   let lg = 0, cups = 0; rows.forEach(([s, r]) => { if (champOf(s) === r.team) lg++; const C = cupsOf(s) || {}; ['世联赛', '全联冠', '全联杯'].forEach(k => { if (C[k] && C[k].winner === r.team) cups++; }); });
   lg += wc('威联赛冠军'); cups += wc('世联赛冠军') + wc('全联杯冠军');
   const aw = pid != null || (p && p.uid) ? awardsOfPid(pid, p && p.uid) : [], cnt = k => aw.filter(x => x[0] === k).length;
-  const ph = !team && pid != null ? phaseOf(pid) : null, tag = !ph ? '' : ph.k === 'future' ? `${SN(ph.first)} 出道` : RETIRED_PID.has(pid) || ph.k === 'retired' ? '已退役' : '目前不在队';
+  const ph = !team && pid != null ? phaseOf(pid) : null, tag = !ph ? '' : ph.k === 'future' ? '尚未加入威超' : RETIRED_PID.has(pid) || ph.k === 'retired' ? '已退役' : '目前不在队';
   return { name: name || '?', team: team || (pid != null ? (teamsOfPid(pid).slice(-1)[0] || '') : ''), tag, retired: !team, pos: p ? p.pos : pid != null ? PL[pid][1] : '', nat: p ? p.nat : pid != null ? PL[pid][2] : '',
     age: p ? p.age : pf && !(ph && ph.k === 'future') ? (pf.endAge ?? pf.ageNowP ?? null) : null, rating: p ? p.rating : null, peak: pk || (p ? p.rating : null),
     attrs: p && p.attributes ? p.attributes : pf ? pf.attrs : {}, seasons: rows.length + (WH ? WH.L.length : 0), tot, lg, cups,
