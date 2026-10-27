@@ -1310,7 +1310,7 @@ function phaseOf(pid) {
 }
 const isActive = pid => SEASON < 18 ? !!squadIdx(SEASON)[pid] : !!(PL[pid] && PL[pid][5]) && !RETIRED_PID.has(pid) && (PL[pid][4] !== 'd' || !!pidTeam(pid) || !PID_UID[pid]);
 const abroadOf = pid => ABROAD[PID_UID[pid]] || null;
-const statusChips = (pid, small) => { const st = small ? ' style="font-size:10.5px"' : ''; const ab = abroadOf(pid), ph = phaseOf(pid); return `<span class="chip ${isActive(pid) || ab ? 'good' : ''}"${st}>${isActive(pid) ? '现役球员' : ab ? `旅外 · ${esc(ab.club)}` : ph.k === 'future' ? '尚未出道' : ph.k === 'gap' ? '暂别威超' : '退役球员'}</span>${PL[pid] && PL[pid][4] === 'l' ? `<span class="chip gold"${st}>传奇球员</span>` : ''}`; };
+const statusChips = (pid, small) => { const st = small ? ' style="font-size:10.5px"' : ''; const ab = abroadOf(pid), ph = phaseOf(pid); return `<span class="chip ${isActive(pid) || ab ? 'good' : ''}"${st}>${isActive(pid) ? '现役球员' : ab ? `旅外 · ${esc(ab.club)}` : ph.k === 'future' ? '尚未出道' : ph.k === 'gap' ? '暂别威超' : '退役球员'}</span>`; };
 function zone(i, n = 20) { return i < 4 ? 'z1' : i < 6 ? 'z2' : i < 7 ? 'z3' : i >= n - 3 ? 'zr' : ''; }
 const ZONE_LEGEND = `<div class="legend"><span style="--c:var(--z1)">全联冠</span><span style="--c:var(--z2)">全联杯</span><span style="--c:var(--z3)">全协联</span><span style="--c:var(--zr)">降级</span></div>`;
 
@@ -2104,7 +2104,7 @@ const FORCE17 = { 世联赛: ['猛龙', null, '46 轮 36 胜 6 平 4 负，114 �
 let HIST_CUPS = null;
 function buildHistCups() {
   HIST_CUPS = {};
-  CUP_QUOTA = {}; Object.entries(H.honours).forEach(([t, o]) => CUP_QUOTA[t] = { ...o });
+  CUP_QUOTA = null; // 旧版官网的杯赛冠军次数不再限制结果：全部按实力重新模拟
   Object.values(FORCE17).forEach(([w]) => { const tr = CUP_TROPHY[Object.keys(FORCE17).find(k => FORCE17[k][0] === w)]; });
   Object.entries(FORCE17).forEach(([k, [w]]) => { if (TD[w] && CUP_QUOTA[w]) CUP_QUOTA[w][CUP_TROPHY[k]]--; });
   for (let s = 1; s <= 17; s++) {
@@ -2171,19 +2171,19 @@ function loreHTML(pid) {
   const pre = L.pre || {}, C = L.career || {}, cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
   const aw = awardsOfPid(pid); const nB = aw.filter(x => x[0] === '金球奖').length, nG = aw.filter(x => x[0] === '威超金手套').length;
   const parts = [];
-  if (pre.apps && !(WL && WL.byPid[pid] != null)) parts.push(`<div><div class="eyebrow" style="margin-bottom:6px">威联赛时代（S01 之前）</div><div class="stats3">${cell(pre.apps, '出场')}${cell(pre.g ?? '–', '进球')}${cell(pre.a ?? '–', '助攻')}</div></div>`);
+  if (false && pre.apps) parts.push(`<div><div class="eyebrow" style="margin-bottom:6px">威联赛时代（S01 之前）</div><div class="stats3">${cell(pre.apps, '出场')}${cell(pre.g ?? '–', '进球')}${cell(pre.a ?? '–', '助攻')}</div></div>`);
   parts.push(`<div><div class="eyebrow" style="margin-bottom:6px">威超联赛</div><div class="stats3">${cell(lg.apps, '出场')}${cell(lg.g, '进球')}${cell(lg.a, '助攻')}</div></div>`);
-  const hon = WL && WL.byPid[pid] != null ? '' : [pre.ballon ? `<span class="chip gold">威联赛时代金球奖 ×${pre.ballon}</span>` : '', pre.glove ? `<span class="chip">威联赛时代金手套 ×${pre.glove}</span>` : ''].filter(Boolean).join('');
+  const hon = true ? '' : [pre.ballon ? `<span class="chip gold">威联赛时代金球奖 ×${pre.ballon}</span>` : '', pre.glove ? `<span class="chip">威联赛时代金手套 ×${pre.glove}</span>` : ''].filter(Boolean).join('');
   const gal = (LORE.galactico || []).find(G => G.squad.some(([n]) => n === LORE_KEY_OF[pid].split('@')[0]) && (LORE_KEY_OF[pid].endsWith('@威龙') || LORE_KEY_OF[pid] === '法拉第@罗联'));
 
   return `<div><div class="eyebrow" style="margin-bottom:8px">威联赛时代（威超前身）</div><div class="btns" style="gap:6px;margin-bottom:10px">${hon}</div><div class="grid g-2" style="gap:12px">${parts.join('')}</div></div>`;
 }
 function goatHTML() {
   const row = k => { const pid = LORE_PID[k]; if (pid == null) return null; const rs = personSeasons(pid), t = sumRows(rs.map(r => r[1])); const teams = [...new Set(rs.map(r => r[1].team))]; const L = LORE.players[k] || {}, pre = L.pre || {}, C = L.career || {};
-    const nB = awardsOfPid(pid).filter(x => x[0] === '金球奖').length + (pre.ballon || 0);
+    const nB = awardsOfPid(pid).filter(x => x[0] === '金球奖').length + wlHonOf2(pid);
     const dbp = PID_UID[pid] ? PDB0_BY_UID[PID_UID[pid]] : null;
     const lg17 = sumRows(rs.filter(r => r[0] <= 17).map(r => r[1])), after = t.g - lg17.g;
-    const allG = C.g != null ? C.g + after : Math.max(t.g, dbp && dbp.cG || 0);
+    const allG = t.g + (pre.g || 0);
     return { k, pid, name: k.split('@')[0], teams, sp: spanOf(pid), ...t, nB, preG: pre.g || 0, preApps: pre.apps || 0, allG }; };
   const goat = k => (LORE.goat || []).includes(k);
   const table = (T, all) => { const ks = Object.keys(T).filter(t => !t.startsWith('_'));
@@ -2198,7 +2198,7 @@ function galacticoHTML() {
   const keyOf = n => Object.keys(LORE.players).find(k => k.split('@')[0] === n);
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Galácticos</div><h2>威龙银河战舰</h2></div><span class="note">点名字看传奇档案</span></div><div class="grid g-2" style="align-items:start">
     ${(LORE.galactico || []).map(G => `<div><div class="eyebrow" style="margin-bottom:4px">${esc(G.title)} · ${esc(G.era)}</div><p class="muted" style="margin:0 0 8px;font-size:12.5px">${esc(G.note)}</p><div class="rank-list">${G.squad.map(([n, pos]) => { const k = keyOf(n), L = (k && LORE.players[k]) || {}, pid = k ? LORE_PID[k] : null, C = L.career || {}, pre = L.pre || {};
-      const nB = pid != null ? awardsOfPid(pid).filter(x => x[0] === '金球奖').length + (pre.ballon || 0) : 0, nG = pid != null ? awardsOfPid(pid).filter(x => x[0] === '威超金手套').length + (pre.glove || 0) : 0;
+      const nB = pid != null ? awardsOfPid(pid).filter(x => x[0] === '金球奖').length + wlHonOf2(pid) : 0, nG = pid != null ? awardsOfPid(pid).filter(x => x[0] === '威超金手套').length + (pre.glove || 0) : 0;
       const bits = [C.g != null ? `生涯 ${C.g} 球` : '', C.a != null && (C.a >= 300 || C.g == null) ? `${C.a} 助攻` : '', nB ? `金球奖 ×${nB}` : '', nG ? `金手套 ×${nG}` : ''].filter(Boolean).join(' · ');
       return `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(pos)}</span>${pid != null ? `<button class="lnk" data-pid="${pid}"><b>${esc(n)}</b></button>` : `<b>${esc(n)}</b>`}<span class="v mono" style="font-size:11.5px">${bits}</span></div>`; }).join('')}</div></div>`).join('')}
   </div></div>`;
@@ -2434,11 +2434,12 @@ const COACH_REG = {};
 let COACH_CACHE = null;
 const coachName = (seed, nat) => { const rnd = seeded('coach|' + seed); for (let k = 0; k < 200; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n) && !Object.values(COACH_REG).some(c => c.name === n)) return n; } return oneName(nat, rnd, 999); };
 // 球员转教练：没有执教经验，起步能力偏弱（随执教季数成长）；影响力看球员时代的成就（金球、梯队、名宿身份、巅峰）
+const wlHonOf2 = pid => WL && WL.byPid[pid] != null ? wlCareer(WL.byPid[pid]).hon.filter(h => h[0] === '金球奖').length : 0;
 function legendInfluence(pid, pk, clubs) {
-  const key = (typeof LORE_KEY_OF !== 'undefined' && LORE_KEY_OF[pid]) || null, L = key && LORE.players[key];
-  const ballon = L && L.career ? (L.career.ballon || 0) : 0;
-  const TB = { 'S++': 12, 'S+': 9, S: 7, 'A+': 4, A: 2 }; let tier = 0, legendClubs = 0;
-  [...(clubs || [])].forEach(t => (H.legends[t] || []).forEach(l => { if (l.name === PL[pid][0]) { tier = Math.max(tier, TB[(l.tier && l.tier.r) || l.tier] || 0); legendClubs++; } }));
+  // 只看这次模拟里的成就（威超金球）和威联赛时代的金球、在各队的名宿地位
+  let ballon = 0; try { ballon = awardsOfPid(pid).filter(x => x[0] === '金球奖').length; } catch (e) {}
+  try { if (WL && WL.byPid[pid] != null) ballon += (wlHonOf2(pid) || 0); } catch (e) {}
+  let tier = 0, legendClubs = 0; [...(clubs || [])].forEach(t => { try { const o = clubLegends(t).find(x => x.pid === pid); if (o) { legendClubs++; tier = Math.max(tier, o.tag === '队史传奇' ? 9 : o.tag === '名宿' ? 5 : 2); } } catch (e) {} });
   return Math.round(Math.max(66, Math.min(99, 68 + (pk - 86) * 1.1 + ballon * 3.5 + tier + Math.min(2, legendClubs) * 1.5 + ghash('ci|' + pid) * 4)));
 }
 // 执教能力 = 基础能力 + 执教经验（名宿每执教一季 +1.5，最多 +14；职业教练本来就有经验）
@@ -2899,7 +2900,7 @@ function teamDetail(t) {
   const inLeague = S.teams.includes(t); const tb = inLeague ? table() : null; const posNow = tb ? tb.findIndex(r => r.team === t) + 1 : null;
   const outMap = inLeague && nextRound() >= 0 ? teamCtx(t, nextRound()).out : {};
   const histS = SEASON < 18;
-  const car = histS ? null : P.career; const legends = (H.legends[t] || []).filter(l => l.start <= SEASON).map(l => ({ ...l, end: l.end && l.end < SEASON ? l.end : null })).sort((a, b) => { const R = ['S++', 'S+', 'S', 'A+', 'A']; const ra = R.indexOf(a.tier.replace(/[^SA+]/g, '')), rb = R.indexOf(b.tier.replace(/[^SA+]/g, '')); return (ra < 0 ? 9 : ra) - (rb < 0 ? 9 : rb) || a.start - b.start; });
+  const car = null; const legends = [].concat([]).filter(l => l.start <= SEASON).map(l => ({ ...l, end: l.end && l.end < SEASON ? l.end : null })).sort((a, b) => { const R = ['S++', 'S+', 'S', 'A+', 'A']; const ra = R.indexOf(a.tier.replace(/[^SA+]/g, '')), rb = R.indexOf(b.tier.replace(/[^SA+]/g, '')); return (ra < 0 ? 9 : ra) - (rb < 0 ? 9 : rb) || a.start - b.start; });
   // S18 之前：队长取当季首发里在队最久的球员，主教练资料只有 S18 的
   const capNow = histS ? (() => { const xi = TD[t].roster.map(r => r.name); let best = null, bn = -1; xi.forEach(n => { const o = BY_TN[t + '|' + n]; const pid = o && UIDPID[o.uid]; if (pid == null) return; let c = 0; for (let k = 1; k <= SEASON; k++) if (((HIST.squads[k] || {})[t] || []).some(x => x[0] === pid)) c++; if (c > bn) { bn = c; best = n; } }); return best; })() : P.captain;
   return `<section class="view">
@@ -3162,7 +3163,7 @@ function openPlayer(team, name) {
     ${pid != null ? transferHTML(pid) : ''}
     ${(() => { const rows = pid != null ? personSeasons(pid) : (s ? [[SEASON, s]] : []); const car = pid != null ? careerAllRow(pid).row : sumRows(rows.map(r => r[1])), club = pid != null ? careerAllRow(pid, team).row : sumRows(rows.filter(r => r[1].team === team).map(r => r[1]));
       const cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
-      return `<div><div class="eyebrow" style="margin-bottom:8px">生涯总计（含威联赛时代与全部杯赛 / 洲际赛）</div><div class="stats3">${cell(Math.max(p.cGP || 0, car.apps), '生涯出场')}${cell(Math.max(p.cG || 0, car.g), '生涯进球')}${cell(Math.max(p.cA || 0, car.a), '生涯助攻')}${cell(Math.max(p.tGP || 0, club.apps), '本队出场')}${cell(Math.max(p.tG || 0, club.g), '本队进球')}${cell(Math.max(p.tA || 0, club.a), '本队助攻')}</div></div>`; })()}
+      return `<div><div class="eyebrow" style="margin-bottom:8px">生涯总计（含威联赛时代与全部杯赛 / 洲际赛）</div><div class="stats3">${cell(car.apps, '生涯出场')}${cell(car.g, '生涯进球')}${cell(car.a, '生涯助攻')}${cell(Math.max(p.tGP || 0, club.apps), '本队出场')}${cell(Math.max(p.tG || 0, club.g), '本队进球')}${cell(Math.max(p.tA || 0, club.a), '本队助攻')}</div></div>`; })()}
   </div>`;
   if (!d.open) d.showModal();
   bindScopes(d);
@@ -3293,10 +3294,12 @@ after.stats = () => {
 
 
 /* ---------- 转会 ---------- */
+// 历史转会只保留「谁在哪一季从哪队到哪队」；转会费按球员当时的能力和年龄重新估算（不用旧官网的数字）
+function histFee(pid, ts) { let r = null; for (const k of [ts, ts - 1]) { const T = (HSQ0 || HIST.squads || {})[k] || {}; Object.values(T).forEach(L => L.forEach(x => { if (x[0] === pid && r == null) r = x[2]; })); if (r != null) break; } r = r || (HIST.players[pid] && HIST.players[pid][7]) || 80; const a = ageAtSeason(pid, ts) || 26; return Math.max(1, Math.round(valueM(r, a) * (0.85 + ghash('hf|' + pid + '|' + ts) * 0.35))); }
 const TRANSFERS = [], TR_BY_PID = {};
 function rebuildTransfers() {
   TRANSFERS.length = 0; Object.keys(TR_BY_PID).forEach(k => delete TR_BY_PID[k]);
-  (HIST.transfers || []).forEach(([s, pid, from, to, fee]) => { if (s > SEASON) return; const MK = S.market && S.market[s - 1]; if (MK && MK.done && (MK.offers.some(o => o.pid === pid) || (MK.hexp || []).some(h => h.pid === pid))) return; TRANSFERS.push({ s, pid, from, to, fee }); });
+  (HIST.transfers || []).forEach(([s, pid, from, to]) => { if (s > SEASON) return; const fee = histFee(pid, s); const MK = S.market && S.market[s - 1]; if (MK && MK.done && (MK.offers.some(o => o.pid === pid) || (MK.hexp || []).some(h => h.pid === pid))) return; TRANSFERS.push({ s, pid, from, to, fee }); });
   Object.entries(S.market || {}).forEach(([k, MK]) => { if (+k > 17 || !MK.done || +k + 1 > SEASON) return; MK.done.forEach(x => TRANSFERS.push({ s: x.s, pid: x.pid, from: x.from, to: x.to, fee: x.fee, free: x.free, rel: x.rel, late: x.late })); });
   Object.entries(TR_LOG).forEach(([s, l]) => l.forEach(x => TRANSFERS.push({ s: +s + 1, pid: UIDPID[x.uid], name: x.name, team: x.to, from: x.from, to: x.to, fee: x.fee, free: x.free, rel: x.rel, late: x.late })));
   TRANSFERS.forEach(t => { if (t.pid != null) (TR_BY_PID[t.pid] = TR_BY_PID[t.pid] || []).push(t); });
@@ -3557,7 +3560,7 @@ function nextTeamMap(s) {
 function mktGenHist(MK, s, C, salt) {
   const ns = s + 1, nx = nextTeamMap(s), cur = {}; Object.entries(PDB).forEach(([t, L]) => L.forEach(p => { const pid = UIDPID[p.uid] ?? (String(p.uid).startsWith('H|') ? +String(p.uid).slice(2) : null); if (pid != null) cur[pid] = [p, t]; }));
   MK.sched = {}; MK.hexp = [];
-  (HIST.transfers || []).filter(x => x[0] === ns).sort((a, b) => b[4] - a[4]).forEach(([, pid, from, to, fee]) => {
+  (HIST.transfers || []).filter(x => x[0] === ns).map(x => [x[0], x[1], x[2], x[3], histFee(x[1], ns)]).sort((a, b) => b[4] - a[4]).forEach(([, pid, from, to, fee]) => {
     const c = cur[pid]; if (!c) return; const [p, t] = c; if (t === to) return;
     if (TD[to] ? nx[pid] !== to : nx[pid] != null) return; // 历史上这次转会已经被之前的决定改掉了
     const rnd = seeded('hs|' + pid + '|' + s + salt), v = valueM(p.rating, C.ageN(p));
