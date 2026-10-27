@@ -103,7 +103,7 @@ const ENGINE = (() => {
   const SLOTS = ['早上', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '凌晨'];
   let teamMod = null;
   const setTeamMod = f => { teamMod = f; };
-  function condition(team, weather, slot) {
+  function condition(team, weather, slot, opp) {
     const P = HISTORY.profiles[team] || {};
     const parse = s => (s || '').split(/[；;]/).map(x => x.trim());
     const [bw, bt] = parse(P.best), [ww, wt] = parse(P.worst);
@@ -113,7 +113,7 @@ const ENGINE = (() => {
     if (bt === slot) add('擅长' + slot, 4);
     if (ww === weather) add('怕' + weather, -4.5);
     if (wt === slot) add('不适应' + slot, -4.5);
-    if (teamMod) (teamMod(team) || []).forEach(x => add(x.txt, x.d));
+    if (teamMod) (teamMod(team, opp) || []).forEach(x => add(x.txt, x.d));
     const level = m >= 1.075 ? '最佳' : m > 1.01 ? '良好' : m <= 0.925 ? '最差' : m < 0.99 ? '低迷' : '正常';
     return { m, level, tags, mods };
   }
@@ -139,7 +139,7 @@ const ENGINE = (() => {
   // opt.L = { h: pickXI(...), a: pickXI(...) } 时按实际首发计算
   function expected(home, away, opt = {}) {
     const H = opt.L ? strengthOf(opt.L.h) : strength(home), A = opt.L ? strengthOf(opt.L.a) : strength(away);
-    const ch = condition(home, opt.weather, opt.slot), ca = condition(away, opt.weather, opt.slot);
+    const ch = condition(home, opt.weather, opt.slot, away), ca = condition(away, opt.weather, opt.slot, home);
     const homeAdv = opt.neutral ? 1 : 1.12, awayPen = opt.neutral ? 1 : 0.94;
     const k = 0.078;
     const sh = styleFx((TEAMS_DATA[home] || {}).style, (TEAMS_DATA[away] || {}).style), sa = styleFx((TEAMS_DATA[away] || {}).style, (TEAMS_DATA[home] || {}).style);
