@@ -3838,7 +3838,7 @@ function mktGenHist(MK, s, C, salt) {
     const c = cur[pid]; if (!c) return; const [p, t] = c; if (t === to) return;
     if (TD[to] ? nx[pid] !== to : nx[pid] != null) return; // 历史上这次转会已经被之前的决定改掉了
     const rnd = seeded('hs|' + pid + '|' + s + salt), v = valueM(p.rating, C.ageN(p));
-    const o = mktOffer(MK, p, t, to, C, rnd, 1, 1); o.fee = fee; o.max = Math.max(fee + 1, Math.round(fee * (1.08 + rnd() * 0.35))); o.v = v; o.sched = 1; o.pid = pid; MK.sched[pid] = to;
+    const o = mktOffer(MK, p, t, to, C, rnd, 1, 1); o.fee = fee; o.max = Math.max(fee + 1, Math.round(fee * (1.08 + rnd() * 0.35))); o.v = v; o.sched = 1; o.pid = pid; MK.sched[pid] = to; if (t !== from) { o.cont = 1; o.hfrom = from; }
   });
   // 额外报价：没有历史转会、下季还在踢球的强队主力
   const cand = [];
@@ -3855,7 +3855,7 @@ function mktGenHist(MK, s, C, salt) {
    C 潜力新星：小球队（尤其刚卖过天才、手里有钱的）去外赛区挖 21 岁以下的高潜力球员 */
 const BIG_STR = 84;
 const KIND_TXT = { talent: ['天才出售', '小球队把培养出来的天才卖给豪门，转会费带天赋溢价'], vet: ['捡漏老将', '豪门的老将 / 替补，小球队低价买来当主力'], prospect: ['潜力新星', '小球队用卖人的钱去挖年轻的高潜力球员'] };
-const kindChip = o => o.kind && KIND_TXT[o.kind] ? ` <span class="chip" title="${KIND_TXT[o.kind][1]}" style="font-size:10px;padding:0 5px;border-color:${o.kind === 'talent' ? 'var(--gold)' : o.kind === 'vet' ? '#7c9' : '#8ad'}">${KIND_TXT[o.kind][0]}</span>` : '';
+const kindChip = o => (o.cont ? ` <span class="chip" title="这名球员之前被你改过去向（历史上他是从 ${esc(o.hfrom || '')} 转会）。现在历史轮到他转会去 ${esc(o.to)}：同意就回到历史轨道，拒绝就继续留在现在的球队。" style="font-size:10px;padding:0 5px;border-color:#b8f">历史延续</span>` : '') + (o.kind && KIND_TXT[o.kind] ? ` <span class="chip" title="${KIND_TXT[o.kind][1]}" style="font-size:10px;padding:0 5px;border-color:${o.kind === 'talent' ? 'var(--gold)' : o.kind === 'vet' ? '#7c9' : '#8ad'}">${KIND_TXT[o.kind][0]}</span>` : '');
 function mktGenEco(MK, s, C, salt, nx) {
   const pidOf = p => UIDPID[p.uid] ?? (String(p.uid).startsWith('H|') ? +String(p.uid).slice(2) : null);
   const has = uid => MK.offers.some(o => o.uid === uid);
@@ -3889,9 +3889,10 @@ function mktGenEco(MK, s, C, salt, nx) {
     pool.sort((x, y) => y.pot - x.pot || y.r - x.r); const pk = pool.slice(0, 6)[Math.floor(rnd() * Math.min(6, pool.length))]; if (!pk) return;
     const o = mktOfferB(MK, pk.p, pk.c, t, C, rnd, 0.9, 1.2); if (o) { o.kind = 'prospect'; o.ext = 1; } });
 }
-function mktExp(MK, C) {
-  if (C.hist) return (MK.hexp || []).map(h => { const [p, t] = mktFind(h.uid); return p ? { p, t, r: p.rating, a: C.ageN(p), pr: stayProb(p, t, C) } : null; }).filter(Boolean);
-  const exp = []; S.teams.forEach(t => (PDB[t] || []).forEach(p => { if (C.alive(p) && p.cEnd <= SEASON) exp.push({ p, t, r: C.ratN(p), a: C.ageN(p), pr: stayProb(p, t, C) }); })); return exp;
+const mktSold = (MK, uid) => (MK.offers || []).some(o => o.uid === uid && o.st === 'a') || !!(MK.rel || {})[uid];
+function mktExp(MK, C) { // 已经卖掉 / 解约的球员不再出现在合同到期名单里
+  if (C.hist) return (MK.hexp || []).filter(h => !mktSold(MK, h.uid)).map(h => { const [p, t] = mktFind(h.uid); return p ? { p, t, r: p.rating, a: C.ageN(p), pr: stayProb(p, t, C) } : null; }).filter(Boolean);
+  const exp = []; S.teams.forEach(t => (PDB[t] || []).forEach(p => { if (C.alive(p) && p.cEnd <= SEASON && !mktSold(MK, p.uid)) exp.push({ p, t, r: C.ratN(p), a: C.ageN(p), pr: stayProb(p, t, C) }); })); return exp;
 }
 function mktAct(kind, id) {
   const s0 = MS(), late = mktLate(), MK = mktGet(s0), C = mktCtx(s0), salt = saltOf(s0);
@@ -3905,6 +3906,7 @@ function mktAct(kind, id) {
     if (TD[o.to] && !o.sched) o.max = Math.min(o.max, Math.max(0, finState()[o.to].rem));
     if (o.round < 4 && o.fee * 1.05 < o.max && rnd() < 0.72) { const nf = Math.min(o.max, Math.max(o.fee + 1, Math.round(o.fee * (1.07 + rnd() * 0.13)))); o.fee = nf; o.round++; o.log.push(`加价到 ${fee$(nf)}`); toast(`${o.to} 把报价提高到 ${fee$(nf)}`); }
     else { o.st = 'r'; o.log.push(TD[o.to] && !o.sched && o.fee * 1.05 >= finState()[o.to].rem ? '预算到顶，放弃求购' : '放弃求购'); toast(`${o.to} 放弃求购 ${o.name}`); } }
+  if ((kind === 'renew' || kind === 'list' || kind === 'rel') && mktSold(MK, id)) { toast('这名球员已经成交 / 解约，不能再操作'); return render(); }
   if (kind === 'renew' || kind === 'list') { const [p, t] = mktFind(id); if (!p) return;
     if (kind === 'renew') { if (MK.renew[id] || late) return; const pr = stayProb(p, t, C), ok = seeded('rn|' + id + '|' + SEASON + salt)() < pr, a = C.ageN(p);
       MK.renew[id] = { ok, pr: Math.round(pr * 100), yrs: ok ? (a >= 32 ? 1 : 2 + Math.floor(ghash('ry|' + id + SEASON) * 3)) : 0 };
@@ -4054,7 +4056,8 @@ function winGen() {
   S.market = S.market || {}; const k = winKey(SEASON); if (S.market[k]) return S.market[k];
   const MK = S.market[k] = { offers: [], seq: 0, eval: [], win: 1 }, salt = saltOf(SEASON), E = winHalfEval();
   const C = { ageN: p => p.age || 25, ratN: p => p.rating, str: {} }; Object.keys(PDB).forEach(t => { const x = (PDB[t] || []).map(p => p.rating).sort((a, b) => b - a).slice(0, 11); C.str[t] = x.length ? x.reduce((a, b) => a + b, 0) / x.length : 60; });
-  const taken = new Set();
+  const taken = new Set(); // 夏窗刚转会过来的球员，冬窗不会被再卖
+  const SM = S.market[SEASON - 1]; if (SM) SM.offers.forEach(o => { if (o.st === 'a') taken.add(o.uid); });
   E.forEach(e => { const rnd = seeded('win|' + e.t + '|' + SEASON + salt), R2 = squadReport(e.t), needs = R2.filter(g => g.pri === '高' || (g.pri === '中' && (e.diff >= 3 || e.rk >= 16))).sort((a, b) => b.score - a.score);
     let mood = e.diff >= 4 ? '上半程远低于预期，管理层要求冬窗补强' : e.rk >= 18 ? '身陷降级区，急需补强' : e.diff >= 2 ? '成绩低于预期，考虑补强' : e.rk <= 3 && e.diff <= 0 ? '争冠形势良好，补强关键位置冲冠' : '成绩符合预期，冬窗按兵不动';
     const go = e.diff >= 2 || e.rk >= 16 || (e.rk <= 3 && rnd() < 0.5);
@@ -4075,10 +4078,13 @@ function winGen() {
   save(); return MK;
 }
 function winAct(kind, id) {
-  const MK = S.market[winKey(SEASON)]; if (!MK || !winActive()) return; const o = MK.offers.find(x => x.id === id); if (!o || o.st !== 'p') return;
+  const MK = S.market[winKey(SEASON)]; if (!MK || !winActive()) return;
+  if (kind === 'rel') { let p = null, t = null; Object.keys(PDB).some(x => { const q = (PDB[x] || []).find(y => y.uid === id); if (q) { p = q; t = x; } return !!q; }); if (!p || (MK.rel || {})[id]) return;
+    MK.rel = MK.rel || {}; MK.rel[id] = { from: t, name: p.name }; MK.offers.forEach(o => { if (o.uid === id && o.st === 'p') { o.st = 'r'; o.log.push('球员已被解约'); } }); toast(`${t} 与 ${p.name} 解约`); if (BATCH) { BATCH_W = 1; return; } return winApply(); }
+  const o = MK.offers.find(x => x.id === id); if (!o || o.st !== 'p') return;
   if (kind === 'accept') {
     if (TD[o.to] && !canAfford(o.to, o.fee)) { o.st = 'r'; o.log.push('买方预算不足'); toast(`${o.to} 转会预算不够，交易取消`); save(); return render(); }
-    if (TD[o.to] && (PDB[o.to] || []).length + 1 > SQUAD_MAX) { o.log.push('买方超员，交易中止'); toast(`⚠ ${o.to} 一线队已满 ${SQUAD_MAX} 人，必须先清除冗员才能买人，这笔交易已中止`); save(); return render(); }
+    if (TD[o.to] && (PDB[o.to] || []).length + 1 > SQUAD_MAX) { o.log.push('买方超员，交易中止'); toast(`⚠ ${o.to} 一线队已满 ${SQUAD_MAX} 人，先在冬窗下方「清理冗员」解约再买人，这笔交易已中止`); MK.capWarn = o.to; save(); return render(); }
     if (o.will != null && willNow(o) < WILL_MIN) { o.st = 'r'; o.log.push(`球员不愿加盟（意愿 ${Math.round(willNow(o) * 100)}%）`); toast(`${o.name} 不愿加盟 ${o.to}`); save(); return render(); }
     o.st = 'a'; o.log.push('成交 ' + fee$(o.fee)); toast(`${o.name} 冬窗加盟 ${o.to}`); if (BATCH) { BATCH_W = 1; return; } return winApply();
   }
@@ -4093,6 +4099,7 @@ function winCompute(s) {
   const deals = MK.offers.filter(o => o.st === 'a' || (closed && o.st === 'p' && o.sys));
   MK.ov = deals.filter(o => o.pid != null && TD[o.from]).map(o => ({ pid: o.pid, from: o.from, to: TD[o.to] ? o.to : null, s, win: 1 }));
   MK.done = deals.filter(o => o.pid != null).map(o => ({ s, pid: o.pid, from: o.from, to: o.to, fee: o.fee, win: 1 }));
+  Object.keys(MK.rel || {}).forEach(uid => { const pid = UIDPID[uid] ?? (String(uid).startsWith('H|') ? +String(uid).slice(2) : null); if (pid == null) return; MK.ov.push({ pid, from: MK.rel[uid].from, to: null, s, win: 1 }); MK.done.push({ s, pid, from: MK.rel[uid].from, to: '解约', fee: 0, rel: 1, win: 1 }); });
 }
 function winApply() { winCompute(SEASON); save(); applyPLNames(); GROWN = 0; applyGrowth(); TAC_KEY = null; ensureTactics(); syncAllPlayers(); Object.keys(AWARD_CACHE).forEach(k => delete AWARD_CACHE[k]); render(); }
 function winterHook() {
@@ -4105,6 +4112,9 @@ function winterHook() {
 function applyWinterDeals(s) {
   const MK = (S && S.market || {})['w' + s]; if (!MK || s < 18) return; const closed = s < SEASON || playedRounds() >= WIN_B;
   const log = TR_LOG[s - 1] = TR_LOG[s - 1] || [];
+  Object.entries(MK.rel || {}).forEach(([uid, r]) => { const L = PDB[r.from] || [], p = L.find(y => y.uid === uid); if (!p) return; L.splice(L.indexOf(p), 1); const club = EXT_LEAGUES[Math.floor(ghash('wrel|' + uid + '|' + s) * EXT_LEAGUES.length)].clubs.slice(-1)[0][0];
+    ABROAD[uid] = { club, s }; p.team = club; (p.stints = p.stints || [[r.from, 18]]).push([club, s]); (FDB[club] = FDB[club] || []).push(p); if (!EXTP.includes(p)) EXTP.push(p);
+    log.push({ uid, name: p.name, pos: p.pos, age: p.age, rating: p.rating, from: r.from, to: club, fee: 0, free: true, rel: 1, win: 1, ext: 1 }); });
   MK.offers.filter(o => o.st === 'a' || (closed && o.st === 'p' && o.sys)).forEach(o => {
     let p = null, t = null; Object.keys(PDB).some(x => { const q = PDB[x].find(y => y.uid === o.uid); if (q) { p = q; t = x; } return !!q; });
     if (!p) Object.keys(FDB).some(x => { const q = FDB[x].find(y => y.uid === o.uid); if (q) { p = q; t = x; } return !!q; });
@@ -4125,6 +4135,11 @@ function winterPanel() {
     </tbody></table></div></details>
     ${pend.length && open ? `<div style="margin:10px 0 0"><button class="btn primary" data-act="btOpen" data-bw="1" style="padding:6px 14px">⚡ 批量处理（按小助手建议）</button></div>` : ''}
     ${pend.length && open ? `<h3 style="font-size:14px;margin:12px 0 6px">报价</h3><div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">卖方</th><th class="l">买方</th><th class="l">补强位置</th><th>报价</th><th>身价</th><th class="l">决定</th></tr></thead><tbody>${pend.map(o => `<tr><td class="l"><button class="lnk" ${plink(o.from, o.name)}><b>${esc(o.name)}</b></button> <span class="dim mono" style="font-size:11px">${esc(o.pos)} · ${o.a}岁 · ${o.r}</span></td><td class="l">${cl(o.from, 'imp:' + o.uid + ':' + o.from + ':sell')}</td><td class="l">${cl(o.to, 'imp:' + o.uid + ':' + o.to + ':buy')}</td><td class="l muted" style="font-size:12px">${esc(o.need)}</td><td class="mono"><b style="color:var(--gold)">${fee$(o.fee)}</b></td><td class="mono dim">${fee$(o.v)}</td><td class="l"><span class="btns" style="gap:6px"><button class="btn ghost" data-act="wHelp" data-id="${o.id}" style="padding:4px 8px;font-size:12px">🤖 助手</button><button class="btn primary" data-act="wA" data-id="${o.id}" style="padding:4px 10px;font-size:12px">接受</button><button class="btn ghost" data-act="wR" data-id="${o.id}" style="padding:4px 10px;font-size:12px">拒绝</button></span></td></tr>`).join('')}</tbody></table></div>` : open ? '<p class="note">各队暂时没有补强报价。</p>' : ''}
+    ${open ? (() => { const want = new Set(pend.map(o => o.to)); const L = Object.keys(TD).filter(t => (PDB[t] || []).length > SQUAD_MAX || ((PDB[t] || []).length >= SQUAD_MAX && (want.has(t) || MK.capWarn === t))); if (!L.length) return '';
+      const busy = new Set(pend.map(o => o.uid));
+      return `<div style="margin:12px 0;padding:12px;border:1px solid #e66;border-radius:10px"><h3 style="font-size:14px;margin:0 0 6px;color:#e66">清理冗员 · 上限 ${SQUAD_MAX} 人</h3><p class="note" style="margin:0 0 8px">一线队已满（或超员）的球队要先解约才能在冬窗买人。解约的球员马上离队（去外赛区）。</p>
+      ${L.map(t => { const n = (PDB[t] || []).length; return `<div style="margin:8px 0"><b>${esc(t)}</b> <span class="chip bad" style="font-size:11px">${n} 人${n > SQUAD_MAX ? ` · 要清掉 ${n - SQUAD_MAX} 人` : ' · 买人前要先清 1 人'}</span><div class="rank-list" style="margin-top:6px">${(PDB[t] || []).filter(p => !busy.has(p.uid)).sort((a, b) => a.rating - b.rating).slice(0, Math.max(5, n - SQUAD_MAX + 3)).map(p => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span><button class="lnk" ${plink(t, p.name)}>${esc(p.name)}</button> <span class="dim mono" style="font-size:11px">${esc(p.pos)} · ${p.age}岁 · ${p.rating}</span></span><button class="btn ghost" data-act="wRel" data-id="${esc(p.uid)}" style="padding:3px 9px;font-size:12px">解约</button></div>`).join('')}</div></div>`; }).join('')}</div>`; })() : ''}
+    ${Object.keys(MK.rel || {}).length ? `<p class="note" style="margin:6px 0">冬窗解约：${Object.values(MK.rel).map(r => `${esc(r.name)}（${esc(r.from)}）`).join('、')}</p>` : ''}
     ${done.length ? `<h3 style="font-size:14px;margin:12px 0 6px">冬窗结果</h3><div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">卖方</th><th class="l">买方</th><th>转会费</th><th class="l">结果</th></tr></thead><tbody>${done.map(o => `<tr><td class="l">${esc(o.name)} <span class="dim mono" style="font-size:11px">${esc(o.pos)} · ${o.r}</span></td><td class="l">${cl(o.from)}</td><td class="l">${cl(o.to)}</td><td class="mono">${fee$(o.fee)}</td><td class="l"><span class="chip ${ST[o.st][1]}" style="font-size:11px">${ST[o.st][0]}</span> <span class="dim" style="font-size:11px">${esc(o.log.join(' → '))}</span></td></tr>`).join('')}</tbody></table></div>` : ''}
   </div>`;
 }
@@ -4179,7 +4194,7 @@ function batchRun() {
       raise.filter(o => o.st === 'p').forEach(o => { const A = assistCalc(o, win); if (!A) return; if (A.code === 'accept') { if (!(win ? S.market[winKey(SEASON)] : mktGet()).offers.some(x => x.uid === o.uid && x.st === 'a')) act('accept', o.id); } else if (A.code === 'raise') next.push(o); else for (let k = 0; k < 6 && o.st === 'p'; k++) act('reject', o.id); });
       raise = next;
     }
-    P.exp.forEach(x => { if (x.d === 'renew') { mktAct('renew', x.p.uid); const r = mktGet().renew[x.p.uid]; if (r) r.ok ? R.ren++ : R.renF++; } else if (x.d === 'list') { mktAct('list', x.p.uid); R.list++; } });
+    P.exp.forEach(x => { if (mktSold(mktGet(), x.p.uid)) return; if (x.d === 'renew') { mktAct('renew', x.p.uid); const r = mktGet().renew[x.p.uid]; if (r) r.ok ? R.ren++ : R.renF++; } else if (x.d === 'list') { mktAct('list', x.p.uid); R.list++; } });
   } finally { BATCH = 0; }
   P.offers.forEach(x => { if (x.o.st === 'a') R.acc.push(x.o); else if (x.o.st !== 'p' && x.d !== 'skip') R.gave++; });
   if (BATCH_W) { BATCH_W = 0; winApply(); } else if (BATCH_L != null) { const s0 = BATCH_L; BATCH_L = null; mktLateApply(s0); } else { save(); render(); }
@@ -4293,9 +4308,9 @@ function vTransfers() {
   const top = TRANSFERS.slice().sort((a, b) => b.fee - a.fee || b.s - a.s).slice(0, 15);
   const nm = id => typeof id === 'object' ? (id.pid != null && PL[id.pid] ? PL[id.pid][0] : id.name || '') : PL[id] ? PL[id][0] : '';
   const cnt = {}; TRANSFERS.forEach(t => { if (t.pid != null) cnt[t.pid] = (cnt[t.pid] || 0) + 1; });
-  const jour = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  const jour = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0] || [null, 0];
   const spend = {}, earn = {}; TRANSFERS.forEach(t => { if (!isExt(t.to)) spend[t.to] = (spend[t.to] || 0) + t.fee; if (!isExt(t.from)) earn[t.from] = (earn[t.from] || 0) + t.fee; });
-  const topSp = Object.entries(spend).sort((a, b) => b[1] - a[1])[0], topEa = Object.entries(earn).sort((a, b) => b[1] - a[1])[0];
+  const topSp = Object.entries(spend).sort((a, b) => b[1] - a[1])[0] || ['—', 0], topEa = Object.entries(earn).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
   const bySeason = {}; TRANSFERS.forEach(t => bySeason[t.s] = (bySeason[t.s] || 0) + t.fee);
   const busiest = Object.entries(bySeason).sort((a, b) => b[1] - a[1])[0];
   const th = (cols) => `<thead><tr>${cols.map(([c, l]) => `<th class="${l ? 'l' : ''}">${c}</th>`).join('')}</tr></thead>`;
@@ -4804,6 +4819,7 @@ document.addEventListener('click', e => {
   if (act === 'wR') { if ($('#dlg').open) $('#dlg').close(); return winAct('reject', el.dataset.id); }
   if (act === 'mkMore') { MKLIM += 30; return render(); }
   if (act === 'mkRel') return mktAct('rel', el.dataset.id);
+  if (act === 'wRel') return winAct('rel', el.dataset.id);
   if (act === 'mkTrim') { mktAutoTrim(); save(); $('#dlg').close(); if (maybeEndSeason(true)) render(); return; }
   if (act === 'mkA') { if ($('#dlg').open) $('#dlg').close(); return mktAct('accept', el.dataset.id); }
   if (act === 'mkR') { if ($('#dlg').open) $('#dlg').close(); return mktAct('reject', el.dataset.id); }
