@@ -4371,7 +4371,7 @@ function assistCalc(o, win) {
 function assistOffer(id, win) {
   const MK = win ? S.market[winKey(SEASON)] : mktGet(), o = MK && MK.offers.find(x => x.id === id); if (!o) return;
   const A = assistCalc(o, win); if (!A) return;
-  const { p, rk, st, ratio, age, r, SR, BR, rank, isSt, lv, repl, pot, yrsLeft, wNow, wNew, why, headroom, target, verdict, color, tip } = A;
+  const { p, tb, rk, sf, st, ratio, wl, age, r, g, SR, BR, all, rank, isSt, lv, repl, pot, young, declining, yrsLeft, rival, wNow, wNew, thr, why, headroom, target, verdict, color, tip } = A;
   const row = (k, v) => `<div class="rk" style="grid-template-columns:110px minmax(0,1fr)"><span class="muted">${k}</span><span>${v}</span></div>`;
   const d = $('#dlg');
   d.innerHTML = `<div class="dlg" style="position:relative;max-width:640px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
