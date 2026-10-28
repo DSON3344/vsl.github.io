@@ -2068,7 +2068,7 @@ function vTeams() {
   const lg = S.teams, other = ALL_TEAMS.filter(t => !lg.includes(t));
   const card = t => `<button class="tcard" data-team="${esc(t)}" style="--tc:${tcol(t)}">${crest(t, 72)}<b>${esc(t)}</b><small>OVR ${ENGINE.strength(t).ovr.toFixed(1)}</small></button>`;
   return `<section class="view"><div><div class="eyebrow">Clubs</div><h1>球队</h1></div>
-    <div class="panel"><div class="ph"><h2>威超 S${SEASON} · 20 队</h2><span class="note">按综合实力排序</span></div><div class="tgrid">${lg.slice().sort((a, b) => ENGINE.strength(b).ovr - ENGINE.strength(a).ovr).map(card).join('')}</div></div>
+    <div class="panel"><div class="ph"><h2>威超 S${SEASON} · 20 队</h2><span class="btns" style="gap:8px;align-items:center">${fillBtn()}<span class="note">按综合实力排序</span></span></div><div class="tgrid">${lg.slice().sort((a, b) => ENGINE.strength(b).ovr - ENGINE.strength(a).ovr).map(card).join('')}</div></div>
     <div class="panel"><div class="ph"><h2>其他球队</h2><span class="note">上赛季降级及低级别联赛</span></div><div class="tgrid">${other.sort((a, b) => ENGINE.strength(b).ovr - ENGINE.strength(a).ovr).map(card).join('')}</div></div></section>`;
 }
 
@@ -3299,6 +3299,41 @@ function kidActCell(k, t) {
   const I = win ? kidInterest(k, s) : { loan: [], buy: [] };
   return `<span class="btns" style="gap:4px;flex-wrap:wrap">${b('promote', win ? '下季提拔' : '提拔至一线队', '', 1)}${I.loan.map(x => b('loan', `租借至 ${esc(x)}`, `data-to="${esc(x)}"`)).join('')}${I.buy.map(x => b('sell', `${fee$(x.fee)} 转会 ${esc(x.to)}`, `data-to="${esc(x.to)}" data-fee="${x.fee}"`)).join('')}${!win ? '<span class="dim" style="font-size:11px;align-self:center">租借 / 转会意向在夏窗出现</span>' : !I.loan.length && !I.buy.length ? '<span class="dim" style="font-size:11px;align-self:center">暂时没有球队抛来橄榄枝</span>' : ''}</span>`;
 }
+// ── 青训补人：一线队不到 28 人时，从青训挑能力好、潜力高、适配战术（位置缺口 + 打法需要的属性）的球员提拔上来 ──
+const STYLE_ATTR = [[/控球|传控|中场控制|渗透|双核/, ['pas', 'dri']], [/反击|边路|突破|快速/, ['spd', 'dri']], [/防守|大巴|稳固|联防|压缩/, ['def', 'phy']], [/攻击|进攻|三叉戟|突击|终结/, ['sho', 'spd']], [/逼抢|压制|反抢/, ['phy', 'sta']]];
+function squadNow(t) { return mktActive() && !mktLate() ? projSize(t) : (PDB[t] || []).length; }
+function fillPlan(t, target = SQUAD_MIN) {
+  const size = squadNow(t), need = Math.max(0, target - size); if (!TD[t]) return { t, size, need: 0, picks: [], pool: 0 };
+  const R2 = squadReport(t), style = String(TD[t].style || '') + ' ' + String((coachOf(t) || {}).style || ''), keys = [...new Set(STYLE_ATTR.filter(([re]) => re.test(style)).flatMap(x => x[1]))];
+  const pool = academyOf(t).filter(k => k.kind === 'acad' && k.kid && k.age >= 16 && !kidEvents(k.kid.id).some(e => e.s >= SEASON));
+  const fitOf = k => { if (!keys.length || !k.attrs) return 0; const v = Object.values(k.attrs), all = v.reduce((a, b) => a + b, 0) / v.length, ks = keys.filter(x => k.attrs[x] != null); if (!ks.length) return 0; const m = ks.reduce((a, x) => a + k.attrs[x], 0) / ks.length; return Math.max(-3, Math.min(3, (m - all) / 3)); };
+  const left = pool.slice(), picks = [], gNeed = R2.map(g => Math.max(g.pri === '高' ? 2 : g.pri === '中' ? 1 : 0, (g.need || 0) - (g.n || 0)));
+  for (let i = 0; i < need && left.length; i++) {
+    left.forEach(k => { const gi = posGroup(k.pos); k._fit = fitOf(k); k._sc = k.rating * 0.55 + k.pot * 0.35 + gNeed[gi] * 2.5 + k._fit * 1.2 + (k.age >= 18 ? 1 : 0); });
+    left.sort((a, b) => b._sc - a._sc); const k = left.shift(), gi = posGroup(k.pos), g = R2[gi];
+    const why = [`能力 ${k.rating} / 潜力 ${k.pot}`]; if (gNeed[gi] >= 2) why.push(`${g.name}缺人`); else if (gNeed[gi] === 1) why.push(`${g.name}需要补充`); if (k._fit >= 1) why.push('适合球队打法');
+    picks.push({ k, why: why.join(' · '), on: true }); gNeed[gi] = Math.max(0, gNeed[gi] - 1);
+  }
+  return { t, size, need, picks, pool: pool.length };
+}
+function fillDlg(teams) {
+  const L = (teams || S.teams).filter(t => TD[t]).map(t => fillPlan(t)).filter(P => P.need > 0), d = $('#dlg'); window.__fill = L;
+  const short = L.reduce((a, P) => a + Math.max(0, P.need - P.picks.length), 0), n = L.reduce((a, P) => a + P.picks.length, 0);
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:860px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div><div class="eyebrow">青训补人 · ${SN(SEASON)}</div><h2 style="font-size:20px;font-weight:900;margin:4px 0">${L.length ? `从青训提拔 ${n} 人，补到 ${SQUAD_MIN} 人` : `都已经有 ${SQUAD_MIN} 人`}</h2>
+    <p class="note" style="margin:0">按能力、潜力和战术适配挑人：先补缺人的位置，再看谁的属性适合球队打法。可以取消勾选不想提拔的球员。${mktActive() && !mktLate() ? '夏窗期间提拔的球员下季进一线队。' : '提拔后马上进入一线队名单。'}</p></div>
+    ${L.length ? `<div style="max-height:56vh;overflow:auto;display:grid;gap:12px;grid-template-columns:minmax(0,1fr)">${L.map((P, i) => `<div><h3 style="font-size:14px;margin:0 0 4px">${esc(P.t)} <span class="note">现在 ${P.size} 人 · 差 ${P.need} 人${P.picks.length < P.need ? ` · <span style="color:#e66">青训只够 ${P.picks.length} 人，还差 ${P.need - P.picks.length} 人要靠买人</span>` : ''}</span></h3>
+      ${P.picks.length ? `<div class="tw"><table><thead><tr><th class="l">提拔</th><th class="l">球员</th><th class="l">位置</th><th>年龄</th><th>能力</th><th>潜力</th><th class="l">理由</th></tr></thead><tbody>${P.picks.map((x, j) => `<tr><td class="l"><input type="checkbox" data-fill="${i}:${j}" checked></td><td class="l"><b>${esc(x.k.name)}</b>${isProspect(x.k) ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">潜力新星</span>' : ''}</td><td class="l mono">${esc(x.k.pos)}</td><td>${x.k.age}</td><td>${x.k.rating}</td><td>${x.k.pot}</td><td class="l muted" style="font-size:12px">${esc(x.why)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="note" style="margin:0">青训里没有 16 岁以上可以提拔的球员。</p>'}</div>`).join('')}</div>` : '<p class="note">没有球队少于 ' + SQUAD_MIN + ' 人。</p>'}
+    <div class="btns" style="justify-content:space-between;align-items:center"><span class="note">${short ? `青训不够的 ${short} 个名额，可以在转会窗买人补上` : ''}</span><span class="btns"><button class="btn ghost" data-act="close">取消</button>${n ? `<button class="btn primary" data-act="fillRun">提拔</button>` : ''}</span></div></div>`;
+  if (!d.open) d.showModal();
+}
+function fillRun() {
+  const L = window.__fill || []; document.querySelectorAll('[data-fill]').forEach(el => { const [i, j] = el.dataset.fill.split(':'); L[+i].picks[+j].on = el.checked; });
+  let n = 0; BATCH = 1; BATCH_G = 0; try { L.forEach(P => P.picks.filter(x => x.on).forEach(x => { kidDecide(x.k.kid.id, 'promote'); n++; })); } finally { BATCH = 0; }
+  GROWN = 0; applyGrowth(); BATCH_G = 0; save(); $('#dlg').close(); toast(`从青训提拔了 ${n} 人`); render();
+}
+function fillBtn(t) { const n = t ? Math.max(0, SQUAD_MIN - squadNow(t)) : S.teams.filter(x => TD[x] && squadNow(x) < SQUAD_MIN).length; if (!n) return '';
+  return `<button class="btn primary" data-act="fillOpen" data-t="${esc(t || '')}" style="padding:4px 12px;font-size:12px">🧒 ${t ? `从青训补 ${n} 人到 ${SQUAD_MIN} 人` : `${n} 支球队不到 ${SQUAD_MIN} 人 · 从青训一键补满`}</button>`; }
 function academyPanel(t) {
   const L = academyOf(t);
   const acad = L.filter(k => k.kind !== 'first'), first = L.filter(k => k.kind === 'first'), nP = L.filter(isProspect).length;
@@ -3308,7 +3343,7 @@ function academyPanel(t) {
   const row = k => `<tr><td class="l"><button class="lnk" ${scoutBtn(k)}><b>${esc(k.name)}</b></button>${isProspect(k) ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">潜力新星</span>' : ''}${k.homegrown ? ' <span class="chip" style="font-size:10px;padding:0 5px">青训出品</span>' : ''}${k.kind === 'hist' ? ' <span class="chip" style="font-size:10px;padding:0 5px" title="历史上之后会在一线队出道">历史出道</span>' : ''}</td><td class="l mono" style="font-size:12px">${esc(k.pos)}</td><td class="l">${esc(k.nat || '')}</td><td>${k.age}</td><td><span class="rt-pill" style="background:${rtColor(k.rating)}">${k.rating}</span></td><td><span class="rt-pill" style="background:${rtColor(k.pot)}">${k.pot}</span></td><td class="l">${k.kind === 'acad' && k.kid ? kidActCell(k.kid, t) : k.kind === 'first' ? '<span class="dim" style="font-size:12px">一线队</span>' : `<span class="dim" style="font-size:12px">${k.debut ? `S${String(k.debut).padStart(2, '0')} 出道` : '–'}</span>`}</td></tr>`;
   const dem = (DEMOTED || {})[t] || [];
   if (!acad.length && !first.length && !out.length && !dem.length) return '';
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Academy · ${SN(SEASON)}</div><h2>青训梯队 · ${acad.length} 人</h2></div><span class="note">15–20 岁 · 潜力新星 ${nP} 人 · 点名字看球探报告</span></div>
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Academy · ${SN(SEASON)}</div><h2>青训梯队 · ${acad.length} 人</h2></div><span class="note">${S.teams.includes(t) ? fillBtn(t) + ' ' : ''}15–20 岁 · 潜力新星 ${nP} 人 · 点名字看球探报告</span></div>
     <p class="note" style="margin:0 0 10px">16 岁起可以安排去向：<b>提拔至一线队</b>（一线队名单不能超过 ${SQUAD_MAX} 人）、<b>留在青训</b>（默认，21 岁还没提拔就离队）、有球队抛来橄榄枝时还能<b>租借</b>（去踢一季比赛，回来能力 +1，期满可以续租）或<b>转会</b>。租借和转会意向只在夏窗出现${win ? '（夏窗开放中）' : ''}。</p>
     <div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>能力</th><th>潜力</th><th class="l">去向</th></tr></thead><tbody>${acad.map(row).join('')}${first.length ? `<tr><td colspan="7" class="eyebrow" style="padding-top:12px">一线队 20 岁以下</td></tr>${first.map(row).join('')}` : ''}</tbody></table></div>
     ${dem.length ? `<h3 style="font-size:14px;margin:14px 0 6px">从一线队下放 · ${dem.length}</h3><div class="rank-list">${dem.map(p => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(p.name)}</b> <span class="dim mono" style="font-size:11px">${esc(p.pos)} · ${p.age}岁 · ${p.rating}</span> <span class="muted" style="font-size:12px">在青训梯队，21 岁后自动回一线队</span></span><button class="btn ghost" data-act="undemote" data-id="${esc(roleKey(p))}" style="padding:3px 9px;font-size:12px">提拔回一线队</button></div>`).join('')}</div>` : ''}
@@ -3401,7 +3436,7 @@ function teamDetail(t) {
   </div>
   ${teamTabs(t)}
   ${TEAM_TAB === 'squad' ? `
-  ${tmSq != null && tmSq < SEASON && squadAt(t, tmSq) ? pastSquadPanel(t, tmSq) : `<div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>${SN(SEASON)} 球员名单 · ${squad.length} 人</h2></div>${squadSelect(t)}</div>
+  ${tmSq != null && tmSq < SEASON && squadAt(t, tmSq) ? pastSquadPanel(t, tmSq) : `<div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>${SN(SEASON)} 球员名单 · ${squad.length} 人</h2></div><span class="btns" style="gap:8px;align-items:center">${S.teams.includes(t) ? fillBtn(t) : ''}${squadSelect(t)}</span></div>
       <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>士气</th><th class="l">安排</th><th>身价</th><th>S${SEASON} 出场</th><th>S${SEASON} 进球</th><th>S${SEASON} 助攻</th><th>S${SEASON} 评分</th></tr></thead><tbody>
       ${squad.map(p => { const s = pmap[p.name], o = outMap[p.name]; return `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" ${plink(t, p.name)}><span>${esc(p.name)}</span></button>${o ? ` <span class="chip ${o.why === 'inj' ? 'bad' : ''}" style="font-size:10px;padding:0 5px">${o.why === 'inj' ? '伤 ' + o.left + '轮' : o.why === 'strike' ? '罢赛' : '停赛'}</span>` : ''}${p.loanFrom ? ` <span class="chip" style="font-size:10px;padding:0 5px;border-color:#8ad">租借自 ${esc(p.loanFrom)}</span>` : ''}${p.acad && p.youth ? ' <span class="chip" style="font-size:10px;padding:0 5px">青训</span>' : ''}${p.conv ? ` <span class="chip ${p.conv.done ? 'good' : ''}" style="font-size:10px;padding:0 5px;${p.conv.done ? '' : 'border-color:var(--gold)'}" title="${esc(p.conv.from)} → ${esc(p.conv.to)}（难度 ${p.conv.lv}）${p.conv.pen ? ` · 能力暂时 −${p.conv.pen}` : ''}">${p.conv.done ? '改造完成' : `改造中 ${Math.round(p.conv.prog * 100)}%`}</span>` : ''}${mkChip(p, t)}</td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${(() => { const M = playerMorale(p, t); return `<span class="mono" data-tip="mor:${esc(p.uid || p.name)}:${esc(t)}" style="cursor:help;color:${morCol(M.v)};font-weight:700">${M.v}%</span>`; })()}</td><td class="l">${roleCell(p, t)}</td><td class="muted">${esc(p.value)}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
       </tbody></table></div></div>`}
@@ -4450,6 +4485,8 @@ function batchPlan(win, team) {
       if (kids.filter(x => x.t === t).length >= 3) return;
       const g = R2[posGroup(k.pos)], bar = g.st.length ? g.st[g.st.length - 1].rating : 60, why = k.rating >= bar - 2 ? `能力 ${k.rating}，接近主力（${bar}）` : k.pot >= 88 && k.age >= 18 ? `潜力 ${k.pot}，进一线队历练` : SEASON >= 18 && size < SQUAD_MIN && k.age >= 18 ? `一线队只有 ${size} 人` : ''; if (!why) return;
       kids.push({ t, k, d: k.rating >= bar - 2 || (SEASON >= 18 && size < SQUAD_MIN) ? 'promote' : 'skip', why }); size++; }); });
+  // 不到 28 人的球队：按能力、潜力和战术适配从青训补满
+  teams.forEach(t => { const have = new Set(kids.filter(x => x.t === t && x.d === 'promote').map(x => x.k.key)); const P = fillPlan(t, SQUAD_MIN + have.size); P.picks.filter(x => !have.has(x.k.key)).slice(0, Math.max(0, SQUAD_MIN - P.size - have.size)).forEach(x => { kids.forEach(y => { if (y.t === t && y.k.key === x.k.key) y.d = 'promote'; }); if (!kids.some(y => y.t === t && y.k.key === x.k.key)) kids.push({ t, k: x.k, d: 'promote', why: `补到 ${SQUAD_MIN} 人 · ${x.why}` }); }); });
   return { offers, exp, buys, kids };
 }
 function batchDlg(win, team) {
@@ -5452,6 +5489,8 @@ document.addEventListener('click', e => {
   if (act === 'rejFinal') { const MK = el.dataset.bw === '1' ? S.market[winKey(SEASON)] : mktGet(), o = MK && MK.offers.find(x => x.id === el.dataset.id); if (o && o.st === 'p') { if (o.user) { userBidReject(o, true); return; } o.st = 'r'; o.log.push('卖方拒绝出售'); toast(`拒绝了 ${o.to} 对 ${o.name} 的报价`); save(); } return render(); }
   if (act === 'mkLoan') return mktLoanIn(el.dataset.id, el.dataset.t);
   if (act === 'loanExt') return loanExtend(el.dataset.id);
+  if (act === 'fillOpen') return fillDlg(el.dataset.t ? [el.dataset.t] : null);
+  if (act === 'fillRun') return fillRun();
   if (act === 'kidAct') return kidDecide(el.dataset.id, el.dataset.k, el.dataset.to, +el.dataset.fee || 0);
   if (act === 'mkF') { if (el.dataset.g != null) MKF.g = +el.dataset.g; if (el.dataset.k != null) MKF.k = el.dataset.k; return render(); }
   if (act === 'btOpen') return batchDlg(el.dataset.bw === "1", el.dataset.t || null);
