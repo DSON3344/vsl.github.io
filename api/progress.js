@@ -13,8 +13,10 @@ const authed = req => {
   const k = process.env.VES_SYNC_KEY;
   return !!k && req.headers.get('x-ves-key') === k;
 };
-const R_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const R_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// 环境变量名会带上连接时设的前缀（例如 STORAGE_KV_REST_API_URL），按结尾找
+const envEnd = (suf, not) => { const k = Object.keys(process.env).find(x => x.endsWith(suf) && !(not && not.test(x))); return k ? process.env[k] : undefined; };
+const R_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || envEnd('REST_API_URL') || envEnd('REDIS_REST_URL');
+const R_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || envEnd('REST_API_TOKEN', /READ_ONLY/) || envEnd('REDIS_REST_TOKEN', /READ_ONLY/);
 const useRedis = !!(R_URL && R_TOK);
 async function redis(cmds) {
   const r = await fetch(R_URL.replace(/\/$/, '') + '/pipeline', { method: 'POST', headers: { Authorization: 'Bearer ' + R_TOK, 'Content-Type': 'application/json' }, body: JSON.stringify(cmds) });
