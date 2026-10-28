@@ -261,10 +261,16 @@ td.pts{color:var(--accent-2);font-weight:500}
 .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .filters input[type=search]{flex:1;min-width:180px}
 .rt-pill{display:inline-block;min-width:30px;text-align:center;padding:1px 5px;border-radius:2px;font-weight:700;font-size:12px;color:#05080c}
-dialog{border:1px solid var(--line-2);background:var(--bg-2);color:var(--fg);border-radius:8px;padding:0;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog{border:1px solid var(--line-2);background:var(--bg-2);color:var(--fg);border-radius:8px;padding:0;width:fit-content;max-width:calc(100vw - 24px);max-height:calc(100vh - 48px)}
 dialog::backdrop{background:rgba(2,4,8,.7);backdrop-filter:blur(3px)}
-.dlg{padding:22px;display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}.dlg>*{min-width:0}
+.dlg{padding:22px;display:grid;gap:18px;grid-template-columns:minmax(0,1fr);box-sizing:border-box;width:calc(100vw - 26px);max-width:560px}.dlg>*{min-width:0}
 @media (max-width:460px){.dlg{padding:18px 16px}}
+@media (max-width:600px){dialog .tw{margin-inline:0;overflow:visible}dialog .tw table,dialog .tw tbody{display:block;width:100%}dialog .tw thead{display:none}
+dialog .tw tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+dialog .tw td{display:flex;flex-direction:column;gap:1px;padding:0!important;border:0!important;text-align:left!important;white-space:normal;min-width:0}
+dialog .tw td[data-l]::before{content:attr(data-l);font-size:10px;letter-spacing:.08em;color:var(--fg-3,#7a8494);font-family:var(--mono,monospace)}
+dialog .tw td:first-child{grid-column:1/-1;font-size:15px}dialog .tw td:first-child::before{display:none}dialog .tw td:last-child{grid-column:1/-1}dialog .tw td select,dialog .tw td input{width:100%;font-size:14px!important;padding:6px 8px!important}
+dialog .dlg [style*="max-height"]{max-height:none!important;overflow:visible!important}}
 .dlg-x{position:absolute;top:10px;right:10px}
 .pcard{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
 .pcard .ovr{font-family:var(--mono);font-size:54px;font-weight:300;line-height:1;letter-spacing:-.04em}
@@ -341,6 +347,9 @@ th.sorted{color:var(--accent-2)}
 'use strict';
 const H = HISTORY, PDB = PLAYER_DATABASE, TD = TEAMS_DATA;
 const $ = (s, r = document) => r.querySelector(s);
+// 手机上对话框里的表格改成卡片：每格带上表头文字
+function dlgLabel(root) { root.querySelectorAll('.tw table').forEach(tb => { const hs = [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim()); tb.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (hs[i] && !td.dataset.l) td.dataset.l = hs[i]; })); }); }
+setTimeout(function dlgObs() { const d = document.getElementById('dlg'); if (!d) return setTimeout(dlgObs, 300); new MutationObserver(() => dlgLabel(d)).observe(d, { childList: true, subtree: true }); }, 0);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ALL_TEAMS = Object.keys(TD);
 let SEASON = 18;
@@ -4432,10 +4441,10 @@ function batchDlg(win, team) {
   const vcol = { accept: 'var(--win,#3c9)', raise: 'var(--gold)', reject: '#e66', hist: 'var(--gold)' };
   const sel = (k, i, opts, v) => `<select data-bt="${k}:${i}" style="font-size:12px;padding:2px 4px">${opts.map(x => `<option value="${x}" ${x === v ? 'selected' : ''}>${BT_OPT[x]}</option>`).join('')}</select>`;
   const cnt = k => P.offers.filter(x => x.d === k).length, H = (t, n) => `<h3 style="font-size:14px;margin:6px 0 4px">${t} · ${n}</h3>`;
-  d.innerHTML = `<div class="dlg" style="position:relative;max-width:900px;width:96vw"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:1180px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div><div class="eyebrow">${win ? '冬窗' : '转会窗'} · 一键规划${team ? ' · ' + esc(team) : ''}</div><h2 style="font-size:20px;font-weight:900;margin:4px 0">${team ? esc(team) + ' 的转会规划' : '全部球队的转会规划'}</h2>
     <p class="note" style="margin:0">卖人、续约、买人、青训提拔都已经按小助手的建议选好，看一遍、改掉不同意的几条，按「执行」就一次做完。买人会自动和卖方谈判（从预计要价的 95% 开始出价，最多出到上限）。${!team && mktCfg().teams ? '只包含你管理的球队。' : ''}</p></div>
-    <div style="max-height:62vh;overflow:auto;display:grid;gap:10px">
+    <div style="max-height:62vh;overflow:auto;display:grid;gap:10px;grid-template-columns:minmax(0,1fr)">
     ${P.offers.length ? `<div>${H('收到的报价', P.offers.length)}<div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">卖方 → 买方</th><th>报价 / 身价</th><th>意愿</th><th class="l">小助手</th><th class="l">决定</th></tr></thead><tbody>${P.offers.map((x, i) => `<tr><td class="l"><b>${esc(x.o.name)}</b> <span class="dim mono" style="font-size:11px">${x.o.a}岁 · ${x.o.r}</span>${kindChip(x.o)}</td><td class="l" style="font-size:12px">${esc(x.o.from)} → ${esc(x.o.to)}</td><td class="mono" style="font-size:12px">${fee$(x.o.fee)} / ${fee$(x.o.v)}</td><td class="mono">${x.o.will == null ? '–' : Math.round(willNow(x.o) * 100) + '%'}</td><td class="l" style="font-size:12px;color:${vcol[x.A.code]}" title="${esc(x.A.tip)}">${esc(x.A.verdict)}</td><td class="l">${sel('o', i, ['accept', 'raise', 'reject', 'skip'], x.d)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
     ${P.buys.length ? `<div>${H('引援', P.buys.length)}<div class="tw"><table><thead><tr><th class="l">买方</th><th class="l">需要</th><th class="l">球员</th><th class="l">现属</th><th>预计要价</th><th>出价上限</th><th>意愿</th><th class="l">决定</th></tr></thead><tbody>${P.buys.map((b, i) => `<tr><td class="l" style="font-size:12px">${esc(b.t)}</td><td class="l" style="font-size:12px">${esc(b.why)}</td><td class="l"><b>${esc(b.x.p.name)}</b> <span class="dim mono" style="font-size:11px">${esc(b.x.p.pos)} · ${b.x.a}岁 · ${b.x.r}/${b.x.pot}</span></td><td class="l" style="font-size:12px">${esc(b.x.from)}</td><td class="mono" style="font-size:12px">${fee$(b.x.ask)}</td><td><input data-btmax="${i}" type="number" value="${b.max}" style="width:70px;font-size:12px;padding:2px 4px;background:var(--bg-2,#11151c);color:inherit;border:1px solid var(--line-2,#333);border-radius:6px;text-align:right"></td><td class="mono">${Math.round(b.x.will * 100)}%</td><td class="l">${sel('b', i, ['buy', 'skip'], b.d)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
     ${P.exp.length ? `<div>${H('合同到期', P.exp.length)}<div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">球队</th><th>年龄</th><th>评分</th><th>留队意愿</th><th class="l">建议理由</th><th class="l">决定</th></tr></thead><tbody>${P.exp.map((x, i) => `<tr><td class="l"><b>${esc(x.p.name)}</b> <span class="dim mono" style="font-size:11px">${esc(x.p.pos)}</span></td><td class="l" style="font-size:12px">${esc(x.t)}</td><td>${x.a}</td><td>${x.r}</td><td class="mono">${Math.round(x.pr * 100)}%</td><td class="l muted" style="font-size:12px">${esc(x.why)}</td><td class="l">${sel('e', i, ['renew', 'list', 'skip'], x.d)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
