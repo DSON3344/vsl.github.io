@@ -349,6 +349,7 @@ const H = HISTORY, PDB = PLAYER_DATABASE, TD = TEAMS_DATA;
 const $ = (s, r = document) => r.querySelector(s);
 // 手机上对话框里的表格改成卡片：每格带上表头文字
 function dlgLabel(root) { root.querySelectorAll('.tw table').forEach(tb => { const hs = [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim()); tb.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (hs[i] && !td.dataset.l) td.dataset.l = hs[i]; })); }); }
+document.addEventListener('change', e => { const el = e.target.closest && e.target.closest('[data-xisel]'); if (!el) return; XI_PREV = { t: el.dataset.xisel, f: el.value || null }; render(); });
 setTimeout(function dlgObs() { const d = document.getElementById('dlg'); if (!d) return setTimeout(dlgObs, 300); new MutationObserver(() => dlgLabel(d)).observe(d, { childList: true, subtree: true }); }, 0);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ALL_TEAMS = Object.keys(TD);
@@ -1852,9 +1853,9 @@ function absentHTML(t, Lt) {
   const rest = Lt.rested.map(n => `<span class="chip" style="font-size:11px">${esc(n)} · 轮休</span>`);
   return miss.concat(rest).join('') || '<span class="dim" style="font-size:12px">主力齐整</span>';
 }
-function pitchSVG(home, away, LL) {
+function pitchSVG(home, away, LL, XI) {
   const one = !away;
-  const L = t => LL ? (t === home ? LL.h : LL.a).xi : ENGINE.lineup(t).xi;
+  const L = t => XI ? XI : LL ? (t === home ? LL.h : LL.a).xi : ENGINE.lineup(t).xi;
   const dot = (s, t, side) => {
     const xx = s.x < 8 ? 0 : 6 + (s.x - 12) * 0.95; let x = one ? 4 + xx : (side === 'h' ? 3.5 + xx * 0.5 : 96.5 - xx * 0.5);
     const y = 3 + s.y / 100 * 58;
@@ -2984,6 +2985,25 @@ function bestXI(t, slots) {
   sq.filter(p => RL[key(p)] === 'start' && !pick.includes(p)).forEach(p => { let bi = -1, bl = 1e9; slots.forEach((sl, i) => { if (pick[i] && RL[key(pick[i])] === 'start') return; const l = (pick[i] ? slotVal(sl, pick[i]) : -50) - slotVal(sl, p); if (l < bl) { bl = l; bi = i; } }); if (bi >= 0) pick[bi] = p; });
   return slots.map((sl, i) => pick[i] ? (() => { const pen = Math.round(Math.min(8, ENGINE.fitCost(sl, pick[i].pos) * 0.8)); return { pos: sl, name: pick[i].name, rating: pick[i].rating - pen, pen }; })() : null).filter(Boolean);
 }
+// 阵型预览：用某个阵型挑出最强 11 人和站位，不改动球队实际使用的阵型
+var XI_PREV = { t: null, f: null };
+function previewXI(t, f) { const F = FORMS[f]; if (!F) return null; const r = bestXI(t, F.slots); if (!r || r.length < 11) return null;
+  return r.map(x => { const c = F.coords[x.pos] || [50, 50]; return { slot: x.pos, name: x.name, rating: x.rating, pen: x.pen, x: c[0], y: c[1], line: ENGINE.LINE(x.pos) }; }); }
+function xiPanel(t, st) {
+  const c = coachOf(t), X = c ? tacFor(t, c.id) : null, forms = X && X.forms ? X.forms : [], labels = ['主打', '对强队', '对弱队'], cur = TD[t].formNow || (X && X.form);
+  const sel = XI_PREV.t === t && XI_PREV.f && FORMS[XI_PREV.f] ? XI_PREV.f : null, xi = sel ? previewXI(t, sel) : null;
+  const S2 = xi ? ENGINE.strengthOf({ xi, bench: ENGINE.lineup(t).bench }) : st, d = k => xi ? S2[k] - st[k] : 0, dv = k => xi && Math.abs(d(k)) >= 0.05 ? ` <span style="color:${d(k) > 0 ? 'var(--win,#3c9)' : '#e66'}">${d(k) > 0 ? '+' : ''}${d(k).toFixed(1)}</span>` : '';
+  const btn = (f, lab) => `<button data-act="xiForm" data-t="${esc(t)}" data-f="${esc(f)}" aria-pressed="${(sel || cur) === f}" title="${lab ? lab + ' · ' : ''}${esc(f)}">${lab ? `<span class="dim" style="font-size:10px;margin-right:4px">${lab}</span>` : ''}${esc(f)}</button>`;
+  const seen = new Set(); const coachBtns = forms.map((f, i) => { if (seen.has(f)) return ''; seen.add(f); return btn(f, forms.map((g, j) => g === f ? labels[j] : null).filter(Boolean).join(' / ')); }).join('');
+  const others = Object.keys(FORMS).filter(f => !seen.has(f));
+  const moved = xi ? xi.filter(x => !ENGINE.lineup(t).xi.some(y => y.name === x.name)).map(x => x.name) : [], outN = xi ? ENGINE.lineup(t).xi.filter(y => !xi.some(x => x.name === y.name)).map(y => y.name) : [], off = xi ? xi.filter(x => x.pen > 0) : [];
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Starting XI</div><h2>首发阵容${sel ? ` · 预览 ${esc(sel)}` : cur ? ` · ${esc(cur)}` : ''}</h2></div><span class="note mono">ATK ${S2.atk.toFixed(1)}${dv('atk')} · CTL ${S2.ctl.toFixed(1)}${dv('ctl')} · DEF ${S2.def.toFixed(1)}${dv('def')}</span></div>
+    <div class="btns" style="gap:6px;margin:0 0 8px;align-items:center;flex-wrap:wrap"><div class="seg" role="group" aria-label="主帅惯用阵型">${coachBtns}</div>
+      <select data-xisel="${esc(t)}" style="font-size:12px;padding:4px 6px" aria-label="预览其他阵型"><option value="">其他阵型…</option>${others.map(f => `<option value="${esc(f)}" ${sel === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>
+      ${sel ? `<button class="lnk" data-act="xiForm" data-t="${esc(t)}" data-f="" style="font-size:12px">回到当前阵型</button>` : ''}</div>
+    ${pitchSVG(t, null, null, xi)}
+    <p class="note" style="margin:8px 0 0">${sel ? `预览 ${esc(sel)}：按这个阵型挑最强的 11 人。${moved.length ? `换上 ${esc(moved.join('、'))}，换下 ${esc(outN.join('、'))}。` : '首发 11 人不变，只调整站位。'}${off.length ? ` ${esc(off.map(x => x.name + '（' + x.slot + '，非本位 -' + x.pen + '）').join('、'))}。` : ''}比赛时主帅按对手强弱自动选用：对手强 3 分以上用「对强队」，弱 3 分以上用「对弱队」，其他用「主打」。` : '点上面的阵型预览站位和首发人选。比赛时主帅按对手强弱自动在三套阵型之间切换。'}</p></div>`;
+}
 function reslot(t, form) {
   const F = form && FORMS[form];
   const slots = F ? F.slots : TD[t].roster.map(r => r.pos);
@@ -3441,7 +3461,7 @@ function teamDetail(t) {
       ${squad.map(p => { const s = pmap[p.name], o = outMap[p.name]; return `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" ${plink(t, p.name)}><span>${esc(p.name)}</span></button>${o ? ` <span class="chip ${o.why === 'inj' ? 'bad' : ''}" style="font-size:10px;padding:0 5px">${o.why === 'inj' ? '伤 ' + o.left + '轮' : o.why === 'strike' ? '罢赛' : '停赛'}</span>` : ''}${p.loanFrom ? ` <span class="chip" style="font-size:10px;padding:0 5px;border-color:#8ad">租借自 ${esc(p.loanFrom)}</span>` : ''}${p.acad && p.youth ? ' <span class="chip" style="font-size:10px;padding:0 5px">青训</span>' : ''}${p.conv ? ` <span class="chip ${p.conv.done ? 'good' : ''}" style="font-size:10px;padding:0 5px;${p.conv.done ? '' : 'border-color:var(--gold)'}" title="${esc(p.conv.from)} → ${esc(p.conv.to)}（难度 ${p.conv.lv}）${p.conv.pen ? ` · 能力暂时 −${p.conv.pen}` : ''}">${p.conv.done ? '改造完成' : `改造中 ${Math.round(p.conv.prog * 100)}%`}</span>` : ''}${mkChip(p, t)}</td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${(() => { const M = playerMorale(p, t); return `<span class="mono" data-tip="mor:${esc(p.uid || p.name)}:${esc(t)}" style="cursor:help;color:${morCol(M.v)};font-weight:700">${M.v}%</span>`; })()}</td><td class="l">${roleCell(p, t)}</td><td class="muted">${esc(p.value)}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
       </tbody></table></div></div>`}
   <div class="grid g-2" style="align-items:start">
-    <div class="panel"><div class="ph"><div><div class="eyebrow">Starting XI</div><h2>首发阵容</h2></div><span class="note mono">ATK ${st.atk.toFixed(1)} · CTL ${st.ctl.toFixed(1)} · DEF ${st.def.toFixed(1)}</span></div>${pitchSVG(t)}</div>
+    ${xiPanel(t, st)}
     ${squadReportPanel(t) || '<div></div>'}
   </div>` : ''}
   ${TEAM_TAB === 'trans' ? teamTransferPanel(t) : ''}
@@ -4591,7 +4611,7 @@ function batchExec(win, P, neg) {
       raise = next;
     }
     P.exp.forEach(x => { if (mktSold(mktGet(), x.p.uid)) return; if (x.d === 'renew') { mktAct('renew', x.p.uid); const r = mktGet().renew[x.p.uid]; if (r) r.ok ? R.ren++ : R.renF++; } else if (x.d === 'list') { mktAct('list', x.p.uid); R.list++; } });
-    P.buys.filter(b => b.d === 'buy').forEach(b => { const r = autoBuy(b.t, b.x.p.uid, b.x.ask, b.max); if (r && r.res === 'wait') R.bought.push({ t: b.t, name: b.x.p.name, from: b.x.from, fee: r.due, wait: r.mode }); else R.buyFail.push({ t: b.t, name: b.x.p.name, why: r ? r.why : '' }); });
+    P.buys.filter(b => b.d === 'buy').forEach(b => { const r = autoBuy(b.t, b.x.p.uid, b.x.ask, b.max); if (r && r.res === 'wait') R.bought.push({ t: b.t, name: b.x.p.name, from: b.x.from, fee: r.due, wait: r.manual ? 'manual' : r.mode }); else R.buyFail.push({ t: b.t, name: b.x.p.name, why: r ? r.why : '' }); });
     P.kids.filter(x => x.d === 'promote').forEach(x => { kidDecide(x.k.kid.id, 'promote'); R.promo++; });
   } finally { BATCH = 0; }
   P.offers.forEach(x => { if (x.o.st === 'a') R.acc.push(x.o); else if (x.o.st !== 'p' && x.d !== 'skip') R.gave++; });
@@ -4604,7 +4624,7 @@ function batchReport(P, R) {
   d.innerHTML = `<div class="dlg" style="position:relative;max-width:640px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div><div class="eyebrow">一键规划完成</div><h2 style="font-size:20px;font-weight:900;margin:4px 0">卖出 ${R.acc.length} 笔 · 发出报价 ${R.bought.length} 份${R.promo ? ` · 提拔 ${R.promo} 人` : ''}</h2></div>
     <div style="max-height:55vh;overflow:auto;display:grid;gap:8px">
     ${R.acc.length ? `<div class="rank-list">${R.acc.map(o => row(`<b>${esc(o.name)}</b> <span class="dim" style="font-size:12px">${esc(o.from)} → ${esc(o.to)}${o.round > 1 ? ` · 谈了 ${o.round - 1} 轮` : ''}</span>`, '', fee$(o.fee))).join('')}</div>` : ''}
-    ${R.bought.length ? `<div class="eyebrow">已发出报价 · 等对方回复</div><div class="rank-list">${R.bought.map(b => row(`<b>${esc(b.name)}</b> <span class="dim" style="font-size:12px">${esc(b.t)} 向 ${esc(b.from)} 报价</span>`, '', b.wait === 'day' ? `最迟第 ${b.fee} 天回复` : `第 ${b.fee} 轮后回复`)).join('')}</div><p class="note" style="margin:0">回复到了会自动处理：还价在出价上限内就接受，被拒就出到上限再试一次。</p>` : ''}
+    ${R.bought.length ? `<div class="eyebrow">已发出报价 · 等对方回复</div><div class="rank-list">${R.bought.map(b => row(`<b>${esc(b.name)}</b> <span class="dim" style="font-size:12px">${esc(b.t)} 向 ${esc(b.from)} 报价</span>`, '', b.wait === 'manual' ? `<button class="btn ghost" data-act="tGo" data-t="${esc(b.from)}" style="padding:2px 8px;font-size:11px">等你替 ${esc(b.from)} 决定 →</button>` : b.wait === 'day' ? `最迟第 ${b.fee} 天回复` : `第 ${b.fee} 轮后回复`)).join('')}</div><p class="note" style="margin:0">回复到了会自动处理：还价在出价上限内就接受，被拒就出到上限再试一次。</p>` : ''}
     ${R.buyFail.length ? `<div class="eyebrow">没买成</div><div class="rank-list">${R.buyFail.map(b => `<div class="rk" style="grid-template-columns:minmax(0,1fr)"><span>${esc(b.t)} · <b>${esc(b.name)}</b> <span class="dim" style="font-size:12px">${esc(b.why || '')}</span></span></div>`).join('')}</div>` : ''}
     </div>
     <p class="note" style="margin:0">${R.gave} 份报价没谈成${P.exp.length ? ` · 续约成功 ${R.ren} 人、谈崩 ${R.renF} 人 · 挂牌 ${R.list} 人` : ''}。没买成的球员可以在球队页「转会」分页手动再谈。</p>
@@ -5489,6 +5509,7 @@ document.addEventListener('click', e => {
   if (act === 'rejFinal') { const MK = el.dataset.bw === '1' ? S.market[winKey(SEASON)] : mktGet(), o = MK && MK.offers.find(x => x.id === el.dataset.id); if (o && o.st === 'p') { if (o.user) { userBidReject(o, true); return; } o.st = 'r'; o.log.push('卖方拒绝出售'); toast(`拒绝了 ${o.to} 对 ${o.name} 的报价`); save(); } return render(); }
   if (act === 'mkLoan') return mktLoanIn(el.dataset.id, el.dataset.t);
   if (act === 'loanExt') return loanExtend(el.dataset.id);
+  if (act === 'xiForm') { XI_PREV = { t: el.dataset.t, f: el.dataset.f || null }; return render(); }
   if (act === 'fillOpen') return fillDlg(el.dataset.t ? [el.dataset.t] : null);
   if (act === 'fillRun') return fillRun();
   if (act === 'kidAct') return kidDecide(el.dataset.id, el.dataset.k, el.dataset.to, +el.dataset.fee || 0);
