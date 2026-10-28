@@ -137,8 +137,13 @@ const ENGINE = (() => {
   }
   // ---------- 期望进球 ----------
   // opt.L = { h: pickXI(...), a: pickXI(...) } 时按实际首发计算
+  // 俱乐部底蕴：按球队梯队把比赛实力往该梯队的水平拉（单位：能力分），由网页设定
+  let teamAdj = null;
+  const setTeamAdj = f => { teamAdj = f; };
+  const shiftS = (X, d) => d ? { ...X, atk: X.atk + d, def: X.def + d, ctl: X.ctl + d, xiAvg: X.xiAvg + d, ovr: X.ovr + d, adj: d } : X;
   function expected(home, away, opt = {}) {
-    const H = opt.L ? strengthOf(opt.L.h) : strength(home), A = opt.L ? strengthOf(opt.L.a) : strength(away);
+    let H = opt.L ? strengthOf(opt.L.h) : strength(home), A = opt.L ? strengthOf(opt.L.a) : strength(away);
+    if (teamAdj) { H = shiftS(H, teamAdj(home) || 0); A = shiftS(A, teamAdj(away) || 0); }
     const ch = condition(home, opt.weather, opt.slot, away), ca = condition(away, opt.weather, opt.slot, home);
     const homeAdv = opt.neutral ? 1 : 1.12, awayPen = opt.neutral ? 1 : 0.94;
     const k = 0.078;
@@ -456,6 +461,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { withSeed, setTeamMod, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

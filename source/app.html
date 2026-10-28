@@ -3075,6 +3075,20 @@ function teamMorale(t) {
   const lv = morLv(med);
   return (MOD_CACHE[k] = { abil: Math.max(-4.5, Math.min(4.5, abil)), mor: Math.max(-5, Math.min(5, mor)), med, bounce, lv, ppg, played, coach: c, room: dressingRoom(t, c) });
 }
+// 威超梯队（DSON 设定）：比赛时把球队实力往所属梯队的水平拉，球员能力不变
+const CLUB_TIER = { S: ['猛龙', '罗联', '威龙', '猎豹', '威尔福特', '狂蜂'], 'A+': ['龙王宫殿', '切狐', '猛虎'], A: ['泽尼联', '华尔兹', '金狮', '沃特梅兹', '阿尔法骑士'],
+  B: ['蜜蜂', '花豹', '森利西亚虎', '威廉斯', '岚', '普雷斯顿', '科摩多尊龙', '炎狼', '罗杰剧院', '威尔顿联', '飞鹰', '雷克夏', '拉普兰德'] };
+const TIER_P = { pull: 0.65, cap: 4.5, off: { S: 3.6, 'A+': 1.9, A: 0.6, B: -1.5 } };
+function clubTier(t) { for (const k in CLUB_TIER) if (CLUB_TIER[k].includes(t)) return k; return null; }
+var TIER_C = { k: null, m: {} };
+function tierAdj(t) {
+  const tr = clubTier(t); if (!tr || !S || !S.teams || !S.teams.includes(t)) return 0;
+  const k = SEASON + '|' + MOD_VER + '|' + TIER_P.pull; if (TIER_C.k !== k) { TIER_C.k = k; TIER_C.m = {}; const L = S.teams.map(x => ENGINE.strength(x).xiAvg); TIER_C.mean = L.reduce((a, b) => a + b, 0) / L.length; }
+  if (TIER_C.m[t] != null) return TIER_C.m[t];
+  const d = (TIER_C.mean + TIER_P.off[tr] - ENGINE.strength(t).xiAvg) * TIER_P.pull;
+  return (TIER_C.m[t] = Math.max(-TIER_P.cap, Math.min(TIER_P.cap, d)));
+}
+ENGINE.setTeamAdj(tierAdj);
 ENGINE.setTeamMod((t, opp) => {
   if (!TD[t] || !S || !S.fx) return [];
   const M = teamMorale(t), out = [];
@@ -3369,7 +3383,7 @@ function teamDetail(t) {
   <div class="panel thero" style="--tc:${tcol(t)}">
     <div class="glow">${crest(t, 168)}</div>
     <div style="min-width:0"><div class="eyebrow">${esc(P.en || '')}${inLeague ? ` · 威超 S${SEASON}${posNow && playedRounds() ? ' 第 ' + posNow + ' 名' : ''}` : ' · 非威超'}</div><h1>${esc(t)}</h1>
-      <div class="btns" style="margin-top:10px"><span class="chip">${esc(D.style || P.style)}</span><span class="chip">${esc(D.formNow || D.form || P.formation || '')}</span>${hon['威超冠军'] ? `<span class="chip gold">威超冠军 ×${hon['威超冠军']}</span>` : ''}${(() => { const E = cupEntrants(SEASON); return ['世联赛', '全联冠', '全联杯', '全协联'].filter(k => E[k].includes(t)).map(k => `<span class="chip good">${SN(SEASON)} ${k}</span>`).join(''); })()}</div>
+      <div class="btns" style="margin-top:10px">${(() => { const tr = clubTier(t); if (!tr) return ''; const d = inLeague ? tierAdj(t) : 0; return `<span class="chip ${tr === 'S' ? 'gold' : tr === 'B' ? '' : 'good'}" title="威超梯队（俱乐部底蕴）：比赛时球队实力会往所属梯队的水平靠拢，球员能力本身不变${inLeague ? `。本季比赛实力 ${d >= 0 ? '+' : ''}${d.toFixed(1)}` : ''}">威超梯队 ${tr} 级${inLeague && Math.abs(d) >= 0.1 ? ` <span class="mono" style="font-size:10px;opacity:.8">${d >= 0 ? '+' : ''}${d.toFixed(1)}</span>` : ''}</span>`; })()}<span class="chip">${esc(D.style || P.style)}</span><span class="chip">${esc(D.formNow || D.form || P.formation || '')}</span>${hon['威超冠军'] ? `<span class="chip gold">威超冠军 ×${hon['威超冠军']}</span>` : ''}${(() => { const E = cupEntrants(SEASON); return ['世联赛', '全联冠', '全联杯', '全协联'].filter(k => E[k].includes(t)).map(k => `<span class="chip good">${SN(SEASON)} ${k}</span>`).join(''); })()}</div>
       <dl class="facts">
         ${(() => { const c = coachOf(t), R = c ? coachRecord(c) : null; return `<div><dt>主教练</dt><dd>${c ? `<button class="lnk" data-coach="${esc(c.id)}">${esc(c.name)}</button> <span class="dim" style="font-size:11px">生涯 ${coachHistory().stints.filter(x => x.id === c.id).flatMap(stintHonours).length} 项荣誉</span>` : '—'}</dd></div>
         <div><dt>执教战绩</dt><dd class="mono" style="font-size:12px">${R ? `${R.w}胜 ${R.d}平 ${R.l}负 · ${stintTxt(c).replace(/ – 至今$/, ' 上任')}` : '—'}</dd></div>
