@@ -433,7 +433,13 @@ S = load();
 if (!S) { S = newSeason(); S.updated = 0; localSave(); }
 // S18 参赛名单改过（泽尼联回到威超、飞鹰不升级）：旧名单的 S18 进度作废，重新开始
 const sameTeams = (a, b) => a && b && a.length === b.length && a.slice().sort().join() === b.slice().sort().join();
-function migrateState() { return false;
+// S01–S17 的球员流动重新推演过（HIST.movesSeed）：旧进度里的转会决定对不上新历史，从 S01 重新开始
+function migrateState() {
+  const HV = (HIST && HIST.movesSeed) || 0;
+  if (S && (S.hv || 0) !== HV) { const used = (S.season || 1) > 1 || (S.archive || []).length || Object.keys(S.market || {}).length || (S.fx || []).some(r => r.some(m => m.r));
+    if (used) { const teams = (HIST.s1 || S.teams).slice(); S = { season: 1, teams, promoted: [], fx: ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))), demo: false, archive: [], edits: S.edits || {}, salt: { 1: newSalt() }, mktCfg: S.mktCfg, updated: Date.now() }; S.reset = S.updated; S.hv = HV; for (let i = 0; i < 38; i++) DIRTY.add(i); return true; }
+    S.hv = HV; return false; }
+  return false;
   const a18 = (S.archive || []).find(A => A.s === 18);
   if ((S.season === 18 && !sameTeams(S.teams, HIST.s18)) || (a18 && !sameTeams(a18.teams, HIST.s18))) { S = newSeason(); S.updated = Date.now(); for (let i = 0; i < 38; i++) DIRTY.add(i); S.migrated = 1; return true; }
   return false;
@@ -5526,7 +5532,7 @@ async function exportSave() {
   const m = $('#syncMsg'); if (m) m.textContent = '已导出。若没有开始下载，说明当前页面不允许下载文件。';
 }
 
-if (MIGRATED) setTimeout(() => toast('S18 参赛名单已更新（泽尼联回到威超），赛季进度重新开始'), 400);
+if (MIGRATED) setTimeout(() => toast('S01–S17 的球员流动已经重新推演，进度从 S01 重新开始'), 400);
 const h0 = (location.hash || '').slice(1);
 go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
 setSync('local'); cloudInit();
