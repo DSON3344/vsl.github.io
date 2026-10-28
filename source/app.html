@@ -638,6 +638,9 @@ function youthName_old(team, rnd) {
   return { name: '青训' + Math.floor(rnd() * 1e4), nat: '—' };
 }
 const ATTR_TPL = { GK: { div: 3, han: 2, kic: 0, ref: 3, spd: -12, pos_s: 2 }, DF: { spd: -2, sho: -22, pas: -6, dri: -10, def: 4, phy: 3, men: 0, sta: 0 }, MF: { spd: 0, sho: -5, pas: 4, dri: 2, def: -8, phy: -3, men: 1, sta: 3 }, FW: { spd: 3, sho: 5, pas: -4, dri: 3, def: -30, phy: 0, men: 0, sta: -2 } };
+var CONV_POS = ['CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST'];
+var POS_XY = { GK: [0, 'C'], CB: [1, 'C'], LB: [1, 'L'], RB: [1, 'R'], LWB: [2, 'L'], RWB: [2, 'R'], CDM: [2, 'C'], DM: [2, 'C'], CM: [3, 'C'], LM: [3, 'L'], RM: [3, 'R'], CAM: [4, 'C'], AM: [4, 'C'], LW: [4.5, 'L'], RW: [4.5, 'R'], ST: [5, 'C'], CF: [5, 'C'] };
+var CONV_LV = [['易', 1.25, 15, 3], ['中', 2.25, 30, 6], ['难', 3.25, 57, 10], ['极难', 99, 95, 14]]; // [难度, 距离上限, 需要轮数, 刚开始的能力折扣]
 const YOUTH_UID = new Set();
 // 青训提拔规则：一般 18 岁以上才升一线队；17 岁要潜力 90 以上，16 岁以下要潜力 93 以上（天赋异禀）
 const kidEligible = (k, season) => { const a = season - k.born; return k.status === 'academy' && a <= 20 && (a >= 18 || (a === 17 && k.pot >= 90) || (a >= 15 && a <= 16 && k.pot >= 93)); };
@@ -3279,7 +3282,7 @@ function academyPanel(t) {
   const loanedHere = SEASON >= 18 ? Object.values(PDB).flatMap(L2 => L2.filter(p => p.kidLoan && p.loanFrom === t)) : [];
   const win = mktActive() && !mktLate();
   const row = k => `<tr><td class="l"><button class="lnk" ${scoutBtn(k)}><b>${esc(k.name)}</b></button>${isProspect(k) ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">潜力新星</span>' : ''}${k.homegrown ? ' <span class="chip" style="font-size:10px;padding:0 5px">青训出品</span>' : ''}${k.kind === 'hist' ? ' <span class="chip" style="font-size:10px;padding:0 5px" title="历史上之后会在一线队出道">历史出道</span>' : ''}</td><td class="l mono" style="font-size:12px">${esc(k.pos)}</td><td class="l">${esc(k.nat || '')}</td><td>${k.age}</td><td><span class="rt-pill" style="background:${rtColor(k.rating)}">${k.rating}</span></td><td><span class="rt-pill" style="background:${rtColor(k.pot)}">${k.pot}</span></td><td class="l">${k.kind === 'acad' && k.kid ? kidActCell(k.kid, t) : k.kind === 'first' ? '<span class="dim" style="font-size:12px">一线队</span>' : `<span class="dim" style="font-size:12px">${k.debut ? `S${String(k.debut).padStart(2, '0')} 出道` : '–'}</span>`}</td></tr>`;
-  const dem = DEMOTED[t] || [];
+  const dem = (DEMOTED || {})[t] || [];
   if (!acad.length && !first.length && !out.length && !dem.length) return '';
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Academy · ${SN(SEASON)}</div><h2>青训梯队 · ${acad.length} 人</h2></div><span class="note">15–20 岁 · 潜力新星 ${nP} 人 · 点名字看球探报告</span></div>
     <p class="note" style="margin:0 0 10px">16 岁起可以安排去向：<b>提拔至一线队</b>（一线队名单不能超过 ${SQUAD_MAX} 人）、<b>留在青训</b>（默认，21 岁还没提拔就离队）、有球队抛来橄榄枝时还能<b>租借</b>（去踢一季比赛，回来能力 +1，期满可以续租）或<b>转会</b>。租借和转会意向只在夏窗出现${win ? '（夏窗开放中）' : ''}。</p>
@@ -3290,17 +3293,14 @@ function academyPanel(t) {
   </div>`;
 }
 /* ---------- 位置改造：中场改后腰 / 前腰容易，改中后卫 / 前锋难；改造期间在新位置能力打折，随比赛经验慢慢适应，属性也朝新位置的方向成长 ---------- */
-const CONV_POS = ['CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST'];
-const POS_XY = { GK: [0, 'C'], CB: [1, 'C'], LB: [1, 'L'], RB: [1, 'R'], LWB: [2, 'L'], RWB: [2, 'R'], CDM: [2, 'C'], DM: [2, 'C'], CM: [3, 'C'], LM: [3, 'L'], RM: [3, 'R'], CAM: [4, 'C'], AM: [4, 'C'], LW: [4.5, 'L'], RW: [4.5, 'R'], ST: [5, 'C'], CF: [5, 'C'] };
-const posBase = p => String(p || '').replace(/^[LR](?=(CB|CM|DM|AM|ST))/, '');
-const CONV_LV = [['易', 1.25, 15, 3], ['中', 2.25, 30, 6], ['难', 3.25, 57, 10], ['极难', 99, 95, 14]]; // [难度, 距离上限, 需要轮数, 刚开始的能力折扣]
+function posBase(p) { return String(p || '').replace(/^[LR](?=(CB|CM|DM|AM|ST))/, ''); }
 function convDiff(from, to) {
   const a = POS_XY[posBase(from)], b = POS_XY[posBase(to)]; if (!a || !b || posBase(from) === posBase(to)) return null; if (a[0] === 0 || b[0] === 0) return { lv: '不可能', need: 1e9, pen: 99 };
   let d = Math.abs(a[0] - b[0]); if (a[1] !== b[1]) d += a[1] === 'C' || b[1] === 'C' ? 1.25 : 0.75; if (ENGINE.LINE(posBase(from)) !== ENGINE.LINE(posBase(to))) d += 0.75;
   const L = CONV_LV.find(x => d <= x[1]); return { lv: L[0], need: L[2], pen: L[3], d };
 }
-const convAgeF = a => a <= 23 ? 1.3 : a <= 27 ? 1 : a <= 31 ? 0.8 : 0.6;
-const convKey = p => { const pid = UIDPID[p.uid] ?? (String(p.uid || '').startsWith('H|') ? +String(p.uid).slice(2) : null); return pid != null ? 'P' + pid : (p.uid || p.name); };
+function convAgeF(a) { return a <= 23 ? 1.3 : a <= 27 ? 1 : a <= 31 ? 0.8 : 0.6; }
+function convKey(p) { const pid = UIDPID[p.uid] ?? (String(p.uid || '').startsWith('H|') ? +String(p.uid).slice(2) : null); return pid != null ? 'P' + pid : (p.uid || p.name); }
 var CONV_ROUNDS = 0;
 function applyConversions() {
   const C = (S && S.convert) || {}; if (!Object.keys(C).length) return; const byKey = {}; Object.entries(PDB).forEach(([t, L]) => L.forEach(p => { byKey[convKey(p)] = [p, t]; }));
@@ -3326,8 +3326,8 @@ function convDlg(t, key) {
 }
 function convSet(t, k, pos, from) { S.convert = S.convert || {}; if (pos) S.convert[k] = { from, to: pos, s: SEASON, r: S.fx ? playedRounds() : 0 }; else delete S.convert[k]; save(); GROWN = 0; applyGrowth(); TAC_KEY = null; ensureTactics(); if ($('#dlg').open) $('#dlg').close(); toast(pos ? `开始改造：${from} → ${pos}` : '已取消改造'); render(); }
 /* ---------- 人员安排：提拔至首发 / 下放至轮换 / 下放回青训（21 岁以下）---------- */
-var DEMOTED = {};
-const roleKey = p => p.uid || p.name;
+var DEMOTED; // 不在这里赋值：载入时 applyGrowth 已经先填好了
+function roleKey(p) { return p.uid || p.name; } // 函数声明：载入时 applyGrowth 就会用到
 function roleCell(p, t) {
   const R = ((S.roles || {})[t] || {})[roleKey(p)] || 'auto', inXI = (TD[t].roster || []).some(r => r.name === p.name);
   const opts = [['auto', inXI ? '首发（自动）' : '轮换（自动）'], ['start', '提拔至首发'], ['bench', '下放至轮换']].concat((p.age || 99) <= 21 ? [['acad', '下放回青训']] : []);
