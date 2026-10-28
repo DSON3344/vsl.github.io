@@ -516,28 +516,37 @@ function retiresAt(p, age, rating) { const lim = 34 + Math.floor(ghash('ret|' + 
 /* ---------- 能力重新推演（build_rerate.js 生成的 RERATE）：旧资料只留名字、位置、国籍、年龄和每季在哪队 ----------
    S18 初始阵容的能力、属性、身价全部按同一条能力曲线重算；部分球员因伤病或个人原因没能兑现天赋 */
 const curveP = (P, pAge, a) => a < pAge ? P - Math.pow(pAge - a, 1.2) * 0.8 : a <= pAge + 2 ? P : P - Math.pow(a - pAge - 2, 1.45) * 0.85;
-const RR_GEN = {};
+const RR_GEN = {}, RR_B = {};
+// 超越天赋：没有遭遇伤病 / 个人问题的球员里，约一成在某个年纪开窍（训练、主帅、位置、发育晚……），上限比球探估计的高 3–7 分
+const BLOOM_TXT = ['训练极其刻苦自律', '遇到赏识他的主帅', '改打新位置后开窍', '身体发育晚、后程发力', '心态成熟、比赛阅读提升', '跟着老将学到了真本事'];
+function withBloom(key, X) { if (!X || X[3]) return X; const r = seeded('bloom|' + key); if (r() >= (X[0] >= 88 ? 0.06 : 0.12)) return X;
+  const g = Math.max(0, Math.min(97 - X[0], 3 + Math.floor(r() * 5))); if (!g) return X; return X.concat([g, 21 + Math.floor(r() * 6)]); }
 function rrOf(key) { // 历史球员用 RERATE；资料库里没有编号的球员按名字固定生成一份
-  if (typeof key === 'number') return RERATE.p[key] || null;
+  if (typeof key === 'number') { if (RR_B[key] !== undefined) return RR_B[key]; return (RR_B[key] = RERATE.p[key] ? withBloom(key, RERATE.p[key]) : null); }
   if (RR_GEN[key]) return RR_GEN[key];
   const [, t, name, age] = key.split('|'), k = 'rr|' + key, g = (() => { const u = Math.max(1e-6, ghash(k + 'u')), v = ghash(k + 'v'); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); })();
   const tb = ['威龙', '猎豹', '金狮', '猛虎', '狂蜂'].includes(t) ? 3 : ['威尔福特', '切狐', '阿尔法骑士', '猛龙', '罗联', '森利西亚虎'].includes(t) ? 1 : -1.5;
   let pot = Math.round(Math.max(70, Math.min(93, 83.5 + tb + 5 * g))), bt = 0, ba = 0, loss = 0;
   if (pot >= 83 && ghash(k + 'b') < 0.14) { bt = ghash(k + 'bt') < 0.55 ? 1 : 2; ba = 20 + Math.floor(ghash(k + 'ba') * (bt === 1 ? 6 : 4)); loss = bt === 1 ? 5 + Math.floor(ghash(k + 'bl') * 8) : 4 + Math.floor(ghash(k + 'bl') * 6); }
-  return (RR_GEN[key] = [pot, 26 + Math.floor(ghash(k + 'pa') * 3), 18 - (+age || 25), bt, ba, loss]);
+  return (RR_GEN[key] = withBloom(key, [pot, 26 + Math.floor(ghash(k + 'pa') * 3), 18 - (+age || 25), bt, ba, loss]));
 }
-function rateAtR(key, a) {
-  const X = rrOf(key); if (!X) return null; const [pot, pAge, , bt, ba, loss] = X;
+function rateAtR(key, a, raw) {
+  const X = rrOf(key); if (!X) return null; const [pot, pAge, , bt, ba, loss, bg, bga] = X;
   let P = pot; if (bt === 1 && a >= ba) P = pot - loss; else if (bt === 2 && a >= ba) P = pot - loss * Math.min(1, (a - ba + 1) / 3);
+  if (bg && !raw && a >= bga) P += bg * Math.min(1, (a - bga + 1) / 3);
   return Math.max(50, Math.min(99, Math.round(curveP(P, pAge, a) + (ghash('rn|' + key + '|' + a) - 0.5) * 1.6)));
 }
 const peakR = key => { let m = 0; for (let a = 17; a <= 38; a++) m = Math.max(m, rateAtR(key, a) || 0); return m; };
 const BUST_TXT = { 1: ['重伤', ['十字韧带断裂', '跟腱断裂', '膝盖半月板反复受伤', '脚踝粉碎性骨折', '慢性腰伤']], 2: ['个人因素', ['训练态度散漫', '场外风波不断', '心理压力过大、状态起伏', '与主帅长期不和', '沉迷夜生活']] };
-function bustChip(key, ageNow, kb) {
+function bustChip(key, ageNow, kb, kbl) {
+  const bl = bloomChip(key, ageNow, kbl); if (bl) return bl;
   let B = null; if (kb) { const L = BUST_TXT[kb.type][1]; B = { type: BUST_TXT[kb.type][0], why: L[Math.floor(ghash('bw|' + kb.key) * L.length)], age: kb.age, pot: kb.pot, loss: kb.loss }; } else if (key != null) B = bustInfo(key);
   if (!B || ageNow == null || ageNow < B.age) return '';
   return `<span class="chip bad" title="原本潜力 ${B.pot}，${B.age} 岁起受${B.type}影响，上限降了约 ${B.loss} 分">天赋未兑现 · ${B.age} 岁${esc(B.why)}（${B.type}）</span>`;
 }
+function bloomInfo(key) { const X = rrOf(key); if (!X || !X[6]) return null; return { age: X[7], pot: X[0], gain: X[6], why: BLOOM_TXT[Math.floor(seeded('bw2|' + key)() * BLOOM_TXT.length)] }; }
+function bloomChip(key, ageNow, kb) { const B = kb ? { age: kb.age, pot: kb.pot, gain: kb.gain, why: BLOOM_TXT[Math.floor(seeded('bw2|' + kb.key)() * BLOOM_TXT.length)] } : key != null ? bloomInfo(key) : null;
+  if (!B || ageNow == null || ageNow < B.age) return ''; return `<span class="chip good" title="球探原本估计潜力 ${B.pot}，${B.age} 岁起开窍，上限提高约 ${B.gain} 分">超越天赋 · ${B.age} 岁${esc(B.why)}</span>`; }
 function bustInfo(key) { const X = rrOf(key); if (!X || !X[3]) return null; const [pot, , , bt, ba, loss] = X, L = BUST_TXT[bt][1]; return { type: BUST_TXT[bt][0], why: L[Math.floor(ghash('bw|' + key) * L.length)], age: ba, pot, loss }; }
 (function rerateBase() {
   const tpl = (line, pos) => { const t = { ...{ GK: { div: 3, han: 2, kic: 0, ref: 3, spd: -12, pos_s: 2 }, DF: { spd: -2, sho: -22, pas: -6, dri: -10, def: 4, phy: 3, men: 0, sta: 0 }, MF: { spd: 0, sho: -5, pas: 4, dri: 2, def: -8, phy: -3, men: 1, sta: 3 }, FW: { spd: 3, sho: 5, pas: -4, dri: 3, def: -30, phy: 0, men: 0, sta: -2 } }[line] }; if (/W|AM/.test(pos)) { t.dri = (t.dri || 0) + 3; t.spd = (t.spd || 0) + 3; } return t; };
@@ -635,7 +644,7 @@ const kidEligible = (k, season) => { const a = season - k.born; return k.status 
 function promoteKid(team, kid, season, no, rnd) {
   kid.status = 'first'; kid.promoted = season;
   const rating = kidRating(kid, season), age = season - kid.born;
-  const Y = { no, team, pos: kid.pos, nat: kid.nat, name: kid.name, rating, height: kid.height, weight: kid.weight, age, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: 'ⰵ' + valueM(rating, age) + 'M', attributes: kidAttrs(kid, season), youth: 1, acad: kid.id, potFix: kid.bt ? kid.pot - kid.loss : kid.pot, kidBust: kid.bt ? { type: kid.bt, age: kid.born + kid.ba - season + age, pot: kid.pot, loss: kid.loss, key: kid.id } : null, rating0: rating, age0: age, s0: season, uid: 'Y|' + kid.name + (YOUTH_UID.has('Y|' + kid.name) ? '|' + team + season : ''), cEnd: season + 2 + Math.floor(rnd() * 2) };
+  const Y = { no, team, pos: kid.pos, nat: kid.nat, name: kid.name, rating, height: kid.height, weight: kid.weight, age, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: 'ⰵ' + valueM(rating, age) + 'M', attributes: kidAttrs(kid, season), youth: 1, acad: kid.id, potFix: kid.bt ? kid.pot - kid.loss : kid.pot + (kid.bg || 0), kidBloom: kid.bg ? { age: kid.bga, pot: kid.pot, gain: kid.bg, key: kid.id } : null, kidBust: kid.bt ? { type: kid.bt, age: kid.born + kid.ba - season + age, pot: kid.pot, loss: kid.loss, key: kid.id } : null, rating0: rating, age0: age, s0: season, uid: 'Y|' + kid.name + (YOUTH_UID.has('Y|' + kid.name) ? '|' + team + season : ''), cEnd: season + 2 + Math.floor(rnd() * 2) };
   YOUTH_UID.add(Y.uid); return Y;
 }
 // 转会窗延续期（下季前 4 轮）里成交的转会和解约：在整个夏窗推算完之后再执行
@@ -784,11 +793,12 @@ function acadKid(t, born, k) {
   let pot = 70 + rnd() * 13 + (acadBase(t) - 84) * 0.45; const g = rnd(); if (g < 0.015) pot = 92 + rnd() * 4; else if (g < 0.08) pot += 7 + rnd() * 4;
   pot = Math.round(Math.max(62, Math.min(96, pot)));
   const prof = {}; Object.keys(ATTR_TPL[line]).forEach(a => prof[a] = Math.round((rnd() - 0.5) * 14));
-  const id = 'A|' + t + '|' + born + '|' + k, bh = ghash(id + '|bust'); let bt = 0, ba = 0, loss = 0;
+  const id = 'A|' + t + '|' + born + '|' + k, bh = seeded(id + '|bust')(); let bt = 0, ba = 0, loss = 0;
   if (pot >= 84 && bh < 0.12) { bt = ghash(id + '|bt') < 0.55 ? 1 : 2; ba = 17 + Math.floor(ghash(id + '|ba') * 6); loss = bt === 1 ? 5 + Math.floor(ghash(id + '|bl') * 8) : 4 + Math.floor(ghash(id + '|bl') * 6); }
-  return { id, team: t, name, nat, pos, line, born, pot, bt, ba, loss, prof, height: line === 'GK' ? 183 + Math.floor(rnd() * 12) : 168 + Math.floor(rnd() * 22), weight: 60 + Math.floor(rnd() * 20), status: 'academy' };
+  let bg = 0, bga = 0; { const r = seeded(id + '|bloom'); if (!bt && r() < (pot >= 88 ? 0.06 : 0.12)) { bg = Math.min(97 - pot, 3 + Math.floor(r() * 5)); bga = 18 + Math.floor(r() * 6); } }
+  return { id, team: t, name, nat, pos, line, born, pot, bt, ba, loss, bg, bga, prof, height: line === 'GK' ? 183 + Math.floor(rnd() * 12) : 168 + Math.floor(rnd() * 22), weight: 60 + Math.floor(rnd() * 20), status: 'academy' };
 }
-const kidPot = (k, s) => { const a = s - k.born; return !k.bt || a < k.ba ? k.pot : k.pot - (k.bt === 1 ? k.loss : k.loss * Math.min(1, (a - k.ba + 1) / 3)); };
+const kidPot = (k, s) => { const a = s - k.born; if (k.bg && a >= k.bga) return k.pot + k.bg * Math.min(1, (a - k.bga + 1) / 3); return !k.bt || a < k.ba ? k.pot : k.pot - (k.bt === 1 ? k.loss : k.loss * Math.min(1, (a - k.ba + 1) / 3)); };
 const kidRating = (k, s) => Math.round(Math.max(40, kidPot(k, s) - Math.max(0, 22 - (s - k.born)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2));
 function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR_TPL[k.line]).forEach(([a, d]) => o[a] = Math.max(20, Math.min(99, Math.round(r + d + (k.prof[a] || 0))))); return o; }
 function acadCohort(t, born) { const n = 3 + (ghash('acn|' + t + '|' + born) < 0.4 ? 1 : 0); for (let k = 0; k < n; k++) { const kid = acadKid(t, born, k); ACAD[t].push(kid); ACAD_ID[kid.id] = kid; } }
@@ -1049,6 +1059,8 @@ function histPlayer(pid, team, s, r) {
   const nos = { GK: [1, 12, 13, 22], DF: [2, 3, 4, 5, 6, 15, 23], MF: [6, 8, 10, 14, 16, 18, 20], FW: [7, 9, 11, 17, 19, 21] }[line];
   return { no: base ? base.no : nos[Math.floor(h('n') * nos.length)], team, pos: base ? base.pos : pos, nat: nat || (base && base.nat) || '', name, rating: r, height: ht, weight: base ? base.weight : Math.round(ht - 105 + h('w') * 12), age, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: 'ⰵ' + valueM(r, age) + 'M', attributes, uid, hist: 1, rating0: r, age0: age, s0: s, cEnd: s + 1 + Math.floor(h('c') * 3) };
 }
+// 历史时期的能力是预先推演好的（不含超越天赋），开窍的球员在这里补上多出来的部分
+function bloomDelta(pid, s) { const X = rrOf(pid); if (!X || !X[6]) return 0; const a = s - X[2]; if (a < X[7]) return 0; return (rateAtR(pid, a) || 0) - (rateAtR(pid, a, true) || 0); }
 // 历史时期的老带新：按每季阵容（谁和谁同队）累计
 var HM_C = { k: null, m: {} };
 function histMentor(s) {
@@ -1064,7 +1076,7 @@ function setupHistoric(s) {
   const SQ = (HIST.squads || {})[s] || {};
   Object.keys(TD).forEach(t => {
     const seen = new Set(), list = [];
-    (SQ[t] || []).forEach(([pid, slot, r]) => { const n = HIST.players[pid] && HIST.players[pid][0]; if (!n || seen.has(n)) return; seen.add(n); list.push({ p: histPlayer(pid, t, s, Math.min(99, r + Math.round(histMentor(s)[pid] || 0))), slot }); });
+    (SQ[t] || []).forEach(([pid, slot, r]) => { const n = HIST.players[pid] && HIST.players[pid][0]; if (!n || seen.has(n)) return; seen.add(n); list.push({ p: histPlayer(pid, t, s, Math.min(99, r + Math.round(histMentor(s)[pid] || 0) + bloomDelta(pid, s))), slot }); });
     if (!list.length) return;
     PDB[t] = list.map(x => x.p);
     { const usedNo = new Set(); PDB[t].forEach(p => { let n = p.no; if (usedNo.has(n)) { const pool = { GK: [1, 12, 13, 22, 25, 31], DF: [2, 3, 4, 5, 6, 15, 23, 24, 26, 32], MF: [8, 10, 14, 16, 18, 20, 21, 27, 28], FW: [7, 9, 11, 17, 19, 29, 30] }[ENGINE.LINE(p.pos)]; n = pool.find(x => !usedNo.has(x)) || [...Array(60)].map((_, k) => k + 33).find(x => !usedNo.has(x)); p.no = n; } usedNo.add(n); }); }
@@ -3582,7 +3594,7 @@ function openPlayer(team, name) {
     <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${TD[team] ? crest(team, 20) : ecrest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}${TD[team] ? '' : ' · ' + esc(extTag(team))}</span></div><h3>${esc(p.name)}</h3>
-      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageOf(p.rating, team))}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${bustChip(p.cv != null ? p.cv : pid, p.age, p.kidBust)}${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
+      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageOf(p.rating, team))}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${bustChip(p.cv != null ? p.cv : pid, p.age, p.kidBust, p.kidBloom)}${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(p.uid || '')}" style="padding:5px 10px;font-size:12px" ${p.uid ? '' : 'disabled'}>✎ 编辑资料</button>${cmpBtn(pid != null ? 'p:' + pid : 't:' + team + '|' + p.name, p.name)}${mktActive() && PDB[team] && p.uid && typeof p.age0 === 'number' ? (mktGet().listed[p.uid] ? '<span class="chip">已挂牌</span>' : `<button class="btn ghost" data-act="mkList" data-id="${esc(p.uid)}" style="padding:5px 10px;font-size:12px">挂牌出售</button>`) : ''}${typeof p.age === 'number' && p.age <= 20 ? `<button class="btn ghost" ${scoutBtn({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team, uid: p.uid })} style="padding:5px 10px;font-size:12px">🔍 球探报告</button>` : ''}</div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${awardChips(pid, p.uid)}
@@ -3783,8 +3795,9 @@ function contractEnd(p, team) { const o = BY_TN[(team || p.team) + '|' + p.name]
 const ageNow = p => typeof p.age === 'number' ? p.age : null;
 function potentialOf(p) { // 球探眼中的潜力：伤病 / 个人问题还没发生之前看不出来
   if (typeof p.age0 !== 'number') return p.rating;
-  if (p.cv != null && rrOf(p.cv)) { const X = rrOf(p.cv), hit = X[3] && p.age >= X[4]; return Math.max(p.rating, hit ? Math.round(X[0] - X[5]) : X[0]); }
+  if (p.cv != null && rrOf(p.cv)) { const X = rrOf(p.cv), hit = X[3] && p.age >= X[4], bl = X[6] && p.age >= X[7]; return Math.max(p.rating, hit ? Math.round(X[0] - X[5]) : bl ? X[0] + X[6] : X[0]); }
   if (p.kidBust && p.age < p.kidBust.age) return Math.max(p.rating, p.kidBust.pot);
+  if (p.kidBloom && p.age < p.kidBloom.age) return Math.max(p.rating, p.kidBloom.pot); // 开窍之前，球探看到的还是原来的潜力
   return Math.max(p.rating, growthOf(p).pot); }
 // 有意的球队：实力更强、该位置首发不如他的威超球队
 function suitorsOf(p, n = 2) {
