@@ -575,6 +575,18 @@ const PDB0 = {}; Object.entries(PDB).forEach(([t, l]) => PDB0[t] = l.map(p => JS
 const ROSTER0 = {}; Object.entries(TD).forEach(([t, T]) => ROSTER0[t] = T.roster.map(r => ({ ...r })));
 const STYLE0 = {}, COORDS0 = {}, FORMS = {}, FORM_OF0 = {};
 Object.entries(TD).forEach(([t, d]) => { STYLE0[t] = d.style; COORDS0[t] = d.coords; const f = (HISTORY.profiles[t] || {}).formation || '4-3-3'; FORM_OF0[t] = f; if (!FORMS[f]) FORMS[f] = { name: f, coords: d.coords, slots: d.roster.map(r => r.pos) }; });
+// 原始资料里有几个阵型的站位标错了（5-4-1 只有 4 名后卫、4-4-1-1 和 4-2-3-1 一样、4-4-2 的边前卫站到了锋线），这里按阵型名称重新定义
+(() => { const D = (L) => { const coords = {}, slots = []; L.forEach(([sl, x, y]) => { slots.push(sl); coords[sl] = [x, y]; }); return { coords, slots }; };
+  const FIX = {
+    '4-4-2': [['GK', 5, 50], ['LB', 25, 10], ['LCB', 20, 35], ['RCB', 20, 65], ['RB', 25, 90], ['LM', 54, 12], ['LCM', 50, 37], ['RCM', 50, 63], ['RM', 54, 88], ['LST', 85, 38], ['RST', 85, 62]],
+    '5-4-1': [['GK', 5, 50], ['LWB', 32, 10], ['LCB', 20, 30], ['CB', 16, 50], ['RCB', 20, 70], ['RWB', 32, 90], ['LM', 56, 14], ['LCM', 50, 38], ['RCM', 50, 62], ['RM', 56, 86], ['ST', 85, 50]],
+    '4-4-1-1': [['GK', 5, 50], ['LB', 25, 10], ['LCB', 20, 35], ['RCB', 20, 65], ['RB', 25, 90], ['LM', 52, 12], ['LCM', 47, 37], ['RCM', 47, 63], ['RM', 52, 88], ['CAM', 70, 50], ['ST', 86, 50]],
+    '5-3-2': [['GK', 5, 50], ['LWB', 34, 10], ['LCB', 20, 28], ['CB', 16, 50], ['RCB', 20, 72], ['RWB', 34, 90], ['LCM', 55, 28], ['CM', 50, 50], ['RCM', 55, 72], ['LST', 85, 38], ['RST', 85, 62]],
+    '3-1-4-2': [['GK', 5, 50], ['LCB', 20, 28], ['CB', 16, 50], ['RCB', 20, 72], ['CDM', 38, 50], ['LM', 58, 12], ['LCM', 55, 35], ['RCM', 55, 65], ['RM', 58, 88], ['LST', 85, 38], ['RST', 85, 62]] };
+  Object.entries(FIX).forEach(([f, L]) => { FORMS[f] = { name: f, ...D(L) }; });
+  // 原本用这些阵型的球队，首发站位也按新的定义重排
+  Object.entries(TD).forEach(([t, d]) => { const f = FORM_OF0[t]; if (!FIX[f]) return; const F = FORMS[f], used = new Set();
+    const old = d.roster.slice(); d.roster = F.slots.map((sl, i) => { const o = old[i] || old[old.length - 1]; return { ...o, pos: sl }; }); d.coords = F.coords; COORDS0[t] = F.coords; ROSTER0[t] = d.roster.map(r => ({ ...r })); }); })(); // 之后 reslot 会按新站位重新挑最合适的人
 
 const DBPID = {}; HIST.players.forEach((p, i) => { if (p && p[3]) DBPID[p[3] + '|' + p[0]] = i; });
 // 球员身份：uid 不随转会改变；UIDPID 把 uid 对到历史数据里的球员编号
@@ -2968,7 +2980,8 @@ function coachTactics(id) {
   coachForms(C); return C;
 }
 // 按阵型挑最强的 11 人：先贪心分配，再反复尝试“替补换上 / 两人互换位置”，直到总分不能再提高（明星不会被埋没在替补席）
-const slotVal = (sl, p) => p.rating - Math.min(8, ENGINE.fitCost(sl, p.pos) * 0.8) * 1.25;
+const slotPen = (sl, pos) => { const c = ENGINE.fitCost(sl, pos); return c >= 30 ? 48 : c >= 10 ? 12 : Math.round(Math.min(8, c * 0.8)); }; // 跨线（后卫↔中场↔前锋）打折 12，门将和场上球员不互换
+const slotVal = (sl, p) => p.rating - slotPen(sl, p.pos) * 1.25;
 function bestXI(t, slots) {
   const RL = ((S && S.roles) || {})[t] || {}, key = p => p.uid || p.name;
   const sq = (PDB[t] || []).filter(p => RL[key(p)] !== 'bench'); if (!sq.length) return null; // 你安排的轮换球员不进首发
@@ -2983,7 +2996,7 @@ function bestXI(t, slots) {
   }
   // 你安排的首发：一定进首发，换下损失最小的人
   sq.filter(p => RL[key(p)] === 'start' && !pick.includes(p)).forEach(p => { let bi = -1, bl = 1e9; slots.forEach((sl, i) => { if (pick[i] && RL[key(pick[i])] === 'start') return; const l = (pick[i] ? slotVal(sl, pick[i]) : -50) - slotVal(sl, p); if (l < bl) { bl = l; bi = i; } }); if (bi >= 0) pick[bi] = p; });
-  return slots.map((sl, i) => pick[i] ? (() => { const pen = Math.round(Math.min(8, ENGINE.fitCost(sl, pick[i].pos) * 0.8)); return { pos: sl, name: pick[i].name, rating: pick[i].rating - pen, pen }; })() : null).filter(Boolean);
+  return slots.map((sl, i) => pick[i] ? (() => { const pen = slotPen(sl, pick[i].pos); return { pos: sl, name: pick[i].name, rating: pick[i].rating - pen, pen }; })() : null).filter(Boolean);
 }
 // 阵型预览：用某个阵型挑出最强 11 人和站位，不改动球队实际使用的阵型
 var XI_PREV = { t: null, f: null };
