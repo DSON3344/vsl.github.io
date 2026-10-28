@@ -10,6 +10,9 @@ const authed = req => {
 };
 
 export async function GET(req) {
+  try { return await getImpl(req); } catch (e) { return json({ error: 'blob_get_failed', message: String(e && e.message || e).slice(0, 300) }, 503); }
+}
+async function getImpl(req) {
   const inm = req.headers.get('if-none-match') || undefined;
   const r = await get(PATH, { access: 'private', useCache: false, ifNoneMatch: inm });
   if (!r) return json({ etag: null, state: null });
@@ -24,6 +27,9 @@ export async function POST(req) {
 }
 
 export async function PUT(req) {
+  try { return await putImpl(req); } catch (e) { return json({ error: 'blob_put_failed', message: String(e && e.message || e).slice(0, 300) }, 503); }
+}
+async function putImpl(req) {
   if (!authed(req)) return json({ error: 'unauthorized' }, 401);
   let body;
   try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
