@@ -63,6 +63,8 @@ const ENGINE = (() => {
     if (LINE(a) === LINE(b)) return 4;
     return 10;
   }
+  // 精力：80 以上不受影响，越低能力打折越多（最多 -7），也更容易受伤、失误
+  const fatPen = E => E == null || E >= 75 ? 0 : Math.min(7, (75 - E) * 0.16);
   function pickXI(team, ctx) {
     const base = lineup(team);
     if (!ctx) return { xi: base.xi.map(x => ({ ...x, start: 1 })), bench: base.bench.slice(), out: [], rested: [] };
@@ -80,8 +82,8 @@ const ENGINE = (() => {
     const xi = base.xi.map(x => {
       let why = out[x.name];
       if (!why) {
-        const st = streak[x.name] || 0;
-        let pr = st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
+        const st = streak[x.name] || 0, EN = ctx.energy ? ctx.energy[x.name] : null;
+        let pr = EN != null ? (EN < 45 ? 0.6 : EN < 52 ? 0.35 : EN < 58 ? 0.16 : EN < 64 ? 0.05 : 0.01) : st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
         if (x.line === 'GK') pr *= 0.12;
         if (x.rating >= best - 1) pr *= 0.55;
         if (rnd() < Math.min(0.32, pr)) why = 'rest';
@@ -93,6 +95,7 @@ const ENGINE = (() => {
       const cost = fitCost(x.slot, p.pos);
       return { slot: x.slot, name: p.name, rating: Math.max(60, p.rating - cost), p, x: x.x, y: x.y, line: x.line, start: 1, sub4: x.name };
     });
+    if (ctx.energy) xi.forEach(x => { const E = ctx.energy[x.name]; if (E == null) return; x.en = Math.round(E); const d = fatPen(E); if (d) { x.rating = Math.max(50, Math.round(x.rating - d)); x.fat = +d.toFixed(1); } });
     const onXI = new Set(xi.map(x => x.name));
     const bench = base.bench.filter(p => !onXI.has(p.name) && !out[p.name]).concat(base.xi.filter(x => !onXI.has(x.name) && !out[x.name]).map(x => x.p)).sort((a, b) => b.rating - a.rating);
     return { xi, bench, out: missing, rested };
@@ -304,7 +307,7 @@ const ENGINE = (() => {
       const Ls = L[side];
       const roster = Ls.xi.map(x => ({ ...x, on: 0, off: 95 }));
       const bench = Ls.bench.slice();
-      const streak = (opt.ctx && opt.ctx[side] && opt.ctx[side].streak) || {};
+      const streak = (opt.ctx && opt.ctx[side] && opt.ctx[side].streak) || {}, energy = (opt.ctx && opt.ctx[side] && opt.ctx[side].energy) || null;
       const takeSub = (slot) => {
         let bp = null, bv = -1e9;
         bench.forEach(p => { const v = p.rating - fitCost(slot, p.pos) * 1.5; if (v > bv) { bv = v; bp = p; } });
@@ -315,7 +318,7 @@ const ENGINE = (() => {
       let left = rnd() < 0.1 ? 2 : rnd() < 0.45 ? 3 : rnd() < 0.7 ? 4 : 5;
       // 伤病（小概率）：连续首发越多越容易受伤
       roster.slice().forEach(x => {
-        const pr = 0.0105 + Math.max(0, (streak[x.name] || 0) - 5) * 0.0015;
+        const E = energy ? energy[x.name] : null, pr = E != null ? 0.0105 * (E >= 70 ? 0.85 : 1 + (70 - E) * 0.045) : 0.0105 + Math.max(0, (streak[x.name] || 0) - 5) * 0.0015;
         if (rnd() < pr && left > 0) {
           const m = 3 + Math.floor(rnd() * 85), d = injuryRounds();
           const inP = takeSub(x.slot);
@@ -373,6 +376,11 @@ const ENGINE = (() => {
         const pen = rnd() < 0.07;
         const sc = pen ? penTaker(on) : goalScorer(on), as = pen ? null : assister(on, sc);
         events.push({ m, type: 'goal', side, team: T[side], player: sc.name, assist: as ? as.name : null, pen: pen ? 1 : 0, txt: pen ? PEN_TXT[Math.floor(rnd() * PEN_TXT.length)](sc.name) : GOAL_TXT[Math.floor(rnd() * GOAL_TXT.length)](sc.name, as && as.name) });
+        // 精力太低的后防球员容易失误丢球
+        const cs = side === 'h' ? 'a' : 'h', ce = opt.ctx && opt.ctx[cs] && opt.ctx[cs].energy;
+        if (ce && !pen) { const tired = onPitch(cs, Math.min(m, 89.9)).filter(x => (x.line === 'DF' || x.line === 'GK' || /DM/.test(x.slot)) && ce[x.name] != null && ce[x.name] < 66);
+          const pe = Math.min(0.35, tired.reduce((a, x) => a + (66 - ce[x.name]) * 0.008, 0));
+          if (tired.length && rnd() < pe) { const w = tired.slice().sort((a, b) => ce[a.name] - ce[b.name])[0]; events.push({ m: m - 0.01, type: 'err', side: cs, team: T[cs], player: w.name, txt: `${w.name} 体能下降，出现失误送给对手机会` }); } }
       }
     };
     addGoals('h', hg); addGoals('a', ag);
