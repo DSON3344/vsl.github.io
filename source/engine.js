@@ -54,7 +54,14 @@ const ENGINE = (() => {
   // ---------- 轮换 / 伤停后的实际首发 ----------
   // ctx: { out: {球员名: 缺阵原因}, streak: {球员名: 连续首发场数} }
   const baseRole = pos => roleOf(String(pos || '').replace(/-.*/, ''));
+  // 传球员对象时：在他所有可踢的位置（主位置 + alt）里取最合适的；边后卫 / 边前卫站在和惯用脚相反的一边略吃亏（边锋内切不算）
   function fitCost(slot, pos) {
+    if (pos && typeof pos === 'object') { const p = pos, L = [p.pos].concat(p.alt || []); let c = Math.min(...L.map(x => fitCost0(slot, x)));
+      const sl = String(slot).replace(/-.*/, ''); if (c < 30 && p.foot && p.foot !== '双脚' && /^(LB|LWB|LM|RB|RWB|RM)$/.test(sl) && ((sl[0] === 'L' && p.foot === '右脚') || (sl[0] === 'R' && p.foot === '左脚'))) c += 1;
+      return c; }
+    return fitCost0(slot, pos);
+  }
+  function fitCost0(slot, pos) {
     if (!pos) return 6;
     const a = String(slot).replace(/-.*/, ''), b = String(pos);
     if (a.replace(/^[LR]/, '') === b.replace(/^[LR]/, '') || a === b) return 0;
@@ -74,8 +81,8 @@ const ENGINE = (() => {
     const best = base.xi.reduce((m, x) => Math.max(m, x.rating), 0);
     const repl = (slot, minR) => {
       let bp = null, bv = -1e9;
-      pool.forEach(p => { if (usedB.has(p)) return; const v = p.rating - fitCost(slot, p.pos) * 1.2; if (v > bv) { bv = v; bp = p; } });
-      if (!bp || (minR != null && bp.rating - fitCost(slot, bp.pos) < minR)) return null;
+      pool.forEach(p => { if (usedB.has(p)) return; const v = p.rating - fitCost(slot, p) * 1.2; if (v > bv) { bv = v; bp = p; } });
+      if (!bp || (minR != null && bp.rating - fitCost(slot, bp) < minR)) return null;
       usedB.add(bp); return bp;
     };
     const missing = [], rested = [];
@@ -92,7 +99,7 @@ const ENGINE = (() => {
       const p = repl(x.slot, why === 'rest' ? x.rating - 7 : null);
       if (!p) return { ...x, start: 1 };
       if (why === 'rest') rested.push(x.name); else missing.push({ name: x.name, why });
-      const cost = fitCost(x.slot, p.pos);
+      const cost = fitCost(x.slot, p);
       return { slot: x.slot, name: p.name, rating: Math.max(60, p.rating - cost), p, x: x.x, y: x.y, line: x.line, start: 1, sub4: x.name };
     });
     if (ctx.energy) xi.forEach(x => { const E = ctx.energy[x.name]; if (E == null) return; x.en = Math.round(E); const d = fatPen(E); if (d) { x.rating = Math.max(50, Math.round(x.rating - d)); x.fat = +d.toFixed(1); } });
@@ -310,7 +317,7 @@ const ENGINE = (() => {
       const streak = (opt.ctx && opt.ctx[side] && opt.ctx[side].streak) || {}, energy = (opt.ctx && opt.ctx[side] && opt.ctx[side].energy) || null;
       const takeSub = (slot) => {
         let bp = null, bv = -1e9;
-        bench.forEach(p => { const v = p.rating - fitCost(slot, p.pos) * 1.5; if (v > bv) { bv = v; bp = p; } });
+        bench.forEach(p => { const v = p.rating - fitCost(slot, p) * 1.5; if (v > bv) { bv = v; bp = p; } });
         if (!bp) return null;
         bench.splice(bench.indexOf(bp), 1); return bp;
       };
@@ -324,7 +331,7 @@ const ENGINE = (() => {
           const inP = takeSub(x.slot);
           events.push({ m, type: 'inj', side, team: T[side], player: x.name, dur: d, txt: INJ_TXT(x.name, d) });
           x.off = m;
-          if (inP) { roster.push({ slot: x.slot, name: inP.name, rating: Math.max(60, inP.rating - fitCost(x.slot, inP.pos)), p: inP, line: x.line, on: m, off: 95, start: 0 }); subs.push([m + 0.01, inP.name, x.name]); left--; }
+          if (inP) { roster.push({ slot: x.slot, name: inP.name, rating: Math.max(60, inP.rating - fitCost(x.slot, inP)), p: inP, line: x.line, on: m, off: 95, start: 0 }); subs.push([m + 0.01, inP.name, x.name]); left--; }
         }
       });
       // 常规换人：多在下半场，优先换下进攻球员和体能差的
@@ -337,7 +344,7 @@ const ENGINE = (() => {
         const x = pick(cand, w);
         const inP = takeSub(x.slot); if (!inP) break;
         x.off = m;
-        roster.push({ slot: x.slot, name: inP.name, rating: Math.max(60, inP.rating - fitCost(x.slot, inP.pos)), p: inP, line: x.line, on: m, off: 95, start: 0 });
+        roster.push({ slot: x.slot, name: inP.name, rating: Math.max(60, inP.rating - fitCost(x.slot, inP)), p: inP, line: x.line, on: m, off: 95, start: 0 });
         subs.push([m, inP.name, x.name]);
       }
       subs.forEach(([m, i, o]) => events.push({ m, type: 'sub', side, team: T[side], player: i, out: o, txt: SUB_TXT(i, o) }));

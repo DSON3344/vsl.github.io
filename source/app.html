@@ -451,7 +451,7 @@ function teamCtx(team, ri, fx = S.fx) {
   return { out, streak, energy };
 }
 const ctxPair = (m, ri) => ({ h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) });
-function playRound(i) { ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); } }); try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); ENGINE.clearCache(); } } catch (e) {} }
+function playRound(i) { ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); } }); try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
 const nextRound = () => S.fx.findIndex(r => r.some(m => !m.r));
 const playedRounds = () => S.fx.filter(r => r.every(m => m.r)).length;
 
@@ -1170,6 +1170,7 @@ function applyAllEdits() {
   const fix = (p, team, dom) => { const e = E[p.uid]; if (!e) return;
     if (e.name && e.name !== p.name) { if (dom) TD[team].roster.forEach(r => { if (r.name === p.name) r.name = e.name; }); p.name = e.name; }
     ['pos', 'nat', 'height', 'weight', 'no'].forEach(k => { if (e[k] != null && e[k] !== '') p[k] = e[k]; });
+    if (Array.isArray(e.alt)) { p.alt = e.alt.filter(x => x !== p.pos); p.altEd = 1; } if (e.foot) { p.foot = e.foot; p.footEd = 1; }
     if (e.dr) { p.rating = Math.max(40, Math.min(99, p.rating + e.dr)); p.value = 'ⰵ' + valueM(p.rating, p.age || 25) + 'M'; }
     if (e.la) p.attributes = Object.fromEntries(Object.entries(e.la.a).map(([k, v]) => [k, Math.max(20, Math.min(99, v + p.rating - e.la.r))]));
     else if (e.da && p.attributes) Object.entries(e.da).forEach(([k, d]) => { if (p.attributes[k] != null) p.attributes[k] = Math.max(20, Math.min(99, p.attributes[k] + d)); });
@@ -1181,6 +1182,18 @@ function applyAllEdits() {
   Object.entries(FDB).forEach(([c, l]) => l.forEach(p => { BY_TN[c + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = c; }));
 }
 const POS_LIST = ['GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST'];
+// 司职位置（主位置以外还能踢的位置）和惯用脚：没手动改过就按位置和球员特点推出默认值
+const ALT_OPT = { GK: [], CB: [['CDM', 0.18], ['RB', 0.08], ['LB', 0.06]], LB: [['LWB', 0.6], ['LM', 0.15], ['CB', 0.1]], RB: [['RWB', 0.6], ['RM', 0.15], ['CB', 0.1]], LWB: [['LB', 0.75], ['LM', 0.3]], RWB: [['RB', 0.75], ['RM', 0.3]],
+  CDM: [['CM', 0.65], ['CB', 0.2]], CM: [['CDM', 0.4], ['CAM', 0.35], ['LM', 0.06], ['RM', 0.06]], CAM: [['CM', 0.45], ['ST', 0.15], ['LW', 0.12], ['RW', 0.12]], LM: [['LW', 0.5], ['LB', 0.12], ['CM', 0.1]], RM: [['RW', 0.5], ['RB', 0.12], ['CM', 0.1]],
+  LW: [['LM', 0.4], ['RW', 0.25], ['ST', 0.2]], RW: [['RM', 0.4], ['LW', 0.25], ['ST', 0.2]], ST: [['CAM', 0.15], ['LW', 0.12], ['RW', 0.12]] };
+const posMain = pos => { const b = String(pos || '').replace(/-.*/, '').replace(/^[LR](?=(CB|CM|DM|AM|ST))/, ''); return b === 'DM' ? 'CDM' : b === 'AM' ? 'CAM' : b === 'CF' ? 'ST' : b; };
+function altDef(p) { const m = posMain(p.pos), out = []; (ALT_OPT[m] || []).forEach(([x, pr]) => { if (out.length < 2 && x !== m && ghash('alt|' + p.name + '|' + x) < pr) out.push(x); }); if (p.conv && p.conv.from) { const f = posMain(p.conv.from); if (f !== m && !out.includes(f)) out.unshift(f); } return out; }
+function footDef(p) { const m = posMain(p.pos), h = ghash('foot|' + p.name);
+  const [l, b] = /^(LB|LWB|LM)$/.test(m) ? [0.62, 0.08] : /^(RB|RWB|RM)$/.test(m) ? [0.07, 0.05] : m === 'LW' ? [0.6, 0.06] : m === 'RW' ? [0.33, 0.06] : m === 'GK' ? [0.17, 0.03] : [0.19, 0.05];
+  return h < l ? '左脚' : h < l + b ? '双脚' : '右脚'; }
+function applyPosFoot() { const go = p => { if (!p) return; if (!p.altEd) p.alt = altDef(p); if (!p.footEd) p.foot = footDef(p); }; Object.values(PDB).forEach(L => L.forEach(go)); Object.values(FDB).forEach(L => L.forEach(go)); }
+function posTxt(p) { const a = p.alt || altDef(p); return esc(p.pos) + (a.length ? ` <span class="dim" style="font-size:11px">· ${a.map(esc).join(' / ')}</span>` : ''); }
+function footNote(p) { const f = p.foot || footDef(p), m = posMain(p.pos); return (m === 'LW' && f === '右脚') || (m === 'RW' && f === '左脚') ? '内切型' : ''; }
 // 位置权重：总评 ≈ 各属性（减去位置模板偏移）按权重平均
 const POS_W = { FW: { sho: 3, spd: 2, dri: 2, phy: 1, men: 1, pas: 1, sta: 0.5 }, MF: { pas: 3, dri: 2, men: 1.5, sta: 1.5, sho: 1, def: 1, spd: 1, phy: 0.5 }, DF: { def: 3, phy: 2, spd: 1.5, men: 1.5, pas: 1, sta: 1, dri: 0.5 }, GK: { ref: 3, div: 3, pos_s: 2, han: 2, kic: 1 } };
 function tplFor(pos) { const line = ENGINE.LINE(pos), t = { ...ATTR_TPL[line] }; if (/W|AM/.test(pos)) { t.dri = (t.dri || 0) + 3; t.spd = (t.spd || 0) + 3; } return t; }
@@ -1209,6 +1222,9 @@ function openEditor(uid) {
       ${fld('身高 (cm)', inp('edH', o.height, 'number'))}${fld('体重 (kg)', inp('edW', o.weight, 'number'))}
       ${fld(cur ? '总评分' : '巅峰评分', inp('edR', o.rating, 'number', 'min="40" max="99"'))}<div class="note" style="align-self:end;font-size:11px">改属性会自动算总评；改总评或位置会按位置自动配属性（保留个人特点）。</div>
     </div>
+    ${cur ? (() => { const alt = cur.alt || altDef(cur), ft = cur.foot || footDef(cur);
+      return `<div style="display:grid;gap:10px"><div><div class="eyebrow" style="margin-bottom:6px">其他可踢位置 <span class="dim" style="letter-spacing:0;text-transform:none">（主位置之外，踢这些位置不扣分）</span></div><div class="btns" id="edAlt" style="gap:6px;flex-wrap:wrap">${POS_LIST.map(x => `<label class="chip" style="cursor:pointer;display:inline-flex;gap:4px;align-items:center;font-size:12px"><input type="checkbox" data-alt="${x}" ${alt.includes(x) ? 'checked' : ''} ${x === posMain(o.pos) ? 'disabled' : ''}>${x}</label>`).join('')}</div></div>
+        ${fld('惯用脚', `<select id="edFoot" style="max-width:180px">${['右脚', '左脚', '双脚'].map(x => `<option ${x === ft ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}</div>`; })() : ''}
     <div><div class="split" style="margin-bottom:6px"><div class="eyebrow">能力属性${cur ? '' : '（巅峰）'}</div><button class="lnk" data-act="edAuto" style="font-size:12px;color:var(--gold)">按总评重新配属性</button></div><div id="edAttrs">${attrGrid(o.attributes)}</div></div>
     <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="edReset" data-uid="${esc(uid)}" ${S.edits && S.edits[uid] ? '' : 'disabled'}>恢复原始资料</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="edSave" data-uid="${esc(uid)}">保存</button></span></div></div>`;
   if (!d.open) d.showModal();
@@ -1239,6 +1255,7 @@ function saveEditor(uid, swap) {
   if (mate && swap && mate.uid) { S.edits = S.edits || {}; const me = S.edits[mate.uid] || {}; S.edits[mate.uid] = { ...me, no: cur.no }; }
   const e = { orig: old.orig, origPos: old.origPos, origNat: old.origNat };
   const nm = v('edName'); if (nm) e.name = nm; e.pos = v('edPos'); e.nat = v('edNat');
+  if (cur && $('#edAlt')) { e.alt = [...document.querySelectorAll('#edAlt [data-alt]')].filter(i => i.checked && !i.disabled).map(i => i.dataset.alt).filter(x => x !== posMain(e.pos)); e.foot = v('edFoot'); }
   e.no = num('edNo'); e.height = num('edH'); e.weight = num('edW');
   const A = {}; document.querySelectorAll('#dlg [data-attr]').forEach(i => { if (i.value !== '') A[i.dataset.attr] = Math.max(20, Math.min(99, +i.value)); });
   if (cur) {
@@ -1318,7 +1335,7 @@ function applyGrowth() {
       if (now) r.rating = now.rating;
       else if (!was) return;
       const used = inXI();
-      const best = sq.filter(p => !used.has(p.name)).map(p => ({ p, v: p.rating - ENGINE.fitCost(r.pos, p.pos) * 1.5 })).sort((a, b) => b.v - a.v)[0];
+      const best = sq.filter(p => !used.has(p.name)).map(p => ({ p, v: p.rating - ENGINE.fitCost(r.pos, p) * 1.5 })).sort((a, b) => b.v - a.v)[0];
       if (!best) return;
       if (!now || best.v >= r.rating + 3) { r.name = best.p.name; r.rating = best.p.rating; }
     });
@@ -1328,6 +1345,7 @@ function applyGrowth() {
   applyDemotions();
   applyReleases();
   applyConversions();
+  applyPosFoot();
   ENGINE.clearCache();
   if (GROWN && GROWN !== SEASON && ALLP_READY) syncAllPlayers();
   GROWN = SEASON;
@@ -3025,7 +3043,7 @@ function coachTactics(id) {
 }
 // 按阵型挑最强的 11 人：先贪心分配，再反复尝试“替补换上 / 两人互换位置”，直到总分不能再提高（明星不会被埋没在替补席）
 const slotPen = (sl, pos) => { const c = ENGINE.fitCost(sl, pos); return c >= 30 ? 48 : c >= 10 ? 12 : Math.round(Math.min(8, c * 0.8)); }; // 跨线（后卫↔中场↔前锋）打折 12，门将和场上球员不互换
-const slotVal = (sl, p) => p.rating - slotPen(sl, p.pos) * 1.25;
+const slotVal = (sl, p) => p.rating - slotPen(sl, p) * 1.25;
 function bestXI(t, slots) {
   const RL = ((S && S.roles) || {})[t] || {}, key = p => p.uid || p.name;
   const sq = (PDB[t] || []).filter(p => RL[key(p)] !== 'bench'); if (!sq.length) return null; // 你安排的轮换球员不进首发
@@ -3040,7 +3058,7 @@ function bestXI(t, slots) {
   }
   // 你安排的首发：一定进首发，换下损失最小的人
   sq.filter(p => RL[key(p)] === 'start' && !pick.includes(p)).forEach(p => { let bi = -1, bl = 1e9; slots.forEach((sl, i) => { if (pick[i] && RL[key(pick[i])] === 'start') return; const l = (pick[i] ? slotVal(sl, pick[i]) : -50) - slotVal(sl, p); if (l < bl) { bl = l; bi = i; } }); if (bi >= 0) pick[bi] = p; });
-  return slots.map((sl, i) => pick[i] ? (() => { const pen = slotPen(sl, pick[i].pos); return { pos: sl, name: pick[i].name, rating: pick[i].rating - pen, pen }; })() : null).filter(Boolean);
+  return slots.map((sl, i) => pick[i] ? (() => { const pen = slotPen(sl, pick[i]); return { pos: sl, name: pick[i].name, rating: pick[i].rating - pen, pen }; })() : null).filter(Boolean);
 }
 // 阵型预览：用某个阵型挑出最强 11 人和站位，不改动球队实际使用的阵型
 var XI_PREV = { t: null, f: null };
@@ -3070,7 +3088,7 @@ function xiPanel(t, st) {
 }
 // ── 手动首发：在首发阵容图上拖动球员换位置、把轮换球员拖上场替换首发；按阵型分别记住（S.xio[球队][阵型] = {位置: 球员}） ──
 function xiFormNow(t) { return TD[t].formNow || TD[t].form || FORM_OF0[t]; }
-function xioMk(sl, p) { const pen = slotPen(sl, p.pos); return { pos: sl, name: p.name, rating: p.rating - pen, pen }; }
+function xioMk(sl, p) { const pen = slotPen(sl, p); return { pos: sl, name: p.name, rating: p.rating - pen, pen }; }
 function applyXIO(t, form, r) {
   const O = ((S && S.xio) || {})[t] && S.xio[t][form]; if (!O || !r) return r; const sq = PDB[t] || [], byKey = {}; sq.forEach(p => byKey[roleKey(p)] = p);
   r.forEach((x, i) => { const key = O[x.pos], p = key && byKey[key]; if (!p || x.name === p.name) return; const j = r.findIndex(y => y.name === p.name);
@@ -3085,7 +3103,7 @@ function xiSwap(t, form, a, b) {
   else if (a.bk != null && b.xs != null) { const p = bp(a.bk); if (!p) return; L[b.xs].name = p.name; }
   else if (a.xs != null && b.bk != null) { const p = bp(b.bk); if (!p) return; L[a.xs].name = p.name; }
   else return;
-  { const bad = L.find(x => { const p = sq.find(q => q.name === x.name); return p && (x.slot === 'GK') !== (String(p.pos) === 'GK'); }); if (bad) { toast('门将只能和门将互换，场上球员不能去守门'); return render(); } }
+  { const bad = L.find(x => { const p = sq.find(q => q.name === x.name); return p && (x.slot === 'GK') !== (String(p.pos) === 'GK' || (p.alt || []).includes('GK')); }); if (bad) { toast('门将只能和门将互换，场上球员不能去守门'); return render(); } }
   S.xio = S.xio || {}; const M = S.xio[t] = S.xio[t] || {}; M[form] = {}; L.forEach(x => { const k = key(x.name); if (k) M[form][x.slot] = k; });
   if (form === xiFormNow(t)) { reslot(t, FORMS[form] ? form : null); ENGINE.clearCache(); MOD_VER++; }
   save(); render();
@@ -3613,7 +3631,7 @@ function teamDetail(t) {
   ${TEAM_TAB === 'squad' ? `
   ${tmSq != null && tmSq < SEASON && squadAt(t, tmSq) ? pastSquadPanel(t, tmSq) : `<div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>${SN(SEASON)} 球员名单 · ${squad.length} 人</h2></div><span class="btns" style="gap:8px;align-items:center">${S.teams.includes(t) ? fillBtn(t) : ''}${S.teams.includes(t) && TD[t] && !(tmSq != null && tmSq < SEASON) ? (() => { const n = relCands(t).length; return n ? `<button class="btn ghost" data-act="relOpen" data-t="${esc(t)}" style="padding:4px 12px;font-size:12px;color:#e66">建议解约 ${n} 人</button>` : ''; })() : ''}${squadSelect(t)}</span></div>
       <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>士气</th><th title="精力越高越能发挥能力；精力低容易失误、受伤。上场会消耗，轮换休息才能恢复">精力</th><th class="l">安排</th><th>身价</th><th>S${SEASON} 出场</th><th>S${SEASON} 进球</th><th>S${SEASON} 助攻</th><th>S${SEASON} 评分</th></tr></thead><tbody>
-      ${squad.map(p => { const s = pmap[p.name], o = outMap[p.name]; return `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" ${plink(t, p.name)}><span>${esc(p.name)}</span></button>${o ? ` <span class="chip ${o.why === 'inj' ? 'bad' : ''}" style="font-size:10px;padding:0 5px">${o.why === 'inj' ? '伤 ' + o.left + '轮' : o.why === 'strike' ? '罢赛' : o.why === 'rest' ? '下场轮休' : '停赛'}</span>` : ''}${p.loanFrom ? ` <span class="chip" style="font-size:10px;padding:0 5px;border-color:#8ad">租借自 ${esc(p.loanFrom)}</span>` : ''}${p.acad && p.youth ? ' <span class="chip" style="font-size:10px;padding:0 5px">青训</span>' : ''}${nfsOf(t, p) ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">非卖品</span>' : ''}${p.conv ? ` <span class="chip ${p.conv.done ? 'good' : ''}" style="font-size:10px;padding:0 5px;${p.conv.done ? '' : 'border-color:var(--gold)'}" title="${esc(p.conv.from)} → ${esc(p.conv.to)}（难度 ${p.conv.lv}）${p.conv.pen ? ` · 能力暂时 −${p.conv.pen}` : ''}">${p.conv.done ? '改造完成' : `改造中 ${Math.round(p.conv.prog * 100)}%`}</span>` : ''}${mkChip(p, t)}</td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${(() => { const M = playerMorale(p, t); return `<span class="mono" data-tip="mor:${esc(p.uid || p.name)}:${esc(t)}" style="cursor:help;color:${morCol(M.v)};font-weight:700">${M.v}%</span>`; })()}</td><td>${enCell(enMap[p.name])}</td><td class="l">${roleCell(p, t)}</td><td class="muted">${esc(p.value)}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
+      ${squad.map(p => { const s = pmap[p.name], o = outMap[p.name]; return `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" ${plink(t, p.name)}><span>${esc(p.name)}</span></button>${o ? ` <span class="chip ${o.why === 'inj' ? 'bad' : ''}" style="font-size:10px;padding:0 5px">${o.why === 'inj' ? '伤 ' + o.left + '轮' : o.why === 'strike' ? '罢赛' : o.why === 'rest' ? '下场轮休' : '停赛'}</span>` : ''}${p.loanFrom ? ` <span class="chip" style="font-size:10px;padding:0 5px;border-color:#8ad">租借自 ${esc(p.loanFrom)}</span>` : ''}${p.acad && p.youth ? ' <span class="chip" style="font-size:10px;padding:0 5px">青训</span>' : ''}${nfsOf(t, p) ? ' <span class="chip gold" style="font-size:10px;padding:0 5px">非卖品</span>' : ''}${p.conv ? ` <span class="chip ${p.conv.done ? 'good' : ''}" style="font-size:10px;padding:0 5px;${p.conv.done ? '' : 'border-color:var(--gold)'}" title="${esc(p.conv.from)} → ${esc(p.conv.to)}（难度 ${p.conv.lv}）${p.conv.pen ? ` · 能力暂时 −${p.conv.pen}` : ''}">${p.conv.done ? '改造完成' : `改造中 ${Math.round(p.conv.prog * 100)}%`}</span>` : ''}${mkChip(p, t)}</td><td class="l mono" style="font-size:12px" title="惯用${esc(p.foot || footDef(p))}${footNote(p) ? ' · ' + footNote(p) : ''}">${posTxt(p)}<span class="dim" style="font-size:10px;margin-left:4px">${(p.foot || footDef(p)) === '左脚' ? '左' : (p.foot || footDef(p)) === '双脚' ? '双' : ''}</span></td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${(() => { const M = playerMorale(p, t); return `<span class="mono" data-tip="mor:${esc(p.uid || p.name)}:${esc(t)}" style="cursor:help;color:${morCol(M.v)};font-weight:700">${M.v}%</span>`; })()}</td><td>${enCell(enMap[p.name])}</td><td class="l">${roleCell(p, t)}</td><td class="muted">${esc(p.value)}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
       </tbody></table></div></div>`}
   <div class="grid g-2" style="align-items:start">
     ${xiPanel(t, st)}
@@ -3828,7 +3846,7 @@ function openPlayer(team, name) {
     <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${TD[team] ? crest(team, 20) : ecrest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}${TD[team] ? '' : ' · ' + esc(extTag(team))}</span></div><h3>${esc(p.name)}</h3>
-      <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageOf(p.rating, team))}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${bustChip(p.cv != null ? p.cv : pid, p.age, p.kidBust, p.kidBloom)}${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
+      <div class="btns" style="margin-top:8px"><span class="chip" title="主位置 · 其他可踢位置（可在编辑资料里改）">位置 ${esc(p.pos)}${(p.alt || altDef(p)).length ? ' · ' + (p.alt || altDef(p)).map(esc).join(' / ') : ''}</span><span class="chip">惯用${esc(p.foot || footDef(p))}${footNote(p) ? ` · ${footNote(p)}` : ''}</span><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageOf(p.rating, team))}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${bustChip(p.cv != null ? p.cv : pid, p.age, p.kidBust, p.kidBloom)}${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(p.uid || '')}" style="padding:5px 10px;font-size:12px" ${p.uid ? '' : 'disabled'}>✎ 编辑资料</button>${cmpBtn(pid != null ? 'p:' + pid : 't:' + team + '|' + p.name, p.name)}${mktActive() && PDB[team] && p.uid && typeof p.age0 === 'number' ? (mktGet().listed[p.uid] ? '<span class="chip">已挂牌</span>' : `<button class="btn ghost" data-act="mkList" data-id="${esc(p.uid)}" style="padding:5px 10px;font-size:12px">挂牌出售</button>`) : ''}${typeof p.age === 'number' && p.age <= 20 ? `<button class="btn ghost" ${scoutBtn({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team, uid: p.uid })} style="padding:5px 10px;font-size:12px">🔍 球探报告</button>` : ''}</div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${awardChips(pid, p.uid)}
