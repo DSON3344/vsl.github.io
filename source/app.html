@@ -603,6 +603,30 @@ Object.entries(TD).forEach(([t, d]) => { STYLE0[t] = d.style; COORDS0[t] = d.coo
   // 原本用这些阵型的球队，首发站位也按新的定义重排
   Object.entries(TD).forEach(([t, d]) => { const f = FORM_OF0[t]; if (!FIX[f]) return; const F = FORMS[f], used = new Set();
     const old = d.roster.slice(); d.roster = F.slots.map((sl, i) => { const o = old[i] || old[old.length - 1]; return { ...o, pos: sl }; }); d.coords = F.coords; COORDS0[t] = F.coords; ROSTER0[t] = d.roster.map(r => ({ ...r })); }); })(); // 之后 reslot 会按新站位重新挑最合适的人
+// 主帅选用的基础阵型（不含下面的变体，保证旧存档里主帅的三套阵型不变）
+const BASE_FORMS = Object.keys(FORMS);
+// 阵型变体：同一个阵型可以有不同的摆法（例如 4-3-3 的三中场可以是单后腰、平行、前腰、双后腰）
+const FORM_VAR = {}, FORM_BASE = {};
+(() => { const GK = ['GK', 5, 50], B4 = [['LB', 25, 10], ['LCB', 20, 35], ['RCB', 20, 65], ['RB', 25, 90]], B3 = [['LCB', 20, 28], ['CB', 16, 50], ['RCB', 20, 72]], B5 = [['LWB', 32, 10], ['LCB', 20, 30], ['CB', 16, 50], ['RCB', 20, 70], ['RWB', 32, 90]];
+  const F3 = [['LW', 82, 15], ['ST', 86, 50], ['RW', 82, 85]], F2 = [['LST', 85, 38], ['RST', 85, 62]], F1 = [['ST', 86, 50]];
+  const V = {
+    '4-3-3': { '单后腰': null, '平行中场': [...B4, ['LCM', 52, 28], ['CM', 50, 50], ['RCM', 52, 72], ...F3], '前腰': [...B4, ['LCM', 48, 32], ['RCM', 48, 68], ['CAM', 66, 50], ...F3], '双后腰': [...B4, ['LDM', 42, 35], ['RDM', 42, 65], ['CAM', 64, 50], ...F3], '伪九号': [...B4, ['CDM', 45, 50], ['LCM', 58, 28], ['RCM', 58, 72], ['LW', 84, 15], ['ST', 76, 50], ['RW', 84, 85]] },
+    '4-4-2': { '平行': null, '菱形': [...B4, ['CDM', 40, 50], ['LCM', 54, 28], ['RCM', 54, 72], ['CAM', 68, 50], ...F2], '双后腰': [...B4, ['LDM', 44, 37], ['RDM', 44, 63], ['LM', 60, 12], ['RM', 60, 88], ...F2], '边锋': [...B4, ['LCM', 50, 37], ['RCM', 50, 63], ['LW', 72, 12], ['RW', 72, 88], ...F2] },
+    '4-2-3-1': { '标准': null, '宽边锋': [...B4, ['LDM', 42, 35], ['RDM', 42, 65], ['LW', 70, 13], ['CAM', 64, 50], ['RW', 70, 87], ...F1], '双中场': [...B4, ['LCM', 48, 35], ['RCM', 48, 65], ['LM', 65, 15], ['CAM', 64, 50], ['RM', 65, 85], ...F1] },
+    '4-5-1': { '单后腰': null, '平行五中场': [...B4, ['LM', 54, 12], ['LCM', 50, 32], ['CM', 48, 50], ['RCM', 50, 68], ['RM', 54, 88], ...F1], '双前腰': [...B4, ['CDM', 40, 50], ['LCM', 52, 32], ['RCM', 52, 68], ['LAM', 66, 35], ['RAM', 66, 65], ...F1] },
+    '3-5-2': { '双后腰前腰': null, '单后腰': [...B3, ['LWB', 50, 10], ['CDM', 40, 50], ['LCM', 55, 33], ['RCM', 55, 67], ['RWB', 50, 90], ...F2], '平行三中场': [...B3, ['LWB', 50, 10], ['LCM', 50, 30], ['CM', 48, 50], ['RCM', 50, 70], ['RWB', 50, 90], ...F2] },
+    '3-4-3': { '平行': null, '翼卫': [...B3, ['LWB', 46, 10], ['LCM', 44, 38], ['RCM', 44, 62], ['RWB', 46, 90], ...F3], '钻石': [...B3, ['CDM', 40, 50], ['LM', 52, 14], ['RM', 52, 86], ['CAM', 64, 50], ['LW', 80, 18], ['ST', 86, 50], ['RW', 80, 82]] },
+    '5-3-2': { '平行': null, '单后腰': [...B5, ['CDM', 42, 50], ['LCM', 56, 32], ['RCM', 56, 68], ...F2], '前腰': [...B5, ['LCM', 48, 35], ['RCM', 48, 65], ['CAM', 64, 50], ...F2] },
+    '5-4-1': { '平行': null, '钻石': [...B5, ['CDM', 42, 50], ['LM', 54, 15], ['RM', 54, 85], ['CAM', 64, 50], ...F1] },
+    '4-3-1-2': { '': [...B4, ['LCM', 50, 30], ['CM', 46, 50], ['RCM', 50, 70], ['CAM', 66, 50], ...F2] },
+    '3-4-1-2': { '': [...B3, ['LWB', 48, 10], ['LCM', 46, 38], ['RCM', 46, 62], ['RWB', 48, 90], ['CAM', 66, 50], ...F2] },
+    '4-2-2-2': { '': [...B4, ['LDM', 42, 37], ['RDM', 42, 63], ['LAM', 64, 28], ['RAM', 64, 72], ...F2] },
+    '4-1-4-1': { '': [...B4, ['CDM', 40, 50], ['LM', 58, 12], ['LCM', 56, 36], ['RCM', 56, 64], ['RM', 58, 88], ...F1] } };
+  Object.entries(V).forEach(([base, M]) => Object.entries(M).forEach(([lab, L]) => { const name = lab && L ? base + ' ' + lab : base;
+    if (L) { const coords = {}, slots = []; [GK, ...L].forEach(([sl, x, y]) => { slots.push(sl); coords[sl] = [x, y]; }); FORMS[name] = { name, coords, slots }; }
+    if (!FORMS[name]) return; FORM_BASE[name] = base; (FORM_VAR[base] = FORM_VAR[base] || []).push({ name, lab: lab || '标准' }); }));
+  Object.keys(FORMS).forEach(f => { if (!FORM_BASE[f]) { FORM_BASE[f] = f; (FORM_VAR[f] = FORM_VAR[f] || []).push({ name: f, lab: '标准' }); } });
+})();
 
 const DBPID = {}; HIST.players.forEach((p, i) => { if (p && p[3]) DBPID[p[3] + '|' + p[0]] = i; });
 // 球员身份：uid 不随转会改变；UIDPID 把 uid 对到历史数据里的球员编号
@@ -2986,7 +3010,7 @@ const formsTxt = X => { const F = X.forms || [X.form], L = [[F[0], '主打'], [F
 // 每位主帅除了主打阵型，还有两套惯用阵型：对强队用偏防守的那套，对弱队用偏进攻的那套
 const formLines = f => { const L = (FORMS[f] || { slots: [] }).slots.map(x => ENGINE.LINE(x)); return { DF: L.filter(x => x === 'DF').length, FW: L.filter(x => x === 'FW').length }; };
 function coachForms(C) {
-  if (C.forms) return C.forms; const all = Object.keys(FORMS).filter(f => f !== C.form), rnd = seeded('forms|' + (C.id || C.name)), base = formLines(C.form);
+  if (C.forms) return C.forms; const all = BASE_FORMS.filter(f => f !== C.form), rnd = seeded('forms|' + (C.id || C.name)), base = formLines(C.form);
   const def = all.filter(f => formLines(f).DF >= base.DF && formLines(f).FW <= base.FW), d = (def.length ? def : all)[Math.floor(rnd() * (def.length || all.length))];
   const att = all.filter(f => f !== d && formLines(f).FW >= base.FW && formLines(f).DF <= base.DF), rest = all.filter(f => f !== d), a = (att.length ? att : rest)[Math.floor(rnd() * (att.length || rest.length))];
   return (C.forms = [C.form, d || C.form, a || C.form]); // [主打, 对强队, 对弱队]
@@ -2995,7 +3019,7 @@ function coachTactics(id) {
   const C = COACH_REG[id]; if (!C) return null; if (C.form) { coachForms(C); return C; }
   const prof = Object.entries(H.profiles).find(([t, P]) => P.coach === C.name);
   if (prof) { C.form = prof[1].formation || FORM_OF0[prof[0]]; C.style = prof[1].style || STYLE0[prof[0]]; C.home = prof[0]; return C; }
-  const fs = Object.keys(FORMS), rnd = seeded('tac|' + id);
+  const fs = BASE_FORMS, rnd = seeded('tac|' + id);
   C.form = fs[Math.floor(rnd() * fs.length)]; C.style = STYLE_LIST[Math.floor(rnd() * STYLE_LIST.length)];
   coachForms(C); return C;
 }
@@ -3032,8 +3056,13 @@ function xiPanel(t, st) {
   const moved = xi ? xi.filter(x => !ENGINE.lineup(t).xi.some(y => y.name === x.name)).map(x => x.name) : [], outN = xi ? ENGINE.lineup(t).xi.filter(y => !xi.some(x => x.name === y.name)).map(y => y.name) : [], off = xi ? xi.filter(x => x.pen > 0) : [];
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Starting XI</div><h2>首发阵容${sel ? ` · 预览 ${esc(sel)}` : cur ? ` · ${esc(cur)}` : ''}</h2></div><span class="note mono">ATK ${S2.atk.toFixed(1)}${dv('atk')} · CTL ${S2.ctl.toFixed(1)}${dv('ctl')} · DEF ${S2.def.toFixed(1)}${dv('def')}</span></div>
     <div class="btns" style="gap:6px;margin:0 0 8px;align-items:center;flex-wrap:wrap"><div class="seg" role="group" aria-label="主帅惯用阵型">${coachBtns}</div>
-      <select data-xisel="${esc(t)}" style="font-size:12px;padding:4px 6px" aria-label="预览其他阵型"><option value="">其他阵型…</option>${others.map(f => `<option value="${esc(f)}" ${sel === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>
+      <select data-xisel="${esc(t)}" style="font-size:12px;padding:4px 6px" aria-label="预览其他阵型"><option value="">其他阵型…</option>${Object.keys(FORM_VAR).map(b => { const L = FORM_VAR[b].filter(v => !seen.has(v.name)); return L.length ? `<optgroup label="${esc(b)}">${L.map(v => `<option value="${esc(v.name)}" ${sel === v.name ? 'selected' : ''}>${esc(v.name === b ? b + '（标准）' : v.name)}</option>`).join('')}</optgroup>` : ''; }).join('')}</select>
       ${sel ? `<button class="lnk" data-act="xiForm" data-t="${esc(t)}" data-f="" style="font-size:12px">回到当前阵型</button>` : ''}</div>
+    ${(() => { const ef = sel || cur, fam = FORM_VAR[FORM_BASE[ef] || ef] || []; if (fam.length < 2) return ''; return `<div class="btns" style="gap:6px;margin:0 0 8px;align-items:center;flex-wrap:wrap"><span class="note">${esc(FORM_BASE[ef] || ef)} 的摆法：</span><div class="seg" role="group" aria-label="阵型摆法">${fam.map(v => `<button data-act="xiForm" data-t="${esc(t)}" data-f="${esc(v.name)}" aria-pressed="${ef === v.name}" title="${esc(FORMS[v.name].slots.filter(x => x !== 'GK').join(' '))}">${esc(v.lab)}</button>`).join('')}</div></div>`; })()}
+    ${(() => { if (!S.teams.includes(t) || !X) return ''; const ef = sel || cur; const parts = [];
+      if (sel && sel !== cur) parts.push(`<button class="btn ghost" data-act="formSet" data-t="${esc(t)}" data-f="${esc(sel)}" style="padding:3px 10px;font-size:12px">设为 ${esc(t)} 的主打阵型</button>`);
+      if (X.set) parts.push(`<span class="chip gold" style="font-size:11px">主打阵型由你设定（主帅原本用 ${esc(X.coachForm)}）</span><button class="lnk" data-act="formSet" data-t="${esc(t)}" data-f="" style="font-size:12px">恢复主帅的阵型</button>`);
+      return parts.length ? `<div class="btns" style="gap:8px;margin:0 0 8px;align-items:center;flex-wrap:wrap">${parts.join('')}</div>` : ''; })()}
     ${(() => { const ef = sel || cur, ed = S.teams.includes(t) && TD[t] && ef, man = ed && S.xio && S.xio[t] && S.xio[t][ef], C0 = ed ? teamCtx(t, nextRound() >= 0 ? nextRound() : S.fx.length) : null, shown = xi || (ef && ef !== xiFormNow(t) && FORMS[ef] ? previewXI(t, ef) : null) || ENGINE.lineup(t).xi;
       if (!ed) return pitchSVG(t, null, null, xi); setTimeout(xiDragInit, 0);
       return `<div class="xied" data-t="${esc(t)}" data-f="${esc(ef)}">${man ? `<div class="btns" style="justify-content:space-between;align-items:center;margin:0 0 6px"><span class="chip gold" style="font-size:11px">手动安排 · ${esc(ef)}</span><button class="lnk" data-act="xiReset" data-t="${esc(t)}" data-f="${esc(ef)}" style="font-size:12px">恢复主帅自动安排</button></div>` : ''}${pitchSVG(t, null, null, shown, true)}${xiBenchHtml(t, shown, C0 && C0.energy, C0 && C0.out)}</div>`; })()}
@@ -3093,7 +3122,8 @@ function reslot(t, form) {
 // 传统上偏爱进攻三叉戟的球队：主帅的阵型没有三名前锋时改用三前锋阵型，防守型打法改成进攻打法
 const TRIDENT = new Set(['威龙', '猎豹', '猛龙', '威尔福特', '罗联']);
 const isTrident = f => FORMS[f] && FORMS[f].slots.filter(x => ENGINE.LINE(x) === 'FW').length >= 3;
-function tacFor(t, id) {
+function tacFor(t, id) { const X = tacFor0(t, id); const f = ((S && S.formSet) || {})[t]; if (!X || !f || !FORMS[f]) return X; return { ...X, coachForm: X.form, form: f, forms: [f].concat((X.forms || []).slice(1).map(g => g === X.form ? f : g)), set: 1 }; } // 对强队 / 对弱队原本也是主帅主打阵型的，跟着换成你设定的
+function tacFor0(t, id) {
   const C = coachTactics(id); if (!C) return null;
   if (!TRIDENT.has(t)) return { style: C.style, form: C.form, forms: C.forms || [C.form] };
   const tri = f => isTrident(f) ? f : (/^3/.test(f) && FORMS['3-4-3'] ? '3-4-3' : '4-3-3');
@@ -5654,6 +5684,7 @@ document.addEventListener('click', e => {
   if (act === 'rejFinal') { const MK = el.dataset.bw === '1' ? S.market[winKey(SEASON)] : mktGet(), o = MK && MK.offers.find(x => x.id === el.dataset.id); if (o && o.st === 'p') { if (o.user) { userBidReject(o, true); return; } o.st = 'r'; o.log.push('卖方拒绝出售'); toast(`拒绝了 ${o.to} 对 ${o.name} 的报价`); save(); } return render(); }
   if (act === 'mkLoan') return mktLoanIn(el.dataset.id, el.dataset.t);
   if (act === 'loanExt') return loanExtend(el.dataset.id);
+  if (act === 'formSet') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; if (f) S.formSet[t] = f; else delete S.formSet[t]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; toast(f ? `${t} 改用 ${f} 作为主打阵型（对强队 / 对弱队仍按主帅安排）` : `${t} 恢复主帅的主打阵型`); save(); return render(); }
   if (act === 'xiReset') return xiReset(el.dataset.t, el.dataset.f);
   if (act === 'xiForm') { XI_PREV = { t: el.dataset.t, f: el.dataset.f || null }; return render(); }
   if (act === 'nfsToggle') return nfsToggle(el.dataset.t, el.dataset.id);
