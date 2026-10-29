@@ -226,6 +226,12 @@ td.pts{color:var(--accent-2);font-weight:500}
 .pitch .rt{font-size:1.75px;font-weight:700;fill:#05080c}
 .pitch .nm{font-family:var(--sans);font-size:1.7px;fill:var(--fg);paint-order:stroke;stroke:var(--pitch);stroke-width:.5px}
 .pitch g.pl{cursor:pointer}
+.xied .pitch g.pl.ed{cursor:grab}.xied .pitch g.pl.drag{opacity:.35}.xied .pitch g.pl.hot circle,.xied .pitch g.pl.sel circle{stroke:var(--gold,#d8b45f);stroke-width:.7}
+.xib-row{display:flex;flex-wrap:wrap;gap:6px}.xbn{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:84px;padding:5px 7px;border:1px solid var(--line-2,#333);border-radius:8px;background:var(--bg-2,#11151c);color:var(--fg);cursor:grab;text-align:left;font:inherit;user-select:none}
+.xbn .rt-pill{font-size:11px}.xbn-n{font-size:12px;font-weight:700;white-space:nowrap}.xbn.off{opacity:.5}.xbn.hot,.xbn.sel{border-color:var(--gold,#d8b45f);box-shadow:0 0 0 1px var(--gold,#d8b45f)}.xbn.drag{opacity:.35}
+.xied svg{user-select:none;-webkit-user-select:none}
+@media (max-width:640px){.xied .pitch g.pl.ed circle{r:3.4px}.xied .pitch g.pl.ed .rt{font-size:2.6px}.xbn{min-width:0;flex:1 1 calc(33% - 6px)}}
+.xi-ghost{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-130%);padding:4px 10px;border-radius:999px;background:var(--gold,#d8b45f);color:#05080c;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4)}
 .pitch g.pl:hover circle{stroke:#fff;stroke-width:.35}
 .pitch g.pl:focus{outline:none}.pitch g.pl:focus-visible circle{stroke:var(--accent);stroke-width:.6}
 @media (max-width:560px){.pitch .nm{display:none}}
@@ -1879,14 +1885,14 @@ function absentHTML(t, Lt) {
   const rest = Lt.rested.map(n => `<span class="chip" style="font-size:11px">${esc(n)} · 轮休</span>`);
   return miss.concat(rest).join('') || '<span class="dim" style="font-size:12px">主力齐整</span>';
 }
-function pitchSVG(home, away, LL, XI) {
+function pitchSVG(home, away, LL, XI, ED) {
   const one = !away;
   const L = t => XI ? XI : LL ? (t === home ? LL.h : LL.a).xi : ENGINE.lineup(t).xi;
-  const dot = (s, t, side) => {
+  const dot = (s, t, side, i) => {
     const xx = s.x < 8 ? 0 : 6 + (s.x - 12) * 0.95; let x = one ? 4 + xx : (side === 'h' ? 3.5 + xx * 0.5 : 96.5 - xx * 0.5);
     const y = 3 + s.y / 100 * 58;
     const c = tcol(t);
-    return `<g class="pl" data-player="${esc(t)}|${esc(s.name)}" tabindex="0"><circle cx="${x}" cy="${y}" r="2.15" fill="${c}"/><text class="rt" x="${x}" y="${y + .1}" ${luma(c) < .5 ? 'style="fill:#fff"' : ''}>${s.rating}</text><text class="nm" x="${x}" y="${y + 3.9}">${esc(s.name)}</text></g>`;
+    return `<g class="pl${ED ? ' ed' : ''}" ${ED ? `data-xs="${i}" style="touch-action:none"` : `data-player="${esc(t)}|${esc(s.name)}"`} tabindex="0"><circle cx="${x}" cy="${y}" r="2.15" fill="${c}"/><text class="rt" x="${x}" y="${y + .1}" ${luma(c) < .5 ? 'style="fill:#fff"' : ''}>${s.rating}</text><text class="nm" x="${x}" y="${y + 3.9}">${esc(s.name)}</text>${ED && s.pen ? `<text x="${x + 2.6}" y="${y - 1.9}" style="font-size:1.5px;fill:#e66;font-weight:700">−${s.pen}</text>` : ''}</g>`;
   };
   return `<div class="pitch"><svg viewBox="0 0 100 64" role="img" aria-label="首发阵容">
     <rect class="p-bg" x="0" y="0" width="100" height="64" rx="1"/>
@@ -1894,7 +1900,7 @@ function pitchSVG(home, away, LL, XI) {
     <rect class="p-ln" x="1" y="1" width="98" height="62"/><line class="p-ln" x1="50" y1="1" x2="50" y2="63"/><circle class="p-ln" cx="50" cy="32" r="8"/>
     <rect class="p-ln" x="1" y="16" width="14" height="32"/><rect class="p-ln" x="85" y="16" width="14" height="32"/>
     <rect class="p-ln" x="1" y="25" width="5" height="14"/><rect class="p-ln" x="94" y="25" width="5" height="14"/>
-    ${L(home).map(s => dot(s, home, 'h')).join('')}${away ? L(away).map(s => dot(s, away, 'a')).join('') : ''}
+    ${L(home).map((s, i) => dot(s, home, 'h', i)).join('')}${away ? L(away).map(s => dot(s, away, 'a')).join('') : ''}
   </svg></div>`;
 }
 function luma(c) { const m = c.match(/\d+/g); let r, g, b; if (c[0] === '#') { const h = c.slice(1); r = parseInt(h.substr(0, 2), 16); g = parseInt(h.substr(2, 2), 16); b = parseInt(h.substr(4, 2), 16); } else[r, g, b] = m.map(Number); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; }
@@ -3014,10 +3020,10 @@ function bestXI(t, slots) {
 }
 // 阵型预览：用某个阵型挑出最强 11 人和站位，不改动球队实际使用的阵型
 var XI_PREV = { t: null, f: null };
-function previewXI(t, f) { const F = FORMS[f]; if (!F) return null; const r = bestXI(t, F.slots); if (!r || r.length < 11) return null;
+function previewXI(t, f) { const F = FORMS[f]; if (!F) return null; const r = bestXI(t, F.slots); if (!r || r.length < 11) return null; applyXIO(t, f, r);
   return r.map(x => { const c = F.coords[x.pos] || [50, 50]; return { slot: x.pos, name: x.name, rating: x.rating, pen: x.pen, x: c[0], y: c[1], line: ENGINE.LINE(x.pos) }; }); }
 function xiPanel(t, st) {
-  const c = coachOf(t), X = c ? tacFor(t, c.id) : null, forms = X && X.forms ? X.forms : [], labels = ['主打', '对强队', '对弱队'], cur = TD[t].formNow || (X && X.form);
+  const c = coachOf(t), X = c ? tacFor(t, c.id) : null, forms = X && X.forms ? X.forms : [], labels = ['主打', '对强队', '对弱队'], cur = (X && X.form) || TD[t].formNow; // 默认显示主帅的主打阵型（比赛中按对手临时切换的阵型不影响这里）
   const sel = XI_PREV.t === t && XI_PREV.f && FORMS[XI_PREV.f] ? XI_PREV.f : null, xi = sel ? previewXI(t, sel) : null;
   const S2 = xi ? ENGINE.strengthOf({ xi, bench: ENGINE.lineup(t).bench }) : st, d = k => xi ? S2[k] - st[k] : 0, dv = k => xi && Math.abs(d(k)) >= 0.05 ? ` <span style="color:${d(k) > 0 ? 'var(--win,#3c9)' : '#e66'}">${d(k) > 0 ? '+' : ''}${d(k).toFixed(1)}</span>` : '';
   const btn = (f, lab) => `<button data-act="xiForm" data-t="${esc(t)}" data-f="${esc(f)}" aria-pressed="${(sel || cur) === f}" title="${lab ? lab + ' · ' : ''}${esc(f)}">${lab ? `<span class="dim" style="font-size:10px;margin-right:4px">${lab}</span>` : ''}${esc(f)}</button>`;
@@ -3028,13 +3034,60 @@ function xiPanel(t, st) {
     <div class="btns" style="gap:6px;margin:0 0 8px;align-items:center;flex-wrap:wrap"><div class="seg" role="group" aria-label="主帅惯用阵型">${coachBtns}</div>
       <select data-xisel="${esc(t)}" style="font-size:12px;padding:4px 6px" aria-label="预览其他阵型"><option value="">其他阵型…</option>${others.map(f => `<option value="${esc(f)}" ${sel === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>
       ${sel ? `<button class="lnk" data-act="xiForm" data-t="${esc(t)}" data-f="" style="font-size:12px">回到当前阵型</button>` : ''}</div>
-    ${pitchSVG(t, null, null, xi)}
-    <p class="note" style="margin:8px 0 0">${sel ? `预览 ${esc(sel)}：按这个阵型挑最强的 11 人。${moved.length ? `换上 ${esc(moved.join('、'))}，换下 ${esc(outN.join('、'))}。` : '首发 11 人不变，只调整站位。'}${off.length ? ` ${esc(off.map(x => x.name + '（' + x.slot + '，非本位 -' + x.pen + '）').join('、'))}。` : ''}比赛时主帅按对手强弱自动选用：对手强 3 分以上用「对强队」，弱 3 分以上用「对弱队」，其他用「主打」。` : '点上面的阵型预览站位和首发人选。比赛时主帅按对手强弱自动在三套阵型之间切换。'}</p></div>`;
+    ${(() => { const ef = sel || cur, ed = S.teams.includes(t) && TD[t] && ef, man = ed && S.xio && S.xio[t] && S.xio[t][ef], C0 = ed ? teamCtx(t, nextRound() >= 0 ? nextRound() : S.fx.length) : null, shown = xi || (ef && ef !== xiFormNow(t) && FORMS[ef] ? previewXI(t, ef) : null) || ENGINE.lineup(t).xi;
+      if (!ed) return pitchSVG(t, null, null, xi); setTimeout(xiDragInit, 0);
+      return `<div class="xied" data-t="${esc(t)}" data-f="${esc(ef)}">${man ? `<div class="btns" style="justify-content:space-between;align-items:center;margin:0 0 6px"><span class="chip gold" style="font-size:11px">手动安排 · ${esc(ef)}</span><button class="lnk" data-act="xiReset" data-t="${esc(t)}" data-f="${esc(ef)}" style="font-size:12px">恢复主帅自动安排</button></div>` : ''}${pitchSVG(t, null, null, shown, true)}${xiBenchHtml(t, shown, C0 && C0.energy, C0 && C0.out)}</div>`; })()}
+    <p class="note" style="margin:8px 0 0">拖动场上球员互换位置，把下方轮换球员拖到场上的球员身上替换首发（手机上也可以先点一名、再点另一名互换）；红色数字是踢非本位的扣分。安排按阵型分别记住，伤停的球员比赛时会自动由替补顶上。${sel ? `预览 ${esc(sel)}：按这个阵型挑最强的 11 人。${moved.length ? `换上 ${esc(moved.join('、'))}，换下 ${esc(outN.join('、'))}。` : '首发 11 人不变，只调整站位。'}${off.length ? ` ${esc(off.map(x => x.name + '（' + x.slot + '，非本位 -' + x.pen + '）').join('、'))}。` : ''}比赛时主帅按对手强弱自动选用：对手强 3 分以上用「对强队」，弱 3 分以上用「对弱队」，其他用「主打」。` : '点上面的阵型预览站位和首发人选。比赛时主帅按对手强弱自动在三套阵型之间切换。'}</p></div>`;
+}
+// ── 手动首发：在首发阵容图上拖动球员换位置、把轮换球员拖上场替换首发；按阵型分别记住（S.xio[球队][阵型] = {位置: 球员}） ──
+function xiFormNow(t) { return TD[t].formNow || TD[t].form || FORM_OF0[t]; }
+function xioMk(sl, p) { const pen = slotPen(sl, p.pos); return { pos: sl, name: p.name, rating: p.rating - pen, pen }; }
+function applyXIO(t, form, r) {
+  const O = ((S && S.xio) || {})[t] && S.xio[t][form]; if (!O || !r) return r; const sq = PDB[t] || [], byKey = {}; sq.forEach(p => byKey[roleKey(p)] = p);
+  r.forEach((x, i) => { const key = O[x.pos], p = key && byKey[key]; if (!p || x.name === p.name) return; const j = r.findIndex(y => y.name === p.name);
+    const cur = sq.find(q => q.name === x.name); if (j >= 0) { r[j] = cur ? xioMk(r[j].pos, cur) : r[j]; } r[i] = xioMk(x.pos, p); });
+  return r;
+}
+function xiEdList(t, form) { return form === xiFormNow(t) ? ENGINE.lineup(t).xi.map(x => ({ slot: x.slot, name: x.name })) : (previewXI(t, form) || []).map(x => ({ slot: x.slot, name: x.name })); }
+function xiSwap(t, form, a, b) {
+  const L = xiEdList(t, form); if (L.length < 11) return; const sq = PDB[t] || [], key = n => { const p = sq.find(q => q.name === n); return p ? roleKey(p) : null; };
+  const bp = k => sq.find(q => roleKey(q) === k);
+  if (a.xs != null && b.xs != null) { if (a.xs === b.xs) return; const n = L[a.xs].name; L[a.xs].name = L[b.xs].name; L[b.xs].name = n; }
+  else if (a.bk != null && b.xs != null) { const p = bp(a.bk); if (!p) return; L[b.xs].name = p.name; }
+  else if (a.xs != null && b.bk != null) { const p = bp(b.bk); if (!p) return; L[a.xs].name = p.name; }
+  else return;
+  { const bad = L.find(x => { const p = sq.find(q => q.name === x.name); return p && (x.slot === 'GK') !== (String(p.pos) === 'GK'); }); if (bad) { toast('门将只能和门将互换，场上球员不能去守门'); return render(); } }
+  S.xio = S.xio || {}; const M = S.xio[t] = S.xio[t] || {}; M[form] = {}; L.forEach(x => { const k = key(x.name); if (k) M[form][x.slot] = k; });
+  if (form === xiFormNow(t)) { reslot(t, FORMS[form] ? form : null); ENGINE.clearCache(); MOD_VER++; }
+  save(); render();
+}
+function xiReset(t, form) { if (S.xio && S.xio[t]) delete S.xio[t][form]; if (form === xiFormNow(t)) { reslot(t, FORMS[form] ? form : null); ENGINE.clearCache(); MOD_VER++; } toast('已恢复主帅的自动安排'); save(); render(); }
+function xiBenchHtml(t, xi, en, out) {
+  const on = new Set(xi.map(x => x.name)), L = (PDB[t] || []).filter(p => !on.has(p.name)).sort((a, b) => posGroup(a.pos) - posGroup(b.pos) || b.rating - a.rating);
+  return `<div class="xib"><div class="eyebrow" style="margin:10px 0 6px">轮换球员 · ${L.length} <span class="dim" style="letter-spacing:0;text-transform:none">拖到场上的球员身上替换首发</span></div><div class="xib-row">${L.map(p => { const E = en && en[p.name] != null ? Math.round(en[p.name]) : null, o = out && out[p.name];
+    return `<button class="xbn${o ? ' off' : ''}" data-bk="${esc(roleKey(p))}" style="touch-action:none" title="${esc(p.name)} · ${esc(p.pos)} · ${p.age}岁 · 评分 ${p.rating}${E != null ? ' · 精力 ' + E : ''}${o ? ' · ' + whyTxt(o) : ''}"><span style="display:flex;gap:5px;align-items:center"><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span><span class="mono dim" style="font-size:10px">${esc(p.pos)}</span></span><span class="xbn-n">${esc(p.name)}</span>${E != null ? `<span style="display:block;width:100%;height:3px;border-radius:2px;background:var(--line-2,#333);overflow:hidden"><span style="display:block;height:100%;width:${E}%;background:${enCol(E)}"></span></span>` : ''}</button>`; }).join('')}</div></div>`;
+}
+var XI_DRAG = null, XI_PICK = null;
+function xiDragInit() {
+  if (window.__xiInit) return; window.__xiInit = 1;
+  const tgt = el => el && el.closest && el.closest('.xied [data-xs], .xied [data-bk]'), desc = el => el.dataset.xs != null ? { xs: +el.dataset.xs } : { bk: el.dataset.bk };
+  const clearHot = () => document.querySelectorAll('.xied .hot').forEach(x => x.classList.remove('hot'));
+  document.addEventListener('pointerdown', e => { const el = tgt(e.target); if (!el) return; const box = el.closest('.xied'); XI_DRAG = { el, box, src: desc(el), x0: e.clientX, y0: e.clientY, moved: false, ghost: null }; });
+  document.addEventListener('pointermove', e => { const D = XI_DRAG; if (!D) return; if (!D.moved && Math.hypot(e.clientX - D.x0, e.clientY - D.y0) < 6) return;
+    if (!D.moved) { D.moved = true; const nm = D.el.querySelector('.nm, .xbn-n'); D.ghost = document.createElement('div'); D.ghost.className = 'xi-ghost'; D.ghost.textContent = nm ? nm.textContent : '球员'; document.body.appendChild(D.ghost); D.el.classList.add('drag'); }
+    e.preventDefault(); D.ghost.style.left = e.clientX + 'px'; D.ghost.style.top = e.clientY + 'px'; clearHot(); const over = tgt(document.elementFromPoint(e.clientX, e.clientY)); if (over && over !== D.el && over.closest('.xied') === D.box) over.classList.add('hot'); }, { passive: false });
+  document.addEventListener('pointerup', e => { const D = XI_DRAG; XI_DRAG = null; if (!D) return; clearHot(); if (D.ghost) D.ghost.remove(); D.el.classList.remove('drag'); const t = D.box.dataset.t, form = D.box.dataset.f;
+    if (D.moved) { XI_PICK = null; const over = tgt(document.elementFromPoint(e.clientX, e.clientY)); if (over && over !== D.el && over.closest('.xied') === D.box) xiSwap(t, form, D.src, desc(over)); return; }
+    // 点选：先点一名，再点另一名互换
+    if (XI_PICK && XI_PICK.box === t + '|' + form) { const a = XI_PICK.src; XI_PICK = null; document.querySelectorAll('.xied .sel').forEach(x => x.classList.remove('sel')); if (JSON.stringify(a) !== JSON.stringify(D.src)) xiSwap(t, form, a, D.src); return; }
+    XI_PICK = { box: t + '|' + form, src: D.src }; document.querySelectorAll('.xied .sel').forEach(x => x.classList.remove('sel')); D.el.classList.add('sel'); });
+  document.addEventListener('pointercancel', () => { const D = XI_DRAG; XI_DRAG = null; if (D) { if (D.ghost) D.ghost.remove(); D.el.classList.remove('drag'); } clearHot(); });
 }
 function reslot(t, form) {
   const F = form && FORMS[form];
   const slots = F ? F.slots : TD[t].roster.map(r => r.pos);
   const r = bestXI(t, slots); if (!r || r.length < 11) return;
+  applyXIO(t, form || xiFormNow(t), r);
   TD[t].roster = r; if (F) TD[t].coords = F.coords;
 }
 // 传统上偏爱进攻三叉戟的球队：主帅的阵型没有三名前锋时改用三前锋阵型，防守型打法改成进攻打法
@@ -3053,6 +3106,7 @@ function matchForm(t, opp) {
   const c = coachOf(t); if (!c || !TD[t] || !TD[opp]) return TD[t] ? TD[t].formNow : null; const X = tacFor(t, c.id); if (!X || !X.forms) return TD[t].formNow;
   const d = ENGINE.strength(opp).xiAvg - ENGINE.strength(t).xiAvg;
   let f = X.form; if (d >= 3) f = X.forms[1] || X.form; else if (d <= -3) f = X.forms[2] || X.form;
+  { const O = (S.xio || {})[t]; if (f !== X.form && O && O[X.form] && !O[f]) f = X.form; } // 你手动排过主打阵型、没排过这套：继续用你排的主打阵型
   if (f && f !== TD[t].formNow && FORMS[f]) { reslot(t, f); TD[t].formNow = f; ENGINE.clearCache(); }
   return f;
 }
@@ -5600,6 +5654,7 @@ document.addEventListener('click', e => {
   if (act === 'rejFinal') { const MK = el.dataset.bw === '1' ? S.market[winKey(SEASON)] : mktGet(), o = MK && MK.offers.find(x => x.id === el.dataset.id); if (o && o.st === 'p') { if (o.user) { userBidReject(o, true); return; } o.st = 'r'; o.log.push('卖方拒绝出售'); toast(`拒绝了 ${o.to} 对 ${o.name} 的报价`); save(); } return render(); }
   if (act === 'mkLoan') return mktLoanIn(el.dataset.id, el.dataset.t);
   if (act === 'loanExt') return loanExtend(el.dataset.id);
+  if (act === 'xiReset') return xiReset(el.dataset.t, el.dataset.f);
   if (act === 'xiForm') { XI_PREV = { t: el.dataset.t, f: el.dataset.f || null }; return render(); }
   if (act === 'nfsToggle') return nfsToggle(el.dataset.t, el.dataset.id);
   if (act === 'relOpen') return relDlg(el.dataset.t, el.dataset.id || null);

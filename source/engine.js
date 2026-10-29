@@ -26,7 +26,7 @@ const ENGINE = (() => {
       if (p) used.add(p);
       const coord = T.coords[r.pos] || [50, 50];
       return {
-        slot: r.pos, name: p ? p.name : r.name, rating: p ? p.rating - (r.pen || 0) : r.rating,
+        slot: r.pos, name: p ? p.name : r.name, rating: p ? p.rating - (r.pen || 0) : r.rating, pen: r.pen || 0,
         p: p || { name: r.name, pos: r.pos, rating: r.rating, attributes: {} },
         x: coord[0], y: coord[1], line: LINE(r.pos)
       };
