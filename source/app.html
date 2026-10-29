@@ -560,7 +560,7 @@ function rateAtR(key, a, raw) {
   const X = rrOf(key); if (!X) return null; const [pot, pAge, , bt, ba, loss, bg, bga] = X;
   let P = pot; if (bt === 1 && a >= ba) P = pot - loss; else if (bt === 2 && a >= ba) P = pot - loss * Math.min(1, (a - ba + 1) / 3);
   if (bg && !raw && a >= bga) P += bg * Math.min(1, (a - bga + 1) / 3);
-  return Math.max(50, Math.min(99, Math.round(curveP(P, pAge, a) + (ghash('rn|' + key + '|' + a) - 0.5) * 1.6)));
+  return Math.max(50, Math.min(99, Math.round(curveP(P, pAge, a) + (ghash('rn|' + key + '|' + a) - 0.5) * 1.6) + (typeof key === 'number' && !raw ? padjOf(key) : 0)));
 }
 const peakR = key => { let m = 0; for (let a = 17; a <= 38; a++) m = Math.max(m, rateAtR(key, a) || 0); return m; };
 const BUST_TXT = { 1: ['重伤', ['十字韧带断裂', '跟腱断裂', '膝盖半月板反复受伤', '脚踝粉碎性骨折', '慢性腰伤']], 2: ['个人因素', ['训练态度散漫', '场外风波不断', '心理压力过大、状态起伏', '与主帅长期不和', '沉迷夜生活']] };
@@ -1140,11 +1140,21 @@ function histMentor(s) {
     L.forEach(x => { const a = ag(x); if (a == null || a > 23) return; cur[x[0]] = Math.min(3, (cur[x[0]] || 0) + k * (a <= 21 ? 0.8 : 0.4)); }); });
   return (HM_C.m[s] = cur);
 }
+// ── 按威超梯队调整球员的初始能力：每名球员在第一次出现的那季、按所在球队和梯队目标水平的差距得到一个固定的能力加成，跟着他整个生涯 ──
+var PADJ = null;
+function padjOf(pid) {
+  if (!PADJ) { PADJ = {}; const T = { S: ['猛龙', '罗联', '威龙', '猎豹', '威尔福特', '狂蜂'], 'A+': ['龙王宫殿', '切狐', '猛虎'], A: ['泽尼联', '华尔兹', '金狮', '沃特梅兹', '阿尔法骑士'] }, tr = t => Object.keys(T).find(k => T[k].includes(t)) || 'B';
+    const GAP = { S: 1.0, 'A+': 3.0, A: 4.5, B: 7.0 }, top11 = L => { const v = L.slice().sort((a, b) => b - a).slice(0, 11); return v.reduce((a, b) => a + b, 0) / Math.max(1, v.length); };
+    for (let s = 1; s <= 17; s++) { const SQ = (HIST.squads || {})[s] || {}, av = {}; Object.entries(SQ).forEach(([t, L]) => av[t] = top11(L.map(([pid, , r]) => r + (PADJ[pid] || 0))));
+      const ref = Math.max(...Object.keys(av).filter(t => tr(t) === 'S').map(t => av[t]));
+      Object.entries(SQ).forEach(([t, L]) => { const off = t === '威龙' ? 0 : Math.max(-2, Math.min(6, (ref - GAP[tr(t)] - av[t]) * 0.85)); L.forEach(([pid]) => { if (PADJ[pid] == null) PADJ[pid] = Math.round(off); }); }); } }
+  return PADJ[pid] || 0;
+}
 function setupHistoric(s) {
   const SQ = (HIST.squads || {})[s] || {};
   Object.keys(TD).forEach(t => {
     const seen = new Set(), list = [];
-    (SQ[t] || []).forEach(([pid, slot, r]) => { const n = HIST.players[pid] && HIST.players[pid][0]; if (!n || seen.has(n)) return; seen.add(n); list.push({ p: histPlayer(pid, t, s, Math.min(99, r + Math.round(histMentor(s)[pid] || 0) + bloomDelta(pid, s))), slot }); });
+    (SQ[t] || []).forEach(([pid, slot, r]) => { const n = HIST.players[pid] && HIST.players[pid][0]; if (!n || seen.has(n)) return; seen.add(n); list.push({ p: histPlayer(pid, t, s, Math.min(99, r + padjOf(pid) + Math.round(histMentor(s)[pid] || 0) + bloomDelta(pid, s))), slot }); });
     if (!list.length) return;
     PDB[t] = list.map(x => x.p);
     { const usedNo = new Set(); PDB[t].forEach(p => { let n = p.no; if (usedNo.has(n)) { const pool = { GK: [1, 12, 13, 22, 25, 31], DF: [2, 3, 4, 5, 6, 15, 23, 24, 26, 32], MF: [8, 10, 14, 16, 18, 20, 21, 27, 28], FW: [7, 9, 11, 17, 19, 29, 30] }[ENGINE.LINE(p.pos)]; n = pool.find(x => !usedNo.has(x)) || [...Array(60)].map((_, k) => k + 33).find(x => !usedNo.has(x)); p.no = n; } usedNo.add(n); }); }
@@ -1160,13 +1170,16 @@ function setupHistoric(s) {
   applyAllEdits();
 }
 /* ---------- 自定义编辑球员资料（存进进度，会同步；每个赛季重新推算后都会套用） ---------- */
+// 内置的球员资料设定（DSON 指定的球衣号码、能力、位置、惯用脚）；进度里自己改过的会覆盖这些
+const BASE_EDITS = {"H|742":{"orig":"范文西","origPos":"LW","origNat":"荷兰","name":"范文西","pos":"LW","nat":"荷兰","alt":["LM","ST"],"foot":"左脚","no":15,"height":180,"weight":81,"da":{}},"H|743":{"orig":"基尔特斯","origPos":"ST","origNat":"英格兰","name":"基尔特斯","pos":"ST","nat":"英格兰","alt":[],"foot":"右脚","no":9,"height":180,"weight":81,"dr":4,"da":{"spd":4,"sho":4,"pas":4,"dri":4,"def":4,"phy":4,"men":4,"sta":4}},"H|744":{"orig":"罗纳德","origPos":"RW","origNat":"葡萄牙","name":"罗纳德","pos":"RW","nat":"葡萄牙","alt":["RM","LW","ST"],"foot":"双脚","no":7,"height":181,"weight":81,"da":{}},"H|748":{"orig":"奥兹兰","origPos":"GK","origNat":"英格兰","name":"奥兹兰","pos":"GK","nat":"英格兰","no":1,"height":190,"weight":90,"da":{}},"H|746":{"orig":"李仁炫","origPos":"CM","origNat":"韩国","name":"李仁炫","pos":"CM","nat":"韩国","alt":["LM"],"foot":"右脚","no":17,"height":177,"weight":78,"da":{}},"H|745":{"orig":"维拉","origPos":"CAM","origNat":"英格兰","name":"维拉","pos":"CAM","nat":"英格兰","alt":["CDM","CM","LM","RM"],"foot":"双脚","no":8,"height":178,"weight":78,"da":{}},"H|764":{"orig":"本泰克","origPos":"LW","origNat":"哥伦比亚","name":"本泰克","pos":"LW","nat":"哥伦比亚","alt":["LM","RW","ST"],"foot":"双脚","no":9,"height":181,"weight":87,"dr":2,"da":{"spd":2,"sho":2,"pas":2,"dri":2,"def":2,"phy":2,"men":2,"sta":2}},"H|770":{"orig":"马尔科姆","origPos":"RW","origNat":"西班牙","name":"马尔科姆","pos":"RW","nat":"西班牙","no":7,"height":182,"weight":88,"dr":3,"da":{"spd":3,"sho":3,"pas":3,"dri":3,"def":3,"phy":3,"men":3,"sta":3}},"H|1178":{"orig":"诺伊斯坦","origPos":"RCM","origNat":"德国","name":"诺伊斯坦","pos":"RCM","nat":"德国","no":10,"height":185,"weight":85,"dr":-4,"da":{"spd":-4,"sho":-4,"pas":-4,"dri":-4,"def":-4,"phy":-4,"men":-4,"sta":-4}},"H|752":{"orig":"罗伯特","origPos":"LB","origNat":"英格兰","name":"罗伯特","pos":"LB","nat":"英格兰","alt":["RB","LWB","RWB"],"foot":"双脚","no":4,"height":191,"weight":97,"da":{}},"H|827":{"orig":"巴巴乌","origPos":"RB","origNat":"塞内加尔","name":"巴巴乌","pos":"RB","nat":"塞内加尔","alt":["CB"],"foot":"右脚","no":6,"height":183,"weight":79,"da":{}},"H|895":{"orig":"拉莫雷斯","origPos":"RB","origNat":"哥伦比亚","name":"拉莫雷斯","pos":"RB","nat":"哥伦比亚","alt":["CB","LB","LWB","RWB"],"foot":"双脚","no":4,"height":182,"weight":84,"da":{}},"H|899":{"orig":"勒布伊","origPos":"LAM","origNat":"法国","name":"勒布伊","pos":"CAM","nat":"法国","alt":["ST"],"foot":"右脚","no":14,"height":175,"weight":78,"da":{"spd":-1,"sho":-1,"pas":-1,"dri":-1,"def":-1,"phy":-1,"men":-1,"sta":-1}},"H|763":{"orig":"梅东斯","origPos":"RW","origNat":"阿根廷","name":"梅东斯","pos":"RW","nat":"阿根廷","alt":["CAM","RM","LW","ST"],"foot":"右脚","no":7,"height":182,"weight":88,"da":{}},"H|771":{"orig":"萨科","origPos":"LW","origNat":"法国","name":"萨科","pos":"LW","nat":"法国","alt":["LM"],"foot":"左脚","no":9,"height":182,"weight":88,"da":{}},"H|931":{"orig":"恩多尔","origPos":"LM","origNat":"塞内加尔","name":"恩多尔","pos":"LM","nat":"塞内加尔","alt":["CM"],"foot":"双脚","no":16,"height":175,"weight":71,"da":{}}};
+function edAll() { return Object.assign({}, BASE_EDITS, (S && S.edits) || {}); }
 function applyPLNames() {
-  Object.entries((S && S.edits) || {}).forEach(([uid, e]) => { const pid = UIDPID[uid] ?? (uid.startsWith('H|') ? +uid.slice(2) : null); if (pid != null && HIST.players[pid]) { const P = HIST.players[pid]; if (e.orig == null) e.orig = P[0]; P[0] = e.name || e.orig;
+  Object.entries(edAll()).forEach(([uid, e]) => { const pid = UIDPID[uid] ?? (uid.startsWith('H|') ? +uid.slice(2) : null); if (pid != null && HIST.players[pid]) { const P = HIST.players[pid]; if (e.orig == null) e.orig = P[0]; P[0] = e.name || e.orig;
     if (e.origPos == null) e.origPos = P[1]; if (e.origNat == null) e.origNat = P[2]; P[1] = (e.ret && e.pos) || e.origPos; P[2] = (e.ret && e.nat) || e.origNat; } });
   try { Object.keys(_peak).forEach(k => delete _peak[k]); } catch (e) {}
 }
 function applyAllEdits() {
-  const E = (S && S.edits) || {}; if (!Object.keys(E).length) return;
+  const E = edAll(); if (!Object.keys(E).length) return;
   const fix = (p, team, dom) => { const e = E[p.uid]; if (!e) return;
     if (e.name && e.name !== p.name) { if (dom) TD[team].roster.forEach(r => { if (r.name === p.name) r.name = e.name; }); p.name = e.name; }
     ['pos', 'nat', 'height', 'weight', 'no'].forEach(k => { if (e[k] != null && e[k] !== '') p[k] = e[k]; });
@@ -1207,7 +1220,7 @@ function attrsFor(pos, r, prev, prevPos) { // 按位置模板生成，保留球�
 }
 function openEditor(uid) {
   const cur = Object.values(BY_TN).find(q => q.uid === uid), pid = UIDPID[uid] ?? (uid.startsWith('H|') ? +uid.slice(2) : null);
-  const e = (S.edits || {})[uid] || {}, pp = pid != null ? PL[pid] : null, pf = !cur && pid != null ? personProfile(pid) : null;
+  const e = edAll()[uid] || {}, pp = pid != null ? PL[pid] : null, pf = !cur && pid != null ? personProfile(pid) : null;
   const o = cur ? { name: cur.name, pos: cur.pos, nat: cur.nat, height: cur.height, weight: cur.weight, no: cur.no, rating: cur.rating, attributes: { ...(cur.attributes || {}) } }
     : { name: pp ? pp[0] : '', pos: pp ? pp[1] : '', nat: pp ? pp[2] : '', height: pf && pf.ht, weight: pf && pf.wt, no: pf && pf.no, rating: pid != null ? peakCache(pid) : null, attributes: { ...((pf && pf.attrs) || {}) } };
   const inp = (id, v, type = 'text', extra = '') => `<input id="${id}" type="${type}" value="${esc(v ?? '')}" ${extra} style="width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg-2,transparent);color:inherit">`;
@@ -1243,7 +1256,7 @@ function openEditor(uid) {
   d.querySelector('[data-act="edAuto"]').addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); D_POS = pos; regen(); }, true);
 }
 function saveEditor(uid, swap) {
-  const cur = Object.values(BY_TN).find(q => q.uid === uid), old = (S.edits || {})[uid] || {}, v = id => { const el = $('#' + id); return el ? el.value.trim() : null; };
+  const cur = Object.values(BY_TN).find(q => q.uid === uid), old = edAll()[uid] || {}, v = id => { const el = $('#' + id); return el ? el.value.trim() : null; };
   const num = id => { const x = v(id); return x === '' || x == null ? null : +x; };
   // 球衣号码被队友占用：先问要不要和他交换号码
   const newNo = num('edNo'), team = cur && cur.team, mate = team && newNo != null && newNo !== cur.no ? [...(PDB[team] || []), ...(FDB[team] || [])].find(q => q !== cur && q.no === newNo) : null;
@@ -1252,7 +1265,7 @@ function saveEditor(uid, swap) {
     box.innerHTML = `<div style="padding:12px 14px;border:2px solid var(--gold);border-radius:10px;background:rgba(216,180,95,.08)"><b>${newNo} 号已经是 ${esc(mate.name)}（${esc(mate.pos)}）的号码。</b><p class="note" style="margin:4px 0 8px">是否与他更换球衣号码？${esc(mate.name)} 会改穿 ${cur.no} 号。</p><div class="btns"><button class="btn primary" data-act="edSwap" data-uid="${esc(uid)}">交换号码并保存</button><button class="btn ghost" data-act="edSwapNo">取消</button></div></div>`;
     box.scrollIntoView({ block: 'nearest' }); return;
   }
-  if (mate && swap && mate.uid) { S.edits = S.edits || {}; const me = S.edits[mate.uid] || {}; S.edits[mate.uid] = { ...me, no: cur.no }; }
+  if (mate && swap && mate.uid) { S.edits = S.edits || {}; const me = edAll()[mate.uid] || {}; S.edits[mate.uid] = { ...me, no: cur.no }; }
   const e = { orig: old.orig, origPos: old.origPos, origNat: old.origNat };
   const nm = v('edName'); if (nm) e.name = nm; e.pos = v('edPos'); e.nat = v('edNat');
   if (cur && $('#edAlt')) { e.alt = [...document.querySelectorAll('#edAlt [data-alt]')].filter(i => i.checked && !i.disabled).map(i => i.dataset.alt).filter(x => x !== posMain(e.pos)); e.foot = v('edFoot'); }
@@ -1276,7 +1289,7 @@ function applyGrowth() {
   applyHistOverrides();
   applyPLNames();
   // 从 S18 的原始资料重新推算到当前赛季：成长 → 退役与青训 → 转会窗
-  Object.keys(PDB0).forEach(t => PDB[t] = PDB0[t].map(p => { const q = JSON.parse(JSON.stringify(p)); q.rating0 = q.rating; q.age0 = q.age; q.s0 = 18; q.uid = 'D|' + t + '|' + p.name; q.cEnd = contractInit(q, t); return q; }));
+  Object.keys(PDB0).forEach(t => PDB[t] = PDB0[t].map(p => { const q = JSON.parse(JSON.stringify(p)); { const pid = UIDPID['D|' + t + '|' + p.name], d = pid != null ? padjOf(pid) : 0; if (d) { q.rating = Math.max(40, Math.min(99, q.rating + d)); if (q.attributes) Object.keys(q.attributes).forEach(k => q.attributes[k] = Math.max(20, Math.min(99, q.attributes[k] + d))); q.value = 'ⰵ' + valueM(q.rating, q.age) + 'M'; } } q.rating0 = q.rating; q.age0 = q.age; q.s0 = 18; q.uid = 'D|' + t + '|' + p.name; q.cEnd = contractInit(q, t); return q; }));
   applyOv18();
   Object.keys(ROSTER0).forEach(t => { TD[t].roster = ROSTER0[t].map(r => ({ ...r })); { TD[t].style = STYLE0[t]; TD[t].coords = COORDS0[t]; TD[t].formNow = null; } });
   MOD_VER_SEASON++; TAC_KEY = null;
@@ -3256,7 +3269,7 @@ function teamMorale(t) {
 // 威超梯队（DSON 设定）：比赛时把球队实力往所属梯队的水平拉，球员能力不变
 const CLUB_TIER = { S: ['猛龙', '罗联', '威龙', '猎豹', '威尔福特', '狂蜂'], 'A+': ['龙王宫殿', '切狐', '猛虎'], A: ['泽尼联', '华尔兹', '金狮', '沃特梅兹', '阿尔法骑士'],
   B: ['蜜蜂', '花豹', '森利西亚虎', '威廉斯', '岚', '普雷斯顿', '科摩多尊龙', '炎狼', '罗杰剧院', '威尔顿联', '飞鹰', '雷克夏', '拉普兰德'] };
-const TIER_P = { pull: 0.65, cap: 4.5, off: { S: 3.6, 'A+': 1.9, A: 0.6, B: -1.5 } };
+const TIER_P = { pull: 0.35, cap: 4.5, off: { S: 3.6, 'A+': 1.9, A: 0.6, B: -1.5 } };
 function clubTier(t) { for (const k in CLUB_TIER) if (CLUB_TIER[k].includes(t)) return k; return null; }
 var TIER_C = { k: null, m: {} };
 function tierAdj(t) {
@@ -3733,7 +3746,7 @@ function vPlayers() {
   </tbody></table></div>
   ${total > PF.limit ? `<div style="text-align:center;margin-top:14px"><button class="btn" data-act="more">再显示 60 名</button></div>` : ''}</div></section>`;
 }
-const _peak = {}; const peakCache = pid => { if (pid in _peak) return _peak[pid]; const E = S && S.edits && (S.edits[PID_UID[pid] || ''] || S.edits['H|' + pid]); return (_peak[pid] = E && E.ret && E.peak ? E.peak : peakRating(pid)); };
+const _peak = {}; const peakCache = pid => { if (pid in _peak) return _peak[pid]; const EA = edAll(), E = EA[PID_UID[pid] || ''] || EA['H|' + pid]; return (_peak[pid] = E && E.ret && E.peak ? E.peak : peakRating(pid)); };
 after.players = () => {
   let tm; $('#pq').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => { PF.q = e.target.value.trim(); PF.limit = 60; render(); const i = $('#pq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 220); });
   $('#pt').addEventListener('change', e => { PF.team = e.target.value; PF.limit = 60; render(); });
@@ -3827,7 +3840,7 @@ function personProfile(pid) {
   const no = base ? base.no : nos[Math.floor(h('n') * nos.length)];
   let attrs = base ? Object.fromEntries(Object.entries(base.attributes).map(([k, v]) => [k, Math.max(25, Math.min(99, v + pk - base.rating))])) : null;
   if (!attrs) { attrs = {}; const tpl = { ...ATTR_TPL[line] }; if (/W|AM/.test(pos)) { tpl.dri = (tpl.dri || 0) + 3; tpl.spd = (tpl.spd || 0) + 3; } Object.entries(tpl).forEach(([k, d]) => attrs[k] = Math.max(30, Math.min(99, Math.round(pk + d + (h('at' + k) - 0.5) * 8)))); }
-  const E = (S && S.edits && (S.edits[uid || ''] || S.edits['H|' + pid])) || null;
+  const EA = edAll(), E = EA[uid || ''] || EA['H|' + pid] || null;
   if (E && E.ret) { return { no: E.no ?? no, ht: E.height ?? ht, wt: E.weight ?? wt, attrs: E.attrs || attrs, debutAge, endAge, ret, preEra: !!preEra, f1, lastS, ageNowP, peakValue: valueM(pk, 27), nat: nat || (base && base.nat) || '' }; }
   return { no, ht, wt, attrs, debutAge, endAge, ret, preEra: !!preEra, f1, lastS, ageNowP, peakValue: valueM(pk, 27), nat: nat || (base && base.nat) || '' };
 }
