@@ -2169,12 +2169,12 @@ const PHYS = (() => {
       ball.x = p.x + dx / d * 0.8; ball.y = p.y + dy / d * 0.8; ball.vx = dx / d * speed; ball.vy = dy / d * speed; ball.vz = loft ? (typeof loft === 'number' ? loft : Math.min(14, d * 0.28)) : 0; ball.z = loft ? 0.2 : 0;
       ball.pass = kind === 'pass' ? { from: p, side: p.side, t: st.t } : null; p.cool = 0.6; }
     // 传球力度：按距离算出刚好的球速 —— 地面球到脚时约 5–9 m/s（好停），远传改成高球，落点在接球人前面一点再滚过去
-    const GR = (s0) => s0 * 0.986 - 0.09;
+    const GR = (s0) => s0 * 0.972 - 0.17; /* 草皮阻力：滚动的球大约每秒损失 25% 速度再减 1.7 m/s */
     function groundV0(d, arrive) { let lo = arrive, hi = 40; for (let it = 0; it < 16; it++) { const m = (lo + hi) / 2; let v = m, x = 0, n = 0; while (x < d && v > arrive && n < 400) { x += v * DT; v = GR(v); n++; } if (x >= d) hi = m; else lo = m; } return hi; }
     const gau = () => (R() + R() + R() - 1.5) * 1.4;
     function passTo(p, q, tx, ty, lofted, cross) { let dx = tx - p.x, dy = ty - p.y; const d = hyp(dx, dy) || 1, err = (100 - clamp(p.pas, 30, 99)) / 100 + Math.max(0, 55 - p.stam) / 250;
       const ang = Math.atan2(dy, dx) + gau() * err * 0.07, wt = 1 + gau() * err * 0.12, loft = lofted != null ? lofted : d > 27;
-      if (loft) { const k = cross ? 2.2 : 1.7, dA = d * (cross ? 0.97 : 0.86) * wt, vz = Math.sqrt(9.8 * dA / (2 * k)), T = 2 * vz / 9.8, vh = dA / T * 1.04;
+      if (loft) { const k = cross ? 2.2 : 1.7, dA = d * (cross ? 0.97 : 0.92) * wt, vz = Math.sqrt(9.8 * dA / (2 * k)), T = 2 * vz / 9.8, vh = dA / T * 1.07;
         kick(p, p.x + Math.cos(ang) * d, p.y + Math.sin(ang) * d, vh, vz, 'pass'); }
       else { const arrive = clamp(5 + d * 0.12, 5, 9), v0 = groundV0(d, arrive) * wt; kick(p, p.x + Math.cos(ang) * d, p.y + Math.sin(ang) * d, v0, false, 'pass'); }
       ball.pass.to = q; ball.pass.tx = tx; ball.pass.ty = ty; st.pst.n++;
@@ -2309,8 +2309,8 @@ const PHYS = (() => {
                 else { ball.owner = null; ball.last = q; ball.lastSide = q.side; const a = Math.atan2(p.y - q.y, p.x - q.x) + (R() - 0.5) * 1.6, v = 4 + R() * 4; ball.vx = Math.cos(a) * v; ball.vy = Math.sin(a) * v; ball.pass = null; if (!slide) q.flash = { k: '断球', until: st.t + 1.4 }; } }
               else if (!slide) { const ux = (p.x - q.x) / (d || 1), uy = (p.y - q.y) / (d || 1); p.vx += ux * 1.5; p.vy += uy * 1.5; } }); } } }
       if (!ball.owner && !st.dead) {
-        ball.x += ball.vx * DT; ball.y += ball.vy * DT; ball.z = Math.max(0, ball.z + ball.vz * DT); ball.vz = ball.z > 0 ? ball.vz - 9.8 * DT : 0;
-        if (!(ball.shot && ball.shot.out === 'goal')) { const s0 = hyp(ball.vx, ball.vy); if (s0 > 0) { const s1 = Math.max(0, s0 * (ball.z > 0.05 ? 0.996 : 0.986) - (ball.z > 0.05 ? 0 : 0.09)); ball.vx *= s1 / s0; ball.vy *= s1 / s0; } }
+        ball.x += ball.vx * DT; ball.y += ball.vy * DT; const wasAir = ball.z > 0; ball.z = Math.max(0, ball.z + ball.vz * DT); if (ball.z > 0) ball.vz -= 9.8 * DT; else if (wasAir) { if (ball.vz < -3) { ball.vz = -ball.vz * 0.35; ball.z = 0.01; } else ball.vz = 0; ball.vx *= 0.75; ball.vy *= 0.75; } else ball.vz = 0; /* 落地弹一下并减速 */
+        if (!(ball.shot && ball.shot.out === 'goal')) { const s0 = hyp(ball.vx, ball.vy); if (s0 > 0) { const s1 = ball.z > 0.05 ? s0 * 0.993 : Math.max(0, GR(s0)); ball.vx *= s1 / s0; ball.vy *= s1 / s0; } }
         const spd = hyp(ball.vx, ball.vy);
         if (ball.shot && ball.shot.out === 'block') { const sd = ball.shot.side; let hit = null; P.forEach(o => { if (!hit && o.on && o.side !== sd && !o.gk && hyp(o.x - ball.x, o.y - ball.y) < 1.7) hit = o; });
           if (!hit && Math.abs(goalX(sd) - ball.x) < 7) hit = keeper(opp(sd));
@@ -2414,10 +2414,10 @@ function replayOpen(ri, mi) {
     <div class="btns" style="justify-content:space-between;align-items:center"><span><span class="eyebrow">${SN(SEASON)} · 第 ${ri + 1} 轮 · 比赛回放</span></span><span class="mono" style="font-size:22px;font-weight:800;display:inline-flex;align-items:center;gap:8px">${crest(h, 26)}<span style="font-size:14px">${esc(h)}</span> <span id="rpS">0 : 0</span> <span style="font-size:14px">${esc(a)}</span>${crest(a, 26)}</span><span class="mono" id="rpC" style="font-size:16px;margin-right:34px">0'</span></div>
     <div id="rpV"></div>
     <div style="position:relative;height:18px;margin:4px 0"><input type="range" id="rpSeek" min="0" max="${Math.round(TM.END)}" value="0" style="width:100%"><div style="position:absolute;left:0;right:0;top:0;pointer-events:none" class="rpmk">${mk}</div></div>
-    <div class="btns" style="justify-content:center;gap:6px"><button class="btn primary" data-act="rpPlay" id="rpPlay">❚❚ 暂停</button>${[[1, '×1 实时'], [2, '×2'], [4, '×4'], [8, '×8']].map(([v, l]) => `<button class="btn" data-act="rpSpeed" data-v="${v}" aria-pressed="${v === 2}">${l}</button>`).join('')}<label class="note" style="display:inline-flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="rpHi"> 只看精华（没看点的时段直接跳过）</label></div>
+    <div class="btns" style="justify-content:center;gap:6px"><button class="btn primary" data-act="rpPlay" id="rpPlay">❚❚ 暂停</button>${[[1, '实时'], [4, '慢放'], [11, '×1'], [22, '×2'], [44, '×4']].map(([v, l]) => `<button class="btn" data-act="rpSpeed" data-v="${v}" aria-pressed="${v === 11}" title="${v === 11 ? '整场约 8–9 分钟' : v === 1 ? '真实时间' : ''}">${l}</button>`).join('')}<label class="note" style="display:inline-flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="rpHi"> 只看精华（没看点的时段直接跳过）</label></div>
     <div class="feed" id="rpF" style="max-height:160px"></div></div>`;
   if (!d.open) d.showModal();
-  RP = { ri, mi, spec, K, rate: 2, play: true, last: performance.now(), raf: null, view: null };
+  RP = { ri, mi, spec, K, rate: 11, play: true, last: performance.now(), raf: null, view: null };
   d.addEventListener('close', () => { if (RP && RP.raf) cancelAnimationFrame(RP.raf); RP = null; }, { once: true });
   const lab = { goal: ['⚽', '进球'], yellow: ['🟨', '黄牌'], red: ['🟥', '红牌'], sub: ['⇄', '换上'], inj: ['✚', '受伤'], pmiss: ['✕', '罚丢点球'], offside: ['🚩', '越位'], foul: ['⚠', '犯规'], ht: ['', '— 半场 —'] };
   const onMsg = msg => { if (msg.type === 'save' || msg.type === 'block') return; const f = $('#rpF'); if (!f) return; const L0 = lab[msg.type] || ['', msg.type]; f.insertAdjacentHTML('afterbegin', `<div class="ev ${msg.type}"><span class="m">${RP.view ? Math.floor(RP.view.minute()) + 1 : ''}'</span><span class="ic">${L0[0]}</span><span class="t">${msg.side ? crest(msg.side === 'h' ? h : a, 14) + ' ' : ''}<b>${esc(msg.who || '')}</b> ${L0[1]}</span></div>`); };
@@ -2501,7 +2501,7 @@ function startLive(instant) {
   const tick = now => {
     if (!live) return;
     const dt = (now - live.last) / 1000; live.last = now;
-    if (GV_ON && PV) { PV.play(Math.min(0.25, dt), 2 * live.speed, false); live.t = PV.ended() ? live.endM : Math.min(live.endM, PV.minute()); } else live.t = Math.min(live.endM, live.t + dt * 7.5 * live.speed); /* 物理模拟开着：完整播放，×1 档为 2 倍速 */
+    if (GV_ON && PV) { PV.play(Math.min(0.25, dt), 11 * live.speed, false); live.t = PV.ended() ? live.endM : Math.min(live.endM, PV.minute()); } else live.t = Math.min(live.endM, live.t + dt * 7.5 * live.speed); /* 物理模拟开着：完整播放，×1 档 = 11 倍真实时间，整场约 8–9 分钟 */
     paint();
     if (live.t >= live.endM) return finish();
     live.raf = requestAnimationFrame(tick);
