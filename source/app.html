@@ -2171,9 +2171,9 @@ const PHYS = (() => {
     const GR = (s0) => s0 * 0.986 - 0.09;
     function groundV0(d, arrive) { let lo = arrive, hi = 40; for (let it = 0; it < 16; it++) { const m = (lo + hi) / 2; let v = m, x = 0, n = 0; while (x < d && v > arrive && n < 400) { x += v * DT; v = GR(v); n++; } if (x >= d) hi = m; else lo = m; } return hi; }
     const gau = () => (R() + R() + R() - 1.5) * 1.4;
-    function passTo(p, q, tx, ty, lofted) { let dx = tx - p.x, dy = ty - p.y; const d = hyp(dx, dy) || 1, err = (100 - clamp(p.pas, 30, 99)) / 100;
+    function passTo(p, q, tx, ty, lofted, cross) { let dx = tx - p.x, dy = ty - p.y; const d = hyp(dx, dy) || 1, err = (100 - clamp(p.pas, 30, 99)) / 100;
       const ang = Math.atan2(dy, dx) + gau() * err * 0.07, wt = 1 + gau() * err * 0.12, loft = lofted != null ? lofted : d > 27;
-      if (loft) { const k = 1.7, dA = d * 0.86 * wt, vz = Math.sqrt(9.8 * dA / (2 * k)), T = 2 * vz / 9.8, vh = dA / T * 1.04;
+      if (loft) { const k = cross ? 2.2 : 1.7, dA = d * (cross ? 0.97 : 0.86) * wt, vz = Math.sqrt(9.8 * dA / (2 * k)), T = 2 * vz / 9.8, vh = dA / T * 1.04;
         kick(p, p.x + Math.cos(ang) * d, p.y + Math.sin(ang) * d, vh, vz, 'pass'); }
       else { const arrive = clamp(5 + d * 0.12, 5, 9), v0 = groundV0(d, arrive) * wt; kick(p, p.x + Math.cos(ang) * d, p.y + Math.sin(ang) * d, v0, false, 'pass'); }
       ball.pass.to = q; ball.pass.tx = tx; ball.pass.ty = ty; st.pst.n++;
@@ -2202,14 +2202,30 @@ const PHYS = (() => {
         else { const sc = team(p.side).find(q => q.name === G.player); const near = sc && (sc.x - p.x) * d > -12 && hyp(sc.x - p.x, sc.y - p.y) < 34; if (sc && (near || late || dg < 26)) { const lead = 2.5; return passTo(p, sc, sc.x + d * lead, sc.y); } } }
       const left = Math.max(60, TM.END - st.t), gap = Math.min(240, left / Math.max(1, quota[p.side]) * 0.55), due = quota[p.side] > 0 && st.t - st.lastShot[p.side] > gap && (!G || G.side !== p.side || st.t < G.s - 60), behind = quota[p.side] > 0 && left / quota[p.side] < 150;
       if (due && dg < (p.sho > 84 ? 30 : 25) + (behind ? 6 : 0) && Math.abs(p.y - W / 2) < 22) return shoot(p);
+      const prime = dg < (p.sho > 80 ? 22 : 18) && Math.abs(p.y - W / 2) < 15, quiet = !G || G.side !== p.side || st.t < G.s - 60;
+      if (prime && quota[p.side] > 0 && quiet && st.t - st.lastShot[p.side] > gap * 0.3 && R() < 0.75) return shoot(p);
+      if (axOf(p.side, p.x) < 20 && od < 5 && R() < 0.65) return clearBall(p);
       const press = od < 3.2, [q, qs] = pickPass(p), room = !press && od > 6 && axOf(p.side, p.x) < L - 18;
       if (q && (press || qs > (room ? 22 : 13) || R() < (room ? 0.1 : 0.3))) return passTo(p, q, q.x + d * 1.2 + q.vx * 0.6, q.y + q.vy * 0.6);
       carry(p, o, od); }
+    // 解围：本方禁区附近被逼抢，大脚往前场开
+    function clearBall(p) { if (axOf(p.side, p.x) < 14 && R() < 0.12) { const gx0 = goalX(opp(p.side)) ; ball.last = p; ball.lastSide = p.side; return restart('corner', opp(p.side), gx0 > L / 2 ? L - 0.4 : 0.4, p.y > W / 2 ? W - 0.4 : 0.4); } /* 被逼急了只能踢出底线 */
+      const X = L * (0.5 + R() * 0.2), Y = W / 2 + (R() - 0.5) * W * 0.8; kick(p, fromAx(p.side, X), Y, 19 + R() * 5, 8 + R() * 4, 'clear'); }
     // 带球推进：前方有空间就往前带，被逼近就往侧面拉开
     function carry(p, o, od) { const d = dirOf(p.side); if (o == null) [o, od] = nearestOpp(p, opp(p.side)); const len = od > 10 ? 12 + R() * 8 : 7 + R() * 5;
       p.drib = { tx: clamp(p.x + d * len, 2, L - 2), ty: clamp(p.y + (o && od < 7 ? (p.y > o.y ? 5 : -5) : (W / 2 - p.y) * 0.22 + (R() - 0.5) * 9), 3, W - 3) }; }
     function restart(type, side, x, y) { st.restart = { type, side, x, y }; st.dead = type === 'corner' ? 2.6 : type === 'goalkick' ? 2.2 : type === 'fk' ? 2.8 : 1.6; ball.owner = null; ball.vx = ball.vy = ball.vz = ball.z = 0; ball.x = x; ball.y = y; ball.shot = ball.pass = null;
-      const tk = type === 'goalkick' ? keeper(side) : team(side).filter(p => !p.gk).sort((a, b) => hyp(a.x - x, a.y - y) - hyp(b.x - x, b.y - y))[0]; if (tk) { tk.x = x - dirOf(side) * 0.6; tk.y = y; ball.owner = tk; ball.last = tk; ball.lastSide = side; } }
+      const tk = type === 'goalkick' ? keeper(side) : team(side).filter(p => !p.gk).sort((a, b) => hyp(a.x - x, a.y - y) - hyp(b.x - x, b.y - y))[0]; st.restart.tk = tk; ball.last = tk; ball.lastSide = side; /* 主罚球员跑到球的位置再开球（不再瞬移） */
+      if (type === 'corner') { st.dead = 5; const m = W / 2, sg = y > m ? 1 : -1, slots = new Map(), W2 = (sd, X, Y) => [fromAx(sd, X), Y];
+        /* 进攻方：前锋和中场冲进禁区抢点，留两名后卫在中线附近防反击 */
+        const atk = team(side).filter(q => !q.gk && q !== tk).sort((a, b) => b.fx - a.fx), aS = [[L - 6, m - 2.5 * sg], [L - 7, m + 3 * sg], [L - 11, m], [L - 10, m - 6 * sg], [L - 9, m + 7 * sg], [L - 17, m - 5], [L - 18, m + 6]];
+        atk.slice(0, Math.min(aS.length, atk.length - 2)).forEach((q, i) => slots.set(q, W2(side, aS[i][0] + (R() - 0.5) * 1.5, aS[i][1] + (R() - 0.5) * 1.5)));
+        atk.slice(Math.min(aS.length, atk.length - 2)).forEach((q, i) => slots.set(q, W2(side, L * 0.52 + i * 3, m + (i ? 8 : -8))));
+        /* 防守方：门将守门线，后卫和中场全部回禁区（盯人 + 区域），留一名前锋在前场 */
+        const df = opp(side), dk = keeper(df); if (dk) slots.set(dk, W2(side, L - 0.8, m + sg * 0.6));
+        const def = team(df).filter(q => !q.gk).sort((a, b) => a.fx - b.fx), dS = [[L - 1.2, m + 3.4 * sg], [L - 5, m + 4 * sg], [L - 5.5, m], [L - 5, m - 4 * sg], [L - 8, m - 7 * sg], [L - 9, m + 7 * sg], [L - 11, m + 1], [L - 12, m - 3], [L - 17, m]];
+        def.forEach((q, i) => slots.set(q, i < dS.length ? W2(side, dS[i][0], dS[i][1]) : W2(side, L * 0.42, m)));
+        st.restart.slots = slots; } }
     function goalScored(side) { st.score[side]++; st.msgs.push({ t: st.t, type: 'goal', side, who: ball.shot && ball.shot.by }); ball.shot = null; kickoff(opp(side)); }
     // 每 0.1 秒：导演事件 → 死球 → 球员移动 → 球的运动 → 控球 / 抢断 / 拦截 / 出界 / 进球
     function step() {
@@ -2225,11 +2241,13 @@ const PHYS = (() => {
       P.forEach(p => { if (p.leaveAt != null && t >= p.leaveAt && p.on) { p.on = false; if (ball.owner === p) ball.owner = null; } });
       // 点球：安排好的点球进球 / 罚丢，到时间就判点球
       const pg = goals.find(g => !g.done && g.pen && t >= g.s - 6 && g === nextGoal()) || pens.find(g => !g.done && t >= g.s - 6);
-      if (pg && !st.penalty) { const sd = pg.side, d = dirOf(sd), sx = d > 0 ? L - 11 : 11; st.penalty = { e: pg, t0: t }; ball.owner = null; ball.vx = ball.vy = ball.vz = ball.z = 0; ball.x = sx; ball.y = W / 2; ball.shot = null;
-        P.forEach(p => { if (!p.on) return; if (p.gk && p.side !== sd) { p.x = d > 0 ? L - 0.5 : 0.5; p.y = W / 2; } else if (p.name === pg.player && p.side === sd) { p.x = sx - d * 2.5; p.y = W / 2 - 1; } else { p.x = clamp(p.x, 0, L); p.x = d > 0 ? Math.min(p.x, L - 18) : Math.max(p.x, 18); } p.vx = p.vy = 0; }); }
-      if (st.penalty) { const { e, t0 } = st.penalty, tk = byName[e.side][e.player] || team(e.side)[0]; if (t - t0 > 2.5 && !ball.shot) { e.done = true; tk.x = ball.x - dirOf(e.side) * 0.7; tk.y = ball.y; shoot(tk, e.type === 'goal' ? 'goal' : (e.saved ? 'save' : 'wide')); if (e.type === 'pmiss') st.msgs.push({ t, type: 'pmiss', side: e.side, who: e.player }); st.penalty = null; } else if (!ball.shot) { st.t += DT; return; } }
-      if (st.dead > 0) { st.dead -= DT; if (st.dead <= 1e-9) { st.dead = 0; st.kick = null; const rs = st.restart; st.restart = null; const ow = ball.owner; st.noOff = rs && ow && ['throw', 'goalkick', 'corner'].includes(rs.type) ? { by: ow, t: st.t } : null;
-          if (rs && rs.type === 'corner' && ow) { const d = dirOf(ow.side), tgt = team(ow.side).filter(q => !q.gk && q !== ow).sort((a, b) => hyp(a.x - (d > 0 ? L - 8 : 8), a.y - W / 2) - hyp(b.x - (d > 0 ? L - 8 : 8), b.y - W / 2))[0]; if (tgt) passTo(ow, tgt, d > 0 ? L - 9 : 9, W / 2 + (R() - 0.5) * 10, true); } } }
+      if (pg && !st.penalty) { const sd = pg.side, d = dirOf(sd), sx = d > 0 ? L - 11 : 11; const tg = new Map(); st.penalty = { e: pg, t0: t, tg }; st.restart = null; st.dead = 0; ball.owner = null; ball.vx = ball.vy = ball.vz = ball.z = 0; ball.x = sx; ball.y = W / 2; ball.shot = ball.pass = null;
+        /* 罚点球：门将站门线，主罚者站点球后，其他人退到禁区和罚球弧外 —— 走过去，不瞬移 */
+        P.forEach(p => { if (!p.on) return; p.vx = p.vy = 0; if (p.gk && p.side !== sd) tg.set(p, [d > 0 ? L - 0.5 : 0.5, W / 2]); else if (p.name === pg.player && p.side === sd) tg.set(p, [sx - d * 2.5, W / 2 - 1]); else { let x = d > 0 ? Math.min(p.x, L - 18) : Math.max(p.x, 18), y = p.y; const dx = x - sx, dy = y - W / 2, dd = hyp(dx, dy) || 1; if (dd < 10) { x = sx + dx / dd * 10; y = W / 2 + dy / dd * 10; x = d > 0 ? Math.min(x, L - 18) : Math.max(x, 18); } tg.set(p, [x, clamp(y, 2, W - 2)]); } }); }
+      if (st.penalty) { const { e, t0 } = st.penalty, tk = byName[e.side][e.player] || team(e.side)[0]; let ready = true; st.penalty.tg.forEach(([x, y], p) => { if (!p.on) return; const dx = x - p.x, dy = y - p.y, dd = hyp(dx, dy), v = Math.min(dd, p.vmax * 0.75 * DT); if (dd > 0.05) { p.x += dx / dd * v; p.y += dy / dd * v; } if (dd > 0.6) ready = false; });
+        if (t - t0 > 2.5 && (ready || t - t0 > 9) && !ball.shot) { e.done = true; tk.x += (ball.x - dirOf(e.side) * 0.7 - tk.x) * 0.5; tk.y += (ball.y - tk.y) * 0.5; shoot(tk, e.type === 'goal' ? 'goal' : (e.saved ? 'save' : 'wide')); if (e.type === 'pmiss') st.msgs.push({ t, type: 'pmiss', side: e.side, who: e.player }); st.penalty = null; } else if (!ball.shot) { st.t += DT; return; } }
+      if (st.dead > 0) { const rk = st.restart && st.restart.tk; if (!rk || !rk.on || hyp(rk.x - st.restart.x, rk.y - st.restart.y) < 1.4 || (st.restart.wait = (st.restart.wait || 0) + DT) > 9) st.dead -= DT; if (st.dead <= 1e-9) { st.dead = 0; st.kick = null; const rs = st.restart; st.restart = null; if (rs && rs.tk && rs.tk.on) { ball.owner = rs.tk; ball.last = rs.tk; ball.lastSide = rs.side; rs.tk.dt = 0.3; } const ow = ball.owner; st.noOff = rs && ow && ['throw', 'goalkick', 'corner'].includes(rs.type) ? { by: ow, t: st.t } : null;
+          if (rs && rs.type === 'corner' && ow) { const d = dirOf(ow.side), tgt = team(ow.side).filter(q => !q.gk && q !== ow).sort((a, b) => hyp(a.x - (d > 0 ? L - 8 : 8), a.y - W / 2) - hyp(b.x - (d > 0 ? L - 8 : 8), b.y - W / 2))[0]; if (tgt) { passTo(ow, tgt, tgt.x, tgt.y, true, true); ball.pass.cross = true; } } } }
       else st.kick = null;
       // 球员移动
       const possSide = ball.owner ? ball.owner.side : ball.pass ? ball.pass.side : ball.lastSide;
@@ -2242,7 +2260,9 @@ const PHYS = (() => {
       const pressers = {}; if (ball.owner && !st.dead) { const sd = opp(ball.owner.side); team(sd).filter(p => !p.gk).sort((a, b) => hyp(a.x - ball.x, a.y - ball.y) - hyp(b.x - ball.x, b.y - ball.y)).slice(0, 2).forEach((p, k) => pressers[p.name + p.side] = k); }
       const G = nextGoal(), OLc = { h: offLine('h'), a: offLine('a') }, RS = st.dead > 0 && st.restart && (st.restart.type === 'fk' || st.restart.type === 'corner') ? st.restart : null;
       P.forEach(p => { if (!p.on) return; let tx, ty, sp = p.vmax * 0.55;
-        if (st.dead > 0 && ball.owner === p) { tx = p.x; ty = p.y; }
+        if (st.dead > 0 && st.restart && st.restart.tk === p) { const d0 = dirOf(st.restart.side); tx = st.restart.x - (st.restart.type === 'corner' ? 0 : d0 * 0.6); ty = st.restart.y + (st.restart.type === 'corner' ? (st.restart.y > W / 2 ? 0.6 : -0.6) : 0); sp = p.vmax * 0.85; }
+        else if (st.dead > 0 && st.restart && st.restart.slots && st.restart.slots.has(p)) { [tx, ty] = st.restart.slots.get(p); p.stx = tx; p.sty = ty; const dd0 = hyp(tx - p.x, ty - p.y); sp = dd0 > 6 ? p.vmax * 0.85 : p.vmax * 0.4; }
+        else if (st.dead > 0 && ball.owner === p) { tx = p.x; ty = p.y; }
         else if (RS && p.side !== RS.side && hyp(p.x - RS.x, p.y - RS.y) < 9.6) { const dx = p.x - RS.x, dy = p.y - RS.y, dd0 = hyp(dx, dy) || 1; tx = RS.x + dx / dd0 * 10; ty = RS.y + dy / dd0 * 10; sp = p.vmax * 0.75; }
         else if (ball.owner === p) { if (p.drib && hyp(p.drib.tx - p.x, p.drib.ty - p.y) > 1) { tx = p.drib.tx; ty = p.drib.ty; sp = p.vmax * (0.62 + clamp(p.dri, 40, 99) / 99 * 0.16); } else { p.drib = null; tx = p.x + dirOf(p.side) * 3; ty = p.y + (W / 2 - p.y) * 0.05; sp = p.vmax * 0.3; } }
         else if (ball.pass && ball.pass.to === p && !ball.owner) { [tx, ty] = ballMeet(p); const dd0 = hyp(tx - p.x, ty - p.y); sp = dd0 > 4 ? p.vmax * 0.9 : dd0 > 1 ? p.vmax * 0.55 : p.vmax * 0.25; }
@@ -2261,7 +2281,7 @@ const PHYS = (() => {
       // 控球者
       if (ball.owner) { const p = ball.owner; if (!p.on) { ball.owner = null; } else {
           const v = hyp(p.vx, p.vy), ux = v > 0.3 ? p.vx / v : dirOf(p.side), uy = v > 0.3 ? p.vy / v : 0; ball.x = p.x + ux * 0.7; ball.y = p.y + uy * 0.7; ball.vx = p.vx; ball.vy = p.vy; ball.z = 0;
-          if (!st.dead) { p.dt = (p.dt || 0) - DT; if (p.dt <= 0) { p.dt = 1.1 + R() * 1.4; p.drib = null; decide(p); }
+          if (!st.dead) { p.dt = (p.dt || 0) - DT; if (p.dt <= 0) { p.dt = axOf(p.side, p.x) > L - 32 ? 0.45 + R() * 0.6 : 1.1 + R() * 1.4; p.drib = null; decide(p); }
             // 抢断
             if (ball.owner === p) P.forEach(q => { if (!q.on || q.side === p.side || ball.owner !== p) return; const d = hyp(q.x - p.x, q.y - p.y); if (d < 1.4) { let pr = 0.022 * (q.def / Math.max(40, p.dri)) * (q.gk ? 1.5 : 1) * (q.side === 'h' ? POSS / 0.5 : (1 - POSS) / 0.5); const G2 = nextGoal(); if (G2 && st.t >= G2.s - 45) pr *= G2.side === q.side ? 4 : 0.1; if (R() < pr) { ball.owner = null; ball.last = q; ball.lastSide = q.side; const a = R() * 6.28; ball.vx = Math.cos(a) * 4 + q.vx; ball.vy = Math.sin(a) * 4 + q.vy; ball.pass = null; } } }); } } }
       if (!ball.owner && !st.dead) {
@@ -2269,17 +2289,21 @@ const PHYS = (() => {
         if (!(ball.shot && ball.shot.out === 'goal')) { const s0 = hyp(ball.vx, ball.vy); if (s0 > 0) { const s1 = Math.max(0, s0 * (ball.z > 0.05 ? 0.996 : 0.986) - (ball.z > 0.05 ? 0 : 0.09)); ball.vx *= s1 / s0; ball.vy *= s1 / s0; } }
         const spd = hyp(ball.vx, ball.vy);
         // 门将处理射门
-        if (ball.shot) { const sd = ball.shot.side, gk = keeper(opp(sd)), gx = goalX(sd); if (gk && ball.shot.out === 'save' && Math.abs(ball.x - gx) < 3.2) { if (R() < 0.55) { ball.owner = gk; ball.last = gk; ball.lastSide = gk.side; st.dead = 1.2; } else { ball.vx = -ball.vx * 0.35; ball.vy = (R() - 0.5) * 14; ball.last = gk; ball.lastSide = gk.side; } st.msgs.push({ t: st.t, type: 'save', side: gk.side, who: gk.name }); ball.shot = null; } }
+        if (ball.shot) { const sd = ball.shot.side, gk = keeper(opp(sd)), gx = goalX(sd); if (gk && ball.shot.out === 'save' && Math.abs(ball.x - gx) < 3.2) { const r0 = R(); if (r0 < 0.45) { ball.owner = gk; ball.last = gk; ball.lastSide = gk.side; st.dead = 1.2; } else if (r0 < 0.75) { st.msgs.push({ t: st.t, type: 'save', side: gk.side, who: gk.name }); ball.shot = null; gk.flash = { k: '扑出', until: st.t + 2 }; const cs = sd, cR = gx > L / 2, cy = ball.y > W / 2 ? W - 0.4 : 0.4; restart('corner', cs, cR ? L - 0.4 : 0.4, cy); } /* 门将把球托出底线 → 角球 */ else { ball.vx = -ball.vx * 0.35; ball.vy = (R() - 0.5) * 14; ball.last = gk; ball.lastSide = gk.side; } st.msgs.push({ t: st.t, type: 'save', side: gk.side, who: gk.name }); ball.shot = null; } }
         // 拿球 / 拦截
-        if (!ball.owner && ball.z < 1.6 && !(ball.shot && ball.shot.out === 'goal')) { let best = null, bd = 1e9; P.forEach(p => { if (!p.on || (p.cool && ball.last === p)) return; const d = hyp(p.x - ball.x, p.y - ball.y), mine = ball.pass && ball.pass.to === p; if (d < (mine ? 1.6 : spd > 14 ? 0.9 : 1.25) && d < bd) { if (ball.pass && ball.pass.side !== p.side && R() > clamp(0.12 + 0.22 * p.def / 80 - (spd - 6) * 0.03, 0.06, 0.42)) return; if (ball.shot && ball.shot.side !== p.side && !p.gk) { if (R() > 0.15) return; } bd = d; best = p; } });
+        if (!ball.owner && !st.dead && (ball.z < 1.6 || (ball.pass && ball.pass.cross && ball.z < 2.8)) && !(ball.shot && ball.shot.out === 'goal')) { let best = null, bd = 1e9; P.forEach(p => { if (!p.on || (p.cool && ball.last === p)) return; const d = hyp(p.x - ball.x, p.y - ball.y), mine = ball.pass && ball.pass.to === p; if (d < (mine ? 1.6 : spd > 14 ? 0.9 : 1.25) && d < bd) { if (ball.pass && ball.pass.side !== p.side && R() > clamp(0.12 + 0.22 * p.def / 80 - (spd - 6) * 0.03, 0.06, 0.42)) return; if (ball.shot && ball.shot.side !== p.side && !p.gk) { if (R() > 0.15) return; } bd = d; best = p; } });
           if (best && ball.pass && ball.pass.side === best.side && ball.pass.off && ball.pass.off.includes(best)) { const sd = best.side; st.offs[sd]++; st.msgs.push({ t: st.t, type: 'offside', side: sd, who: best.name }); best.flash = { k: '🚩', until: st.t + 2.5 }; restart('fk', opp(sd), clamp(best.x, 1, L - 1), clamp(best.y, 1, W - 1)); best = null; }
           if (best && ball.pass && ball.pass.side === best.side && !best.gk) { const ctl = clamp(0.84 + (best.dri - 65) / 220 + (best.pas - 65) / 400 - Math.max(0, spd - 9) * 0.03 - (ball.z > 0.4 ? 0.07 : 0), 0.62, 0.97); if (R() > ctl) { const s0 = spd || 1, a = (R() - 0.5) * 2.2, c = Math.cos(a), sn = Math.sin(a), k = 0.4; const vx0 = ball.vx, vy0 = ball.vy; ball.vx = (vx0 * c - vy0 * sn) * k; ball.vy = (vx0 * sn + vy0 * c) * k; ball.vz = 0; ball.z = 0; ball.pass = null; ball.last = best; ball.lastSide = best.side; best.cool = 0.5; best = null; st.pst.heavy++; } }
           if (best && ball.pass) { if (ball.pass.side === best.side) st.pst.ok++; else st.pst.cut++; }
-          if (best) { ball.owner = best; ball.last = best; ball.lastSide = best.side; ball.pass = null; if (ball.shot && ball.shot.side !== best.side) ball.shot = null; best.dt = 1.0 + R() * 1.1; best.drib = null; if (!st.dead) carry(best); } }
+          if (best) { ball.owner = best; ball.last = best; ball.lastSide = best.side; ball.pass = null; if (ball.shot && ball.shot.side !== best.side) ball.shot = null; best.dt = 1.0 + R() * 1.1; best.drib = null; const wasCross = ball.z > 0.6;
+            if (wasCross && axOf(best.side, best.x) > L - 18 && quota[best.side] > 0 && (!nextGoal() || nextGoal().side !== best.side || st.t < nextGoal().s - 60)) { best.flash = { k: '头球', until: st.t + 1.5 }; st.hdr = (st.hdr || 0) + 1; shoot(best); } /* 禁区里接到高球：直接头球攻门 */
+            else if (wasCross && axOf(best.side, best.x) < 20) clearBall(best); /* 防守方顶出 */
+            else if (!st.dead) carry(best); } }
         // 出界 / 进球
-        if (!ball.owner) { const gxL = ball.x < 0, gxR = ball.x > L;
+        if (!ball.owner && !st.dead) { const gxL = ball.x < 0, gxR = ball.x > L;
           if (gxL || gxR) { const atkSide = (gxR ? 1 : -1) === dirOf('h') ? 'h' : 'a', inMouth = ball.y > GY0 && ball.y < GY1 && ball.z < 2.4;
             if (ball.shot && ball.shot.out === 'goal' && ball.shot.side === atkSide) { ball.y = clamp(ball.y, GY0 + 0.4, GY1 - 0.4); ball.x = gxR ? L + 0.8 : -0.8; goalScored(atkSide); } /* 安排好的进球：过了门线就算进（角度太偏时把落点收进球门） */
+            else if (ball.lastSide === atkSide && ball.shot && R() < 0.4) restart('corner', atkSide, gxR ? L - 0.4 : 0.4, ball.y > W / 2 ? W - 0.4 : 0.4); /* 射门被防守球员挡出底线 → 角球 */
             else if (ball.lastSide === atkSide) restart('goalkick', opp(atkSide), gxR ? L - 5.5 : 5.5, W / 2 + (ball.y > W / 2 ? 9 : -9));
             else restart('corner', atkSide, gxR ? L - 0.4 : 0.4, ball.y > W / 2 ? W - 0.4 : 0.4); ball.shot = null; }
           else if (ball.y < 0 || ball.y > W) restart('throw', opp(ball.lastSide || 'h'), clamp(ball.x, 1, L - 1), ball.y < 0 ? 0.3 : W - 0.3);
