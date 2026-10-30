@@ -84,6 +84,7 @@ button.chip.lnk:hover{background:var(--accent-dim)}
 .seg button{background:none;border:0;padding:6px 11px;font-size:12.5px;color:var(--fg-2)}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--accent-dim);color:var(--accent-2)}
+[data-act="rpSpeed"][aria-pressed="true"]{background:var(--accent-dim);color:var(--accent-2);border-color:var(--accent-2)}
 select,input[type=search]{background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:7px 10px;font-size:13px;max-width:100%}
 .crest{object-fit:contain;flex-shrink:0;display:block}
 .tname{display:flex;align-items:center;gap:9px;min-width:0}
@@ -2130,7 +2131,7 @@ const PHYS = (() => {
       byName[side][x.name] = p; return p; };
     ['h', 'a'].forEach(sd => spec.sides[sd].xi.forEach((x, i) => P.push(mk(sd, x, i))));
     const ball = { x: L / 2, y: W / 2, z: 0, vx: 0, vy: 0, vz: 0, owner: null, last: null, lastSide: null, shot: null, pass: null };
-    const st = { t: 0, half: 1, score: { h: 0, a: 0 }, dead: 0, restart: null, poss: { h: 0, a: 0 }, shots: { h: 0, a: 0 }, ontgt: { h: 0, a: 0 }, lastShot: { h: -99, a: -99 }, msgs: [], ended: false };
+    const st = { sbx: L / 2, sby: W / 2, af: { h: 0.5, a: 0.5 }, chase: { h: [], a: [] }, t: 0, half: 1, score: { h: 0, a: 0 }, dead: 0, restart: null, poss: { h: 0, a: 0 }, shots: { h: 0, a: 0 }, ontgt: { h: 0, a: 0 }, lastShot: { h: -99, a: -99 }, msgs: [], ended: false };
     // 导演：按引擎结果安排的进球 / 射门 / 红黄牌 / 换人
     const evs = spec.events.map(e => ({ ...e, s: TM.toS(e.m), done: false })).sort((x, y) => x.s - y.s);
     const goals = evs.filter(e => e.type === 'goal'), pens = evs.filter(e => e.type === 'pmiss');
@@ -2140,15 +2141,16 @@ const PHYS = (() => {
     const team = sd => P.filter(p => p.side === sd && p.on), keeper = sd => team(sd).find(p => p.gk) || team(sd)[0];
     const nextGoal = () => goals.find(g => !g.done), nextPen = () => pens.find(g => !g.done);
     // 阵型站位：按球在本方进攻方向上的位置，整条阵线前压 / 回收，横向往球那边靠
-    function anchor(p, mode) { const d = dirOf(p.side), bx = d > 0 ? ball.x : L - ball.x, by = d > 0 ? ball.y : W - ball.y, has = mode === 'att';
+    // 站位：按「平滑过的球位置」和「平滑过的进攻程度」（控球时慢慢升到 1，丢球后慢慢降到 0）在进攻站位和防守站位之间过渡，不会因为球权一换就整队抽动
+    function anchor(p, mode, raw) { const d = dirOf(p.side), sbx = raw ? ball.x : st.sbx, sby = raw ? ball.y : st.sby, bx = d > 0 ? sbx : L - sbx, by = d > 0 ? sby : W - sby, f = raw ? (mode === 'att' ? 1 : 0) : st.af[p.side];
       if (p.gk) { const gx = 2 + clamp((bx - 20) * 0.08, 0, 14); return toW(p.side, gx, clamp(W / 2 + (by - W / 2) * 0.18, GY0 + 1, GY1 - 1)); }
-      const dep = clamp((p.fx - 12) / 76, 0, 1), back = has ? clamp(bx - 34, 16, 50) : clamp(bx - 22, 10, 36), span = has ? 50 : 36;
-      let X = back + dep * span, Y = W / 2 + (p.fy / 100 - 0.5) * W * (has ? 0.92 : 0.7) + (by - W / 2) * (has ? 0.18 : 0.3);
+      const dep = clamp((p.fx - 12) / 76, 0, 1), lerp = (a, b) => a + (b - a) * f, back = lerp(clamp(bx - 22, 10, 36), clamp(bx - 34, 16, 50)), span = lerp(36, 50);
+      let X = back + dep * span, Y = W / 2 + (p.fy / 100 - 0.5) * W * lerp(0.7, 0.92) + (by - W / 2) * lerp(0.3, 0.18);
       if (st.kick) X = Math.min(X, L / 2 - 1.5 - (1 - dep) * 8);
       return toW(p.side, clamp(X, 3, L - 4), clamp(Y, 3, W - 3)); }
     const toW = (side, X, Y) => dirOf(side) > 0 ? [X, Y] : [L - X, W - Y];
     function kickoff(side) { st.kick = side; ball.x = L / 2; ball.y = W / 2; ball.z = ball.vx = ball.vy = ball.vz = 0; ball.shot = ball.pass = null;
-      P.forEach(p => { if (!p.on) return; const [x, y] = anchor(p, p.side === side ? 'att' : 'def'); p.x = x; p.y = y; p.vx = p.vy = 0; });
+      st.sbx = L / 2; st.sby = W / 2; st.af = { h: side === 'h' ? 1 : 0, a: side === 'a' ? 1 : 0 }; P.forEach(p => { if (!p.on) return; const [x, y] = anchor(p, p.side === side ? 'att' : 'def', 1); p.x = x; p.y = y; p.vx = p.vy = 0; p.stx = x; p.sty = y; });
       const c = team(side).filter(p => !p.gk).sort((a, b) => hyp(a.x - L / 2, a.y - W / 2) - hyp(b.x - L / 2, b.y - W / 2))[0]; if (c) { c.x = L / 2 - dirOf(side) * 0.7; c.y = W / 2; ball.owner = c; ball.last = c; ball.lastSide = side; }
       st.dead = 1.6; }
     kickoff('h');
@@ -2204,7 +2206,11 @@ const PHYS = (() => {
       // 球员移动
       const possSide = ball.owner ? ball.owner.side : ball.pass ? ball.pass.side : ball.lastSide;
       if (possSide) st.poss[possSide] += DT;
-      const chasers = { h: [], a: [] }; if (!ball.owner && !st.dead) ['h', 'a'].forEach(sd => { chasers[sd] = team(sd).filter(p => !p.gk || hyp(p.x - ball.x, p.y - ball.y) < 14).sort((a, b) => hyp(a.x - ball.x, a.y - ball.y) - hyp(b.x - ball.x, b.y - ball.y)).slice(0, ball.pass && ball.pass.side === sd ? 1 : 2); });
+      st.sbx += (ball.x - st.sbx) * Math.min(1, DT / 0.9); st.sby += (ball.y - st.sby) * Math.min(1, DT / 0.9);
+      ['h', 'a'].forEach(sd => { st.af[sd] += ((possSide === sd ? 1 : 0) - st.af[sd]) * Math.min(1, DT / 2.2); });
+      const chasers = { h: [], a: [] }; if (!ball.owner && !st.dead) ['h', 'a'].forEach(sd => { const dB = p => hyp(p.x - ball.x, p.y - ball.y), L0 = team(sd).filter(p => !p.gk || dB(p) < 14).sort((a, b) => dB(a) - dB(b)), n = ball.pass && ball.pass.side === sd ? 1 : 2;
+        let pick = L0.slice(0, n); const prev = st.chase[sd].map(nm => L0.find(p => p.name === nm)).filter(Boolean); prev.forEach(q => { if (!pick.includes(q) && pick.length && dB(q) < dB(pick[pick.length - 1]) + 2.5) pick[pick.length - 1] = q; }); chasers[sd] = pick; st.chase[sd] = pick.map(p => p.name); });
+      else st.chase = { h: [], a: [] };
       const pressers = {}; if (ball.owner && !st.dead) { const sd = opp(ball.owner.side); team(sd).filter(p => !p.gk).sort((a, b) => hyp(a.x - ball.x, a.y - ball.y) - hyp(b.x - ball.x, b.y - ball.y)).slice(0, 2).forEach((p, k) => pressers[p.name + p.side] = k); }
       const G = nextGoal();
       P.forEach(p => { if (!p.on) return; let tx, ty, sp = p.vmax * 0.55;
@@ -2212,12 +2218,12 @@ const PHYS = (() => {
         else if (ball.owner === p) { if (p.drib) { tx = p.drib.tx; ty = p.drib.ty; sp = p.vmax * 0.82; } else { tx = p.x; ty = p.y; } }
         else if (chasers[p.side].includes(p)) { const lead = 0.35; tx = ball.x + ball.vx * lead; ty = ball.y + ball.vy * lead; sp = p.vmax; }
         else if (pressers[p.name + p.side] != null && !p.gk) { const k = pressers[p.name + p.side], d = dirOf(p.side); tx = ball.x - d * (k ? 6 : 0.6); ty = ball.y + (k ? (p.y > ball.y ? 3 : -3) : 0); sp = p.vmax * (k ? 0.7 : 0.92); if (G && !G.pen && G.side !== p.side && st.t >= G.s - 45) sp *= 0.72; }
-        else { const mode = possSide === p.side ? 'att' : 'def'; [tx, ty] = anchor(p, mode); if (mode === 'att' && !p.gk && G && G.side === p.side && p.name === G.player && st.t >= G.s - 45) { const d = dirOf(p.side); tx = clamp(goalX(p.side) - d * 16, 3, L - 3); ty = W / 2 + (p.fy - 50) * 0.12; sp = p.vmax * 0.9; }
+        else { const mode = possSide === p.side ? 'att' : 'def'; [tx, ty] = anchor(p, mode); if (p.stx == null) { p.stx = tx; p.sty = ty; } p.stx += (tx - p.stx) * Math.min(1, DT * 1.6); p.sty += (ty - p.sty) * Math.min(1, DT * 1.6); tx = p.stx; ty = p.sty; if (mode === 'att' && !p.gk && G && G.side === p.side && p.name === G.player && st.t >= G.s - 45) { const d = dirOf(p.side); tx = clamp(goalX(p.side) - d * 16, 3, L - 3); ty = W / 2 + (p.fy - 50) * 0.12; sp = p.vmax * 0.9; }
           const dd = hyp(tx - p.x, ty - p.y); sp = dd > 8 ? p.vmax * 0.8 : dd > 3 ? p.vmax * 0.5 : p.vmax * 0.3;
           if (G && G.side !== p.side && st.t >= G.s - 45 && !p.gk) sp *= 0.75; }
         if (p.gk && !ball.owner && ball.shot && ball.shot.side !== p.side) { const d = dirOf(ball.shot.side); const tt = Math.abs(((d > 0 ? L : 0) - ball.x) / (ball.vx || 1e-6)); ty = clamp(ball.y + ball.vy * tt, GY0 - 1, GY1 + 1); tx = d > 0 ? L - 0.6 : 0.6; sp = ball.shot.out === 'goal' ? p.vmax * 0.35 : p.vmax * 1.2; }
-        const dx = tx - p.x, dy = ty - p.y, dd = hyp(dx, dy); let ax = 0, ay = 0; if (dd > 0.05) { const want = Math.min(sp, dd / 0.35); ax = (dx / dd * want - p.vx) * 3.2; ay = (dy / dd * want - p.vy) * 3.2; }
-        const am = hyp(ax, ay), amax = 5.5; if (am > amax) { ax *= amax / am; ay *= amax / am; }
+        const dx = tx - p.x, dy = ty - p.y, dd = hyp(dx, dy); let ax = 0, ay = 0; if (dd > 0.15) { const want = Math.min(sp, dd / 0.6); ax = (dx / dd * want - p.vx) * 2.2; ay = (dy / dd * want - p.vy) * 2.2; } else { ax = -p.vx * 2.5; ay = -p.vy * 2.5; }
+        const am = hyp(ax, ay), amax = 4.2; if (am > amax) { ax *= amax / am; ay *= amax / am; }
         p.vx += ax * DT; p.vy += ay * DT; const v = hyp(p.vx, p.vy); if (v > p.vmax) { p.vx *= p.vmax / v; p.vy *= p.vmax / v; }
         p.x = clamp(p.x + p.vx * DT, -1, L + 1); p.y = clamp(p.y + p.vy * DT, -1, W + 1); if (p.cool) p.cool = Math.max(0, p.cool - DT); });
       // 球员之间不重叠
@@ -2282,20 +2288,33 @@ function physView(el, spec, kits, opt) {
     ${pl}<ellipse id="pbS" rx=".55" ry=".35" fill="rgba(0,0,0,.35)"/><circle id="pb" r=".55" fill="#fff" stroke="#111" stroke-width=".15"/><text id="pbN" text-anchor="middle" style="font-size:1.7px;fill:#fff;paint-order:stroke;stroke:#000;stroke-width:.4px"></text>
     <g id="pfl" style="display:none"><rect x="${Lp / 2 - 26}" y="${Wp / 2 - 9}" width="52" height="16" rx="2" fill="rgba(0,0,0,.62)"/><text id="pflT" x="${Lp / 2}" y="${Wp / 2 - 1}" text-anchor="middle" style="font-size:5.5px;font-weight:900;fill:#ffd65a">GOAL!</text><text id="pflS" x="${Lp / 2}" y="${Wp / 2 + 4.5}" text-anchor="middle" style="font-size:2.5px;fill:#fff"></text></g></svg>
     <div class="gvleg"><span>${shirtSVG(k.h, 18)} ${esc(spec.h)}</span><span class="dim" style="font-size:11px" id="pInfo">逐秒物理模拟</span><span>${esc(spec.a)} ${shirtSVG(k.a, 18)}${k.aLab && k.aLab !== '主场' ? ` <span class="dim" style="font-size:10px">${k.aLab}球衣</span>` : ''}</span></div></div>`;
-  const G = sim.P.map((p, i) => el.querySelector('#pp' + i)), ball = el.querySelector('#pb'), sh = el.querySelector('#pbS'), bn = el.querySelector('#pbN'), fl = el.querySelector('#pfl');
-  let seen = 0, flashUntil = 0, lastNo = [];
-  function render() { const S0 = sim.snapshot(), now = performance.now();
-    S0.P.forEach((p, i) => { const g = G[i]; if (!p.on) { g.style.display = 'none'; return; } g.style.display = ''; g.setAttribute('transform', `translate(${p.x.toFixed(2)},${p.y.toFixed(2)})`); if (lastNo[i] !== p.no) { g.children[1].textContent = p.no; lastNo[i] = p.no; } g.children[2].textContent = p.flash === 'Y' ? '🟨' : p.flash === 'R' ? '🟥' : p.flash || ''; });
-    const b = S0.ball; ball.setAttribute('cx', b.x.toFixed(2)); ball.setAttribute('cy', (b.y - b.z * 0.35).toFixed(2)); ball.setAttribute('r', (0.55 + Math.min(0.5, b.z * 0.05)).toFixed(2)); sh.setAttribute('cx', b.x.toFixed(2)); sh.setAttribute('cy', (b.y + 0.2).toFixed(2));
-    if (b.own) { const o = S0.P.find(p => p.name === b.own && p.on); if (o) { bn.setAttribute('x', o.x.toFixed(2)); bn.setAttribute('y', (o.y - 2.1).toFixed(2)); bn.textContent = o.name; } } else bn.textContent = '';
-    const M2 = sim.msgs(); for (; seen < M2.length; seen++) { const m = M2[seen]; if (m.type === 'goal') { flashUntil = now + 1800; el.querySelector('#pflT').textContent = 'GOAL!'; el.querySelector('#pflT').style.fill = m.side === 'h' ? k.h.body : k.a.body; el.querySelector('#pflS').textContent = `${m.who || ''} · ${m.side === 'h' ? spec.h : spec.a}  ${S0.score.h}:${S0.score.a}`; } if (opt.onMsg) opt.onMsg(m); }
-    fl.style.display = now < flashUntil ? '' : 'none';
+  const G = sim.P.map((p, i) => el.querySelector('#pp' + i)), ball = el.querySelector('#pb'), sh = el.querySelector('#pbS'), bn = el.querySelector('#pbN'), fl = el.querySelector('#pfl'), N = sim.P.length;
+  // 播放：模拟跑在前面（领先 35 秒），每一步的画面存进缓冲区；显示时间在两步之间插值，所以动作是连续的
+  const LOOK = 35, buf = [], wins = [], END = sim.TM.END; let lastShot = -1, msgSeen = 0, dispT = 0, flashUntil = 0, jumpUntil = 0, jumpTxt = '', shown = 0, lastNo = [];
+  spec.events.forEach(e => { if (e.type === 'red') { const t0 = sim.TM.toS(e.m); wins.push([t0 - 10, t0 + 6]); } });
+  const rec = () => { const st = sim.st, d = new Float32Array(N * 2 + 3); sim.P.forEach((p, i) => { d[i * 2] = p.x; d[i * 2 + 1] = p.y; }); d[N * 2] = sim.ball.x; d[N * 2 + 1] = sim.ball.y; d[N * 2 + 2] = sim.ball.z;
+    buf.push({ t: st.t, d, on: sim.P.map(p => p.on), no: sim.P.map(p => p.no), nm: sim.P.map(p => p.name), fl: sim.P.map(p => p.flash && p.flash.until > st.t ? p.flash.k : ''), own: sim.ball.owner ? sim.P.indexOf(sim.ball.owner) : -1, sc: [st.score.h, st.score.a], half: st.half });
+    if (sim.ball.shot && sim.ball.shot.t !== lastShot) { lastShot = sim.ball.shot.t; wins.push([lastShot - 20, lastShot + 6]); } };
+  const headTo = t => { let n = 0; while (sim.st.t < t && !sim.st.ended && n < 9000) { sim.step(); rec(); n++; } };
+  const inWin = t => wins.some(([a, b]) => t >= a && t <= b), nextWin = t => { let best = null; wins.forEach(([a]) => { if (a > t && (best == null || a < best)) best = a; }); return best; };
+  rec(); headTo(LOOK);
+  function frameAt(t) { while (buf.length > 2 && buf[1].t <= t - 3) buf.shift(); let i = 0; while (i < buf.length - 1 && buf[i + 1].t <= t) i++; const A = buf[i], B = buf[Math.min(i + 1, buf.length - 1)]; const f = B.t > A.t ? clamp01((t - A.t) / (B.t - A.t)) : 0; return [A, B, f]; }
+  function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function render() { const now = performance.now(), [A, B, f] = frameAt(dispT), lp = (k) => A.d[k] + (B.d[k] - A.d[k]) * f;
+    for (let i = 0; i < N; i++) { const g = G[i], on = f < 0.5 ? A.on[i] : B.on[i]; if (!on) { g.style.display = 'none'; continue; } g.style.display = ''; g.setAttribute('transform', `translate(${lp(i * 2).toFixed(2)},${lp(i * 2 + 1).toFixed(2)})`); const no = B.no[i]; if (lastNo[i] !== no) { g.children[1].textContent = no; lastNo[i] = no; } const fk = A.fl[i]; g.children[2].textContent = fk === 'Y' ? '🟨' : fk === 'R' ? '🟥' : fk || ''; }
+    const bx = lp(N * 2), by = lp(N * 2 + 1), bz = lp(N * 2 + 2); ball.setAttribute('cx', bx.toFixed(2)); ball.setAttribute('cy', (by - bz * 0.35).toFixed(2)); ball.setAttribute('r', (0.55 + Math.min(0.5, bz * 0.05)).toFixed(2)); sh.setAttribute('cx', bx.toFixed(2)); sh.setAttribute('cy', (by + 0.2).toFixed(2));
+    const ow = A.own >= 0 ? A.own : -1; if (ow >= 0 && A.on[ow]) { bn.setAttribute('x', lp(ow * 2).toFixed(2)); bn.setAttribute('y', (lp(ow * 2 + 1) - 2.1).toFixed(2)); bn.textContent = A.nm[ow]; } else bn.textContent = '';
+    const M2 = sim.msgs(); while (shown < M2.length && M2[shown].t <= dispT) { const m = M2[shown++]; if (m.type === 'goal') { flashUntil = now + 2200; el.querySelector('#pflT').textContent = 'GOAL!'; el.querySelector('#pflT').style.fill = m.side === 'h' ? k.h.body : k.a.body; el.querySelector('#pflS').textContent = `${m.who || ''} · ${m.side === 'h' ? spec.h : spec.a}`; } if (opt.onMsg) opt.onMsg(m); }
+    if (now < jumpUntil && now >= flashUntil) { fl.style.display = ''; el.querySelector('#pflT').textContent = '⏩'; el.querySelector('#pflT').style.fill = '#fff'; el.querySelector('#pflS').textContent = jumpTxt; } else fl.style.display = now < flashUntil ? '' : 'none';
     const pi = el.querySelector('#pInfo'); if (pi && !pi.dataset.set) { pi.dataset.set = 1; pi.textContent = `逐秒物理模拟 · 全场控球 ${spec.stats.poss}% : ${100 - spec.stats.poss}% · 射门 ${spec.stats.shots[0]} : ${spec.stats.shots[1]}`; }
-    return S0; }
-  const hot = () => { const st = sim.st, Gn = spec.events.find(e => (e.type === 'goal' || e.type === 'pmiss') && sim.TM.toS(e.m) > st.t - 4); return !!sim.ball.shot || !!st.penalty || (Gn && sim.TM.toS(Gn.m) - st.t < 22); };
-  return { sim, render, hot, minute: () => sim.TM.toM(sim.st.t), ended: () => sim.st.ended,
-    advance(simSec) { const tgt = sim.st.t + simSec; let n = 0; while (sim.st.t < tgt && !sim.st.ended && n < 6000) { sim.step(); n++; } },
-    seek(s) { if (s < sim.st.t) return null; sim.runTo(s); } };
+    return { score: { h: A.sc[0], a: A.sc[1] }, half: A.half }; }
+  return { sim, render, minute: () => sim.TM.toM(dispT), ended: () => dispT >= END - 0.05, time: () => dispT, END,
+    // realDt 秒的真实时间；rate = 倍速；hi = 精华模式（没有看点的时段直接跳过，有看点时按 rate 正常播放）
+    play(realDt, rate, hi) { if (dispT >= END) return; if (hi && !inWin(dispT)) { const nx = nextWin(dispT); headTo(Math.min(END, (nx == null ? sim.st.t + 600 : nx) + LOOK)); const nx2 = nextWin(dispT);
+        if (nx2 == null && sim.st.ended) { dispT = END; } else if (nx2 != null && nx2 - dispT > 4) { dispT = nx2; jumpUntil = performance.now() + 700; jumpTxt = `跳到 ${Math.floor(sim.TM.toM(dispT)) + 1}'`; } else dispT += realDt * rate; }
+      else dispT += realDt * rate;
+      dispT = Math.min(END, dispT); headTo(Math.min(END, dispT + LOOK)); },
+    seek(s) { if (s < dispT - 2) return false; headTo(Math.min(END, s + LOOK)); dispT = Math.min(END, s); return true; } };
 }
 // 回放：已经踢完的比赛，按赛果重新演一遍（可以暂停、调速、拖动进度、只看精华）
 var RP = null;
@@ -2306,22 +2325,22 @@ function replayOpen(ri, mi) {
     <div class="btns" style="justify-content:space-between;align-items:center"><span><span class="eyebrow">${SN(SEASON)} · 第 ${ri + 1} 轮 · 比赛回放</span></span><span class="mono" style="font-size:22px;font-weight:800;display:inline-flex;align-items:center;gap:8px">${crest(h, 26)}<span style="font-size:14px">${esc(h)}</span> <span id="rpS">0 : 0</span> <span style="font-size:14px">${esc(a)}</span>${crest(a, 26)}</span><span class="mono" id="rpC" style="font-size:16px;margin-right:34px">0'</span></div>
     <div id="rpV"></div>
     <div style="position:relative;height:18px;margin:4px 0"><input type="range" id="rpSeek" min="0" max="${Math.round(TM.END)}" value="0" style="width:100%"><div style="position:absolute;left:0;right:0;top:0;pointer-events:none" class="rpmk">${mk}</div></div>
-    <div class="btns" style="justify-content:center;gap:6px"><button class="btn primary" data-act="rpPlay" id="rpPlay">❚❚ 暂停</button>${[[1, '实时'], [10, '×10'], [30, '×30'], [90, '×90']].map(([v, l]) => `<button class="btn" data-act="rpSpeed" data-v="${v}" aria-pressed="${v === 30}">${l}</button>`).join('')}<label class="note" style="display:inline-flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="rpHi" checked> 精华模式（进攻和射门放慢）</label></div>
+    <div class="btns" style="justify-content:center;gap:6px"><button class="btn primary" data-act="rpPlay" id="rpPlay">❚❚ 暂停</button>${[[1, '×1 实时'], [2, '×2'], [4, '×4'], [8, '×8']].map(([v, l]) => `<button class="btn" data-act="rpSpeed" data-v="${v}" aria-pressed="${v === 2}">${l}</button>`).join('')}<label class="note" style="display:inline-flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="rpHi" checked> 只看精华（没看点的时段直接跳过）</label></div>
     <div class="feed" id="rpF" style="max-height:160px"></div></div>`;
   if (!d.open) d.showModal();
-  RP = { ri, mi, spec, K, rate: 30, play: true, last: performance.now(), raf: null, view: null };
+  RP = { ri, mi, spec, K, rate: 2, play: true, last: performance.now(), raf: null, view: null };
   d.addEventListener('close', () => { if (RP && RP.raf) cancelAnimationFrame(RP.raf); RP = null; }, { once: true });
   const lab = { goal: ['⚽', '进球'], yellow: ['🟨', '黄牌'], red: ['🟥', '红牌'], sub: ['⇄', '换上'], inj: ['✚', '受伤'], pmiss: ['✕', '罚丢点球'], ht: ['', '— 半场 —'] };
   const onMsg = msg => { if (msg.type === 'save') return; const f = $('#rpF'); if (!f) return; const L0 = lab[msg.type] || ['', msg.type]; f.insertAdjacentHTML('afterbegin', `<div class="ev ${msg.type}"><span class="m">${RP.view ? Math.floor(RP.view.minute()) + 1 : ''}'</span><span class="ic">${L0[0]}</span><span class="t">${msg.side ? crest(msg.side === 'h' ? h : a, 14) + ' ' : ''}<b>${esc(msg.who || '')}</b> ${L0[1]}</span></div>`); };
   const build = () => { RP.view = physView($('#rpV'), spec, K, { onMsg }); $('#rpF').innerHTML = ''; };
   build();
   const frame = now => { if (!RP || !$('#rpV')) { RP = null; return; } const dt = Math.min(0.1, (now - RP.last) / 1000); RP.last = now;
-    if (RP.play && !RP.view.ended()) { const hi = $('#rpHi') && $('#rpHi').checked && RP.view.hot(); RP.view.advance(dt * (hi ? Math.min(RP.rate, 3) : RP.rate)); }
+    if (RP.play && !RP.view.ended()) RP.view.play(dt, RP.rate, !!($('#rpHi') && $('#rpHi').checked));
     const S0 = RP.view.render(); $('#rpS').textContent = `${S0.score.h} : ${S0.score.a}`; const mm = RP.view.minute(); $('#rpC').textContent = RP.view.ended() ? '全场结束' : mm > 45 && S0.half === 1 ? `45+${Math.ceil(mm - 45)}'` : mm > 90 ? `90+${Math.ceil(mm - 90)}'` : `${Math.floor(mm) + 1}'`;
-    const sk = $('#rpSeek'); if (sk && !RP.drag) sk.value = Math.round(RP.view.sim.st.t);
+    const sk = $('#rpSeek'); if (sk && !RP.drag) sk.value = Math.round(RP.view.time());
     RP.raf = requestAnimationFrame(frame); };
   RP.raf = requestAnimationFrame(frame);
-  const sk = $('#rpSeek'); sk.addEventListener('input', () => { RP.drag = 1; }); sk.addEventListener('change', () => { const s = +sk.value; if (s < RP.view.sim.st.t) build(); RP.view.seek(s); RP.drag = 0; });
+  const sk = $('#rpSeek'); sk.addEventListener('input', () => { RP.drag = 1; }); sk.addEventListener('change', () => { const s = +sk.value; if (!RP.view.seek(s)) { build(); RP.view.seek(s); } RP.drag = 0; });
 }
 
 // ── 上帝视角（旧版，按事件生成的示意动画，保留作后备）：按比赛事件生成的俯视动画。球员按阵型站位、随球整体推进 / 回收；进攻、射门、进球都对上真实的比赛事件 ──
@@ -2393,7 +2412,7 @@ function startLive(instant) {
   const tick = now => {
     if (!live) return;
     const dt = (now - live.last) / 1000; live.last = now;
-    if (GV_ON && PV) { const hi = PV.hot(); PV.advance(Math.min(0.25, dt) * (hi ? 3 : 30) * live.speed); live.t = PV.ended() ? live.endM : Math.min(live.endM, PV.minute()); } else live.t = Math.min(live.endM, live.t + dt * 7.5 * live.speed); // 物理模拟开着：平时 30 倍速，进攻和射门时放慢到 3 倍速
+    if (GV_ON && PV) { PV.play(Math.min(0.25, dt), 2 * live.speed, true); live.t = PV.ended() ? live.endM : Math.min(live.endM, PV.minute()); } else live.t = Math.min(live.endM, live.t + dt * 7.5 * live.speed); /* 物理模拟开着：按 2 倍速播放精华片段，没看点的时段直接跳过 */
     paint();
     if (live.t >= live.endM) return finish();
     live.raf = requestAnimationFrame(tick);
@@ -6108,7 +6127,7 @@ document.addEventListener('click', e => {
   if (act === 'rpClose') { if (RP && RP.raf) cancelAnimationFrame(RP.raf); RP = null; $('#dlg').close(); return; }
   if (act === 'rpPlay') { if (RP) { RP.play = !RP.play; el.textContent = RP.play ? '❚❚ 暂停' : '▶ 播放'; } return; }
   if (act === 'rpSpeed') { if (RP) { RP.rate = +el.dataset.v; document.querySelectorAll('[data-act="rpSpeed"]').forEach(b => b.setAttribute('aria-pressed', b === el)); } return; }
-  if (act === 'gvToggle') { GV_ON = !GV_ON; const g = $('#gv'); if (g) g.style.display = GV_ON ? '' : 'none'; el.textContent = `🔭 物理模拟：${GV_ON ? '开' : '关'}`; if (live && GV_ON && PV) { PV.advance(Math.max(0, live.res && PHYS.timeMap(LV_SPEC.events).toS(live.t) - PV.sim.st.t)); PV.render(); } return; }
+  if (act === 'gvToggle') { GV_ON = !GV_ON; const g = $('#gv'); if (g) g.style.display = GV_ON ? '' : 'none'; el.textContent = `🔭 物理模拟：${GV_ON ? '开' : '关'}`; if (live && GV_ON && PV) { PV.seek(PHYS.timeMap(LV_SPEC.events).toS(live.t)); PV.render(); } return; }
   if (act === 'kitEdit') return kitDlg(el.dataset.t);
   if (act === 'kitSave') { const t = el.dataset.t; S.kits = S.kits || {}; S.kits[t] = { home: $('#kc_home').value, homeTrim: $('#kt_home').value, away: $('#kc_away').value, awayTrim: $('#kt_away').value, third: $('#kc_third').value, thirdTrim: $('#kt_third').value }; save(); $('#dlg').close(); toast(`${t} 的球衣颜色已保存`); return render(); }
   if (act === 'kitReset') { const t = el.dataset.t; if (S.kits) delete S.kits[t]; save(); $('#dlg').close(); toast(`${t} 的球衣恢复默认颜色`); return render(); }
