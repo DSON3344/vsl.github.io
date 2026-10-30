@@ -226,6 +226,7 @@ td.pts{color:var(--accent-2);font-weight:500}
 .pitch .rt{font-size:1.75px;font-weight:700;fill:#05080c}
 .pitch .nm{font-family:var(--sans);font-size:1.7px;fill:var(--fg);paint-order:stroke;stroke:var(--pitch);stroke-width:.5px}
 .pitch g.pl{cursor:pointer}
+.gvwrap{border-radius:10px;overflow:hidden;border:1px solid var(--line-2,#333);background:#123d22}.gvsvg{display:block;width:100%;height:auto;max-height:62vh}.gvsvg g[id^=gv]{transition:transform .12s linear}.gvleg{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;font-size:12px;background:var(--bg-2,#11151c)}.gvleg span{display:inline-flex;align-items:center;gap:4px}
 .xied .pitch g.pl.ed{cursor:grab}.xied .pitch g.pl.drag{opacity:.35}.xied .pitch g.pl.hot circle,.xied .pitch g.pl.sel circle{stroke:var(--gold,#d8b45f);stroke-width:.7}
 .xib-row{display:flex;flex-wrap:wrap;gap:6px}.xbn{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:84px;padding:5px 7px;border:1px solid var(--line-2,#333);border-radius:8px;background:var(--bg-2,#11151c);color:var(--fg);cursor:grab;text-align:left;font:inherit;user-select:none}
 .xbn .rt-pill{font-size:11px}.xbn-n{font-size:12px;font-weight:700;white-space:nowrap}.xbn.off{opacity:.5}.xbn.hot,.xbn.sel{border-color:var(--gold,#d8b45f);box-shadow:0 0 0 1px var(--gold,#d8b45f)}.xbn.drag{opacity:.35}
@@ -381,6 +382,35 @@ function vis(c) { // 让过暗/过亮的队色在深色底上可见
   return c;
 }
 const tcol = t => vis((TD[t] && TD[t].color) || '#9cc2ff');
+// ── 球衣：主场 = 队徽主色（配队徽第二色），客场 = 浅色 / 深色反差，第三球衣 = 和前两套都不撞色的颜色；可以在球队页改 ──
+const CREST_COL = {"切狐":["#213878","#b08957"],"华尔兹":["#775522","#f4f2ec"],"威尔福特":["#7a1f35","#a3794d"],"威尔顿联":["#2f92a2","#f4f2ec"],"威廉斯":["#7d241c","#f4f2ec"],"威龙":["#b5242b","#e3c46a"],"岚":["#cb4d5d","#f4f2ec"],"拉普兰德":["#995f2c","#f4f2ec"],"普雷斯顿":["#d9dcdf","#1c1f24"],"森利西亚虎":["#8a5228","#dbc797"],"沃特梅兹":["#d9dcdf","#1c1f24"],"泽尼联":["#5a6b33","#e9e4c6"],"炎狼":["#b24124","#f4f2ec"],"狂蜂":["#e0b51e","#15171c"],"猎豹":["#cea94b","#15171c"],"猛虎":["#b97c36","#15171c"],"猛龙":["#512277","#aa8454"],"科摩多尊龙":["#1f5a2c","#d9dcdf"],"罗杰剧院":["#542277","#f4f2ec"],"罗联":["#2d679b","#a2cee0"],"花豹":["#976c2c","#f4f2ec"],"蜜蜂":["#c7a23d","#f4f2ec"],"金狮":["#8f6229","#dfc986"],"阿尔法骑士":["#d9dcdf","#1c1f24"],"雷克夏":["#c2a520","#f4f2ec"],"飞鹰":["#1b4d8a","#f4f2ec"],"龙王宫殿":["#1f2f4a","#c7ccd1"]};
+const KIT_PAL = ['#f4f2ec', '#15171c', '#1e3a8a', '#c0392b', '#16a085', '#e67e22', '#7a3db8', '#f1c40f', '#2c3e50', '#d6336c', '#8a939d', '#27ae60', '#0ea5e9'];
+const hexRgb = c => { c = String(c || '#888888').replace('#', ''); if (c.length === 3) c = c.split('').map(x => x + x).join(''); return [0, 2, 4].map(i => parseInt(c.substr(i, 2), 16) || 0); };
+const colDist = (a, b) => { const x = hexRgb(a), y = hexRgb(b); return Math.sqrt((x[0] - y[0]) ** 2 * 0.3 + (x[1] - y[1]) ** 2 * 0.59 + (x[2] - y[2]) ** 2 * 0.11); };
+const colHS = c => { const [r, g, b] = hexRgb(c).map(x => x / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; if (!d) return [0, 0, l]; const s = d / (1 - Math.abs(2 * l - 1)); let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [(h * 60 + 360) % 360, s, l]; };
+// 两件球衣会不会撞色：亮度差够大就不撞；都是鲜艳颜色时看色相差；有一边是黑白灰时只看亮度
+function kitClash(a, b) { const ld = Math.abs(colLum(a) - colLum(b)); if (ld >= 0.3) return false; const [h1, s1] = colHS(a), [h2, s2] = colHS(b); if (s1 > 0.25 && s2 > 0.25) { const dh = Math.min(Math.abs(h1 - h2), 360 - Math.abs(h1 - h2)); return dh < 45; } return ld < 0.2; }
+const colLum = c => { const [r, g, b] = hexRgb(c); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; };
+function kitsOf(t) {
+  const E = ((S && S.kits) || {})[t] || {}, [p, q] = CREST_COL[t] || [(TD[t] && TD[t].color) || '#8a939d', '#f4f2ec'];
+  const home = { body: E.home || p, trim: E.homeTrim || q };
+  const away = { body: E.away || (colLum(home.body) > 0.62 ? (colLum(q) < 0.35 ? q : '#15171c') : '#f4f2ec'), trim: E.awayTrim || home.body };
+  const L = KIT_PAL.map(c => [c, Math.min(colDist(c, home.body), colDist(c, away.body))]).sort((x, y) => y[1] - x[1]).slice(0, 3), pick = L[Math.floor(ghash('kit3|' + t) * L.length)][0];
+  const third = { body: E.third || pick, trim: E.thirdTrim || (colLum(E.third || pick) > 0.55 ? '#15171c' : '#f4f2ec') };
+  return { home, away, third };
+}
+// 一场比赛两队穿什么：主队穿主场球衣；客队先看主场球衣会不会撞色，撞了换客场，再撞换第三球衣
+function matchKits(h, a, neutral) { const H = kitsOf(h).home, K = kitsOf(a), tries = [['主场', K.home], ['客场', K.away], ['第三', K.third]], ok = tries.find(([, k]) => !kitClash(k.body, H.body)) || tries.slice().sort((x, y) => colDist(y[1].body, H.body) - colDist(x[1].body, H.body))[0];
+  return { h: H, a: ok[1], aLab: ok[0] }; }
+function shirtSVG(k, sz = 44, no) { const tx = colLum(k.body) > 0.55 ? '#15171c' : '#f4f2ec';
+  return `<svg viewBox="0 0 40 40" width="${sz}" height="${sz}" aria-hidden="true"><path d="M13 4 L7 7 L2 15 L8 18 L10 15 L10 36 L30 36 L30 15 L32 18 L38 15 L33 7 L27 4 Q20 9 13 4 Z" fill="${k.body}" stroke="rgba(0,0,0,.35)" stroke-width=".8"/><path d="M13 4 Q20 9 27 4" fill="none" stroke="${k.trim}" stroke-width="2.2"/><path d="M2 15 L8 18 M38 15 L32 18" stroke="${k.trim}" stroke-width="2.2"/>${no != null ? `<text x="20" y="27" text-anchor="middle" font-size="11" font-weight="800" fill="${tx}" font-family="var(--mono)">${no}</text>` : ''}</svg>`; }
+function kitRow(t, edit) { const K = kitsOf(t); return `<span class="btns" style="gap:10px;align-items:flex-end">${[['主场', K.home], ['客场', K.away], ['第三', K.third]].map(([l, k]) => `<span style="display:inline-grid;justify-items:center;gap:1px">${shirtSVG(k, 34)}<span class="dim" style="font-size:10px">${l}</span></span>`).join('')}${edit ? `<button class="lnk" data-act="kitEdit" data-t="${esc(t)}" style="font-size:11px">改颜色</button>` : ''}</span>`; }
+function kitDlg(t) { const K = kitsOf(t), d = $('#dlg'), inp = (id, v) => `<input type="color" id="${id}" value="${v}" style="width:46px;height:30px;border:0;background:none;padding:0">`;
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:520px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div><div class="eyebrow">${esc(t)} · 球衣</div><h2 style="font-size:20px;font-weight:900;margin:4px 0">主场 / 客场 / 第三球衣</h2><p class="note" style="margin:0">默认主场用队徽的主色，客场取反差色，第三球衣是和前两套都不撞色的颜色。比赛时客队球衣和主队撞色，会自动换客场或第三球衣。</p></div>
+    <div style="display:grid;gap:10px">${[['home', '主场', K.home], ['away', '客场', K.away], ['third', '第三', K.third]].map(([k, l, c]) => `<div class="btns" style="gap:10px;align-items:center"><span id="kp_${k}">${shirtSVG(c, 44, 10)}</span><b style="width:36px">${l}</b><label class="note" style="display:inline-flex;gap:4px;align-items:center">主色 ${inp('kc_' + k, c.body)}</label><label class="note" style="display:inline-flex;gap:4px;align-items:center">配色 ${inp('kt_' + k, c.trim)}</label></div>`).join('')}</div>
+    <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="kitReset" data-t="${esc(t)}">恢复默认</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="kitSave" data-t="${esc(t)}">保存</button></span></div></div>`;
+  if (!d.open) d.showModal();
+  ['home', 'away', 'third'].forEach(k => ['kc_', 'kt_'].forEach(pf => $('#' + pf + k).addEventListener('input', () => { $('#kp_' + k).innerHTML = shirtSVG({ body: $('#kc_' + k).value, trim: $('#kt_' + k).value }, 44, 10); }))); }
 const rtColor = r => r >= 90 ? '#d8b45f' : r >= 85 ? '#9cc2ff' : r >= 80 ? '#7fd6b4' : r >= 75 ? '#a9b4c4' : '#6f7b8c';
 const pct = x => Math.round(x * 100) + '%';
 
@@ -1948,13 +1978,13 @@ function absentHTML(t, Lt) {
   return miss.concat(rest).join('') || '<span class="dim" style="font-size:12px">主力齐整</span>';
 }
 function pitchSVG(home, away, LL, XI, ED) {
-  const one = !away;
+  const one = !away, KITS = away && TD[home] && TD[away] ? matchKits(home, away) : null;
   const L = t => XI ? XI : LL ? (t === home ? LL.h : LL.a).xi : ENGINE.lineup(t).xi;
   const dot = (s, t, side, i) => {
     const xx = s.x < 8 ? 0 : 6 + (s.x - 12) * 0.95; let x = one ? 4 + xx : (side === 'h' ? 3.5 + xx * 0.5 : 96.5 - xx * 0.5);
     const y = 3 + s.y / 100 * 58;
-    const c = tcol(t);
-    return `<g class="pl${ED ? ' ed' : ''}" ${ED ? `data-xs="${i}" style="touch-action:none"` : `data-player="${esc(t)}|${esc(s.name)}"`} tabindex="0"><circle cx="${x}" cy="${y}" r="2.15" fill="${c}"/><text class="rt" x="${x}" y="${y + .1}" ${luma(c) < .5 ? 'style="fill:#fff"' : ''}>${s.rating}</text><text class="nm" x="${x}" y="${y + 3.9}">${esc(s.name)}</text>${ED && s.pen ? `<text x="${x + 2.6}" y="${y - 1.9}" style="font-size:1.5px;fill:#e66;font-weight:700">−${s.pen}</text>` : ''}</g>`;
+    const c = KITS ? (side === 'a' ? KITS.a.body : KITS.h.body) : (TD[t] ? kitsOf(t).home.body : tcol(t)), tr = KITS ? (side === 'a' ? KITS.a.trim : KITS.h.trim) : (TD[t] ? kitsOf(t).home.trim : '#000');
+    return `<g class="pl${ED ? ' ed' : ''}" ${ED ? `data-xs="${i}" style="touch-action:none"` : `data-player="${esc(t)}|${esc(s.name)}"`} tabindex="0"><circle cx="${x}" cy="${y}" r="2.15" fill="${c}" stroke="${tr}" stroke-width=".35"/><text class="rt" x="${x}" y="${y + .1}" ${luma(c) < .5 ? 'style="fill:#fff"' : ''}>${s.rating}</text><text class="nm" x="${x}" y="${y + 3.9}">${esc(s.name)}</text>${ED && s.pen ? `<text x="${x + 2.6}" y="${y - 1.9}" style="font-size:1.5px;fill:#e66;font-weight:700">−${s.pen}</text>` : ''}</g>`;
   };
   return `<div class="pitch"><svg viewBox="0 0 100 64" role="img" aria-label="首发阵容">
     <rect class="p-bg" x="0" y="0" width="100" height="64" rx="1"/>
@@ -2080,21 +2110,76 @@ async function kickoff(instant) {
   msg.hidden = true;
   startLive(false);
 }
+// ── 上帝视角：按比赛事件生成的俯视动画。球员按阵型站位、随球整体推进 / 回收；进攻、射门、进球都对上真实的比赛事件 ──
+var GV_ON = true, GV = null;
+function gvBuild(res, h, a, L) {
+  const rnd = seeded('gv|' + h + '|' + a + '|' + res.hg + ':' + res.ag + '|' + res.events.length), endM = Math.max(90, ...res.events.map(e => e.m)) + 0.5, poss = ((res.stats && res.stats.poss && res.stats.poss[0]) || 50) / 100;
+  const atk = res.events.filter(e => e.type === 'goal' || e.type === 'chance' || e.type === 'pmiss').map(e => ({ m: e.m, side: e.side, goal: e.type === 'goal', pen: !!e.pen || e.type === 'pmiss', player: e.player })).sort((x, y) => x.m - y.m);
+  const K = [], step = 0.2; let side = 'h', x = 50, y = 32, t = 0, ai = 0, ht = false;
+  while (t <= endM) {
+    const nx = atk[ai];
+    if (!ht && t >= 45 && (!nx || nx.m > 46.5)) { ht = true; K.push({ t, x: 50, y: 32, side: 'a', kick: 1 }); x = 50; y = 32; side = 'a'; t += step; continue; }
+    if (nx && t >= nx.m - 1.4 && t < nx.m) { const f = Math.max(0, Math.min(1, 1 - (nx.m - t) / 1.4)), d = nx.side === 'h' ? 1 : -1;
+      if (nx.pen) { x = nx.side === 'h' ? 89 : 11; y = 32; } else { const sx = 50 + d * 4, ex = nx.side === 'h' ? 85 : 15; x = sx + (ex - sx) * f + (rnd() - 0.5) * 3; y = 32 + Math.sin(f * 4.2 + ai) * 15 * (1 - f * 0.8) + (rnd() - 0.5) * 5; }
+      side = nx.side; K.push({ t, x, y, side, atk: 1 }); t += step; continue; }
+    if (nx && t >= nx.m) { const gx = nx.side === 'h' ? 99.6 : 0.4, opp = nx.side === 'h' ? 'a' : 'h';
+      K.push({ t: nx.m, x: nx.side === 'h' ? 86 : 14, y: 32 + (rnd() - 0.5) * 10, side: nx.side, atk: 1 });
+      K.push({ t: nx.m + 0.12, x: gx, y: nx.goal ? 30 + rnd() * 4 : (rnd() < 0.5 ? 24 - rnd() * 6 : 40 + rnd() * 6), side: nx.side, shot: nx.goal ? 'goal' : 'miss', ev: nx });
+      if (nx.goal) { K.push({ t: nx.m + 0.7, x: gx, y: 32, side: nx.side, hold: 1 }); K.push({ t: nx.m + 1.1, x: 50, y: 32, side: opp, kick: 1 }); t = nx.m + 1.1 + step; x = 50; y = 32; }
+      else { const gk = nx.side === 'h' ? 95 : 5; K.push({ t: nx.m + 0.45, x: gk, y: 32, side: opp }); t = nx.m + 0.45 + step; x = gk; y = 32; }
+      side = opp; ai++; continue; }
+    if (rnd() < 0.09) side = rnd() < poss ? 'h' : 'a';
+    const d = side === 'h' ? 1 : -1; x += d * (rnd() * 6 - 1.6); y += (rnd() - 0.5) * 13; x = Math.max(14, Math.min(86, x)); y = Math.max(5, Math.min(59, y));
+    K.push({ t, x, y, side }); t += step;
+  }
+  const sideXI = k => (L[k].xi || []).map((s0, i) => ({ i, slot: s0.slot, name: s0.name, no: (s0.p && s0.p.no) || '', bx: 7 + (s0.x || 50) * 0.42, by: 4 + (s0.y || 50) * 0.56, gk: (s0.line || ENGINE.LINE(s0.slot)) === 'GK' }));
+  return { K, endM, H: sideXI('h'), A: sideXI('a'), kits: matchKits(h, a), subs: res.events.filter(e => e.type === 'sub').sort((x, y) => x.m - y.m), reds: res.events.filter(e => e.type === 'red'), goals: res.events.filter(e => e.type === 'goal'), h, a };
+}
+function gvBall(t) { const K = GV.K; let lo = 0, hi = K.length - 1; if (t <= K[0].t) return K[0]; if (t >= K[hi].t) return K[hi]; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (K[m].t <= t) lo = m; else hi = m; }
+  const A = K[lo], B = K[hi], f = (t - A.t) / Math.max(1e-6, B.t - A.t), e = f * f * (3 - 2 * f); return { x: A.x + (B.x - A.x) * e, y: A.y + (B.y - A.y) * e, side: B.shot ? A.side : (f < 0.5 ? A.side : B.side), shot: B.shot && f > 0.05 ? B.shot : A.hold ? A.shot || 'goal' : null }; }
+function gvMount(el) {
+  const k = GV.kits, P = (S2, side) => S2.map(p => `<g id="gv${side}${p.i}"><circle r="1.55" fill="${side === 'h' ? k.h.body : k.a.body}" stroke="${side === 'h' ? k.h.trim : k.a.trim}" stroke-width=".35"/><text y=".55" text-anchor="middle" style="font-size:1.45px;font-weight:800;fill:${colLum(side === 'h' ? k.h.body : k.a.body) > 0.55 ? '#15171c' : '#f4f2ec'};font-family:var(--mono)">${esc(p.no)}</text></g>`).join('');
+  el.innerHTML = `<div class="gvwrap"><svg viewBox="0 0 100 64" class="gvsvg" role="img" aria-label="上帝视角比赛动画">
+    <rect x="0" y="0" width="100" height="64" fill="#1d5c32"/>${[...Array(10)].map((_, i) => i % 2 ? `<rect x="${i * 10}" y="0" width="10" height="64" fill="rgba(255,255,255,.035)"/>` : '').join('')}
+    <g fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".3"><rect x="1" y="1" width="98" height="62"/><line x1="50" y1="1" x2="50" y2="63"/><circle cx="50" cy="32" r="8"/><rect x="1" y="16" width="14" height="32"/><rect x="85" y="16" width="14" height="32"/><rect x="1" y="25" width="5" height="14"/><rect x="94" y="25" width="5" height="14"/><rect x="-1.4" y="28" width="2.4" height="8"/><rect x="99" y="28" width="2.4" height="8"/></g>
+    ${P(GV.H, 'h')}${P(GV.A, 'a')}<circle id="gvBall" r=".9" fill="#fff" stroke="#111" stroke-width=".2"/><text id="gvName" text-anchor="middle" style="font-size:1.9px;fill:#fff;paint-order:stroke;stroke:#000;stroke-width:.45px"></text>
+    <g id="gvFlash" style="display:none"><rect x="25" y="23" width="50" height="18" rx="2" fill="rgba(0,0,0,.6)"/><text id="gvFlashT" x="50" y="31" text-anchor="middle" style="font-size:5px;font-weight:900;fill:#ffd65a">GOAL!</text><text id="gvFlashS" x="50" y="37" text-anchor="middle" style="font-size:2.4px;fill:#fff"></text></g></svg>
+    <div class="gvleg"><span>${shirtSVG(k.h, 18)} ${esc(GV.h)}</span><span class="dim" style="font-size:11px">上帝视角 · 由比赛事件生成</span><span>${esc(GV.a)} ${shirtSVG(k.a, 18)}${k.aLab !== '主场' ? ` <span class="dim" style="font-size:10px">${k.aLab}球衣</span>` : ''}</span></div></div>`;
+  GV.lastGoal = -1; GV.flashUntil = 0;
+}
+function gvPaint(t) {
+  if (!GV || !$('#gvBall')) return; const b = gvBall(t), now = performance.now(), sub = {}, off = new Set();
+  GV.subs.forEach(e => { if (e.m <= t) sub[e.side + '|' + e.out] = e.player; }); GV.reds.forEach(e => { if (e.m <= t) off.add(e.side + '|' + e.player); });
+  let car = null, cd = 1e9;
+  [['h', GV.H], ['a', GV.A]].forEach(([sd, L]) => { const dir = sd === 'h' ? 1 : -1, rel = sd === 'h' ? b.x : 100 - b.x, has = b.side === sd;
+    L.forEach(p => { let nm = p.name; for (let k = 0; k < 4 && sub[sd + '|' + nm]; k++) nm = sub[sd + '|' + nm]; const g = $('#gv' + sd + p.i); if (!g) return; if (off.has(sd + '|' + nm)) { g.style.display = 'none'; return; } g.style.display = '';
+      let x = p.bx, y = p.by; if (!p.gk) { let sh = (rel - 50) * 0.5 + (has ? 7 : -2); if (sh < 0) sh *= Math.max(0.15, Math.min(1, (p.bx - 10) / 28)); x += sh; y += (b.y - 32) * 0.28; } /* 防守时越靠后的球员退得越少，不会全挤在门线 */ else x += Math.max(-2, Math.min(6, (rel - 50) * 0.08));
+      x += Math.sin(t * 2.3 + p.i * 1.7) * 0.9; y += Math.cos(t * 1.9 + p.i * 2.3) * 0.9;
+      let X = sd === 'h' ? x : 100 - x; X = Math.max(2, Math.min(98, X)); y = Math.max(2.5, Math.min(61.5, y));
+      if (has && !b.shot) { const dd = Math.hypot(X - b.x, y - b.y); if (dd < cd) { cd = dd; car = { g, X, y, nm, sd }; } }
+      p.cx = X; p.cy = y; p.nm = nm; g.setAttribute('transform', `translate(${X.toFixed(2)},${y.toFixed(2)})`); }); });
+  if (car && cd < 22) { const X = car.X + (b.x - car.X) * 0.72, y = car.y + (b.y - car.y) * 0.72; car.g.setAttribute('transform', `translate(${X.toFixed(2)},${y.toFixed(2)})`); const n = $('#gvName'); n.setAttribute('x', X.toFixed(2)); n.setAttribute('y', (y - 2.6).toFixed(2)); n.textContent = car.nm; } else $('#gvName').textContent = '';
+  const bl = $('#gvBall'); bl.setAttribute('cx', b.x.toFixed(2)); bl.setAttribute('cy', b.y.toFixed(2));
+  const gi = GV.goals.filter(e => e.m <= t).length - 1; if (gi > GV.lastGoal) { GV.lastGoal = gi; const e = GV.goals[gi]; GV.flashUntil = now + 1700; $('#gvFlashT').textContent = e.pen ? '点球命中！' : 'GOAL!'; $('#gvFlashS').textContent = `${e.player} · ${e.side === 'h' ? GV.h : GV.a}`; $('#gvFlashT').style.fill = e.side === 'h' ? GV.kits.h.body : GV.kits.a.body; }
+  $('#gvFlash').style.display = now < GV.flashUntil ? '' : 'none';
+}
 function startLive(instant) {
   if (live && live.raf) cancelAnimationFrame(live.raf); live = null;
   const { h, a } = M; const opt = { weather: M.weather, slot: M.slot, neutral: M.neutral, L: M.L || matchLineups() };
   const res = ENGINE.simulate(h, a, opt);
   M.res = res; M.phase = 'live';
   const lz = $('#liveZone'); $('#preZone').hidden = true;
-  lz.innerHTML = `<div class="timeline" aria-hidden="true"><div class="rail"></div><div class="ht"></div><div class="prog" id="prog" style="width:0"></div><div id="mks"></div><div class="ticks"><span>0'</span><span>15'</span><span>30'</span><span>HT</span><span>60'</span><span>75'</span><span>90'</span></div></div>
-    <div class="btns" style="justify-content:center;margin-top:30px" id="liveCtl"><button class="btn" data-speed="1" aria-pressed="true">×1</button><button class="btn" data-speed="4">×4</button><button class="btn ghost" data-act="skip">跳到终场</button></div>
+  GV = gvBuild(res, h, a, opt.L);
+  lz.innerHTML = `<div id="gv" style="margin:0 0 18px;${GV_ON ? '' : 'display:none'}"></div><div class="timeline" aria-hidden="true"><div class="rail"></div><div class="ht"></div><div class="prog" id="prog" style="width:0"></div><div id="mks"></div><div class="ticks"><span>0'</span><span>15'</span><span>30'</span><span>HT</span><span>60'</span><span>75'</span><span>90'</span></div></div>
+    <div class="btns" style="justify-content:center;margin-top:30px" id="liveCtl"><button class="btn" data-speed="1" aria-pressed="true">×1</button><button class="btn" data-speed="4">×4</button><button class="btn" data-speed="12">×12</button><button class="btn ghost" data-act="gvToggle">🔭 上帝视角：${GV_ON ? '开' : '关'}</button><button class="btn ghost" data-act="skip">跳到终场</button></div>
     <div class="feed" id="feed" style="margin-top:12px" aria-live="polite"></div><div id="post"></div>`;
   const endM = Math.max(90, ...res.events.map(e => e.m)) + 0.5;
   live = { res, t: 0, speed: 1, shown: 0, last: performance.now(), endM, ht: false };
+  gvMount($('#gv'));
   const tick = now => {
     if (!live) return;
     const dt = (now - live.last) / 1000; live.last = now;
-    live.t = Math.min(live.endM, live.t + dt * 7.5 * live.speed);
+    live.t = Math.min(live.endM, live.t + dt * (GV_ON ? 1.5 : 7.5) * live.speed); // 上帝视角开着时放慢：×1 约 1 分钟看完一场
     paint();
     if (live.t >= live.endM) return finish();
     live.raf = requestAnimationFrame(tick);
@@ -2103,7 +2188,7 @@ function startLive(instant) {
   else live.raf = requestAnimationFrame(tick);
 }
 function paint() {
-  const { res, t } = live; const { h, a } = M;
+  const { res, t } = live; const { h, a } = M; if (GV_ON) gvPaint(t);
   const vis = res.events.filter(e => e.m <= t);
   const hg = vis.filter(e => e.type === 'goal' && e.side === 'h').length, ag = vis.filter(e => e.type === 'goal' && e.side === 'a').length;
   $('#score').innerHTML = `${hg}<span class="sep">:</span>${ag}`;
@@ -3662,6 +3747,7 @@ function teamDetail(t) {
     <div class="glow">${crest(t, 168)}</div>
     <div style="min-width:0"><div class="eyebrow">${esc(P.en || '')}${inLeague ? ` · 威超 S${SEASON}${posNow && playedRounds() ? ' 第 ' + posNow + ' 名' : ''}` : ' · 非威超'}</div><h1>${esc(t)}</h1>
       <div class="btns" style="margin-top:10px">${(() => { const tr = clubTier(t); if (!tr) return ''; const d = inLeague ? tierAdj(t) : 0; return `<span class="chip ${tr === 'S' ? 'gold' : tr === 'B' ? '' : 'good'}" title="威超梯队（俱乐部底蕴）：比赛时球队实力会往所属梯队的水平靠拢，球员能力本身不变${inLeague ? `。本季比赛实力 ${d >= 0 ? '+' : ''}${d.toFixed(1)}` : ''}">威超梯队 ${tr} 级${inLeague && Math.abs(d) >= 0.1 ? ` <span class="mono" style="font-size:10px;opacity:.8">${d >= 0 ? '+' : ''}${d.toFixed(1)}</span>` : ''}</span>`; })()}<span class="chip">${esc(D.style || P.style)}</span><span class="chip">${esc(D.formNow || D.form || P.formation || '')}</span>${hon['威超冠军'] ? `<span class="chip gold">威超冠军 ×${hon['威超冠军']}</span>` : ''}${(() => { const E = cupEntrants(SEASON); return ['世联赛', '全联冠', '全联杯', '全协联'].filter(k => E[k].includes(t)).map(k => `<span class="chip good">${SN(SEASON)} ${k}</span>`).join(''); })()}</div>
+      <div style="margin-top:10px">${kitRow(t, S.teams.includes(t) || !!TD[t])}</div>
       <dl class="facts">
         ${(() => { const c = coachOf(t), R = c ? coachRecord(c) : null; return `<div><dt>主教练</dt><dd>${c ? `<button class="lnk" data-coach="${esc(c.id)}">${esc(c.name)}</button> <span class="dim" style="font-size:11px">生涯 ${coachHistory().stints.filter(x => x.id === c.id).flatMap(stintHonours).length} 项荣誉</span>` : '—'}</dd></div>
         <div><dt>执教战绩</dt><dd class="mono" style="font-size:12px">${R ? `${R.w}胜 ${R.d}平 ${R.l}负 · ${stintTxt(c).replace(/ – 至今$/, ' 上任')}` : '—'}</dd></div>
@@ -5804,6 +5890,10 @@ document.addEventListener('click', e => {
   if (act === 'recPrev') { XI_PREV = { t: el.dataset.t, f: el.dataset.f }; $('#dlg').close(); render(); const x = document.querySelector('.xied'); if (x) x.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if (act === 'recUse') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; S.formSet[t] = f; if (S.xio && S.xio[t]) delete S.xio[t][f]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; save(); $('#dlg').close(); toast(`${t} 采用推荐阵型 ${f}`); return render(); }
   if (act === 'formSet') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; if (f) S.formSet[t] = f; else delete S.formSet[t]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; toast(f ? `${t} 改用 ${f} 作为主打阵型（对强队 / 对弱队仍按主帅安排）` : `${t} 恢复主帅的主打阵型`); save(); return render(); }
+  if (act === 'gvToggle') { GV_ON = !GV_ON; const g = $('#gv'); if (g) g.style.display = GV_ON ? '' : 'none'; el.textContent = `🔭 上帝视角：${GV_ON ? '开' : '关'}`; if (live && GV_ON) gvPaint(live.t); return; }
+  if (act === 'kitEdit') return kitDlg(el.dataset.t);
+  if (act === 'kitSave') { const t = el.dataset.t; S.kits = S.kits || {}; S.kits[t] = { home: $('#kc_home').value, homeTrim: $('#kt_home').value, away: $('#kc_away').value, awayTrim: $('#kt_away').value, third: $('#kc_third').value, thirdTrim: $('#kt_third').value }; save(); $('#dlg').close(); toast(`${t} 的球衣颜色已保存`); return render(); }
+  if (act === 'kitReset') { const t = el.dataset.t; if (S.kits) delete S.kits[t]; save(); $('#dlg').close(); toast(`${t} 的球衣恢复默认颜色`); return render(); }
   if (act === 'xiReset') return xiReset(el.dataset.t, el.dataset.f);
   if (act === 'xiForm') { XI_PREV = { t: el.dataset.t, f: el.dataset.f || null }; return render(); }
   if (act === 'nfsToggle') return nfsToggle(el.dataset.t, el.dataset.id);
