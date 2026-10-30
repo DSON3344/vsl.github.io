@@ -2159,7 +2159,7 @@ const PHYS = (() => {
       if (st.kick) X = Math.min(X, L / 2 - 1.5 - (1 - dep) * 8);
       return toW(p.side, clamp(X, 3, L - 4), clamp(Y, 3, W - 3)); }
     const toW = (side, X, Y) => dirOf(side) > 0 ? [X, Y] : [L - X, W - Y];
-    function kickoff(side) { st.kick = side; ball.x = L / 2; ball.y = W / 2; ball.z = ball.vx = ball.vy = ball.vz = 0; ball.shot = ball.pass = null;
+    function kickoff(side) { st.kick = side; st.restart = null; st.noOff = null; P.forEach(p => { p.drib = null; p.down = 0; }); /* 开球前取消还没罚的定位球（例如半场结束时的角球） */ ball.x = L / 2; ball.y = W / 2; ball.z = ball.vx = ball.vy = ball.vz = 0; ball.shot = ball.pass = null;
       st.sbx = L / 2; st.sby = W / 2; st.af = { h: side === 'h' ? 1 : 0, a: side === 'a' ? 1 : 0 }; P.forEach(p => { if (!p.on) return; const [x, y] = anchor(p, p.side === side ? 'att' : 'def', 1); p.x = x; p.y = y; p.vx = p.vy = 0; p.stx = x; p.sty = y; });
       const c = team(side).filter(p => !p.gk).sort((a, b) => hyp(a.x - L / 2, a.y - W / 2) - hyp(b.x - L / 2, b.y - W / 2))[0]; if (c) { c.x = L / 2 - dirOf(side) * 0.7; c.y = W / 2; ball.owner = c; ball.last = c; ball.lastSide = side; }
       st.dead = 1.6; }
@@ -2504,7 +2504,7 @@ function startLive(instant) {
   const lz = $('#liveZone'); $('#preZone').hidden = true;
   GV = gvBuild(res, h, a, opt.L); PV = null; LV_SPEC = physSpec(h, a, compact(res), [M.L && M.fm ? M.fm[0] : xiFormNow(h), xiFormNow(a)], 'live|' + h + '|' + a + '|' + Date.now());
   lz.innerHTML = `<div id="gv" style="margin:0 0 18px;${GV_ON ? '' : 'display:none'}"></div><div class="timeline" aria-hidden="true"><div class="rail"></div><div class="ht"></div><div class="prog" id="prog" style="width:0"></div><div id="mks"></div><div class="ticks"><span>0'</span><span>15'</span><span>30'</span><span>HT</span><span>60'</span><span>75'</span><span>90'</span></div></div>
-    <div class="btns" style="justify-content:center;margin-top:30px" id="liveCtl"><button class="btn" data-speed="1" aria-pressed="true">×1</button><button class="btn" data-speed="4">×4</button><button class="btn" data-speed="12">×12</button><button class="btn ghost" data-act="gvToggle">🔭 物理模拟：${GV_ON ? '开' : '关'}</button><button class="btn ghost" data-act="skip">跳到终场</button></div>
+    <div class="btns" style="justify-content:center;margin-top:30px" id="liveCtl"><button class="btn" data-speed="1" aria-pressed="true">×1</button><button class="btn" data-speed="2">×2</button><button class="btn" data-speed="4">×4</button><button class="btn" data-speed="12">×12</button><button class="btn ghost" data-act="gvToggle">🔭 物理模拟：${GV_ON ? '开' : '关'}</button><button class="btn ghost" data-act="skip">跳到终场</button></div>
     <div class="feed" id="feed" style="margin-top:12px" aria-live="polite"></div><div id="post"></div>`;
   const endM = Math.max(90, ...res.events.map(e => e.m)) + 0.5;
   live = { res, t: 0, speed: 1, shown: 0, last: performance.now(), endM, ht: false };
