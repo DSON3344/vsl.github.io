@@ -390,11 +390,15 @@ const ENGINE = (() => {
           if (tired.length && rnd() < pe) { const w = tired.slice().sort((a, b) => ce[a.name] - ce[b.name])[0]; events.push({ m: m - 0.01, type: 'err', side: cs, team: T[cs], player: w.name, txt: `${w.name} 体能下降，出现失误送给对手机会` }); } }
       }
     };
-    addGoals('h', hg); addGoals('a', ag);
+    const pmiss = { h: [], a: [] }, FX = opt.fixed;
+    if (FX) { /* 物理模拟踢出来的结果：进球、罚丢点球都按场上发生的写入 */
+      const known = (side, n) => squad[side].some(x => x.name === n);
+      FX.goals.forEach(g => { if (!known(g.side, g.player)) return; const as = g.assist && known(g.side, g.assist) ? g.assist : null; events.push({ m: g.m, type: 'goal', side: g.side, team: T[g.side], player: g.player, assist: as, pen: g.pen ? 1 : 0, txt: g.pen ? PEN_TXT[Math.floor(rnd() * PEN_TXT.length)](g.player) : GOAL_TXT[Math.floor(rnd() * GOAL_TXT.length)](g.player, as) }); });
+      (FX.pmiss || []).forEach(x => { if (!known(x.side, x.player)) return; const og = onPitch(x.side === 'h' ? 'a' : 'h', Math.min(x.m, 89.9)).find(y => y.line === 'GK'); events.push({ m: x.m, type: 'pmiss', side: x.side, team: T[x.side], player: x.player, saved: x.saved ? 1 : 0, txt: x.saved ? PMISS_TXT[0](x.player, og && og.name) : PMISS_TXT[1](x.player) }); pmiss[x.side].push([x.player, !!x.saved]); });
+    } else addGoals('h', hg), addGoals('a', ag);
     // 罚丢的点球
-    const pmiss = { h: [], a: [] };
     ['h', 'a'].forEach(side => {
-      if (rnd() >= 0.032) return;
+      if (FX || rnd() >= 0.032) return;
       const m = minute(), on = onPitch(side, m); if (!on.length) return;
       const tk = penTaker(on), saved = rnd() < 0.62;
       const og = onPitch(side === 'h' ? 'a' : 'h', m).find(x => x.line === 'GK');
@@ -403,7 +407,7 @@ const ENGINE = (() => {
       pmiss[side].push([tk.name, saved]);
     });
     // 机会
-    const chances = 2 + Math.floor(rnd() * 4);
+    const chances = FX ? 0 : 2 + Math.floor(rnd() * 4);
     for (let i = 0; i < chances; i++) {
       const side = rnd() < e.lh / (e.lh + e.la) ? 'h' : 'a', m = minute();
       const on = onPitch(side, m); if (!on.length) continue;
@@ -417,15 +421,15 @@ const ENGINE = (() => {
     let poss = Math.round(50 + (share - 0.5) * 420 + gauss() * 4);
     const styleAdj = s => /控球/.test(s) ? 4 : /摆大巴|反击|防守/.test(s) ? -4 : 0;
     poss += styleAdj(TEAMS_DATA[home].style) - styleAdj(TEAMS_DATA[away].style);
-    poss = Math.max(28, Math.min(72, poss));
+    poss = Math.max(28, Math.min(72, poss)); if (FX && FX.poss) poss = FX.poss;
     const savedPens = side => pmiss[side].filter(x => x[1]).length;
     const shots = (lam, g, side) => Math.max(g + 1 + pmiss[side].length, Math.round(lam * 4.2 + gauss() * 2.5 + 6));
-    const hs = shots(e.lh, hg, 'h'), as = shots(e.la, ag, 'a');
+    const hs = FX ? Math.max(hg, FX.shots[0]) : shots(e.lh, hg, 'h'), as = FX ? Math.max(ag, FX.shots[1]) : shots(e.la, ag, 'a');
     const ot = (s, g, side) => Math.max(g + savedPens(side), Math.min(s, Math.round(s * (0.36 + rnd() * 0.14))));
     const stats = {
-      poss: [poss, 100 - poss], shots: [hs, as], onTarget: [ot(hs, hg, 'h'), ot(as, ag, 'a')],
-      corners: [Math.round(hs * 0.38 + rnd() * 3), Math.round(as * 0.38 + rnd() * 3)],
-      xg: [+(e.lh * fh * 0.92).toFixed(2), +(e.la * fa * 0.92).toFixed(2)],
+      poss: [poss, 100 - poss], shots: [hs, as], onTarget: FX ? [Math.min(hs, Math.max(hg, FX.ot[0])), Math.min(as, Math.max(ag, FX.ot[1]))] : [ot(hs, hg, 'h'), ot(as, ag, 'a')],
+      corners: FX ? FX.corners.slice() : [Math.round(hs * 0.38 + rnd() * 3), Math.round(as * 0.38 + rnd() * 3)],
+      xg: FX && FX.xg ? FX.xg.slice() : [+(e.lh * fh * 0.92).toFixed(2), +(e.la * fa * 0.92).toFixed(2)],
     };
     // ---------- 球员个人数据 ----------
     const players = {};
