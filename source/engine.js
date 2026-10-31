@@ -351,8 +351,9 @@ const ENGINE = (() => {
       squad[side] = roster;
     });
     const onAt = (side, m) => squad[side].filter(x => x.on <= m && x.off > m && !x.sent);
-    // 牌（先发生，红牌会让球员提前离场）
-    [['h'], ['a']].forEach(([side]) => {
+    // 牌（先发生，红牌会让球员提前离场）。物理模拟决定的比赛：牌按场上真实犯规给
+    if (opt.fixed && opt.fixed.cards) opt.fixed.cards.forEach(c => { const x = squad[c.side].find(y => y.name === c.player); if (!x) return; if (c.red) { events.push({ m: c.m, type: 'red', side: c.side, team: T[c.side], player: c.player, straight: c.straight ? 1 : 0, txt: c.straight ? `${c.player} 破坏明显进球机会，直接红牌！` : `${c.player} 两黄变一红，被罚下场` }); x.sent = c.m; x.off = Math.min(x.off, c.m); } else events.push({ m: c.m, type: 'yellow', side: c.side, team: T[c.side], player: c.player, txt: `${c.player} 犯规，吃到黄牌` }); });
+    else [['h'], ['a']].forEach(([side]) => {
       const t = T[side], st = TEAMS_DATA[t].style || '';
       const yc = poisson(1.6 + (/逼抢|压制|对抗|绞杀/.test(st) ? 0.6 : 0));
       const ms = []; for (let i = 0; i < yc; i++) ms.push(5 + Math.floor(rnd() * 88));
@@ -393,7 +394,7 @@ const ENGINE = (() => {
     const pmiss = { h: [], a: [] }, FX = opt.fixed;
     if (FX) { /* 物理模拟踢出来的结果：进球、罚丢点球都按场上发生的写入 */
       const known = (side, n) => squad[side].some(x => x.name === n);
-      FX.goals.forEach(g => { if (!known(g.side, g.player)) return; const as = g.assist && known(g.side, g.assist) ? g.assist : null; events.push({ m: g.m, type: 'goal', side: g.side, team: T[g.side], player: g.player, assist: as, pen: g.pen ? 1 : 0, txt: g.pen ? PEN_TXT[Math.floor(rnd() * PEN_TXT.length)](g.player) : GOAL_TXT[Math.floor(rnd() * GOAL_TXT.length)](g.player, as) }); });
+      FX.goals.forEach(g => { if (!known(g.side, g.player)) return; const as = g.assist && known(g.side, g.assist) ? g.assist : null; events.push({ m: g.m, type: 'goal', side: g.side, team: T[g.side], player: g.player, assist: as, pen: g.pen ? 1 : 0, txt: g.pen ? PEN_TXT[Math.floor(rnd() * PEN_TXT.length)](g.player) : g.kind === 'fk' ? `${g.player} 直接任意球破门！皮球绕过人墙直挂死角` : g.kind === 'hdr' ? `${g.player}${as ? ' 接 ' + as + ' 的传中' : ''}头球破门！` : GOAL_TXT[Math.floor(rnd() * GOAL_TXT.length)](g.player, as) }); });
       (FX.pmiss || []).forEach(x => { if (!known(x.side, x.player)) return; const og = onPitch(x.side === 'h' ? 'a' : 'h', Math.min(x.m, 89.9)).find(y => y.line === 'GK'); events.push({ m: x.m, type: 'pmiss', side: x.side, team: T[x.side], player: x.player, saved: x.saved ? 1 : 0, txt: x.saved ? PMISS_TXT[0](x.player, og && og.name) : PMISS_TXT[1](x.player) }); pmiss[x.side].push([x.player, !!x.saved]); });
     } else addGoals('h', hg), addGoals('a', ag);
     // 罚丢的点球
