@@ -2663,23 +2663,25 @@ function startLive(instant) {
 }
 function paint() {
   const { res, t } = live; const { h, a } = M; if (GV_ON && PV) PV.render();
-  let tE = t; if (GV_ON && PV) { const k = PV.goals(), gl = res.events.filter(e => e.type === 'goal').sort((x, y) => x.m - y.m); if (k > 0 && gl[k - 1]) tE = Math.max(t, gl[k - 1].m); } /* 场上已经进的球，比分和文字直播马上跟上 */
-  const vis = res.events.filter(e => e.m <= tE);
+  /* 物理模拟开着时：进球只在场上真的进了才出现（按场上进球的先后，一个对一个），其他事件按时间 */
+  let vis; if (GV_ON && PV && live.t < live.endM) { const k = PV.goals(), gl = res.events.filter(e => e.type === 'goal').sort((x, y) => x.m - y.m), on = new Set(gl.slice(0, k)); vis = res.events.filter(e => e.type === 'goal' ? on.has(e) : e.m <= t); }
+  else vis = res.events.filter(e => e.m <= t);
+  live.seen = live.seen || new Set();
   const hg = vis.filter(e => e.type === 'goal' && e.side === 'h').length, ag = vis.filter(e => e.type === 'goal' && e.side === 'a').length;
   $('#score').innerHTML = `${hg}<span class="sep">:</span>${ag}`;
   const min = Math.min(90, Math.floor(t));
   $('#clock').textContent = GV_ON && PV ? PV.clock() : t >= live.endM ? '全场结束' : t > 90 ? `90+${Math.ceil(t - 90)}'` : (min >= 45 && min < 46 ? `45' · 半场` : `${min}'`);
   $('#clock').classList.toggle('ft', t >= live.endM);
   $('#prog').style.width = Math.min(100, t / 90 * 100) + '%';
-  if (vis.length > live.shown) {
+  const fresh = vis.filter(e => !live.seen.has(e));
+  if (fresh.length) {
     const feed = $('#feed');
-    for (let i = live.shown; i < vis.length; i++) {
-      const ev = vis[i];
+    for (const ev of fresh) { live.seen.add(ev);
       if (!live.ht && ev.m > 46) { feed.insertAdjacentHTML('afterbegin', `<div class="ev div">— 下半场 —</div>`); live.ht = true; }
       feed.insertAdjacentHTML('afterbegin', evRow(ev, h, a, true));
       if (ev.type !== 'chance' && ev.type !== 'sub') $('#mks').insertAdjacentHTML('beforeend', `<span class="mk ${ev.type} ${ev.side}" style="left:${Math.min(100, ev.m / 90 * 100)}%" title="${Math.floor(ev.m)}' ${esc(ev.player)}"></span>`);
     }
-    live.shown = vis.length;
+    live.shown = live.seen.size;
   }
   if (!live.ht && t > 46) { $('#feed').insertAdjacentHTML('afterbegin', `<div class="ev div">— 下半场 —</div>`); live.ht = true; }
 }
