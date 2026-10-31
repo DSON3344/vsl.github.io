@@ -90,10 +90,10 @@ const ENGINE = (() => {
       let why = out[x.name];
       if (!why) {
         const st = streak[x.name] || 0, EN = ctx.energy ? ctx.energy[x.name] : null;
-        let pr = EN != null ? (EN < 45 ? 0.6 : EN < 52 ? 0.35 : EN < 58 ? 0.16 : EN < 64 ? 0.05 : 0.01) : st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
+        let pr = EN != null ? (EN < 45 ? 0.7 : EN < 52 ? 0.45 : EN < 58 ? 0.26 : EN < 64 ? 0.09 : 0.01) : st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
         if (x.line === 'GK') pr *= 0.12;
-        if (x.rating >= best - 1) pr *= 0.55;
-        if (rnd() < Math.min(0.32, pr)) why = 'rest';
+        if (x.rating >= best - 1) pr *= 0.7;
+        if (rnd() < Math.min(0.45, pr)) why = 'rest';
       }
       if (!why) return { ...x, start: 1 };
       const p = repl(x.slot, why === 'rest' ? x.rating - 7 : null);
@@ -158,8 +158,8 @@ const ENGINE = (() => {
     const homeAdv = opt.neutral ? 1 : 1.12, awayPen = opt.neutral ? 1 : 0.94;
     const k = 0.078;
     const sh = styleFx((TEAMS_DATA[home] || {}).style, (TEAMS_DATA[away] || {}).style), sa = styleFx((TEAMS_DATA[away] || {}).style, (TEAMS_DATA[home] || {}).style);
-    let lh = 1.06 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.04 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
-    let la = 1.06 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.04 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
+    let lh = 1.28 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.04 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
+    let la = 1.28 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.04 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
     return { lh: Math.min(lh, 5), la: Math.min(la, 5), ch, ca, H, A };
   }
 

@@ -316,11 +316,11 @@ dialog .dlg [style*="max-height"]{max-height:none!important;overflow:visible!imp
 .lead b{font-size:16px;font-weight:900;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lead small{font-size:11.5px;color:var(--fg-2)}
 td.hl{color:var(--accent-2);font-weight:500;background:rgba(156,194,255,.05)}
-.prow{display:grid;grid-template-columns:minmax(0,1fr) repeat(9,minmax(24px,auto)) 44px;gap:6px;align-items:center;font-size:12.5px;padding:4px 2px;border-bottom:1px solid rgba(150,180,235,.06)}
+.prow{display:grid;grid-template-columns:minmax(120px,1fr) 40px 36px 36px 38px 48px 58px 36px 36px 36px 46px;gap:6px;align-items:center;font-size:12.5px;padding:4px 2px;border-bottom:1px solid rgba(150,180,235,.06)}
 .prow .rt{font-family:var(--mono);text-align:right}
 .tw thead th{cursor:pointer;user-select:none;-webkit-user-select:none}.tw thead th:hover{color:var(--fg)}.tw thead th[data-dir]{color:var(--accent-2)}.tw thead th[data-dir=desc]::after{content:' ▼';font-size:9px}.tw thead th[data-dir=asc]::after{content:' ▲';font-size:9px}
 .sres{display:grid;gap:2px;max-height:60vh;overflow:auto}.sres button{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;padding:8px 6px;border-radius:4px;width:100%}.sres button:hover,.sres button:focus-visible{background:var(--panel-2)}.sres small{color:var(--fg-3);font-size:11.5px}
-.pscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}.pscroll .prow{min-width:600px}
+.pscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}.pscroll .prow{min-width:640px}
 .prow .meta{font-family:var(--mono);font-size:10.5px;color:var(--fg-3);text-align:right;white-space:nowrap}
 @media (max-width:460px){.attrs{grid-template-columns:minmax(0,1fr)}}
 
@@ -468,7 +468,7 @@ const compact = res => ({
 const luOf = (m, i) => m.r.lu ? m.r.lu[i].map(([n, sl], k) => ({ name: n, slot: sl, start: m.r.pl && m.r.pl[i][k] && m.r.pl[i][k][12] != null ? m.r.pl[i][k][12] : 1 })) : ENGINE.lineup(i ? m.a : m.h).xi.map(x => ({ name: x.name, slot: x.slot, start: 1 }));
 // 某队在第 ri 轮开赛前的伤停与连续首发情况，全部由已赛结果推出（伤病、红牌停赛、累计 5/10 张黄牌停赛）
 // 精力（0–100）：赛季开始满格；每场按上场分钟消耗（耐力属性高、年轻的消耗少），每轮之间恢复，没上场的恢复更多；冬歇期额外恢复
-const EN_COST = 15.5, EN_REC = 0.3, EN_REST = 8; // 每轮恢复 = 与满格差距 × 30%；一直踢满全场的主力大约稳定在 65
+const EN_COST = 20.5, EN_REC = 0.3, EN_REST = 8; // 每轮恢复 = 与满格差距 × 30%；一直踢满全场的主力大约稳定在 52（会被轮换）
 function enProfile(team) { const M = {}; (PDB[team] || []).forEach(p => { const a = p.age || 26, sta = (p.attributes && p.attributes.sta) || 78; M[p.name] = { cost: (String(p.pos) === 'GK' ? 0.35 : 1.3 - sta / 200) * (a >= 32 ? 1.2 : a >= 30 ? 1.1 : a <= 21 ? 0.95 : 1), rec: a >= 32 ? 0.85 : a <= 23 ? 1.1 : 1 }; }); return M; }
 function enStep(E, P, played) { Object.keys(P).forEach(n => { if (E[n] == null) E[n] = 100; }); Object.keys(played).forEach(n => { if (E[n] == null) E[n] = 100; });
   Object.keys(E).forEach(n => { const pr = P[n] || { cost: 1, rec: 1 }, mn = played[n] || 0; if (mn > 0) E[n] -= EN_COST * Math.min(1, mn / 90) * pr.cost; else E[n] += EN_REST * pr.rec; E[n] = Math.max(30, Math.min(100, E[n] + (100 - E[n]) * EN_REC * pr.rec)); }); }
@@ -551,7 +551,8 @@ YP_EXTRA: {
 const MID = { es: ['里', '德', '尔', '维', '拉', '塔'], pt: ['里', '维', '拉', '德', '托'], it: ['尼', '里', '莱', '蒂', '卡'], de: ['尔', '林', '德', '克'], nl: ['德', '尔', '斯', '林'], en: ['林', '德', '顿', '尔'], fr: ['尔', '蒂', '拉', '维'], nord: ['德', '尔', '林', '斯'], slav: ['尔', '诺', '科', '达'], afr: ['巴', '杜', '拉', '科'] };
 JP[0].push('石川', '吉田', '山田', '井上', '木村', '清水', '藤田', '远藤', '前田', '久保', '堂安', '三笘', '上田', '南野', '富安', '板仓');
 JP[1].push('大和', '海斗', '莲', '阳翔', '湊', '凉', '颯太', '优斗', '航平', '雄大', '晴人', '拓真');
-  return { NG, FIRST, NAT_GROUP, NATS, KR, JP, MID };
+  const CN = [['王', '李', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗', '谢', '韩', '于', '蒋'], ['伟', '磊', '俊', '浩', '宇', '鹏', '杰', '涛', '斌', '超', '凯', '晨', '阳', '博', '文', '鑫', '毅', '嘉', '志', '天', '子', '明'], ['龙', '帆', '轩', '辉', '林', '东', '华', '成', '峰', '然', '航', '睿']];
+  return { NG, FIRST, NAT_GROUP, NATS, KR, JP, MID, CN };
 })();
 // 年龄 age0 是第 s0 季（默认 S18）的年龄；25 岁前朝潜力成长，26–30 岁巅峰，31 岁起逐年下滑
 // 老带新：和有经验的老将同队的年轻球员，每季额外成长（累计最多 +3）
@@ -699,16 +700,17 @@ const EXT_LEAGUES = [
   { name: '得甲联赛', short: '得甲', style: 'de', clubs: [['白仁梅尼黑', 87], ['多德蒙特', 84], ['勒沃酷森', 81], ['沃夫堡', 80], ['汉宝', 79], ['法兰克褔', 78], ['来比锡', 77], ['奥格斯宝', 76], ['斯图咖特', 75], ['不来门', 74]] },
   { name: '壹甲联赛', short: '壹甲', style: 'it', clubs: [['国际梅兰', 85.5], ['尊云杜斯', 85], ['拿浦勒斯', 84], ['BD米兰', 84], ['拉齐澳', 81], ['罗玛', 80.5], ['亚特兰达', 78], ['佛罗伦飒', 77], ['博洛尼雅', 76], ['珂莫', 75]] },
   { name: '阀甲联赛', short: '阀甲', style: 'fr', clubs: [['巴黎圣泽门', 85], ['玛赛', 79], ['理昂', 78], ['理尔', 77], ['楠特', 76], ['蕾恩', 75], ['妮斯', 74], ['摩纳咖', 73], ['蓝斯', 73], ['涂卢兹', 72]] },
-  { name: '东海职联', short: '东海职联', style: 'kr', clubs: [['首尔虎', 76], ['鹿岛鹿脚', 75], ['江源城', 74], ['釜山偶相', 73], ['全北现带', 72], ['浦和红赞', 71], ['济洲联', 70], ['广岛三剑', 69]] },
+  { name: '东海职联', short: '东海职联', style: 'kr', clubs: [['首尔虎', 76], ['鹿岛鹿脚', 75], ['江源城', 74], ['釜山偶相', 73], ['全北现带', 72], ['浦和红赞', 71], ['济洲联', 70], ['广岛三剑', 69], ['上海海巷', 72, 'cn'], ['山东太山', 71, 'cn']] },
   { name: '其他赛区', short: '其他', style: 'nord', clubs: [["本菲咖", 79.0], ["波耳图", 78.8], ["葡萄芽体育", 78.6], ["阿贾克丝", 78.3], ["埃因霍文", 78.1], ["费耶诺得", 77.9], ["加拉塔萨蕾", 77.7], ["费内巴且", 77.5], ["凯耳特人", 77.2], ["格拉斯哥流浪着", 77.0], ["萨耳茨堡", 76.8], ["布鲁曰", 76.6], ["顿涅茨克旷工", 76.4], ["奥林匹亚珂斯", 76.1], ["泽妮特", 75.9], ["博咖青年", 75.7], ["河牀", 75.5], ["弗拉门哥", 75.3], ["帕尔梅腊斯", 75.0], ["利雅得新玥", 74.8], ["利雅得胜莉", 74.6], ["迈阿密国计", 74.4], ["布拉咖", 74.2], ["阿尔克玛尔", 73.9], ["安德莱赫忒", 73.7], ["亨珂", 73.5], ["萨格勒布迪纳魔", 73.3], ["贝尔格莱德红醒", 73.1], ["哥本哈跟", 72.8], ["中日德蓝", 72.6], ["博德闪曜", 72.4], ["莫耳德", 72.2], ["马耳默", 72.0], ["巴赛尔", 71.7], ["伯尔尼年青人", 71.5], ["布拉格斯拉唯亚", 71.3], ["布拉格斯巴哒", 71.1], ["费伦茨瓦洛斯", 70.9], ["华沙莱吉雅", 70.6], ["帕纳辛奈珂斯", 70.4], ["帕奥珂", 70.2], ["基辅迪纳魔", 70.0], ["贝西克塔丝", 69.8], ["蒙特蕾", 69.5], ["墨西哥美州", 69.3], ["佩纳洛尔", 69.1], ["桑托丝", 68.9], ["科林蒂恩", 68.7], ["圣保洛", 68.4], ["洛杉玑银河", 68.2]] },
 ];
-const EXT_CLUB = {}; EXT_LEAGUES.forEach(L => L.clubs.forEach(([c, st]) => EXT_CLUB[c] = { league: L.name, style: L.style, str: st }));
-const STYLE_NATS = { nord: ['丹麦', '瑞典', '挪威', '荷兰', '比利时', '克罗地亚', '塞尔维亚', '波兰'], en: ['英格兰', '英格兰', '苏格兰', '美国'], es: ['西班牙', '西班牙', '阿根廷', '乌拉圭', '哥伦比亚'], de: ['德国', '德国', '奥地利', '瑞士'], it: ['意大利', '意大利', '意大利', '克罗地亚'], fr: ['法国', '法国', '比利时', '塞内加尔', '科特迪瓦'], kr: ['韩国', '韩国', '日本'] };
+const EXT_CLUB = {}; EXT_LEAGUES.forEach(L => L.clubs.forEach(([c, st, sty]) => EXT_CLUB[c] = { league: L.name, style: sty || L.style, str: st }));
+const STYLE_NATS = { nord: ['丹麦', '瑞典', '挪威', '荷兰', '比利时', '克罗地亚', '塞尔维亚', '波兰'], en: ['英格兰', '英格兰', '苏格兰', '美国'], es: ['西班牙', '西班牙', '阿根廷', '乌拉圭', '哥伦比亚'], de: ['德国', '德国', '奥地利', '瑞士'], it: ['意大利', '意大利', '意大利', '克罗地亚'], fr: ['法国', '法国', '比利时', '塞内加尔', '科特迪瓦'], kr: ['韩国', '韩国', '日本'], cn: ['中国', '中国', '中国', '中国', '巴西'] };
 // 名字只用一个词（不加名·姓）；两段式用完后用三段式，再不够就允许和别队重名（同队不重名）
 function oneName(nat, rnd, k) {
   const one = a => a[Math.floor(rnd() * a.length)];
   if (nat === '韩国') return one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]);
   if (nat === '日本') return one(YP.JP[0]) + one(YP.JP[1]);
+  if (nat === '中国') return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
   const gk = YP.NAT_GROUP[nat] || 'en', g = YP.NG[gk];
   return k < 60 ? one(g[0]) + one(g[1]) : one(g[0]) + one(YP.MID[gk]) + one(g[1]);
 }
@@ -724,6 +726,7 @@ function nameFor_old(nat, rnd) {
     let n;
     if (nat === '韩国') n = one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]);
     else if (nat === '日本') n = one(YP.JP[0]) + one(YP.JP[1]);
+    else if (nat === '中国') n = one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
     else { const gk = YP.NAT_GROUP[nat] || 'en', g = YP.NG[gk]; n = one(g[0]) + one(g[1]); if (k > 40) n = one(YP.FIRST[gk]) + '·' + n; }
     if (!YOUTH_USED.has(n)) { YOUTH_USED.add(n); return n; }
   }
@@ -741,6 +744,7 @@ function youthName_old(team, rnd) {
     if (team === '沃特梅兹') nat = rnd() < 0.55 ? '韩国' : '日本'; else nat = one(YP.NATS);
     if (nat === '韩国') n = one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]);
     else if (nat === '日本') n = one(YP.JP[0]) + one(YP.JP[1]);
+    else if (nat === '中国') n = one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
     else { const gk = YP.NAT_GROUP[nat], g = YP.NG[gk]; n = one(g[0]) + one(g[1]); if (k > 40) n = one(YP.FIRST[gk]) + '·' + n; }
     if (!YOUTH_USED.has(n)) { YOUTH_USED.add(n); return { name: n, nat }; }
   }
@@ -980,11 +984,11 @@ function realCareer(real, club) {
 // S18 时的外赛区阵容（固定）：有现实原型的球队用化名球员，其余按联赛风格生成，实力对齐球队设定
 const FDB0 = {};
 (() => {
-  EXT_LEAGUES.forEach(L => L.clubs.forEach(([club, str]) => {
+  EXT_LEAGUES.forEach(L => L.clubs.forEach(([club, str, sty]) => {
     const rnd = seeded('squad|' + club), list = [];
     const real = (typeof EXT_REAL !== 'undefined' && EXT_REAL[club]) || [];
     real.filter(r => !EXT_SKIP.has(r[0])).forEach(([n, pos, nat, age, r, ht, wt]) => list.push({ real: n, pos, nat, age, r, ht, wt }));
-    const nats = STYLE_NATS[L.style] || STYLE_NATS.nord;
+    const nats = STYLE_NATS[sty || L.style] || STYLE_NATS.nord;
     const POS = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST', 'GK', 'CB', 'CM', 'ST', 'LB', 'CM', 'RW'];
     const have = l => list.filter(x => ENGINE.LINE(x.pos) === l).length, want = { GK: 2, DF: 6, MF: 6, FW: 4 };
     for (const pos of POS) { if (list.length >= 18) break; const l = ENGINE.LINE(pos); if (have(l) >= want[l]) continue; list.push({ pos, nat: rnd() < 0.75 ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)], age: 19 + Math.floor(rnd() * 14), r: null }); }
@@ -1002,7 +1006,7 @@ const FDB = {};
 let EXTP = [], RET_S = {};
 function extYouth(club, old, season) {
   const rnd = seeded('xy|' + club + '|' + old.name + '|' + season), L = LEAGUE_OF[club] || EXT_LEAGUES[0];
-  const nats = STYLE_NATS[L.style] || STYLE_NATS.nord, nat = rnd() < 0.75 ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)];
+  const nats = STYLE_NATS[(EXT_CLUB[club] || L).style] || STYLE_NATS.nord, nat = rnd() < 0.75 ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)];
   const age = 17 + Math.floor(rnd() * 3), rating = Math.round(EXT_CLUB[club].str - 14 + rnd() * 8);
   const o = extPlayer(club, nameFor(nat, rnd, club), old.pos, nat, age, rating, rnd); o.cGP = o.cG = o.cA = 0; o.youth = 1; o.rating0 = rating; o.age0 = age; o.s0 = season; o.stints = [[club, season]]; o.cEnd = season + 3;
   return o;
@@ -2143,7 +2147,7 @@ const PHYS = (() => {
   function rng(seed) { let s = 0; for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) | 0; s = (s >>> 0) % 2147483646 + 1; return () => (s = s * 16807 % 2147483647) / 2147483647; }
   // 比赛分钟 ↔ 模拟秒数（上半场补时之后直接接下半场）
   // 比赛时钟压缩：球员和球按真实速度运动，但比赛时间走得快 —— 1 分钟比赛 = SPM 秒（像足球游戏那样，整场约 8–9 分钟）
-  const SPM = 15; /* 1 分钟比赛 = 15 秒模拟；默认按 2.5 倍播放 → 整场约 9–10 分钟 */
+  const SPM = 11; /* 1 分钟比赛 = 11 秒模拟；默认按 2.5 倍播放 → 整场约 7 分钟 */
   function timeMap(events) {
     /* 伤停补时：按每个半场的进球、换人、红黄牌、伤病来算（上半场 1–4 分钟，下半场 3–7 分钟） */
     const cnt = (lo, hi, ty) => events.filter(e => e.m > lo && e.m <= hi && (!ty || ty.includes(e.type))).length, maxM = Math.max(90, ...events.map(e => e.m));
@@ -2370,7 +2374,7 @@ const PHYS = (() => {
         const am = hyp(ax, ay), amax = (p.acc || 4.6) + 0.6; if (am > amax) { ax *= amax / am; ay *= amax / am; }
         p.vx += ax * DT; p.vy += ay * DT; const v = hyp(p.vx, p.vy); if (v > p.vmax) { p.vx *= p.vmax / v; p.vy *= p.vmax / v; }
         if (p.down > st.t) { p.vx *= 0.7; p.vy *= 0.7; } p.x = clamp(p.x + p.vx * DT, -1, L + 1); p.y = clamp(p.y + p.vy * DT, -1, W + 1); if (p.cool) p.cool = Math.max(0, p.cool - DT);
-        const ef = hyp(p.vx, p.vy) / Math.max(1, p.vbase); p.stam = Math.max(0, p.stam - DT * (0.0045 + 0.04 * ef * ef * ef + (ball.owner === p ? (p.carry = (p.carry || 0) + hyp(p.vx, p.vy) * DT) * 0 : 0)) * (1.3 - p.sta / 160) * (p.gk ? 0.3 : 1) * 60 / SPM); });
+        const ef = hyp(p.vx, p.vy) / Math.max(1, p.vbase); p.stam = Math.max(0, p.stam - DT * (0.0045 + 0.04 * ef * ef * ef + (ball.owner === p ? (p.carry = (p.carry || 0) + hyp(p.vx, p.vy) * DT) * 0 : 0)) * (1.3 - p.sta / 160) * (p.gk ? 0.3 : 1) * 1.2 * 60 / SPM); });
       // 球员之间不重叠
       for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) { const a = P[i], b = P[j]; if (!a.on || !b.on) continue; const dx = b.x - a.x, dy = b.y - a.y, d = hyp(dx, dy); if (d > 0 && d < 1.3) { const k = (1.3 - d) / d, wa = b.phy / (a.phy + b.phy), wb = 1 - wa; a.x -= dx * k * wa; a.y -= dy * k * wa; b.x += dx * k * wb; b.y += dy * k * wb; if (a.side !== b.side && (ball.owner === a || ball.owner === b)) { const lo = ball.owner === a ? a : b, hi = lo === a ? b : a, f = clamp(0.5 + (hi.phy - lo.phy) / 80, 0.2, 0.8); lo.vx *= 1 - 0.12 * f; lo.vy *= 1 - 0.12 * f; } } }
       // 控球者
@@ -2508,7 +2512,7 @@ function replayOpen(ri, mi) {
     <div class="btns" style="justify-content:space-between;align-items:center"><span><span class="eyebrow">${SN(SEASON)} · 第 ${ri + 1} 轮 · 比赛回放</span></span><span class="mono" style="font-size:22px;font-weight:800;display:inline-flex;align-items:center;gap:8px">${crest(h, 26)}<span style="font-size:14px">${esc(h)}</span> <span id="rpS">0 : 0</span> <span style="font-size:14px">${esc(a)}</span>${crest(a, 26)}</span><span class="mono" id="rpC" style="font-size:16px;margin-right:34px">0'</span></div>
     <div id="rpV"></div>
     <div style="position:relative;height:18px;margin:4px 0"><input type="range" id="rpSeek" min="0" max="${Math.round(TM.END)}" value="0" style="width:100%"><div style="position:absolute;left:0;right:0;top:0;pointer-events:none" class="rpmk">${mk}</div></div>
-    <div class="btns" style="justify-content:center;gap:6px"><button class="btn primary" data-act="rpPlay" id="rpPlay">❚❚ 暂停</button>${[[1, '慢放'], [2.5, '×1'], [5, '×2'], [10, '×4']].map(([v, l]) => `<button class="btn" data-act="rpSpeed" data-v="${v}" aria-pressed="${v === 2.5}" title="${v === 2.5 ? '标准速度，整场约 9–10 分钟' : v === 1 ? '真实动作速度' : ''}">${l}</button>`).join('')}<label class="note" style="display:inline-flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="rpHi"> 只看精华（没看点的时段直接跳过）</label></div>
+    <div class="btns" style="justify-content:center;gap:6px"><button class="btn primary" data-act="rpPlay" id="rpPlay">❚❚ 暂停</button>${[[1, '慢放'], [2.5, '×1'], [5, '×2'], [10, '×4']].map(([v, l]) => `<button class="btn" data-act="rpSpeed" data-v="${v}" aria-pressed="${v === 2.5}" title="${v === 2.5 ? '标准速度，整场约 7 分钟' : v === 1 ? '真实动作速度' : ''}">${l}</button>`).join('')}<label class="note" style="display:inline-flex;gap:4px;align-items:center;margin-left:8px"><input type="checkbox" id="rpHi"> 只看精华（没看点的时段直接跳过）</label></div>
     <div class="feed" id="rpF" style="max-height:160px"></div></div>`;
   if (!d.open) d.showModal();
   RP = { ri, mi, spec, K, rate: 2.5, play: true, last: performance.now(), raf: null, view: null };
@@ -2770,7 +2774,7 @@ function extEraSquad(t) {
   const s = CUP_S || SEASON, L = (FDB[t] || []).filter(p => typeof p.age !== 'number' || p.age >= 18).slice().sort((a, b) => b.rating - a.rating);
   const out = [], need = ERA_POS.slice();
   L.forEach(p => { const i = need.findIndex(x => ENGINE.LINE(x) === ENGINE.LINE(p.pos)); if (i >= 0) { need.splice(i, 1); out.push({ name: p.name, pos: p.pos, r: p.rating }); } });
-  const rnd = seeded('era|' + t + '|' + Math.floor((s - 1) / 6)), str = (EXT_CLUB[t] || { str: 78 }).str, nats = STYLE_NATS[(LEAGUE_OF[t] || {}).style] || STYLE_NATS.nord;
+  const rnd = seeded('era|' + t + '|' + Math.floor((s - 1) / 6)), str = (EXT_CLUB[t] || { str: 78 }).str, nats = STYLE_NATS[(EXT_CLUB[t] || LEAGUE_OF[t] || {}).style] || STYLE_NATS.nord;
   need.forEach((pos, k) => out.push({ name: oneName(nats[Math.floor(rnd() * nats.length)], rnd, k < 4 ? 0 : 99), pos, r: Math.round(str - 2 + rnd() * 5) }));
   return out;
 }
@@ -4614,7 +4618,7 @@ let TW = { exp: 20, kid: 20 };
 function extPanel() {
   const deals = {}; TRANSFERS.forEach(t => { [t.from, t.to].forEach(c => { if (isExt(c)) { const o = deals[c] || (deals[c] = { n: 0, buy: 0, sell: 0 }); o.n++; if (c === t.to) o.buy += t.fee; else o.sell += t.fee; } }); });
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Foreign leagues</div><h2>外赛区联赛</h2></div><span class="note">球队实力 · 与威超的转会往来</span></div>
-    <div class="lgrid">${EXT_LEAGUES.map(L => `<div class="panel" style="padding:14px"><h3 style="font-size:15px;font-weight:800;margin-bottom:8px">${esc(L.name)}</h3><div class="rank-list">${L.clubs.map(([c, st]) => { const d = deals[c]; return `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto auto"><span class="tname">${ecrest(c, 18)}<span>${esc(c)}</span></span><span class="sub mono">${d ? d.n + ' 笔' : '–'}</span><span class="v">${st}</span></div>`; }).join('')}</div></div>`).join('')}</div>
+    <div class="lgrid">${EXT_LEAGUES.map(L => `<div class="panel" style="padding:14px"><h3 style="font-size:15px;font-weight:800;margin-bottom:8px">${esc(L.name)}</h3><div class="rank-list">${L.clubs.map(([c, st]) => { const d = deals[c]; return `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto auto"><button class="lnk tname" data-ext="${esc(c)}" title="查看${esc(c)}的阵容">${ecrest(c, 18)}<span>${esc(c)}</span></button><span class="sub mono">${d ? d.n + ' 笔' : '–'}</span><span class="v">${st}</span></div>`; }).join('')}</div></div>`).join('')}</div>
     <p class="note" style="margin:10px 0 0">联赛和球队都是化名。每个转会窗，外赛区豪门会挖走威超球星，威超球队也会从外赛区引进外援；国内找不到下家的自由球员也可能出走外赛区。</p></div>`;
 }
 // 退役与青训：上个赛季结束时的变动 + 本赛季结束后会退役的球员
@@ -4870,8 +4874,8 @@ function extMoves() { const M = {}; Object.entries((S && S.market) || {}).forEac
 // S01–S17 的外赛区：资料里的外赛区球员大多是 S18 前后才出道，早期各队几乎没人。这里给每支外赛区球队补一批「历史外援」（S01 时 22–33 岁），他们会逐年老去，到 S17 前全部退役
 var SYNTH_X = null;
 function synthExt() { if (SYNTH_X) return SYNTH_X; SYNTH_X = []; const POS = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CM', 'CAM', 'LW', 'RW', 'ST', 'ST', 'CB'];
-  Object.entries(EXT_CLUB).forEach(([c, X]) => { if (X.alias || !X.str) return; const rnd = seeded('zx|' + c), L = LEAGUE_OF[c] || EXT_LEAGUES[0], nats = STYLE_NATS[L.style] || STYLE_NATS.nord, used = new Set();
-    POS.forEach(pos => { const nat = rnd() < 0.75 ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)]; const nm = () => { const one = a => a[Math.floor(rnd() * a.length)]; if (nat === '韩国') return one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]); if (nat === '日本') return one(YP.JP[0]) + one(YP.JP[1]); const gk = YP.NAT_GROUP[nat] || 'en', g = YP.NG[gk]; return one(g[0]) + one(g[1]); }; let name = nm(), k = 0; while (used.has(name) && k++ < 8) name = nm(); used.add(name); // 不用全局去重的取名，保证每次载入名字一样（存档靠名字认人）
+  Object.entries(EXT_CLUB).forEach(([c, X]) => { if (X.alias || !X.str) return; const rnd = seeded('zx|' + c), L = LEAGUE_OF[c] || EXT_LEAGUES[0], nats = STYLE_NATS[X.style || L.style] || STYLE_NATS.nord, used = new Set();
+    POS.forEach(pos => { const nat = rnd() < 0.75 ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)]; const nm = () => { const one = a => a[Math.floor(rnd() * a.length)]; if (nat === '韩国') return one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]); if (nat === '日本') return one(YP.JP[0]) + one(YP.JP[1]); if (nat === '中国') return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : ''); const gk = YP.NAT_GROUP[nat] || 'en', g = YP.NG[gk]; return one(g[0]) + one(g[1]); }; let name = nm(), k = 0; while (used.has(name) && k++ < 8) name = nm(); used.add(name); // 不用全局去重的取名，保证每次载入名字一样（存档靠名字认人）
       const age = 22 + Math.floor(rnd() * 12), rating = Math.round(Math.min(94, X.str - 4 + rnd() * 8)), o = extPlayer(c, name, pos, nat, age, rating, rnd);
       Object.assign(o, { rating0: rating, age0: age, s0: 1, stints: [[c, -99]], synth: 1, uid: 'X|' + c + '|' + name + '|z', cEnd: 99 }); SYNTH_X.push(o); }); });
   return SYNTH_X; }
