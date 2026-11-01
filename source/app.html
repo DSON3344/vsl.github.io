@@ -187,9 +187,13 @@ td.pts{color:var(--accent-2);font-weight:500}
 .gvwrap{position:relative}.gvfs{position:absolute;top:8px;right:8px;z-index:3;font:600 12px var(--sans);padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.45);color:#fff;cursor:pointer}
 .gvhud{display:none;align-items:center;justify-content:center;gap:10px;width:100%;padding:6px 10px;color:#fff;font-size:13px;flex:none}.gvhud .hudt{display:inline-flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gvhud .huds{font-size:18px}.gvhud .hudc{color:var(--accent-2,#9cf);min-width:52px;text-align:center}.gvhud .btn{padding:4px 10px;font-size:12px}
 .gvland{position:fixed!important;inset:0;z-index:1000;background:#0b1a10;margin:0!important;display:block!important}
-.gvland .gvwrap{width:100%;height:100%;border:0;border-radius:0;display:flex!important;flex-direction:column;align-items:center;justify-content:center;background:#0b1a10}
-.gvland .gvsvg{width:auto!important;height:calc(100% - 44px)!important;max-width:100%;max-height:none!important;margin:0 auto}
-.gvland .stam,.gvland .gvfs,.gvland .gvleg{display:none}.gvland .gvhud{display:flex}
+.gvland .gvwrap{width:100%;height:100%;border:0;border-radius:0;display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:0 14px;align-items:center;padding:0 12px 8px;box-sizing:border-box;background:#0b1a10}
+.gvland .gvhud{grid-column:1/-1;grid-row:1}
+.gvland .stam{display:none!important}
+.gvland #stH,.gvland #stA{grid-row:2;align-self:center;max-height:100%;overflow:auto;font-size:11px;color:#e8efe9;min-width:0}.gvland #stH{grid-column:1}.gvland #stA{grid-column:3}
+.gvland .str{grid-template-columns:18px minmax(0,1fr) minmax(20px,44px) 22px;gap:4px;line-height:1.6}.gvland .sth{font-size:12px;margin:0 0 4px}
+.gvland .gvsvg{grid-column:2;grid-row:2;width:auto!important;height:100%!important;max-width:100%;max-height:none!important;margin:0 auto}
+.gvland .gvfs,.gvland .gvleg{display:none}.gvland .gvhud{display:flex}
 body.gvland-on{overflow:hidden}
 @media (orientation:portrait){.gvland{inset:auto;top:0;left:100vw;width:100vh;height:100vw;width:100dvh;transform-origin:0 0;transform:rotate(90deg)}}
 @media (min-width:900px){.gvfs{display:none}}
@@ -2548,10 +2552,10 @@ function physSpec(h, a, r, fm, seed, ri) {
 }
 // ── 物理模拟画面：SVG 俯视球场，22 名球员、球（高球带影子）、控球者名字、红黄牌 / 换人标记、进球提示 ──
 // 手机横屏观看：能全屏的设备（多数安卓）进入全屏并锁定横屏；不能锁定的（如 iPhone）把球场旋转 90° 铺满屏幕
-function gvLand(el, on) { el.classList.toggle('gvland', on); document.body.classList.toggle('gvland-on', on);
+function gvLand(el, on) { el.classList.toggle('gvland', on); document.body.classList.toggle('gvland-on', on); { const wrap = el.querySelector('.gvwrap'), g = el.querySelector('.stamg'), sh = el.querySelector('#stH'), sa = el.querySelector('#stA'); if (wrap && g && sh && sa) { if (on) { wrap.appendChild(sh); wrap.appendChild(sa); } else { g.appendChild(sh); g.appendChild(sa); } } } /* 横屏：两边放双方耐力条（把两张表移到球场左右两侧，退出时放回原处） */
   if (on) { const sp = el.querySelector('.hudsp'); if (sp) gvSpeed(sp, true); const r = el.requestFullscreen || el.webkitRequestFullscreen; if (r) { try { const pr = r.call(el); const noLock = () => { el._keep = 1; try { (document.exitFullscreen || document.webkitExitFullscreen).call(document).catch(() => {}); } catch (e) { } }, lk = () => { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').then(() => setTimeout(() => { if (innerHeight > innerWidth) noLock(); }, 600)).catch(noLock); else noLock(); } catch (e) { noLock(); } }; /* 锁不了横屏：退出全屏，改用旋转 90° 的铺满模式 */ if (pr && pr.then) pr.then(lk).catch(() => {}); else lk(); } catch (e) { } } }
   else { try { if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document).catch(() => {}); } catch (e) { } try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) { } } }
-document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.querySelectorAll('.gvland').forEach(x => { if (x._keep) { x._keep = 0; return; } x.classList.remove('gvland'); document.body.classList.remove('gvland-on'); }); });
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.querySelectorAll('.gvland').forEach(x => { if (x._keep) { x._keep = 0; return; } gvLand(x, false); }); });
 // 横屏里的速度按钮：切换页面上对应的速度（直播或回放）
 function gvSpeed(btn, showOnly) { const list = [...document.querySelectorAll(document.querySelector('#rpV') ? '[data-act="rpSpeed"]' : '#liveCtl [data-speed]')]; if (!list.length) return; let i = list.findIndex(b => b.getAttribute('aria-pressed') === 'true'); if (i < 0) i = 0;
   if (!showOnly) { i = (i + 1) % list.length; list[i].click(); } btn.textContent = list[i].textContent; }
