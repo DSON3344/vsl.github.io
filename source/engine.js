@@ -90,10 +90,10 @@ const ENGINE = (() => {
       let why = out[x.name];
       if (!why) {
         const st = streak[x.name] || 0, EN = ctx.energy ? ctx.energy[x.name] : null;
-        let pr = EN != null ? (EN < 58 ? 0.5 : EN < 64 ? 0.18 : EN < 70 ? 0.04 : 0.005) : st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
+        let pr = EN != null ? (EN < 62 ? 0.5 : EN < 68 ? 0.18 : EN < 74 ? 0.04 : 0.005) : st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
         if (x.line === 'GK') pr *= 0.12;
         if (x.rating >= best - 1) pr *= 0.7;
-        if (EN != null && EN < 52 && x.line !== 'GK') why = 'tired'; /* 精力见底的主力一定轮换（有人可替时） */
+        if (EN != null && EN < 56 && x.line !== 'GK') why = 'tired'; /* 精力见底的主力一定轮换（有人可替时） */
         else if (rnd() < Math.min(0.5, pr)) why = 'rest';
       }
       if (!why) return { ...x, start: 1 };
