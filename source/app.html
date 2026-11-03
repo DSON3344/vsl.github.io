@@ -228,7 +228,7 @@ body.gvland-on{overflow:hidden}
 .ev.new{animation:evin .5s ease-out}
 @keyframes evin{from{background:rgba(156,194,255,.16)}to{background:transparent}}
 .ev.div{grid-template-columns:1fr;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--fg-3);padding:7px}
-.condrow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:24px}
+.condrow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:24px}.condrow{max-width:100%;min-width:0;box-sizing:border-box}.condrow .chip{max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.35}.board>.side{min-width:0;max-width:100%}@media (max-width:560px){.condrow{gap:4px}.condrow .chip{padding:2px 6px}}
 .reels{display:flex;gap:10px;justify-content:center;margin-top:14px}
 .reel{display:grid;gap:5px;justify-items:center}
 .reel-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--fg-3)}
@@ -250,7 +250,7 @@ body.gvland-on{overflow:hidden}
 [hidden]{display:none!important}
 .pitch .p-bg{fill:var(--pitch)}
 .pitch .p-ln{fill:none;stroke:var(--pitch-line);stroke-width:.3}
-.stam{margin-top:6px;font-size:12px}.stam summary{cursor:pointer;color:var(--fg-3);font-size:12px;padding:2px 0}.stamg{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}.sth{font-weight:700;margin:4px 0;display:flex;gap:6px;align-items:center}.str{display:grid;grid-template-columns:22px minmax(0,1fr) 70px 24px;gap:6px;align-items:center;line-height:1.5}.str .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.str .bar{height:6px;border-radius:3px;background:var(--line,rgba(127,127,127,.25));overflow:hidden}.str .bar i{display:block;height:100%}.str .v{text-align:right;color:var(--fg-3)}@media(max-width:560px){.stamg{grid-template-columns:1fr}}
+.skw{margin:12px 0 4px}.skl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}.ski{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;align-items:center;padding:8px 10px;border-radius:12px;border:1px solid color-mix(in srgb,var(--c) 45%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--c) 16%,transparent),transparent 70%)}.ski .skb{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--c) 55%,transparent))}.skn{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}.skt{font-size:11px;font-weight:800;color:var(--c)}.skd{font-size:11.5px;color:var(--fg-3);line-height:1.45}.stam{margin-top:6px;font-size:12px}.stmode{display:flex;gap:4px;margin:2px 0 4px}.stmode button{font:inherit;font-size:11px;padding:2px 10px;border-radius:10px;border:1px solid var(--line,rgba(127,127,127,.35));background:transparent;color:var(--fg-3);cursor:pointer}.stmode button.on{background:var(--acc,#3b82f6);border-color:transparent;color:#fff}.sdr{display:grid;grid-template-columns:20px minmax(0,1fr) repeat(8,minmax(16px,24px));gap:3px;align-items:center;line-height:1.55}.sdr>span{text-align:center}.sdr .nm{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sdr.sdh{color:var(--fg-3);font-size:11px}.sdr.off{opacity:.5}.gvland .sdr{grid-template-columns:16px minmax(0,1fr) repeat(8,15px);gap:2px;font-size:10px}.stam summary{cursor:pointer;color:var(--fg-3);font-size:12px;padding:2px 0}.stamg{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}.sth{font-weight:700;margin:4px 0;display:flex;gap:6px;align-items:center}.str{display:grid;grid-template-columns:22px minmax(0,1fr) 70px 24px;gap:6px;align-items:center;line-height:1.5}.str .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.str .bar{height:6px;border-radius:3px;background:var(--line,rgba(127,127,127,.25));overflow:hidden}.str .bar i{display:block;height:100%}.str .v{text-align:right;color:var(--fg-3)}@media(max-width:560px){.stamg{grid-template-columns:1fr}}
 .pitch .p-stripe{fill:rgba(255,255,255,.012)}
 .pitch text{font-family:var(--mono);text-anchor:middle;dominant-baseline:central}
 .pitch .rt{font-size:1.75px;font-weight:700;fill:#05080c}
@@ -384,6 +384,10 @@ th.sorted{color:var(--accent-2)}
 (() => {
 'use strict';
 const H = HISTORY, PDB = PLAYER_DATABASE, TD = TEAMS_DATA;
+// 能力分级（传奇 95+ / 顶级球星 90–94 / 普通球星 85–89 / 优秀 80–84 / 普通 ≤79）：原始数据 78 分以上按 0.86 压缩，95+ 只留给极少数传奇
+const RC_K = 0.86, RC = r => r <= 78 ? r : 78 + (r - 78) * RC_K, RX = r => r <= 78 ? r : 78 + (r - 78) / RC_K;
+Object.values(HIST.squads || {}).forEach(T => Object.values(T).forEach(L => L.forEach(x => { if (typeof x[2] === 'number') x[2] = Math.round(RC(x[2])); })));
+(HIST.players || []).forEach(x => { if (x && typeof x[7] === 'number') x[7] = Math.round(RC(x[7])); });
 const $ = (s, r = document) => r.querySelector(s);
 // 手机上对话框里的表格改成卡片：每格带上表头文字
 function dlgLabel(root) { root.querySelectorAll('.tw table').forEach(tb => { const hs = [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim()); tb.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (hs[i] && !td.dataset.l) td.dataset.l = hs[i]; })); }); }
@@ -482,10 +486,10 @@ const compact = res => ({
 const luOf = (m, i) => m.r.lu ? m.r.lu[i].map(([n, sl], k) => ({ name: n, slot: sl, start: m.r.pl && m.r.pl[i][k] && m.r.pl[i][k][12] != null ? m.r.pl[i][k][12] : 1 })) : ENGINE.lineup(i ? m.a : m.h).xi.map(x => ({ name: x.name, slot: x.slot, start: 1 }));
 // 某队在第 ri 轮开赛前的伤停与连续首发情况，全部由已赛结果推出（伤病、红牌停赛、累计 5/10 张黄牌停赛）
 // 精力（0–100）：赛季开始满格；每场按上场分钟消耗（耐力属性高、年轻的消耗少），每轮之间恢复，没上场的恢复更多；冬歇期额外恢复
-const EN_COST = 20.5, EN_REC = 0.3, EN_REST = 8; // 每轮恢复 = 与满格差距 × 30%；一直踢满全场的主力大约稳定在 52（会被轮换）
+const EN_COST = 20.5, EN_REC = 0.3, EN_REST = 8, EN_ALL = 3; // 每轮所有人先回 3 点，再恢复与满格差距的 30%；一直踢满全场的主力大约稳定在 59（会被轮换）
 function enProfile(team) { const M = {}; (PDB[team] || []).forEach(p => { const a = p.age || 26, sta = (p.attributes && p.attributes.sta) || 78; M[p.name] = { cost: (String(p.pos) === 'GK' ? 0.35 : 1.3 - sta / 200) * (a >= 32 ? 1.2 : a >= 30 ? 1.1 : a <= 21 ? 0.95 : 1), rec: a >= 32 ? 0.85 : a <= 23 ? 1.1 : 1 }; }); return M; }
 function enStep(E, P, played) { Object.keys(P).forEach(n => { if (E[n] == null) E[n] = 100; }); Object.keys(played).forEach(n => { if (E[n] == null) E[n] = 100; });
-  Object.keys(E).forEach(n => { const pr = P[n] || { cost: 1, rec: 1 }, mn = played[n] || 0; if (mn > 0) E[n] -= EN_COST * Math.min(1, mn / 90) * pr.cost; else E[n] += EN_REST * pr.rec; E[n] = Math.max(30, Math.min(100, E[n] + (100 - E[n]) * EN_REC * pr.rec)); }); }
+  Object.keys(E).forEach(n => { const pr = P[n] || { cost: 1, rec: 1 }, mn = played[n] || 0; if (mn > 0) E[n] -= EN_COST * Math.min(1, mn / 90) * pr.cost; else E[n] += EN_REST * pr.rec; E[n] += EN_ALL * pr.rec; E[n] = Math.max(30, Math.min(100, E[n] + (100 - E[n]) * EN_REC * pr.rec)); }); }
 function teamCtx(team, ri, fx = S.fx) {
   const ban = {}, why = {}, yel = {}; let streak = {}; const energy = {}, EP = enProfile(team);
   for (let k = 0; k < ri; k++) {
@@ -579,28 +583,28 @@ function mentorTick(s) {
 function mentorInfo(t) { const L = PDB[t] || []; const M = L.filter(p => (p.age || 0) >= 30 && p.rating >= 80), Y = L.filter(p => (p.age || 99) <= 23); return { M, Y, k: Math.min(1, 0.35 * M.length) }; }
 function growthOf(p) {
   if (p._g) return p._g;
-  if (p.cv != null && rrOf(p.cv)) { const at = a => Math.min(99, rateAtR(p.cv, a) + Math.round(mbAt(p, a))); return (p._g = { pot: peakR(p.cv), at, past: at }); }
+  if (p.cv != null && rrOf(p.cv)) { const at = a => Math.min(97, rateAtR(p.cv, a) + Math.round(mbAt(p, a))); return (p._g = { pot: peakR(p.cv), at, past: at }); }
   const A0 = p.age0, R0 = p.rating0, h = ghash('pot|' + p.name);
-  const pot = p.potFix ? Math.max(R0, p.potFix) : A0 < 25 ? Math.min(97, R0 + Math.round((25 - A0) * (p.youth ? 1.4 + h * 1.8 : 0.5 + h * 0.9))) : R0;
+  const pot = p.potFix ? Math.max(R0, p.potFix) : A0 < 25 ? Math.min(94, Math.max(R0, R0 + Math.round((25 - A0) * (p.youth ? 0.9 + h * 1.1 : 0.4 + h * 0.7)))) : R0;
   const dec = a => { let d = 0; for (let y = 31; y <= a; y++) d += 0.6 + (y - 31) * 0.45 + ghash(p.name + 'd' + y) * 0.5; return d; };
   const at = a => {
     if (a <= A0) return R0;
     let r = A0 < 26 ? R0 + (pot - R0) * Math.min(1, (a - A0) / (26 - A0)) : R0;
     r -= dec(a) - dec(Math.max(A0, 30));
     r += (ghash(p.name + '|' + a) - 0.5) * 1.2;
-    return Math.max(50, Math.min(99, Math.round(r + mbAt(p, a))));
+    return Math.max(50, Math.min(97, Math.round(r + mbAt(p, a))));
   };
   // 过去的能力（S18 之前的赛季）：倒推回巅峰期，再往前是成长期
   const past = a => {
     if (a >= A0) return at(a);
     const decl = x => x > 30 ? dec(x) - dec(30) : 0;
-    let r = A0 <= 26 ? R0 - (A0 - a) * (1.3 + h * 0.6) : (Math.min(97, R0 + Math.min(decl(A0), 4 + Math.max(0, R0 - 80) * 0.3)) - (a >= 26 ? decl(a) : (26 - a) * (1.3 + h * 0.6)));
+    let r = A0 <= 26 ? R0 - (A0 - a) * (1.3 + h * 0.6) : (Math.min(96, R0 + Math.min(decl(A0), 4 + Math.max(0, R0 - 80) * 0.3)) - (a >= 26 ? decl(a) : (26 - a) * (1.3 + h * 0.6)));
     return Math.max(50, Math.min(97, Math.round(r)));
   };
   return (p._g = { pot, at, past });
 }
 // 退役：34–36 岁（顶级球员多踢一年、门将多踢两年），33 岁后评分跌破 74 也会挂靴
-function retiresAt(p, age, rating) { const lim = 34 + Math.floor(ghash('ret|' + p.name) * 3) + (p.rating0 >= 90 ? 1 : 0) + (p.pos === 'GK' ? 2 : 0); return age >= lim || (age >= 33 && rating < 74) || age >= 39; }
+function retiresAt(p, age, rating) { const lim = 34 + Math.floor(ghash('ret|' + p.name) * 3) + (p.rating0 >= 88 ? 1 : 0) + (p.pos === 'GK' ? 2 : 0); return age >= lim || (age >= 33 && rating < 74) || age >= 39; }
 /* ---------- 能力重新推演（build_rerate.js 生成的 RERATE）：旧资料只留名字、位置、国籍、年龄和每季在哪队 ----------
    S18 初始阵容的能力、属性、身价全部按同一条能力曲线重算；部分球员因伤病或个人原因没能兑现天赋 */
 const curveP = (P, pAge, a) => a < pAge ? P - Math.pow(pAge - a, 1.2) * 0.8 : a <= pAge + 2 ? P : P - Math.pow(a - pAge - 2, 1.45) * 0.85;
@@ -622,7 +626,7 @@ function rateAtR(key, a, raw) {
   const X = rrOf(key); if (!X) return null; const [pot, pAge, , bt, ba, loss, bg, bga] = X;
   let P = pot; if (bt === 1 && a >= ba) P = pot - loss; else if (bt === 2 && a >= ba) P = pot - loss * Math.min(1, (a - ba + 1) / 3);
   if (bg && !raw && a >= bga) P += bg * Math.min(1, (a - bga + 1) / 3);
-  return Math.max(50, Math.min(99, Math.round(curveP(P, pAge, a) + (ghash('rn|' + key + '|' + a) - 0.5) * 1.6) + (typeof key === 'number' && !raw ? padjOf(key) : 0)));
+  return Math.max(50, Math.min(97, Math.round(RC(curveP(P, pAge, a) + (ghash('rn|' + key + '|' + a) - 0.5) * 1.6)) + (typeof key === 'number' && !raw ? padjOf(key) : 0)));
 }
 const peakR = key => { let m = 0; for (let a = 17; a <= 38; a++) m = Math.max(m, rateAtR(key, a) || 0); return m; };
 const BUST_TXT = { 1: ['重伤', ['十字韧带断裂', '跟腱断裂', '膝盖半月板反复受伤', '脚踝粉碎性骨折', '慢性腰伤']], 2: ['个人因素', ['训练态度散漫', '场外风波不断', '心理压力过大、状态起伏', '与主帅长期不和', '沉迷夜生活']] };
@@ -643,7 +647,7 @@ function bustInfo(key) { const X = rrOf(key); if (!X || !X[3]) return null; cons
     const key = pid != null && RERATE.p[pid] ? pid : 'n|' + t + '|' + p.name + '|' + p.age; p.cv = key;
     p.rating = rateAtR(key, p.age); const line = ENGINE.LINE(p.pos), T = tpl(line, p.pos), A = {};
     Object.entries(T).forEach(([k, d]) => A[k] = Math.max(25, Math.min(99, Math.round(p.rating + d + (ghash('at|' + key + '|' + k) - 0.5) * 10))));
-    p.attributes = A; p.value = 'ⰵ' + Math.max(1, Math.round(15 * Math.exp(0.17 * (p.rating - 80)) * (p.age < 24 ? 1.4 : p.age <= 28 ? 1.15 : p.age <= 30 ? 0.95 : 0.75))) + 'M'; p.cGP = p.cG = p.cA = p.tGP = p.tG = p.tA = 0;
+    p.attributes = A; p.value = 'ⰵ' + Math.max(1, Math.round(15 * Math.exp(0.17 * (RX(p.rating) - 80)) * (p.age < 24 ? 1.4 : p.age <= 28 ? 1.15 : p.age <= 30 ? 0.95 : 0.75))) + 'M'; p.cGP = p.cG = p.cA = p.tGP = p.tG = p.tA = 0;
   }));
   // 首发按新能力重排（阵型的位置不变）
   Object.entries(TEAMS_DATA).forEach(([t, T]) => { const L = (PLAYER_DATABASE[t] || []).slice(); if (!L.length || !T.roster) return; const used = new Set();
@@ -698,7 +702,7 @@ Object.entries(DBPID).forEach(([k, i]) => linkUid('D|' + k, i));
 const RETIRED_UID = new Set(), RETIRED_PID = { has: pid => RETIRED_UID.has(PID_UID[pid]) };
 const AWARD_CACHE = {};
 let RET_LOG = {}, TR_LOG = {}, BY_TN = {}, TEAM_OF_UID = {}, ABROAD = {};
-const valueM = (r, age) => { const base = 15 * Math.exp(0.17 * (r - 80)); const af = age < 24 ? 1.4 : age <= 28 ? 1.15 : age <= 30 ? 0.95 : 0.75; return Math.max(1, Math.round(base * af)); };
+const valueM = (r, age) => { const base = 15 * Math.exp(0.17 * (RX(r) - 80)); const af = age < 24 ? 1.4 : age <= 28 ? 1.15 : age <= 30 ? 0.95 : 0.75; return Math.max(1, Math.round(base * af)); };
 // 合同：S18 起按年龄生成到期赛季；到期续约 2–4 年，转会签 2–4 年
 function contractInit(p, t) { const h = ghash(t + '|' + p.name), age = p.age0; return 18 + (age >= 33 ? (h < 0.7 ? 0 : 1) : age >= 30 ? Math.floor(h * 4) : age <= 21 ? 2 + Math.floor(h * 3) : Math.floor(h * 6)); }
 // 某季的威超球队（用来判断转会去向是不是威超球队）
@@ -717,7 +721,7 @@ const EXT_LEAGUES = [
   { name: '东海职联', short: '东海职联', style: 'kr', clubs: [['首尔虎', 76], ['鹿岛鹿脚', 75], ['江源城', 74], ['釜山偶相', 73], ['全北现带', 72], ['浦和红赞', 71], ['济洲联', 70], ['广岛三剑', 69], ['上海海巷', 72, 'cn'], ['山东太山', 71, 'cn']] },
   { name: '其他赛区', short: '其他', style: 'nord', clubs: [["本菲咖", 79.0], ["波耳图", 78.8], ["葡萄芽体育", 78.6], ["阿贾克丝", 78.3], ["埃因霍文", 78.1], ["费耶诺得", 77.9], ["加拉塔萨蕾", 77.7], ["费内巴且", 77.5], ["凯耳特人", 77.2], ["格拉斯哥流浪着", 77.0], ["萨耳茨堡", 76.8], ["布鲁曰", 76.6], ["顿涅茨克旷工", 76.4], ["奥林匹亚珂斯", 76.1], ["泽妮特", 75.9], ["博咖青年", 75.7], ["河牀", 75.5], ["弗拉门哥", 75.3], ["帕尔梅腊斯", 75.0], ["利雅得新玥", 74.8], ["利雅得胜莉", 74.6], ["迈阿密国计", 74.4], ["布拉咖", 74.2], ["阿尔克玛尔", 73.9], ["安德莱赫忒", 73.7], ["亨珂", 73.5], ["萨格勒布迪纳魔", 73.3], ["贝尔格莱德红醒", 73.1], ["哥本哈跟", 72.8], ["中日德蓝", 72.6], ["博德闪曜", 72.4], ["莫耳德", 72.2], ["马耳默", 72.0], ["巴赛尔", 71.7], ["伯尔尼年青人", 71.5], ["布拉格斯拉唯亚", 71.3], ["布拉格斯巴哒", 71.1], ["费伦茨瓦洛斯", 70.9], ["华沙莱吉雅", 70.6], ["帕纳辛奈珂斯", 70.4], ["帕奥珂", 70.2], ["基辅迪纳魔", 70.0], ["贝西克塔丝", 69.8], ["蒙特蕾", 69.5], ["墨西哥美州", 69.3], ["佩纳洛尔", 69.1], ["桑托丝", 68.9], ["科林蒂恩", 68.7], ["圣保洛", 68.4], ["洛杉玑银河", 68.2]] },
 ];
-const EXT_CLUB = {}; EXT_LEAGUES.forEach(L => L.clubs.forEach(([c, st, sty]) => EXT_CLUB[c] = { league: L.name, style: sty || L.style, str: st }));
+const EXT_CLUB = {}; EXT_LEAGUES.forEach(L => L.clubs.forEach(([c, st, sty]) => EXT_CLUB[c] = { league: L.name, style: sty || L.style, str: Math.round(RC(st) * 10) / 10 }));
 const STYLE_NATS = { nord: ['丹麦', '瑞典', '挪威', '荷兰', '比利时', '克罗地亚', '塞尔维亚', '波兰'], en: ['英格兰', '英格兰', '苏格兰', '美国'], es: ['西班牙', '西班牙', '阿根廷', '乌拉圭', '哥伦比亚'], de: ['德国', '德国', '奥地利', '瑞士'], it: ['意大利', '意大利', '意大利', '克罗地亚'], fr: ['法国', '法国', '比利时', '塞内加尔', '科特迪瓦'], kr: ['韩国', '韩国', '日本'], cn: ['中国', '中国', '中国', '中国', '巴西'] };
 // 名字只用一个词（不加名·姓）；两段式用完后用三段式，再不够就允许和别队重名（同队不重名）
 function oneName(nat, rnd, k) {
@@ -808,7 +812,7 @@ function makeYouth(team, old, season) {
   const tpl = ATTR_TPL[line];
   const attributes = {}; Object.entries(tpl).forEach(([k, d]) => attributes[k] = Math.max(25, Math.min(95, Math.round(rating + d + (rnd() - 0.5) * 8))));
   const Y = { no: old.no, team, pos: old.pos, nat, name, rating, height: 172 + Math.floor(rnd() * 20), weight: 66 + Math.floor(rnd() * 16), age, cGP: 0, cG: 0, cA: 0, tGP: 0, tG: 0, tA: 0, value: 'ⰵ' + valueM(rating, age) + 'M', attributes, youth: 1, rating0: rating, age0: age, s0: season, from: old.name, uid: 'Y|' + name + (YOUTH_UID.has('Y|' + name) ? '|' + team + season : ''), cEnd: season + 2 + Math.floor(rnd() * 2) };
-  YOUTH_UID.add(Y.uid); return Y;
+  Y.potFix = samplePA(seeded('ypa|' + team + '|' + old.name + '|' + season), acadQ(team)); YOUTH_UID.add(Y.uid); return Y;
 }
 /* ---------- 租借 ----------
    一线队球员的租借 = 转会窗里成交、标了 loan 的报价（租一季）；S.loanExt[id] 记续租了几季，期满不处理就回归。
@@ -916,25 +920,38 @@ function loanUndoExt(id) { if (!S.loanExt || !S.loanExt[id]) return; S.loanExt[i
 /* ---------- 青训梯队（15–20 岁）：S18 起每队每季招入 2–3 名 15 岁少年，一线队有空缺时从这里提拔，21 岁还没提拔就离队 ----------
    S01–S17：梯队就是之后才在一线队出道的那批历史球员（出道前在本队青训） */
 let ACAD = {};
+/* 青训天赋（潜在能力 PA）：传奇 95+ 0.1% / 顶级球星 90–94 0.5% / 普通球星 85–89 2.4% / 优秀 80–84 8% / 普通 ≤79 89%
+   俱乐部青训等级（世界级 / 优秀 / 良好 / 普通 / 较差）按比例调高或调低高天赋的出现机会；黄金一代是低概率的整批事件 */
+const PA_T = [[95, 97], [90, 94], [85, 89], [80, 84]], PA_P = [0.001, 0.005, 0.024, 0.08];
+const ACQ_M = { 世界级: [2.2, 1.8, 1.5, 1.25], 优秀: [1.5, 1.35, 1.2, 1.1], 良好: [1, 1, 1, 1], 普通: [0.7, 0.75, 0.85, 0.92], 较差: [0.45, 0.5, 0.65, 0.8] };
+const GOLD_P = { 世界级: 0.04, 优秀: 0.03, 良好: 0.02, 普通: 0.015, 较差: 0.012 };
+function samplePA(r, q) { const m = ACQ_M[q] || ACQ_M['良好']; let x = r(); for (let i = 0; i < 4; i++) { const p = PA_P[i] * m[i]; if (x < p) { const [a, b] = PA_T[i]; return a + Math.floor(r() * (b - a + 1)); } x -= p; } return Math.round(60 + 19 * Math.sqrt(r())); }
+function sampleGoldPA(r) { const x = r(); return x < 0.03 ? 95 + Math.floor(r() * 2) : x < 0.25 ? 90 + Math.floor(r() * 5) : 85 + Math.floor(r() * 5); }
+const bustP = pot => pot >= 95 ? 0.4 : pot >= 90 ? 0.3 : pot >= 85 ? 0.2 : pot >= 80 ? 0.15 : 0.06; // 1 − 成材率
+let ACQ_C = null;
+function acadQ(t) {
+  if (EXT_CLUB[t]) { const s = EXT_CLUB[t].str; return s >= 84 ? '世界级' : s >= 81 ? '优秀' : s >= 77 ? '良好' : s >= 73 ? '普通' : '较差'; }
+  if (!ACQ_C) { ACQ_C = {}; const L = Object.keys(TD).sort((a, b) => acadBase(b) - acadBase(a)), n = L.length; L.forEach((x, i) => { const f = i / n; ACQ_C[x] = f < 0.15 ? '世界级' : f < 0.35 ? '优秀' : f < 0.65 ? '良好' : f < 0.85 ? '普通' : '较差'; }); }
+  return ACQ_C[t] || '良好';
+}
 const ACAD_POS = { GK: ['GK'], DF: ['CB', 'CB', 'LB', 'RB'], MF: ['CDM', 'CM', 'CM', 'CAM', 'LM', 'RM'], FW: ['ST', 'ST', 'LW', 'RW'] };
 function acadBase(t) { const v = ((typeof PDB0 !== 'undefined' && PDB0[t]) || PDB[t] || []).map(p => p.rating).sort((a, b) => b - a).slice(0, 11); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 78; }
-function acadKid(t, born, k) {
+function acadKid(t, born, k, gold) {
   const rnd = seeded('acad|' + t + '|' + born + '|' + k);
   const { name, nat } = youthName(t, rnd);
   let x = rnd(), line = 'FW'; for (const [l, w] of [['GK', 0.11], ['DF', 0.33], ['MF', 0.33], ['FW', 0.23]]) { if ((x -= w) <= 0) { line = l; break; } }
   const pos = ACAD_POS[line][Math.floor(rnd() * ACAD_POS[line].length)];
-  let pot = 70 + rnd() * 13 + (acadBase(t) - 84) * 0.45; const g = rnd(); if (g < 0.015) pot = 92 + rnd() * 4; else if (g < 0.08) pot += 7 + rnd() * 4;
-  pot = Math.round(Math.max(62, Math.min(96, pot)));
+  const pr = seeded('pa|' + t + '|' + born + '|' + k), isGold = gold && k < gold; let pot = isGold ? sampleGoldPA(pr) : samplePA(pr, acadQ(t));
   const prof = {}; Object.keys(ATTR_TPL[line]).forEach(a => prof[a] = Math.round((rnd() - 0.5) * 14));
   const id = 'A|' + t + '|' + born + '|' + k, bh = seeded(id + '|bust')(); let bt = 0, ba = 0, loss = 0;
-  if (pot >= 84 && bh < 0.12) { bt = ghash(id + '|bt') < 0.55 ? 1 : 2; ba = 17 + Math.floor(ghash(id + '|ba') * 6); loss = bt === 1 ? 5 + Math.floor(ghash(id + '|bl') * 8) : 4 + Math.floor(ghash(id + '|bl') * 6); }
-  let bg = 0, bga = 0; { const r = seeded(id + '|bloom'); if (!bt && r() < (pot >= 88 ? 0.06 : 0.12)) { bg = Math.min(97 - pot, 3 + Math.floor(r() * 5)); bga = 18 + Math.floor(r() * 6); } }
-  return { id, team: t, name, nat, pos, line, born, pot, bt, ba, loss, bg, bga, prof, height: line === 'GK' ? 183 + Math.floor(rnd() * 12) : 168 + Math.floor(rnd() * 22), weight: 60 + Math.floor(rnd() * 20), status: 'academy' };
+  if (bh < bustP(pot)) { bt = ghash(id + '|bt') < 0.55 ? 1 : 2; ba = 17 + Math.floor(ghash(id + '|ba') * 6); loss = bt === 1 ? 5 + Math.floor(ghash(id + '|bl') * 8) : 4 + Math.floor(ghash(id + '|bl') * 6); }
+  let bg = 0, bga = 0; { const r = seeded(id + '|bloom'); if (!bt && pot < 94 && r() < (pot >= 85 ? 0.04 : 0.08)) { bg = Math.max(0, Math.min(94 - pot, 3 + Math.floor(r() * 4))); bga = 18 + Math.floor(r() * 6); } }
+  return { id, gold: isGold ? 1 : 0, team: t, name, nat, pos, line, born, pot, bt, ba, loss, bg, bga, prof, height: line === 'GK' ? 183 + Math.floor(rnd() * 12) : 168 + Math.floor(rnd() * 22), weight: 60 + Math.floor(rnd() * 20), status: 'academy' };
 }
 const kidPot = (k, s) => { const a = s - k.born; if (k.bg && a >= k.bga) return k.pot + k.bg * Math.min(1, (a - k.bga + 1) / 3); return !k.bt || a < k.ba ? k.pot : k.pot - (k.bt === 1 ? k.loss : k.loss * Math.min(1, (a - k.ba + 1) / 3)); };
 const kidRating = (k, s) => Math.round(Math.max(40, kidPot(k, s) - Math.max(0, 22 - (s - k.born)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2));
 function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR_TPL[k.line]).forEach(([a, d]) => o[a] = Math.max(20, Math.min(99, Math.round(r + d + (k.prof[a] || 0))))); return o; }
-function acadCohort(t, born) { const n = 3 + (ghash('acn|' + t + '|' + born) < 0.4 ? 1 : 0); for (let k = 0; k < n; k++) { const kid = acadKid(t, born, k); ACAD[t].push(kid); ACAD_ID[kid.id] = kid; } }
+function acadCohort(t, born) { const n = 4 + (ghash('acn|' + t + '|' + born) < 0.4 ? 1 : 0), gold = ghash('gold|' + t + '|' + born) < (GOLD_P[acadQ(t)] || 0.02) ? 2 + (ghash('goldn|' + t + '|' + born) < 0.4 ? 1 : 0) : 0; for (let k = 0; k < n; k++) { const kid = acadKid(t, born, k, gold); ACAD[t].push(kid); ACAD_ID[kid.id] = kid; } }
 function acadInit() { ACAD = {}; ACAD_ID = {}; Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 1 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); } // 从 S01 起每季都有 15–20 岁的梯队（历史时期也有）
 function acadNext(s) { Object.keys(TD).forEach(t => { ACAD[t].forEach(k => { if (k.status === 'academy' && s - k.born > 20) k.status = 'released'; }); acadCohort(t, s - 15); }); }
 let HIST_FIRST = null;
@@ -950,7 +967,7 @@ function academyOf(t, s = SEASON) {
   return out.sort((a, b) => b.pot - a.pot || b.rating - a.rating);
 }
 // 潜力新星：15–20 岁、潜力 87 以上、还没到 90（到 90 就算已经兑现天赋）
-const isProspect = k => k.age >= 15 && k.age <= 20 && k.rating < 90 && k.pot >= 87;
+const isProspect = k => k.age >= 15 && k.age <= 20 && k.rating < 88 && k.pot >= 85;
 // 外赛区之间的转会（S18 起由系统推算）：能力明显高过球队的年轻球员被强队买走，老将去实力较弱的球队
 function extWindow(s, log) {
   const ns = s + 1, rnd = seeded('xw|' + s), clubs = Object.keys(EXT_CLUB).filter(c => FDB[c]);
@@ -1010,7 +1027,7 @@ const FDB0 = {};
     const shift = known.length >= 8 ? str - known.reduce((a, b) => a + b, 0) / known.length : 0;
     let gi = 0; const OFF = [2, 1.5, 1, 1, 0.5, 0, 0, -0.5, -1, -1.5, -2, -4, -5, -5, -6, -7, -7, -8];
     FDB0[club] = list.map(x => {
-      const rating = Math.max(60, Math.min(96, Math.round(x.r != null ? x.r + shift : str + OFF[gi++ % OFF.length] + (rnd() - 0.5) * 2)));
+      const rating = Math.round(RC(Math.max(60, Math.min(97, x.r != null ? x.r + shift : str + OFF[gi++ % OFF.length] + (rnd() - 0.5) * 2))));
       const name = x.real ? fakeName(x.real) : nameFor(x.nat, rnd);
       const o = extPlayer(club, name, x.pos, x.nat, x.age, rating, rnd); if (x.real) { o.proto = 1; o.career = realCareer(x.real, club); } if (x.ht) { o.height = x.ht; o.weight = x.wt; } return o;
     });
@@ -1022,7 +1039,7 @@ function extYouth(club, old, season) {
   const rnd = seeded('xy|' + club + '|' + old.name + '|' + season), L = LEAGUE_OF[club] || EXT_LEAGUES[0];
   const nats = STYLE_NATS[(EXT_CLUB[club] || L).style] || STYLE_NATS.nord, nat = rnd() < 0.75 ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)];
   const age = 17 + Math.floor(rnd() * 3), rating = Math.round(EXT_CLUB[club].str - 14 + rnd() * 8);
-  const o = extPlayer(club, nameFor(nat, rnd, club), old.pos, nat, age, rating, rnd); o.cGP = o.cG = o.cA = 0; o.youth = 1; o.rating0 = rating; o.age0 = age; o.s0 = season; o.stints = [[club, season]]; o.cEnd = season + 3;
+  const o = extPlayer(club, nameFor(nat, rnd, club), old.pos, nat, age, rating, rnd); o.cGP = o.cG = o.cA = 0; o.youth = 1; o.rating0 = rating; o.age0 = age; o.s0 = season; o.stints = [[club, season]]; o.cEnd = season + 3; o.potFix = samplePA(seeded('xpa|' + club + '|' + old.name + '|' + season), acadQ(club));
   return o;
 }
 const clubAt = (p, s) => { let c = null; (p.stints || []).forEach(([cl, from]) => { if (from <= s) c = cl; }); return c; };
@@ -1219,7 +1236,7 @@ function setupHistoric(s) {
   const SQ = (HIST.squads || {})[s] || {};
   Object.keys(TD).forEach(t => {
     const seen = new Set(), list = [];
-    (SQ[t] || []).forEach(([pid, slot, r]) => { const n = HIST.players[pid] && HIST.players[pid][0]; if (!n || seen.has(n)) return; seen.add(n); list.push({ p: histPlayer(pid, t, s, Math.min(99, r + padjOf(pid) + Math.round(histMentor(s)[pid] || 0) + bloomDelta(pid, s))), slot }); });
+    (SQ[t] || []).forEach(([pid, slot, r]) => { const n = HIST.players[pid] && HIST.players[pid][0]; if (!n || seen.has(n)) return; seen.add(n); list.push({ p: histPlayer(pid, t, s, Math.min(97, r + padjOf(pid) + Math.round(histMentor(s)[pid] || 0) + bloomDelta(pid, s))), slot }); });
     if (!list.length) return;
     PDB[t] = list.map(x => x.p);
     { const usedNo = new Set(); PDB[t].forEach(p => { let n = p.no; if (usedNo.has(n)) { const pool = { GK: [1, 12, 13, 22, 25, 31], DF: [2, 3, 4, 5, 6, 15, 23, 24, 26, 32], MF: [8, 10, 14, 16, 18, 20, 21, 27, 28], FW: [7, 9, 11, 17, 19, 29, 30] }[ENGINE.LINE(p.pos)]; n = pool.find(x => !usedNo.has(x)) || [...Array(60)].map((_, k) => k + 33).find(x => !usedNo.has(x)); p.no = n; } usedNo.add(n); }); }
@@ -2155,6 +2172,66 @@ async function kickoff(instant) {
 }
 // ── 逐秒物理模拟（0.1 秒一步）：球员有速度 / 加速度 / 体能，球有滚动摩擦和高球；有传球、盘带、抢断、拦截、射门、门将扑救、界外球、角球、门球。
 // 比分、进球时间、进球者、助攻、红黄牌、换人都由比赛引擎的结果决定，物理模拟负责把它们「踢出来」；同一场比赛用同一个种子，回放每次都一样。
+/* ---------- 球员技能（特长）：稀有度 C < B < A < S，越稀有触发率越高、效果越强 ----------
+   触发：每到对应的动作（任意球、点球、远射、过人、传球……）掷一次触发率；触发时这一下的成功率提高，场上球员头顶亮起技能图标。
+   没有这项技能的球员也能做这个动作，只是没有加成、也不会触发。技能由位置、属性和身材决定（同一个球员永远是同一套） */
+const SK_T = { C: { trig: 0.15, pw: 1, col: '#8d99a6', n: '普通' }, B: { trig: 0.25, pw: 1.5, col: '#3b82f6', n: '稀有' }, A: { trig: 0.35, pw: 2, col: '#a855f7', n: '史诗' }, S: { trig: 0.5, pw: 3, col: '#f5b300', n: '传说' } };
+const SK_ICON = {
+  fk: '<circle cx="7" cy="17" r="3.2"/><path d="M9.5 14.5C12 8 17 6 21 7.5"/><path d="M18.2 5.6 21 7.5l-1.6 3"/><path d="M13 20v-6m3 6v-6m3 6v-6" stroke-width="1.6"/>',
+  pen: '<path d="M3 18V6h18v12"/><path d="M3 9h18M9 6v12M15 6v12" stroke-width="1" opacity=".55"/><circle cx="12" cy="20.5" r="1.6" fill="currentColor"/>',
+  long: '<circle cx="5.5" cy="17.5" r="2.8"/><path d="M8.5 15.5 20 6"/><path d="M15.5 5.6 20 6l-.6 4.5"/><path d="M3 21h4" stroke-width="1.4"/>',
+  flair: '<path d="M4 18c2-8 6-12 9-10s-1 7-3 6 1-7 6-8 4 2 4 2"/><circle cx="18.5" cy="18" r="2.4"/>',
+  pass: '<circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/><path d="M7.5 10.5c3-3 6-3 9 0"/><path d="M14.4 9.2l2.1 1.3-.6 2.3"/><path d="M16.5 13.5c-3 3-6 3-9 0" opacity=".6"/>',
+  thru: '<path d="M3 20 20 3"/><path d="M14.5 3H20v5.5"/><path d="M6 6.5l3 3M14.5 15l3 3" stroke-width="2.4"/>',
+  cross: '<path d="M4 20V9"/><path d="M4 9c4-6 12-6 15 2"/><path d="M16.2 9.8l2.8 1.2.6-3"/><circle cx="19" cy="17" r="2.4"/>',
+  head: '<circle cx="10" cy="14" r="4.6"/><path d="M6.5 18.5 5 22M13.5 18.5 15 22"/><circle cx="17.5" cy="5.5" r="2.6"/><path d="M14.5 8.5l-1.5 1.5" stroke-width="1.4"/>',
+  solo: '<circle cx="5" cy="14" r="2.2"/><path d="M7.5 14H17"/><path d="M14 11l3 3-3 3"/><path d="M20 6v16" stroke-width="2.4"/>',
+  box: '<path d="M2 21V9h20v12"/><path d="M7 21v-6h10v6"/><circle cx="12" cy="11.5" r="3"/><circle cx="12" cy="11.5" r=".8" fill="currentColor"/>',
+  pace: '<path d="M13 2 5 13h6l-2 9 9-12h-6z" fill="currentColor" stroke="none"/>',
+  engine: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M7 12h3l1.5-2.5 2 5 1.5-2.5h2" stroke-width="1.5"/>',
+  tackle: '<path d="M3 15h9l5 4H5z" fill="currentColor" stroke="none" opacity=".85"/><path d="M12 15V5"/><circle cx="19" cy="9" r="2.6"/><path d="M14 9h2" stroke-width="1.4"/>',
+  icpt: '<path d="M3 12h7M14 12h7"/><path d="M17.5 8.5 21 12l-3.5 3.5"/><path d="M12 4v16" stroke-width="2.6"/>',
+  aerial: '<path d="M12 21V8"/><path d="M7 12l5-5 5 5"/><path d="M5 5l3-2 3 2M13 5l3-2 3 2" stroke-width="1.4"/>',
+  save: '<path d="M7 21v-7l-3-4 1.6-1.2L8 11V4.5a1.3 1.3 0 0 1 2.6 0V10V3.5a1.3 1.3 0 0 1 2.6 0V10V4.5a1.3 1.3 0 0 1 2.6 0V11V6.5a1.3 1.3 0 0 1 2.6 0V15c0 3-2 6-5 6z"/>',
+  pstop: '<path d="M6 21v-6l-2.5-3.5 1.4-1L7 12V6a1.2 1.2 0 0 1 2.4 0v5V5a1.2 1.2 0 0 1 2.4 0v6V6.5a1.2 1.2 0 0 1 2.4 0V14c0 3-1.6 7-4.6 7z"/><text x="19" y="11" font-size="9" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">P</text>'
+};
+const SK_DEF = {
+  fk: { n: '任意球大师', g: '定位球', d: '直接任意球的弧线和落点更刁钻，门将更难扑', pos: x => x !== 'GK', sc: A => A.sho * 0.45 + A.pas * 0.35 + A.dri * 0.2 },
+  pen: { n: '点球高手', g: '定位球', d: '罚点球更稳、更会骗门将', pos: x => x === 'FW' || x === 'MF', sc: A => A.sho * 0.6 + A.men * 0.4 },
+  long: { n: '远射专家', g: '射门', d: '更愿意在禁区外起脚，远射更准、更有力', pos: x => x === 'FW' || x === 'MF', sc: A => A.sho * 0.7 + A.phy * 0.3 },
+  flair: { n: '花式过人', g: '盘带', d: '一对一时使出彩虹过人、踩单车、油炸丸子、马赛回旋等动作，过人成功率更高', pos: (x, p) => x === 'FW' || (x === 'MF' && /AM|W|M$/.test(p)), sc: A => A.dri * 0.75 + A.spd * 0.25 },
+  pass: { n: '传球大师', g: '传球', d: '传球的方向和力度更准，失误更少', pos: x => x === 'MF' || x === 'DF', sc: A => A.pas * 0.7 + A.men * 0.3 },
+  thru: { n: '直塞大师', g: '传球', d: '更会找前插队友的身后空当，直塞球更准', pos: (x, p) => x === 'MF' && /AM|CM/.test(p), sc: A => A.pas * 0.6 + A.men * 0.4 },
+  cross: { n: '传中大师', g: '传球', d: '边路传中的落点更准，更容易找到抢点的队友', pos: (x, p) => /^[LR]/.test(p) || /W/.test(p), sc: A => A.pas * 0.6 + A.dri * 0.2 + A.spd * 0.2 },
+  head: { n: '头球之王', g: '射门', d: '头球攻门更准、更有力', pos: (x, p) => p === 'ST' || /CB/.test(p), sc: (A, h) => A.phy * 0.6 + A.sho * 0.25 + 12 + (h - 182) * 0.6 },
+  solo: { n: '单刀之王', g: '射门', d: '面对门将一对一时更冷静，进球率更高', pos: (x, p) => x === 'FW', sc: A => A.sho * 0.6 + A.men * 0.2 + A.spd * 0.2 },
+  box: { n: '禁区杀手', g: '射门', d: '禁区里的射门更准', pos: (x, p) => x === 'FW' && !/W/.test(p), sc: A => A.sho * 0.7 + A.men * 0.3 },
+  pace: { n: '速度之王', g: '身体', d: '冲刺速度更快，前插和反击时甩开对手', pos: x => x !== 'GK', sc: A => A.spd },
+  engine: { n: '马拉松体能', g: '身体', d: '体力消耗更少，下半场依然能跑', pos: x => x !== 'GK', sc: A => A.sta },
+  tackle: { n: '抢断大师', g: '防守', d: '上抢的成功率更高', pos: (x, p) => x === 'DF' || p === 'CDM' || p === 'DM', sc: A => A.def * 0.75 + A.phy * 0.25 },
+  icpt: { n: '拦截专家', g: '防守', d: '预判传球线路，更容易切断对手的传球', pos: x => x === 'DF' || x === 'MF', sc: A => A.def * 0.5 + A.men * 0.5 },
+  aerial: { n: '空中霸主', g: '防守', d: '高空球争顶更容易抢到第一点', pos: (x, p) => /CB/.test(p) || p === 'ST' || p === 'CDM', sc: (A, h) => A.phy * 0.6 + A.def * 0.3 + 9 + (h - 182) * 0.5 },
+  save: { n: '扑救大师', g: '门将', d: '扑救范围和反应更好', pos: x => x === 'GK', sc: A => (A.ref || 70) * 0.5 + (A.div || 70) * 0.5 },
+  pstop: { n: '点球克星', g: '门将', d: '扑点球的成功率更高', pos: x => x === 'GK', sc: A => (A.div || 70) * 0.6 + (A.ref || 70) * 0.4 - 1.5 }
+};
+const SK_FX = { fk: '任意球误差 −{12}% · 门将扑救 −{5}%', pen: '点球误差 −{15}% · 门将扑救 −{6}%', long: '远射误差 −{12}% · 门将扑救 −{3}%（平时也更爱远射）', flair: '过人成功率 +{10}%', pass: '传球误差 −{15}%', thru: '直塞误差 −{15}%（平时也更爱找前插的人）', cross: '传中误差 −{18}%', head: '头球误差 −{12}% · 门将扑救 −{4}%', solo: '单刀误差 −{12}% · 门将扑救 −{5}%', box: '禁区内射门误差 −{10}% · 门将扑救 −{3}%', pace: '冲刺速度 +{1.5}%（一直生效）', engine: '体力消耗 −{8}%（一直生效）', tackle: '抢断成功率 +{8}%', icpt: '拦截反应 +{6}%（一直生效）', aerial: '争顶 +{6}%（一直生效）', save: '扑救成功率 +{4}%', pstop: '扑点球成功率 +{10}%' };
+const SK_MOVES = ['彩虹过人', '踩单车', '油炸丸子', '马赛回旋', '牛尾巴', '脚后跟磕球', '克鲁伊夫转身', '穿裆'];
+const SK_ORD = 'SABC';
+const SK_C = new Map();
+function skillsOf(p) {
+  if (!p || !p.attributes) return []; const A0 = p.attributes, ck = (p.name || '') + '|' + (p.pos || '') + '|' + (p.rating || '') + '|' + Object.values(A0).join(','); if (SK_C.has(ck)) return SK_C.get(ck);
+  const A = { spd: 60, sho: 50, pas: 60, dri: 60, def: 50, phy: 65, men: 65, sta: 70, ...A0 }, pos = String(p.pos || ''), line = typeof ENGINE !== 'undefined' ? ENGINE.LINE(pos) : 'MF', h = p.height || 180, out = [];
+  Object.entries(SK_DEF).forEach(([id, D]) => { if (!D.pos(line, pos)) return; const g = ghash('sk|' + (p.name || '') + '|' + id), v = D.sc(A, h) + (g - 0.5) * 5; let t = v >= 95.5 ? 'S' : v >= 92 ? 'A' : v >= 88 ? 'B' : v >= 83.5 ? 'C' : null; if (!t) return; if (t === 'C' && g > 0.65) return; if (t === 'B' && g > 0.85) return; out.push({ id, t, v }); });
+  const r = p.rating || 75, maxS = r >= 94 ? 2 : r >= 88 ? 1 : 0; let nS = 0; /* S 级只属于顶级球员：88+ 最多一项、94+ 最多两项 */
+  const L = out.sort((a, b) => SK_ORD.indexOf(a.t) - SK_ORD.indexOf(b.t) || b.v - a.v).slice(0, line === 'GK' ? 2 : 3).map(({ id, t }) => { if (t === 'S' && nS++ >= maxS) t = 'A'; if (t === 'A' && r < 82) t = 'B'; return { id, t }; }).sort((a, b) => SK_ORD.indexOf(a.t) - SK_ORD.indexOf(b.t));
+  SK_C.set(ck, L); return L;
+}
+const skBadge = (id, t, px = 30) => { const T = SK_T[t]; return `<svg class="skb" width="${px}" height="${px}" viewBox="0 0 32 32" aria-hidden="true"><defs><radialGradient id="skg${t}" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".45" stop-color="${T.col}"/><stop offset="1" stop-color="${T.col}" stop-opacity=".75"/></radialGradient></defs><circle cx="16" cy="16" r="14.5" fill="url(#skg${t})" stroke="${T.col}" stroke-width="1.5"/><circle cx="16" cy="16" r="12" fill="rgba(10,12,18,.35)"/><g transform="translate(5 5) scale(.917)" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color:#fff">${SK_ICON[id]}</g><circle cx="26" cy="26" r="5.4" fill="#0f1115" stroke="${T.col}" stroke-width="1.2"/><text x="26" y="28.6" text-anchor="middle" font-size="7.4" font-weight="900" fill="${T.col}" font-family="system-ui,sans-serif">${t}</text></svg>`; };
+const skFxTxt = (id, t) => (SK_FX[id] || '').replace(/\{([\d.]+)\}/g, (_, v) => +(+v * SK_T[t].pw).toFixed(1));
+function skillBlock(L) {
+  if (!L || !L.length) return `<div class="skw"><div class="eyebrow" style="margin-bottom:6px">球员技能</div><div class="dim" style="font-size:12px">暂无特长技能</div></div>`;
+  return `<div class="skw"><div class="eyebrow" style="margin-bottom:6px">球员技能 <span class="dim" style="font-weight:400;text-transform:none;letter-spacing:0">· 稀有度 C &lt; B &lt; A &lt; S</span></div><div class="skl">${L.map(({ id, t }) => { const D = SK_DEF[id], T = SK_T[t]; return `<div class="ski" style="--c:${T.col}" title="${esc(D.d)}">${skBadge(id, t, 38)}<div style="min-width:0"><div class="skn"><b>${D.n}</b><span class="skt">${t} · ${T.n}</span></div><div class="skd">${esc(D.d)}</div><div class="skd mono">触发率 ${Math.round(T.trig * 100)}% · ${skFxTxt(id, t)}</div></div></div>`; }).join('')}</div></div>`;
+}
 const PHYS = (() => {
   const L = 105, W = 68, GW = 7.32, DT = 0.1, GY0 = W / 2 - GW / 2, GY1 = W / 2 + GW / 2;
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v, hyp = Math.hypot;
@@ -2170,16 +2247,26 @@ const PHYS = (() => {
     if (/摆大巴|稳固防守|坚固的防守|区域联防|压缩空间/.test(s)) { P.line -= 12; P.counter = 1; P.press = 1; }
     if (/突击|爆破|终结|三叉戟|风暴|突破|全面攻守/.test(s)) { P.drib *= 1.3; P.shoot = 1.3; P.pass *= 0.85; }
     if (/边路/.test(s)) P.wing = 1.6;
+    /* 各家主帅的招牌打法：在场上都有对应的跑位 / 传球 / 持球习惯 */
+    P.core = 0; P.coreB = 0; P.runs = 1; P.tri = 0; P.through = 0; P.am = 0; P.trap = 0; P.tempo = 1; P.duel = 1; P.name = s;
+    if (/核心终结/.test(s)) { P.core = 1; P.coreB = 7; }
+    if (/双核爆破/.test(s)) { P.core = 2; P.coreB = 6; }
+    if (/三叉戟/.test(s)) { P.tri = 1; P.runs = 1.6; P.wing = Math.max(P.wing, 1.25); }
+    if (/渗透/.test(s)) { P.through = 1; P.runs = Math.max(P.runs, 1.4); P.wing = Math.min(P.wing, 0.7); }
+    if (/攻击型中场/.test(s)) { P.am = 1; }
+    if (/越位/.test(s)) { P.trap = 1; P.line += 5; }
+    if (/风暴/.test(s)) { P.tempo = 0.7; P.press = 3; P.gp = Math.max(P.gp, 4); }
+    if (/突击|对抗|全面攻守|逼抢/.test(s)) P.duel = 1.15;
     return P; }
   function timeMap(events) {
     /* 伤停补时：按每个半场的进球、换人、红黄牌、伤病来算（上半场 1–4 分钟，下半场 3–7 分钟） */
     const cnt = (lo, hi, ty) => events.filter(e => e.m > lo && e.m <= hi && (!ty || ty.includes(e.type))).length, maxM = Math.max(90, ...events.map(e => e.m));
     const add1 = clamp(Math.round(1 + cnt(0, 46, ['goal']) * 0.5 + cnt(0, 46, ['yellow', 'red']) * 0.3 + cnt(0, 46, ['inj', 'sub']) * 0.6) + (events.some(e => e.m > 45 && e.m < 46) ? 1 : 0), 1, 4);
     const add2 = clamp(Math.max(Math.round(2 + cnt(46, 200, ['goal']) * 0.5 + cnt(46, 200, ['sub']) * 0.25 + cnt(46, 200, ['yellow', 'red']) * 0.3 + cnt(46, 200, ['inj']) * 0.7), Math.ceil(maxM - 90) + 1), 3, 7);
-    const H1 = (45 + add1) * SPM, END = H1 + (45 + add2) * SPM;
-    const toS = m => m > 45 && m < 46 ? 45 * SPM + (m - 45) * add1 * SPM * 0.9 : m <= 45 ? (m - 1) * SPM + 0.53 * SPM : H1 + (m - 46) * SPM + 0.53 * SPM;
-    const toM = s => s <= H1 ? s / SPM : 45 + (s - H1) / SPM; const lastG = Math.max(0, ...events.filter(e => e.type === 'goal' || e.type === 'pmiss').map(e => toS(e.m))); const toE = s => s < 45 * SPM ? Math.max(1, Math.round(((s - 0.53 * SPM) / SPM + 1) * 10) / 10) : s < H1 ? 45 + Math.min(0.9, Math.round((s - 45 * SPM) / (add1 * SPM * 0.9) * 10) / 10 || 0.1) : Math.max(46, Math.round((46 + (s - H1 - 0.53 * SPM) / SPM) * 10) / 10);
-    return { H1, END: Math.max(END, lastG + 22), toS, toM, toE, add1, add2, A1: 45 * SPM, A2: H1 + 45 * SPM }; }
+    const H1 = (45 + add1) * SPM, END = H1 + (45 + add2) * SPM, T = { add1, add2, A1: 45 * SPM, H1, A2: H1 + 45 * SPM };
+    T.toS = m => m > 45 && m < 46 ? 45 * SPM + (m - 45) * add1 * SPM * 0.9 : m <= 45 ? (m - 1) * SPM + 0.53 * SPM : T.H1 + (m - 46) * SPM + 0.53 * SPM;
+    T.toM = s => s <= T.H1 ? s / SPM : 45 + (s - T.H1) / SPM; const lastG = Math.max(0, ...events.filter(e => e.type === 'goal' || e.type === 'pmiss').map(e => T.toS(e.m))); T.toE = s => s < 45 * SPM ? Math.max(1, Math.round(((s - 0.53 * SPM) / SPM + 1) * 10) / 10) : s < T.H1 ? 45 + Math.min(0.9, Math.round((s - 45 * SPM) / (add1 * SPM * 0.9) * 10) / 10 || 0.1) : Math.max(46, Math.round((46 + (s - T.H1 - 0.53 * SPM) / SPM) * 10) / 10);
+    T.END = Math.max(END, lastG + 22); return T; }
   // spec: { h, a, seed, sides: { h: { xi: [{name,no,slot,fx,fy,attr,gk}], bench: {name:{no,attr}} }, a: {...} }, events: [{m,type,side,player,assist,out,pen}], stats: { shots:[], onT:[] } }
   function create(spec) {
     const FREE = !!spec.free, R = rng(spec.seed || 'x'), TM = timeMap(spec.events), P = [], byName = { h: {}, a: {} }, POSS = clamp((spec.stats.poss || 50) / 100, 0.3, 0.7);
@@ -2187,8 +2274,16 @@ const PHYS = (() => {
         vmax: x.gk ? 5.6 + clamp(A.spd || 60, 30, 99) * 0.025 : 6.4 + clamp(sp - 50, 0, 49) * 0.068, acc: 4.2 + clamp((A.spd || 70) - 60, -20, 39) * 0.035 + clamp((A.phy || 70) - 70, -20, 29) * 0.012, men: A.men || A.pos_s || 70, han: A.han || 70, div: A.div || 70, rf: A.ref || 70, pos: A.pos_s || 70, pas: A.pas || A.kic || 70, sho: A.sho || 60, dri: A.dri || 65, def: A.def || A.pos_s || 60, phy: A.phy || 70, ref: A.ref || 70, card: 0, flash: null, offErr: (R() - 0.64) * 2.6, sta: A.sta || 75, stam: x.en != null ? x.en : 100, down: 0, tkc: 0 }; p.vbase = p.vmax;
       byName[side][x.name] = p; return p; };
     ['h', 'a'].forEach(sd => spec.sides[sd].xi.forEach((x, i) => P.push(mk(sd, x, i))));
+    const skMap = L => { const o = {}; (L || []).forEach(({ id, t }) => o[id] = t); return o; }, skPw = (p, id) => p.sk && p.sk[id] ? SK_T[p.sk[id]].pw : 0;
+    const skPassive = p => { const w = skPw(p, 'pace'); if (w) { p.vmax *= 1 + 0.015 * w; p.vbase = p.vmax; } };
+    P.forEach((p, i) => { p.sk = skMap(spec.sides[p.side].xi[p.i] && spec.sides[p.side].xi[p.i].sk); skPassive(p); });
     const ball = { x: L / 2, y: W / 2, z: 0, vx: 0, vy: 0, vz: 0, owner: null, last: null, lastSide: null, shot: null, pass: null };
     const st = { sty: { h: styleP(spec.sides.h.style), a: styleP(spec.sides.a.style) }, svs: { h: 0, a: 0 }, crn: { h: 0, a: 0 }, tac: {}, counter: null, lastOS: null, tt: 0, offs: { h: 0, a: 0 }, noOff: null, pst: { n: 0, ok: 0, heavy: 0, cut: 0 }, sbx: L / 2, sby: W / 2, af: { h: 0.5, a: 0.5 }, chase: { h: [], a: [] }, t: 0, half: 1, score: { h: 0, a: 0 }, dead: 0, restart: null, poss: { h: 0, a: 0 }, shots: { h: 0, a: 0 }, ontgt: { h: 0, a: 0 }, lastShot: { h: -99, a: -99 }, msgs: [], ended: false };
+    /* 战术核心：核心终结 = 头号射手；双核爆破 = 两名进攻核心；三叉戟 = 锋线三人；攻击型中场的支援 = 后插上的中场 */
+    const markTac = sd => { const S = st.sty[sd], T0 = P.filter(p => p.side === sd && !p.gk), atk = T0.filter(p => p.fx > 55).sort((a, b) => (b.sho * 0.6 + b.dri * 0.4) - (a.sho * 0.6 + a.dri * 0.4));
+      if (S.core) atk.slice(0, S.core).forEach(p => p.core = 1); if (S.tri) T0.filter(p => p.fx > 68).sort((a, b) => b.fx - a.fx).slice(0, 3).forEach(p => p.tri = 1);
+      if (S.am) T0.filter(p => p.fx > 45 && p.fx < 75).sort((a, b) => (b.pas + b.sho) - (a.pas + a.sho)).slice(0, 2).forEach(p => p.am = 1); };
+    markTac('h'); markTac('a'); { const tn = x => String(x || '').trim(); if (tn(spec.sides.h.style)) st.msgs.push({ t: 0.4, type: 'tac', side: 'h', k: tn(spec.sides.h.style) }); if (tn(spec.sides.a.style)) st.msgs.push({ t: 3.2, type: 'tac', side: 'a', k: tn(spec.sides.a.style) }); }
     // 导演：按引擎结果安排的进球 / 射门 / 红黄牌 / 换人
     const evs = spec.events.map(e => ({ ...e, s: TM.toS(e.m), done: false })).sort((x, y) => x.s - y.s);
     const goals = FREE ? [] : evs.filter(e => e.type === 'goal'), pens = FREE ? [] : evs.filter(e => e.type === 'pmiss'); /* 自由模式：不安排进球，场上踢出什么就是什么 */
@@ -2225,12 +2320,13 @@ const PHYS = (() => {
     const GR = (s0) => s0 * 0.972 - 0.17; /* 草皮阻力：滚动的球大约每秒损失 25% 速度再减 1.7 m/s */
     function groundV0(d, arrive) { let lo = arrive, hi = 40; for (let it = 0; it < 16; it++) { const m = (lo + hi) / 2; let v = m, x = 0, n = 0; while (x < d && v > arrive && n < 400) { x += v * DT; v = GR(v); n++; } if (x >= d) hi = m; else lo = m; } return hi; }
     const gau = () => (R() + R() + R() - 1.5) * 1.4;
-    function passTo(p, q, tx, ty, lofted, cross) { let dx = tx - p.x, dy = ty - p.y; const d = hyp(dx, dy) || 1, err = (100 - clamp(p.pas, 30, 99)) / 100 + Math.max(0, 70 - p.stam) / 140;
+    function passTo(p, q, tx, ty, lofted, cross) { let dx = tx - p.x, dy = ty - p.y; const d = hyp(dx, dy) || 1; let err = (100 - clamp(p.pas, 30, 99)) / 100 + Math.max(0, 70 - p.stam) / 140;
+      { const sid = cross ? 'cross' : q && q.run && q.run.until > st.t && q.run.kind === 'behind' ? 'thru' : 'pass', w = p.sk && p.sk[sid] ? skR(p, sid) : 0; if (w) { err *= 1 - (sid === 'cross' ? 0.18 : 0.15) * w; if (sid !== 'pass' || (q && (q.x - p.x) * dirOf(p.side) > 16)) skShow(p, sid); } }
       const e2 = Math.pow(err / 0.3, 1.5), ang = Math.atan2(dy, dx) + gau() * e2 * 0.075, wt = 1 + gau() * e2 * 0.14, loft = lofted != null ? lofted : d > 27;
       if (loft) { const k = cross ? 2.2 : 1.7, dA = d * (cross ? 0.97 : 0.92) * wt, vz = Math.sqrt(9.8 * dA / (2 * k)), T = 2 * vz / 9.8, vh = dA / T * 1.07;
         kick(p, p.x + Math.cos(ang) * d, p.y + Math.sin(ang) * d, vh, vz, 'pass', R() < (cross ? 0.9 : 0.5) ? (R() < 0.5 ? -1 : 1) * (cross ? 0.25 + R() * 0.2 : 0.08 + R() * 0.12) : 0); }
       else { const arrive = clamp(5 + d * 0.12, 5, 9), v0 = groundV0(d, arrive) * wt; kick(p, p.x + Math.cos(ang) * d, p.y + Math.sin(ang) * d, v0, false, 'pass', d > 15 && R() < 0.35 ? (R() < 0.5 ? -1 : 1) * (0.1 + R() * 0.12) : 0); }
-      ball.pass.to = q; ball.pass.tx = tx; ball.pass.ty = ty; st.pst.n++; ball.pass.k = (q && q.run && q.run.until > st.t ? q.run.kind : cross ? 'cross' : loft ? 'loft' : 'plain'); st.tac['n_' + ball.pass.k] = (st.tac['n_' + ball.pass.k] || 0) + 1; p.pa = (p.pa || 0) + 1;
+      ball.pass.to = q; ball.pass.tx = tx; ball.pass.ty = ty; st.pst.n++; pev(p, 'pa'); ball.pass.k = (q && q.run && q.run.until > st.t ? q.run.kind : cross ? 'cross' : loft ? 'loft' : 'plain'); st.tac['n_' + ball.pass.k] = (st.tac['n_' + ball.pass.k] || 0) + 1; p.pa = (p.pa || 0) + 1;
       if (!p.gk && !cross && q && axOf(p.side, p.x) > L * 0.35 && axOf(p.side, p.x) < L - 16 && d < 24 && R() < 0.3 + (p.men - 70) / 120) { const OLg = offLine(p.side, p.x); p.run = { tx: fromAx(p.side, Math.min(axOf(p.side, p.x) + 11 + R() * 5, OLg - 0.3)), ty: clamp(p.y + (W / 2 - p.y) * 0.3 + (R() - 0.5) * 8, 4, W - 4), until: st.t + 3.2, kind: 'go' }; q.wallFrom = p; st.tac.go = (st.tac.go || 0) + 1; } /* 撞墙：传完球继续往前插，等队友回传 */
       const G = nextGoal(), exempt = (st.noOff && st.noOff.by === p && st.t - st.noOff.t < 4) || (G && !G.pen && G.side === p.side && st.t >= G.s - 16); st.noOff = null;
       if (!exempt) { const OL = offLine(p.side, p.x); ball.pass.off = team(p.side).filter(m => m !== p && !m.gk && axOf(p.side, m.x) > OL + 0.25); } }
@@ -2239,19 +2335,24 @@ const PHYS = (() => {
       const s0 = hyp(ball.vx, ball.vy); if (s0 < 0.3) return [ball.x, ball.y]; const ux = ball.vx / s0, uy = ball.vy / s0; let v = s0, roll = 0, n = 0; while (v > 0.25 && n < 300) { roll += v * DT; v = GR(v); n++; }
       const proj = clamp((p.x - ball.x) * ux + (p.y - ball.y) * uy, 0, roll); return [ball.x + ux * proj, ball.y + uy * proj]; }
     // 射门：按导演安排决定进不进；进球打死角，不进的射偏或被门将扑出
-    function shoot(p, plan) { const gx = goalX(p.side), d = dirOf(p.side), dist = hyp(gx - p.x, W / 2 - p.y);
+    function shoot(p, plan) { let SKB = 0, SKI = ''; const gx = goalX(p.side), d = dirOf(p.side), dist = hyp(gx - p.x, W / 2 - p.y);
       const hdr = plan === 'hdr'; let ty, out = FREE && plan !== 'goal' && plan !== 'pen' ? 'real' : plan === 'pen' ? 'real' : plan || (onQ[p.side] > 0 && R() < onQ[p.side] / Math.max(1, quota[p.side] + 1) * 1.6 ? 'save' : 'wide');
-      if (out === 'goal') ty = R() < 0.5 ? GY0 + 0.6 + R() * 0.9 : GY1 - 0.6 - R() * 0.9; else if (out === 'real') { const gk0 = keeper(opp(p.side)), far = gk0 && gk0.y < W / 2 ? GY1 - 0.4 : GY0 + 0.4, aim = R() < 0.7 ? far : (far < W / 2 ? GY1 - 0.4 : GY0 + 0.4), [, odp] = nearestOpp(p, opp(p.side)), sig = hdr ? 0.45 + dist * 0.07 + (100 - clamp(p.phy * 0.6 + p.sho * 0.4, 30, 99)) / 38 : (plan === 'pen' ? 0.25 : 0.3 + dist * 0.045 + (odp < 2 ? 0.45 : 0)) + (100 - clamp(p.sho, 30, 99)) / 40 + Math.max(0, 60 - p.stam) / 60; ty = aim + gau() * sig * 2.8; } else if (out === 'save') ty = W / 2 + (R() - 0.5) * 4.5; else if (out === 'post') ty = R() < 0.5 ? GY0 : GY1; else ty = R() < 0.5 ? GY0 - 0.8 - R() * 3 : GY1 + 0.8 + R() * 3;
+      if (out === 'goal') ty = R() < 0.5 ? GY0 + 0.6 + R() * 0.9 : GY1 - 0.6 - R() * 0.9; else if (out === 'real') { const gk0 = keeper(opp(p.side)), far = gk0 && gk0.y < W / 2 ? GY1 - 0.4 : GY0 + 0.4, aim = R() < 0.7 ? far : (far < W / 2 ? GY1 - 0.4 : GY0 + 0.4), [, odp] = nearestOpp(p, opp(p.side)), sig = hdr ? 0.45 + dist * 0.07 + (100 - clamp(p.phy * 0.6 + p.sho * 0.4, 30, 99)) / 38 : (plan === 'pen' ? 0.25 : 0.3 + dist * 0.045 + (odp < 2 ? 0.45 : 0)) + (100 - clamp(p.sho, 30, 99)) / 40 + Math.max(0, 60 - p.stam) / 60; const sw = shotSk(p, plan, hdr, dist, odp); SKB = sw.b; SKI = sw.id; ty = aim + gau() * sig * 2.8 * (1 - sw.k); } else if (out === 'save') ty = W / 2 + (R() - 0.5) * 4.5; else if (out === 'post') ty = R() < 0.5 ? GY0 : GY1; else ty = R() < 0.5 ? GY0 - 0.8 - R() * 3 : GY1 + 0.8 + R() * 3;
       const sp = hdr ? clamp(12 + (p.phy - 60) * 0.12 + R() * 3, 10, 19) : clamp(20 + (p.sho - 60) * 0.25 + R() * 5 - dist * 0.05 - Math.max(0, 60 - p.stam) * 0.08, 16, 33); kick(p, gx + d * 0.5, ty, sp, out === 'wide' && R() < 0.4, 'shot', out !== 'wide' && dist > 15 && R() < 0.25 + (p.sho - 60) / 90 ? (ty < W / 2 ? 1 : -1) * dirOf(p.side) * (0.25 + R() * 0.3) : 0);
-      st.xgs = st.xgs || { h: 0, a: 0 }; st.xgs[p.side] += plan === 'pen' ? 0.76 : xg(p, p.x, p.y); ball.shot = { side: p.side, out, by: p.name, t: st.t, hdr: hdr ? 1 : 0, pen: plan === 'pen' ? 1 : 0, as: p.lastPass && st.t - p.lastPass.t < 8 && p.lastPass.from !== p.name ? p.lastPass.from : null }; p.lastPass = null; if (out === 'real' && hdr) { ball.z = 2.0; ball.vz = gau() * 1.3 - 0.4; ball.curl = 0; } else if (out === 'real' && plan !== 'pen') { const [, odz] = nearestOpp(p, opp(p.side)); ball.vz = clamp(gau() * (2.6 + (odz < 2 ? 0.8 : 0) + (100 - clamp(p.sho, 30, 99)) / 30) + 2.2 + dist * 0.05, 0, 10); ball.z = 0.2; } /* 自由模式：射门也有高低误差，会打高出横梁 */ if (out === 'goal') { const g = goals.find(x => x.done && !x.scored && !x.inFlight && x.side === p.side); if (g) { g.inFlight = true; ball.shot.g = g; } } st.shots[p.side]++; st.lastShot[p.side] = st.t; if (out !== 'goal') { quota[p.side] = Math.max(0, quota[p.side] - 1); if (out === 'save') onQ[p.side] = Math.max(0, onQ[p.side] - 1); } }
+      pev(p, 'sh'); st.xgs = st.xgs || { h: 0, a: 0 }; st.xgs[p.side] += plan === 'pen' ? 0.76 : xg(p, p.x, p.y); ball.shot = { side: p.side, out, by: p.name, t: st.t, hdr: hdr ? 1 : 0, pen: plan === 'pen' ? 1 : 0, as: p.lastPass && st.t - p.lastPass.t < 8 && p.lastPass.from !== p.name ? p.lastPass.from : null, skB: SKB }; p.lastPass = null; if (SKI) skShow(p, SKI); if (out === 'real' && hdr) { ball.z = 2.0; ball.vz = gau() * 1.3 - 0.4; ball.curl = 0; } else if (out === 'real' && plan !== 'pen') { const [, odz] = nearestOpp(p, opp(p.side)); ball.vz = clamp(gau() * (2.6 + (odz < 2 ? 0.8 : 0) + (100 - clamp(p.sho, 30, 99)) / 30) + 2.2 + dist * 0.05, 0, 10); ball.z = 0.2; } /* 自由模式：射门也有高低误差，会打高出横梁 */ if (out === 'goal') { const g = goals.find(x => x.done && !x.scored && !x.inFlight && x.side === p.side); if (g) { g.inFlight = true; ball.shot.g = g; } } st.shots[p.side]++; st.lastShot[p.side] = st.t; if (out !== 'goal') { quota[p.side] = Math.max(0, quota[p.side] - 1); if (out === 'save') onQ[p.side] = Math.max(0, onQ[p.side] - 1); } }
     // 进球机会（xG 简化版）：离球门越近、射门角度越大越好；射门路线上每多一个防守球员就降低
     function xg(p, x, y) { const gx = goalX(p.side), a0 = Math.atan2(GY0 - y, gx - x), a1 = Math.atan2(GY1 - y, gx - x); let ang = Math.abs(a1 - a0); if (ang > Math.PI) ang = 2 * Math.PI - ang; const dist = hyp(gx - x, W / 2 - y);
       let blk = 0; P.forEach(o => { if (!o.on || o.side === p.side) return; const t = clamp(((o.x - x) * (gx - x) + (o.y - y) * (W / 2 - y)) / (dist * dist || 1), 0, 1); if (t > 0.02 && t < 0.98 && hyp(x + (gx - x) * t - o.x, y + (W / 2 - y) * t - o.y) < (o.gk ? 0.6 : 1.3)) blk++; });
       return clamp(ang * 0.5 * (0.35 + p.sho / 125) * (dist > 25 ? 0.45 + (p.sho - 60) / 100 : 1) - blk * 0.035, 0.005, 0.7); }
+    /* 射门技能：点球 > 头球 > 单刀 > 禁区 > 远射，一脚射门只看一项 */
+    function shotSk(p, plan, hdr, dist, odp) { const id = plan === 'pen' ? 'pen' : hdr ? 'head' : odp > 3.5 && dist < 18 && p.sk && p.sk.solo ? 'solo' : dist < 16.5 ? 'box' : dist > 17 ? 'long' : ''; const w = id ? skR(p, id) : 0; if (!w) return { k: 0, b: 0, id: '' };
+      const K = { pen: [0.15, 0.06], head: [0.12, 0.04], solo: [0.12, 0.05], box: [0.1, 0.03], long: [0.12, 0.03] }[id]; return { k: K[0] * w, b: K[1] * w, id }; }
+    function styB(p, q) { const S = st.sty[p.side]; let b = 0; if (q.core) b += S.coreB; const run = q.run && q.run.until > st.t;
+      if (run && S.through && q.run.kind === 'behind' && Math.abs(q.y - W / 2) < 15) b += 6; if (run && S.tri && q.tri && q.run.kind === 'behind') b += 4; if (run && S.am && q.am && q.run.kind === 'late') b += 6; if (run && q.run.kind === 'behind' && p.sk && p.sk.thru) b += 2 * SK_T[p.sk.thru].pw; return b; }
     function pickPass(p, force) { const d = dirOf(p.side), mates = team(p.side).filter(q => q !== p && !q.gk), OLp = offLine(p.side, p.x), crowd = P.filter(o => o.on && o.side !== p.side && hyp(o.x - p.x, o.y - p.y) < 14).length; let best = null, bs = -1e9;
       mates.forEach(q => { const dist = hyp(q.x - p.x, q.y - p.y); if (dist < 5 || dist > 48) return; const prog = (q.x - p.x) * d, [, od] = nearestOpp(q, opp(p.side)); let lane = 99;
         P.forEach(o => { if (!o.on || o.side === p.side) return; const t = clamp(((o.x - p.x) * (q.x - p.x) + (o.y - p.y) * (q.y - p.y)) / (dist * dist), 0, 1), lx = p.x + (q.x - p.x) * t - o.x, ly = p.y + (q.y - p.y) * t - o.y; lane = Math.min(lane, hyp(lx, ly)); });
-        let sc = prog * 0.55 + Math.min(od, 10) * 1.1 + Math.min(lane, 6) * 1.4 - dist * 0.12 + R() * (2 + (100 - p.men) / 5) + prog * (p.men - 70) / 120 - Math.max(0, dist - (24 + p.pas * 0.22)) * 0.6; if (axOf(p.side, q.x) > OLp + 0.25 && R() > 0.06 + (100 - p.men) / 260) sc -= 14; if (!force && axOf(p.side, q.x) < 18 && Math.abs(q.y - W / 2) < 21) sc -= 11; if (q.run && q.run.until > st.t && q.run.kind !== 'box' && axOf(p.side, q.x) <= OLp + 0.25) sc += 9 + (q.run.kind === 'go' && p.wallFrom === q ? 6 : 0) + (q.run.kind === 'overlap' ? 7 : 0); if (crowd >= 4 && Math.abs(q.y - p.y) > 24 && Math.abs(q.y - W / 2) > 13) sc += 9; if (st.counter && st.counter.side === p.side && st.counter.until > st.t) sc += prog * 0.3; if (dist > 27 && !(q.run && q.run.until > st.t)) sc -= 4; if (axOf(p.side, p.x) < 35) sc += prog * 0.35; /* 本方禁区内不互相倒脚，后场优先往前传 */ if (force && q.name === force) sc += 1000; if (sc > bs) { bs = sc; best = q; } });
+        let sc = prog * 0.55 + Math.min(od, 10) * 1.1 + Math.min(lane, 6) * 1.4 - dist * 0.12 + R() * (2 + (100 - p.men) / 5) + prog * (p.men - 70) / 120 - Math.max(0, dist - (24 + p.pas * 0.22)) * 0.6; sc += styB(p, q); if (axOf(p.side, q.x) > OLp + 0.25 && R() > 0.06 + (100 - p.men) / 260) sc -= 14; if (!force && axOf(p.side, q.x) < 18 && Math.abs(q.y - W / 2) < 21) sc -= 11; if (q.run && q.run.until > st.t && q.run.kind !== 'box' && axOf(p.side, q.x) <= OLp + 0.25) sc += 9 + (q.run.kind === 'go' && p.wallFrom === q ? 6 : 0) + (q.run.kind === 'overlap' ? 7 : 0); if (crowd >= 4 && Math.abs(q.y - p.y) > 24 && Math.abs(q.y - W / 2) > 13) sc += 9; if (st.counter && st.counter.side === p.side && st.counter.until > st.t) sc += prog * 0.3; if (dist > 27 && !(q.run && q.run.until > st.t)) sc -= 4; if (axOf(p.side, p.x) < 35) sc += prog * 0.35; /* 本方禁区内不互相倒脚，后场优先往前传 */ if (force && q.name === force) sc += 1000; if (sc > bs) { bs = sc; best = q; } });
       return [best, bs]; }
     function decide(p) { const d = dirOf(p.side), gx = goalX(p.side), dg = hyp(gx - p.x, W / 2 - p.y), [o, od] = nearestOpp(p, opp(p.side)), G = nextGoal(), PN = nextPen();
       const build = G && !G.pen && G.side === p.side && st.t >= G.s - 16, late = build && st.t >= G.s + 7;
@@ -2273,7 +2374,7 @@ const PHYS = (() => {
           const v = xg(q, q.x, q.y) * clamp(lane / 3, 0.15, 0.92); if (v > bx) { bx = v; bm = q; } });
         const inBox = dg < 19 && Math.abs(p.y - W / 2) < 20.5;
         if (bm && bx > my * (inBox ? 2 : 1.3) && bx > (inBox ? 0.14 : 0.07)) return passTo(p, bm, bm.x + bm.vx * 0.4, bm.y + bm.vy * 0.4); /* 队友位置明显更好才传 */
-        const want = FREE ? (inBox ? my > 0.07 && R() < 0.2 * st.sty[p.side].shoot : my > 0.13 && R() < 0.15 * st.sty[p.side].shoot) : inBox ? my > 0.02 : my > 0.04 && (my > 0.065 || R() < 0.45);
+        const shF = st.sty[p.side].shoot * (p.core ? 1.35 : 1), lgS = p.sk && p.sk.long ? SK_T[p.sk.long].pw : 0, want = FREE ? (inBox ? my > 0.07 && R() < 0.2 * shF : my > 0.13 - 0.015 * lgS && R() < 0.15 * shF * (1 + 0.25 * lgS)) : inBox ? my > 0.02 : my > 0.04 && (my > 0.065 || R() < 0.45);
         if (want) { if (quota[p.side] <= 0 || st.t - st.lastShot[p.side] <= Math.min(gap * 0.3, 5)) { st.lastEx = st.lastEx || { h: -999, a: -999 }; if (st.t - st.lastEx[p.side] > 85 && (inBox ? my > 0.05 : my > 0.09)) { st.lastEx[p.side] = st.t; return shootExtra(p); } } if (quota[p.side] > 0 && st.t - st.lastShot[p.side] > Math.min(gap * 0.3, 5)) return shoot(p); st.lastBlk = st.lastBlk || { h: -999, a: -999 }; if (dg < 22 && st.t - st.lastBlk[p.side] > 200 && R() < 0.4) return shootBlocked(p); } }
       if (axOf(p.side, p.x) < 20 && od < 5 && R() < 0.65) return clearBall(p);
       const dk = (p.dri - 70) / 20, press = od < 3.2 - dk * 0.6, [q, qs] = pickPass(p), room = !press && od > 6 - dk * 1.5 && axOf(p.side, p.x) < L - 18;
@@ -2285,7 +2386,7 @@ const PHYS = (() => {
         if (axOf(p.side, p.x) < L - 7 && od > 2.5) { p.drib = { tx: fromAx(p.side, L - 5), ty: p.y + (W / 2 - p.y) * 0.12 }; return; } }
       const SPd = st.sty[p.side], PF = SPd.pass / SPd.drib, axp = axOf(p.side, p.x);
       /* 过人：面前有防守球员时，盘带好的会尝试突破（前场更敢） */
-      if (o && od < 4 && axOf(p.side, o.x) > axp - 1 && axp > L * 0.35 && !p.gk && R() < clamp(0.045 + (p.dri - 70) / 110, 0.015, 0.25) * SPd.drib * (axp > L * 0.65 ? 1.5 : 1)) return takeOn(p, o);
+      if (o && od < 4 && axOf(p.side, o.x) > axp - 1 && axp > L * 0.35 && !p.gk && R() < clamp(0.045 + (p.dri - 70) / 110, 0.015, 0.25) * SPd.drib * (axp > L * 0.65 ? 1.5 : 1) * (p.core && SPd.core === 2 ? 1.7 : 1)) { if (p.core && SPd.core === 2) p.flash = { k: '核心突破', until: st.t + 1.2 }; return takeOn(p, o); }
       /* 前场有空当：直接带球冲向禁区 */
       if (axp > L * 0.58 && od > 4.5 && R() < 0.6 * SPd.drib) return carry(p, o, od);
       if (q && (press || qs > ((room ? 22 : 13) + dk * 4) / PF || R() < (room ? 0.1 : 0.3) * (1 - dk * 0.35) * PF * (axp > L * 0.6 ? 0.6 : 1))) { const run = q.run && q.run.until > st.t && q.run.kind !== 'box' ? q.run : null, crowd = P.filter(o2 => o2.on && o2.side !== p.side && hyp(o2.x - p.x, o2.y - p.y) < 14).length;
@@ -2299,15 +2400,17 @@ const PHYS = (() => {
       const ty = on ? W / 2 + (R() - 0.5) * 4 : (R() < 0.5 ? GY0 - 0.6 - R() * 3 : GY1 + 0.6 + R() * 3), sp = clamp(20 + (p.sho - 60) * 0.25 + R() * 5 - dist * 0.05, 17, 33);
       kick(p, gx + d * 0.5, ty, sp, !on && R() < 0.4, 'shot'); ball.shot = { side: p.side, out: on ? 'save' : 'wide', by: p.name, t: st.t, extra: true }; st.lastShot[p.side] = st.t; }
     // 起脚被封堵：防守球员挡住（不计入官方射门数）
-    function shootBlocked(p, ex) { if (FREE) st.shots[p.side]++; if (!ex) { st.lastBlk[p.side] = st.t; } st.blk = (st.blk || 0) + 1; const gx = goalX(p.side); kick(p, gx, W / 2 + (R() - 0.5) * 5, 20 + R() * 4, false, 'shot'); ball.shot = { side: p.side, out: 'block', by: p.name, t: st.t }; }
+    function shootBlocked(p, ex) { if (FREE) st.shots[p.side]++; pev(p, 'sh'); if (!ex) { st.lastBlk[p.side] = st.t; } st.blk = (st.blk || 0) + 1; const gx = goalX(p.side); kick(p, gx, W / 2 + (R() - 0.5) * 5, 20 + R() * 4, false, 'shot'); ball.shot = { side: p.side, out: 'block', by: p.name, t: st.t }; }
     // ===== 战术配合（无球跑动）：套边、前锋插身后、传中时抢点、反击冲刺 =====
     function tactics(o) { const sd = o.side, ax = axOf(sd, o.x), wide = Math.abs(o.y - W / 2) > 17, OL = offLine(sd, o.x), side0 = Math.sign(o.y - W / 2) || 1;
       const mates = team(sd).filter(q => q !== o && !q.gk), free = q => !q.run || q.run.until < st.t, G = nextGoal(); if (G && G.side === sd && st.t >= G.s - 16) return;
-      const setRun = (q, X, Y, dur, kind) => { q.run = { tx: fromAx(sd, clamp(X, 3, L - 3)), ty: clamp(Y, 2.5, W - 2.5), until: st.t + dur, kind }; st.tac[kind] = (st.tac[kind] || 0) + 1; };
+      const setRun = (q, X, Y, dur, kind) => { q.run = { tx: fromAx(sd, clamp(X, 3, L - 3)), ty: clamp(Y, 2.5, W - 2.5), until: st.t + dur, kind }; st.tac[kind] = (st.tac[kind] || 0) + 1; if ((kind === 'behind' || kind === 'counter') && q.sk && q.sk.pace && !(q.skf && q.skf.until > st.t) && R() < SK_T[q.sk.pace].trig * 0.5) skShow(q, 'pace'); };
       /* 套边：边路球员在前场拿球，同侧边后卫从外侧插上 */
       if (wide && ax > L * 0.42 && ax < L - 14 && R() < 0.3 * st.sty[sd].wing && !mates.some(q => q.run && q.run.kind === 'overlap' && q.run.until > st.t)) { const fb = mates.filter(q => q.fx < 38 && Math.sign(q.y - W / 2) === side0 && Math.abs(q.y - W / 2) > 10 && axOf(sd, q.x) < ax + 2 && free(q))[0]; if (fb) setRun(fb, Math.min(ax + 13, L - 7, OL - 0.3 + 6), W / 2 + side0 * (W / 2 - 3.5), 5, 'overlap'); }
       /* 前锋插身后：中场在中路拿球、有视野时，前锋沿越位线斜插（传球那一刻还在线内就不越位） */
-      if (ax > L * 0.3 && ax < L * 0.75 && R() < 0.2 + (o.men - 70) / 150) { const fw = mates.filter(q => q.fx > 70 && free(q) && OL - axOf(sd, q.x) < 7 && axOf(sd, q.x) <= OL + 0.2)[0]; if (fw) setRun(fw, Math.min(OL + 9 + R() * 8, L - 6), clamp(fw.y + (W / 2 - fw.y) * 0.4 + (R() - 0.5) * 10, 8, W - 8), 2.6, 'behind'); }
+      const SS = st.sty[sd]; if (ax > L * 0.3 && ax < L * 0.75 && R() < (0.2 + (o.men - 70) / 150) * SS.runs) { const fws = mates.filter(q => q.fx > 70 && free(q) && OL - axOf(sd, q.x) < 7 && axOf(sd, q.x) <= OL + 0.2).slice(0, SS.tri ? 2 : 1); fws.forEach((fw, i) => { setRun(fw, Math.min(OL + 9 + R() * 8, L - 6), clamp(fw.y + (W / 2 - fw.y) * (SS.through ? 0.65 : 0.4) + (R() - 0.5) * 10, 8, W - 8), 2.6, 'behind'); if (SS.tri && fw.tri) fw.flash = { k: '三叉戟前插', until: st.t + 1.4 }; else if (SS.through && i === 0) fw.flash = { k: '中路前插', until: st.t + 1.2 }; }); }
+      /* 攻击型中场的支援：前腰 / 中场在进攻三区后插上，冲到禁区弧顶等回传 */
+      if (SS.am && ax > L * 0.5 && ax < L - 12 && R() < 0.28) { const am = mates.filter(q => q.am && free(q) && axOf(sd, q.x) < ax)[0]; if (am) { setRun(am, Math.min(L - 13 - R() * 3, OL - 0.4), W / 2 + (R() - 0.5) * 12, 2.4, 'late'); am.flash = { k: '后插上', until: st.t + 1.3 }; } }
       /* 边路传中前：前锋、前腰抢前点、后点、点球点、禁区弧顶 */
       if (wide && ax > L - 34) { const spots = [[L - 5.5, W / 2 + side0 * 3], [L - 7, W / 2 - side0 * 5.5], [L - 11, W / 2], [L - 17, W / 2 - side0 * 3]]; mates.filter(q => q.fx > 60 && free(q)).sort((a, b) => b.fx - a.fx).slice(0, 4).forEach((q, i) => setRun(q, Math.min(spots[i][0] + (R() - 0.5) * 2, OL - 0.3), spots[i][1] + (R() - 0.5) * 2, 1.4, 'box')); }
       /* 反击：前场球员全速往前冲 */
@@ -2321,8 +2424,8 @@ const PHYS = (() => {
     function bookFoul(q, p, slide, inBox) { if (!FREE || window.__NOCARD) return; const ax = axOf(p.side, p.x), coverers = team(q.side).filter(o => !o.gk && o !== q && axOf(p.side, o.x) > ax - 0.5).length, dogso = ax > L * 0.62 && coverers === 0 && hyp(goalX(p.side) - p.x, W / 2 - p.y) < 28 && (p.vx * dirOf(p.side)) > 1;
       let card = null; if (dogso && R() < 0.4) card = inBox ? 'Y' : 'R'; else if (R() < (slide ? 0.55 : 0.21) + (dogso ? 0.4 : 0) + (st.counter && st.counter.side === p.side && st.counter.until > st.t ? 0.35 : 0) + (q.def < 65 ? 0.05 : 0)) card = 'Y'; if (!card) return;
       st.cards = st.cards || {}; const key = q.side + '|' + q.name; if (card === 'Y' && st.cards[key] && !dogso && R() < 0.55) return; /* 已经有黄牌的人，裁判给第二张更谨慎 */ if (card === 'Y' && (st.cards[key] = (st.cards[key] || 0) + 1) >= 2) card = 'R2';
-      if (card === 'Y') { q.flash = { k: 'Y', until: st.t + 4 }; st.msgs.push({ t: st.t, type: 'yellow', side: q.side, who: q.name }); }
-      else { q.flash = { k: 'R', until: st.t + 4 }; q.leaveAt = st.t + 2; st.msgs.push({ t: st.t, type: 'red', side: q.side, who: q.name, straight: card === 'R' ? 1 : 0 }); } }
+      st.cardT = st.t; if (card === 'Y') { q.flash = { k: 'Y', until: st.t + 5 }; st.msgs.push({ t: st.t, type: 'yellow', side: q.side, who: q.name }); }
+      else { q.flash = { k: 'R', until: st.t + 5 }; q.leaveAt = st.t + 3; st.msgs.push({ t: st.t, type: 'red', side: q.side, who: q.name, straight: card === 'R' ? 1 : 0 }); } }
     // 直接任意球：主罚最好的脚法球员，防守方在 9.15 米外排人墙（距离越近人越多），门将守人墙照顾不到的那一侧，进攻方几个人在禁区里等第二点
     function setupFK(side, x, y, dgf) { const R0 = st.restart, gx = goalX(side), dx = (gx - x) / dgf, dy = (W / 2 - y) / dgf, px = -dy, py = dx, df = opp(side);
       const tk = team(side).filter(q => !q.gk).sort((a, b) => (b.sho * 0.55 + b.pas * 0.3 + b.dri * 0.15) - (a.sho * 0.55 + a.pas * 0.3 + a.dri * 0.15))[0]; if (!tk) return; R0.tk = tk; R0.direct = 1; ball.last = tk; ball.lastSide = side; st.dead = 3.5;
@@ -2331,8 +2434,8 @@ const PHYS = (() => {
       team(side).filter(q => !q.gk && q !== tk).sort((a, b) => b.fx - a.fx).slice(0, 3).forEach((q, i) => slots.set(q, [fromAx(side, L - 9 - i * 2), W / 2 + (i - 1) * 4]));
       R0.slots = slots; R0.wall = wall; }
     function fkShot(p, rs) { const gx = goalX(p.side), d = dirOf(p.side), dist = hyp(gx - p.x, W / 2 - p.y), nearP = p.y < W / 2 ? GY0 : GY1, farP = nearP === GY0 ? GY1 : GY0, aim = R() < 0.62 ? farP + (farP > W / 2 ? -0.45 : 0.45) : nearP + (nearP > W / 2 ? -0.45 : 0.45);
-      const skill = p.sho * 0.5 + p.pas * 0.3 + p.dri * 0.2, ty = aim + gau() * (1.25 + (100 - clamp(skill, 40, 99)) / 16 + dist * 0.03), v = 21 + R() * 4, T = dist / (v * 0.92), zT = 1.45 + gau() * 0.55, vz = (zT - 0.2 + 4.9 * T * T) / T;
-      kick(p, gx + d * 0.5, ty, v, vz, 'shot', (R() < 0.5 ? -1 : 1) * (0.3 + R() * 0.25)); ball.shot = { side: p.side, out: 'real', by: p.name, t: st.t, fk: 1, pen: 0, as: null }; st.xgs = st.xgs || { h: 0, a: 0 }; st.xgs[p.side] += 0.06; st.shots[p.side]++; st.lastShot[p.side] = st.t;
+      const fkw = skR(p, 'fk'), skill = p.sho * 0.5 + p.pas * 0.3 + p.dri * 0.2, ty = aim + gau() * (1.25 + (100 - clamp(skill, 40, 99)) / 16 + dist * 0.03) * (1 - 0.12 * fkw), v = 21 + R() * 4, T = dist / (v * 0.92), zT = 1.45 + gau() * 0.55, vz = (zT - 0.2 + 4.9 * T * T) / T;
+      kick(p, gx + d * 0.5, ty, v, vz, 'shot', (R() < 0.5 ? -1 : 1) * (0.3 + R() * 0.25)); pev(p, 'sh'); ball.shot = { side: p.side, out: 'real', by: p.name, t: st.t, fk: 1, pen: 0, as: null, skB: 0.05 * fkw }; if (fkw) skShow(p, 'fk'); st.xgs = st.xgs || { h: 0, a: 0 }; st.xgs[p.side] += 0.06; st.shots[p.side]++; st.lastShot[p.side] = st.t;
       st.fkWall = { list: rs.wall || [], until: st.t + 2.5 }; p.flash = { k: '直接任意球', until: st.t + 1.6 }; st.tac.fk = (st.tac.fk || 0) + 1; }
     // 定位球站位：坐标，或者 { mark: 对方球员 } = 站在他和本方球门之间 1.3 米处
     function slotXY(v, p) { if (!v || !v.mark) return v; const a = v.mark, g = goalX(opp(p.side)), vx = g - a.x, vy = W / 2 - a.y, n = hyp(vx, vy) || 1; return [a.x + vx / n * 1.3, a.y + vy / n * 1.3]; }
@@ -2344,9 +2447,19 @@ const PHYS = (() => {
       if (ax0 > L * 0.55) { p.drib = { tx: fromAx(p.side, Math.min(L - 10, ax0 + len)), ty: clamp(p.y + (W / 2 - p.y) * 0.45 + (o && od < 6 ? (p.y > o.y ? 3 : -3) : (R() - 0.5) * 6), 4, W - 4) }; return; } /* 前场：往禁区方向带 */
       p.drib = { tx: clamp(p.x + d * len, 2, L - 2), ty: clamp(p.y + (o && od < 7 ? (p.y > o.y ? 5 : -5) : (W / 2 - p.y) * 0.22 + (R() - 0.5) * 9), 3, W - 3) }; }
     // 过人动作：先决定成不成功（盘带 vs 防守、速度、体力），然后变向加速；成功的话防守球员被晃开、短时间追不上，失败就被断下
-    function takeOn(p, o) { const d = dirOf(p.side), sgn = (p.y > o.y ? 1 : -1) * (R() < 0.25 ? -1 : 1), ok = R() < clamp(0.5 + (p.dri - o.def) / 55 + (p.vbase - o.vbase) * 0.1 + (p.stam - o.stam) / 300, 0.15, 0.85);
+    function takeOn(p, o) { const fw = skR(p, 'flair'), d = dirOf(p.side), sgn = (p.y > o.y ? 1 : -1) * (R() < 0.25 ? -1 : 1), ok = R() < clamp(0.5 + (p.dri - o.def) / 55 + (p.vbase - o.vbase) * 0.1 + (p.stam - o.stam) / 300 + 0.1 * fw, 0.15, 0.85 + 0.03 * fw);
       p.drib = { tx: clamp(o.x + d * 6, 2, L - 2), ty: clamp(o.y + sgn * 2.8, 3, W - 3) }; p.skill = { at: st.t + 0.45, vs: o, ok, done: 0 }; p.dt = 1.2; p.hurry = 1;
-      p.flash = { k: ['踩单车', '变向', '拉球过人', '穿裆', '急停变速', '马赛回旋'][Math.floor(R() * 6)], until: st.t + 1.2 }; st.tac.takeon = (st.tac.takeon || 0) + 1; }
+      p.flash = { k: ['踩单车', '变向', '拉球过人', '穿裆', '急停变速', '马赛回旋'][Math.floor(R() * 6)], until: st.t + 1.2 }; st.tac.takeon = (st.tac.takeon || 0) + 1; if (fw) skShow(p, 'flair', SK_MOVES[Math.floor(R() * SK_MOVES.length)]); }
+    /* 伤停补时的最后一攻：时间到了，正在对方半场进攻的一方踢完这次进攻（丢球权、球出界给对方或回到本方半场就结束），最多再踢 20 秒 */
+    function skR(p, id) { const t = p && p.sk && p.sk[id]; if (!t || R() >= SK_T[t].trig) return 0; return SK_T[t].pw; }
+    function skShow(p, id, txt) { if (!p || !p.sk || !p.sk[id]) return; p.skf = { id, t: p.sk[id], until: st.t + 2.6 }; p.flash = { k: txt || SK_DEF[id].n, until: st.t + 1.8 }; (st.skn = st.skn || {})[id] = (st.skn[id] || 0) + 1; pev(p, 'sk'); }
+    function pev(p, k) { if (p) (st.pev = st.pev || []).push([st.t, p.side, p.name, k]); }
+    function pevN(side, name, k) { if (name) (st.pev = st.pev || []).push([st.t, side, name, k]); }
+    function lastAtk(t, T0, k) { if (!FREE || t > T0 + 20) return false; st.xa = st.xa || {};
+      const sd = ball.owner ? ball.owner.side : ball.pass ? ball.pass.side : st.dead > 0 && st.restart ? st.restart.side : ball.lastSide, bxA = sd ? axOf(sd, ball.owner ? ball.owner.x : ball.x) : 0;
+      if (st.xa[k] == null) { st.xa[k] = sd && bxA > L / 2 && !(st.restart && st.dead > 0 && st.restart.type === 'kickoff') ? sd : ''; if (st.xa[k]) st.msgs.push({ t, type: 'lastatk', side: sd }); }
+      const A = st.xa[k]; if (!A) return false; if (st.penalty || st.freePen || ball.shot) return true;
+      if (sd !== A || bxA <= L / 2) return false; if (st.dead > 0 && st.restart && !['corner', 'fk', 'throw'].includes(st.restart.type)) return false; return true; }
     function restart(type, side, x, y, indirect) { st.restart = { type, side, x, y }; st.lastOS = side; st.counter = null; st.dead = type === 'corner' ? 2.6 : type === 'goalkick' ? 2.2 : type === 'fk' ? 2.8 : 1.6; ball.owner = null; ball.vx = ball.vy = ball.vz = ball.z = 0; ball.x = x; ball.y = y; ball.shot = ball.pass = null;
       const tk = type === 'goalkick' ? keeper(side) : team(side).filter(p => !p.gk).sort((a, b) => hyp(a.x - x, a.y - y) - hyp(b.x - x, b.y - y))[0]; st.restart.tk = tk; ball.last = tk; ball.lastSide = side; /* 主罚球员跑到球的位置再开球（不再瞬移） */
       if (type === 'corner') { st.crn[side]++; st.dead = 3; const m = W / 2, sg = y > m ? 1 : -1, slots = new Map(), W2 = (sd, X, Y) => [fromAx(sd, X), Y];
@@ -2363,18 +2476,18 @@ const PHYS = (() => {
         mk.forEach((q, i) => slots.set(q, W2(side, L - 17 - i * 2, m + (i % 2 ? 6 : -6)))); if (fw) slots.set(fw, W2(side, L * 0.45, m));
         st.restart.slots = slots; }
       if (type === 'fk' && FREE && !indirect && !window.__NOFK) { const dgf = hyp(goalX(side) - x, W / 2 - y); if (axOf(side, x) > L - 34 && dgf < 32 && Math.abs(y - W / 2) < 22) setupFK(side, x, y, dgf); } }
-    function goalScored(side) { if (ball.shot && ball.shot.g) ball.shot.g.scored = true; st.score[side]++; st.msgs.push({ t: st.t, type: 'goal', side, who: ball.shot && ball.shot.by, as: ball.shot && ball.shot.as, pen: ball.shot && ball.shot.pen, kind: ball.shot ? (ball.shot.fk ? 'fk' : ball.shot.pen ? 'pen' : ball.shot.hdr ? 'hdr' : '') : '' }); ball.shot = null; kickoff(opp(side)); }
+    function goalScored(side) { if (ball.shot && ball.shot.g) ball.shot.g.scored = true; if (ball.shot && ball.shot.by) { pevN(ball.shot.side, ball.shot.by, 'g'); if (!ball.shot.svc) pevN(ball.shot.side, ball.shot.by, 'ot'); if (ball.shot.as) pevN(ball.shot.side, ball.shot.as, 'as'); } st.score[side]++; st.msgs.push({ t: st.t, type: 'goal', side, who: ball.shot && ball.shot.by, as: ball.shot && ball.shot.as, pen: ball.shot && ball.shot.pen, kind: ball.shot ? (ball.shot.fk ? 'fk' : ball.shot.pen ? 'pen' : ball.shot.hdr ? 'hdr' : '') : '' }); ball.shot = null; kickoff(opp(side)); }
     // 每 0.1 秒：导演事件 → 死球 → 球员移动 → 球的运动 → 控球 / 抢断 / 拦截 / 出界 / 进球
     function step() {
       const t = st.t;
       goals.forEach(g => { if (g.inFlight && !g.scored && !(ball.shot && ball.shot.g === g)) { g.inFlight = false; g.done = false; } }); /* 安排好的进球那脚射门被打断：重新安排 */
-      if (st.half === 1 && t >= TM.H1 && !(ball.shot && ball.shot.out === 'goal')) { st.half = 2; P.forEach(p => { p.stam = Math.min(100, p.stam + 6); }); st.msgs.push({ t, type: 'ht' }); kickoff('a', true); }
+      if (st.half === 1 && t >= TM.H1 && !(ball.shot && ball.shot.out === 'goal') && !lastAtk(t, TM.H1, 1)) { if (t > TM.H1 + DT) { const x = t - TM.H1; evs.forEach(e => { if (!e.done && e.s > TM.H1) e.s += x; }); TM.H1 += x; TM.A2 += x; TM.END += x; } st.half = 2; P.forEach(p => { p.stam = Math.min(100, p.stam + 6); }); st.msgs.push({ t, type: 'ht' }); kickoff('a', true); }
       for (const e of evs) { if (e.done || e.s > t) continue; if (e.type === 'goal' || e.type === 'pmiss') continue; if ((e.type === 'sub' || e.type === 'red') && evs.some(g => (g.type === 'goal' || g.type === 'pmiss') && !g.done && g.s <= e.s + 0.01 && g.side === e.side && g.player === (e.type === 'sub' ? e.out : e.player))) continue; /* 要下场的人还有一个进球没打进：先等他进完 */ e.done = true;
         const p = byName[e.side][e.player];
-        if (e.type === 'yellow' && p) { p.card++; p.flash = { k: 'Y', until: t + 4 }; const ow = ball.owner; if (ow && ow.side !== p.side && !st.dead && !st.penalty && !(axOf(p.side, ball.x) < 17 && Math.abs(ball.y - W / 2) < 20.5)) { ow.down = t + 1; restart('fk', ow.side, clamp(ball.x, 1, L - 1), clamp(ball.y, 1, W - 1)); } } /* 黄牌：先有一次犯规，判给对方任意球 */
+        if (e.type === 'yellow' && p) { p.card++; p.flash = { k: 'Y', until: t + 4 }; const ow = ball.owner; if (ow && ow.side !== p.side && !st.dead && !st.penalty && !(axOf(p.side, ball.x) < 17 && Math.abs(ball.y - W / 2) < 20.5)) { ow.down = t + 1; restart('fk', ow.side, clamp(ball.x, 1, L - 1), clamp(ball.y, 1, W - 1)); st.dead += 4.5; } } /* 黄牌：先有一次犯规，判给对方任意球 */
         else if (e.type === 'red' && p) { p.flash = { k: 'R', until: t + 4 }; p.leaveAt = t + 2; }
         else if (e.type === 'inj' && p) { p.flash = { k: '✚', until: t + 6 }; }
-        else if (e.type === 'sub') { let o = byName[e.side][e.out]; const sentOff = FREE && o && !o.on && o.name === e.out; if (!sentOff && (!o || !o.on || o.name !== e.out)) { const fut = new Set(goals.filter(g => !g.done && g.side === e.side).map(g => g.player)), ref = o; o = team(e.side).filter(q => !q.gk && !fut.has(q.name)).sort((x, y) => Math.abs(x.fx - (ref ? ref.fx : 50)) - Math.abs(y.fx - (ref ? ref.fx : 50)))[0]; } /* 引擎的换人记录偶尔会换下已经下场的人：改换同位置、之后不进球的球员 */ if (o && o.on) { byName[e.side][e.player] = o; const B = (spec.sides[e.side].bench || {})[e.player] || {}; const A = B.attr || o.attr; o.name = e.player; o.no = B.no || ''; o.attr = A; o.pas = A.pas || 70; o.sho = A.sho || 60; o.dri = A.dri || 65; o.def = A.def || 60; o.vmax = 6.4 + clamp((A.spd || 75) - 50, 0, 49) * 0.068; o.acc = 4.2 + clamp((A.spd || 70) - 60, -20, 39) * 0.035 + clamp((A.phy || 70) - 70, -20, 29) * 0.012; o.men = A.men || 70; o.phy = A.phy || 70; o.vbase = o.vmax; o.sta = A.sta || 75; o.stam = B.en != null ? B.en : 100; o.down = 0; o.flash = { k: '⇄', until: t + 4 }; byName[e.side][e.player] = o; } }
+        else if (e.type === 'sub') { let o = byName[e.side][e.out]; const sentOff = FREE && o && !o.on && o.name === e.out; if (!sentOff && (!o || !o.on || o.name !== e.out)) { const fut = new Set(goals.filter(g => !g.done && g.side === e.side).map(g => g.player)), ref = o; o = team(e.side).filter(q => !q.gk && !fut.has(q.name)).sort((x, y) => Math.abs(x.fx - (ref ? ref.fx : 50)) - Math.abs(y.fx - (ref ? ref.fx : 50)))[0]; } /* 引擎的换人记录偶尔会换下已经下场的人：改换同位置、之后不进球的球员 */ if (o && o.on) { byName[e.side][e.player] = o; const B = (spec.sides[e.side].bench || {})[e.player] || {}; const A = B.attr || o.attr; o.name = e.player; o.no = B.no || ''; o.attr = A; o.pas = A.pas || 70; o.sho = A.sho || 60; o.dri = A.dri || 65; o.def = A.def || 60; o.vmax = 6.4 + clamp((A.spd || 75) - 50, 0, 49) * 0.068; o.acc = 4.2 + clamp((A.spd || 70) - 60, -20, 39) * 0.035 + clamp((A.phy || 70) - 70, -20, 29) * 0.012; o.men = A.men || 70; o.phy = A.phy || 70; o.vbase = o.vmax; o.sta = A.sta || 75; o.stam = B.en != null ? B.en : 100; o.sk = skMap(B.sk); o.skf = null; skPassive(o); o.down = 0; o.flash = { k: '⇄', until: t + 4 }; byName[e.side][e.player] = o; } }
         st.msgs.push({ t, type: e.type, side: e.side, who: e.player }); }
       P.forEach(p => { if (p.leaveAt != null && t >= p.leaveAt && p.on) { p.on = false; if (ball.owner === p) ball.owner = null; } });
       // 点球：安排好的点球进球 / 罚丢，到时间就判点球
@@ -2410,7 +2523,7 @@ const PHYS = (() => {
         /* 第二个逼抢的人不追球，而是卡住持球人最危险的传球线路 */ const tgt = team(ow.side).filter(q => q !== ow && !q.gk && axOf(ow.side, q.x) > axOf(ow.side, ow.x) - 3 && hyp(q.x - ow.x, q.y - ow.y) < 28).sort((a, b) => hyp(a.x - ow.x, a.y - ow.y) - hyp(b.x - ow.x, b.y - ow.y))[0]; if (tgt) lane2 = [ow.x + (tgt.x - ow.x) * 0.5, ow.y + (tgt.y - ow.y) * 0.5]; }
       st.icpQ = null; let icp = null; if (ball.pass && !ball.owner && !st.dead && ball.z < 2.2) { const sd = opp(ball.pass.side), rcv = ball.pass.to, s0 = hyp(ball.vx, ball.vy); if (s0 > 1) { const ux = ball.vx / s0, uy = ball.vy / s0;
         team(sd).forEach(q => { if (q.gk || q.down > st.t || hyp(q.x - ball.x, q.y - ball.y) > 40) return; let v = s0, x = ball.x, y = ball.y, tb = 0; for (let k = 0; k < 45 && v > 0.6; k++) { x += ux * v * DT; y += uy * v * DT; v = ball.z > 0.3 ? v * 0.993 : GR(v); tb += DT;
-          const tq = Math.max(0, hyp(q.x - x, q.y - y) - 0.9) / (q.vmax * 0.95) + 0.2 + (100 - q.def) / 300; if (tq <= tb) { const tr = rcv && rcv.on ? Math.max(0, hyp(rcv.x - x, rcv.y - y) - 0.9) / rcv.vmax : 99; if (tq < tr && (!icp || tb < icp.tb)) icp = { q, x, y, tb }; break; } } }); }
+          const tq = Math.max(0, hyp(q.x - x, q.y - y) - 0.9) / (q.vmax * 0.95) + 0.2 + (100 - q.def) / 300 - skPw(q, 'icpt') * 0.06; if (tq <= tb) { const tr = rcv && rcv.on ? Math.max(0, hyp(rcv.x - x, rcv.y - y) - 0.9) / rcv.vmax : 99; if (tq < tr && (!icp || tb < icp.tb)) icp = { q, x, y, tb }; break; } } }); }
         if (icp) st.icpQ = icp.q; } /* 预判传球线路：能比接球人先到的防守球员去拦截 */
       if (ball.owner && !st.dead) { const os = ball.owner.side; const CT = st.sty[os].counter; if (st.lastOS && st.lastOS !== os && axOf(os, ball.owner.x) < L * 0.6 && team(opp(os)).filter(q => !q.gk && axOf(os, q.x) > axOf(os, ball.owner.x)).length <= (CT ? 6 : 4) && R() < (CT ? 0.95 : 0.75)) { st.counter = { side: os, until: st.t + (CT ? 9 : 7) }; ball.owner.flash = { k: '反击', until: st.t + 1.6 }; st.tac.counter = (st.tac.counter || 0) + 1; } if (st.lastOS && st.lastOS !== os && axOf(os, ball.owner.x) < L * 0.7) { st.gp = { side: st.lastOS, until: st.t + st.sty[st.lastOS].gp }; st.tac.gp = (st.tac.gp || 0) + 1; } st.lastOS = os; if ((st.tt += DT) >= 0.5) { st.tt = 0; tactics(ball.owner); } }
       P.forEach(q => { if (q.run && (q.run.until < st.t || (possSide && q.side !== possSide))) q.run = null; }); if (st.sp && (ball.owner || st.sp.until < st.t)) st.sp = null;
@@ -2439,13 +2552,13 @@ const PHYS = (() => {
         const am = hyp(ax, ay), amax = ((p.acc || 4.6) + 0.6) * (0.7 + 0.3 * clamp(p.stam, 0, 100) / 100); if (am > amax) { ax *= amax / am; ay *= amax / am; }
         p.vx += ax * DT; p.vy += ay * DT; const v = hyp(p.vx, p.vy); if (v > p.vmax) { p.vx *= p.vmax / v; p.vy *= p.vmax / v; }
         if (p.down > st.t) { p.vx *= 0.7; p.vy *= 0.7; } if (p.beaten > st.t) { p.vx *= 0.82; p.vy *= 0.82; } p.x = clamp(p.x + p.vx * DT, -1, L + 1); p.y = clamp(p.y + p.vy * DT, -1, W + 1); if (p.cool) p.cool = Math.max(0, p.cool - DT);
-        const ef = hyp(p.vx, p.vy) / Math.max(1, p.vbase); p.stam = Math.max(0, p.stam - DT * (0.0045 + 0.04 * ef * ef * ef + (ball.owner === p ? (p.carry = (p.carry || 0) + hyp(p.vx, p.vy) * DT) * 0 : 0)) * (1.3 - p.sta / 160) * (p.gk ? 0.3 : 1) * 1.2 * 60 / SPM); });
+        const ef = hyp(p.vx, p.vy) / Math.max(1, p.vbase); p.stam = Math.max(0, p.stam - DT * (0.0045 + 0.04 * ef * ef * ef + (ball.owner === p ? (p.carry = (p.carry || 0) + hyp(p.vx, p.vy) * DT) * 0 : 0)) * (1.3 - p.sta / 160) * (p.gk ? 0.3 : 1) * 1.2 * 60 / SPM * (1 - 0.08 * skPw(p, 'engine'))); if (p.sk && p.sk.engine && !p.engShown && st.half === 2 && st.t > TM.H1 + 30 * SPM && p.on && !p.gk) { p.engShown = 1; if (R() < SK_T[p.sk.engine].trig * 1.6) skShow(p, 'engine'); } });
       // 球员之间不重叠
       for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) { const a = P[i], b = P[j]; if (!a.on || !b.on) continue; const dx = b.x - a.x, dy = b.y - a.y, d = hyp(dx, dy); if (d > 0 && d < 1.3) { const k = (1.3 - d) / d, wa = b.phy / (a.phy + b.phy), wb = 1 - wa; a.x -= dx * k * wa; a.y -= dy * k * wa; b.x += dx * k * wb; b.y += dy * k * wb; if (a.side !== b.side && (ball.owner === a || ball.owner === b)) { const lo = ball.owner === a ? a : b, hi = lo === a ? b : a, f = clamp(0.5 + (hi.phy - lo.phy) / 80, 0.2, 0.8); lo.vx *= 1 - 0.12 * f; lo.vy *= 1 - 0.12 * f; } } }
       // 控球者
       if (ball.owner) { const p = ball.owner; if (!p.on) { ball.owner = null; } else {
           const v = hyp(p.vx, p.vy), ux = v > 0.3 ? p.vx / v : dirOf(p.side), uy = v > 0.3 ? p.vy / v : 0; ball.x = p.x + ux * 0.7; ball.y = p.y + uy * 0.7; ball.vx = p.vx; ball.vy = p.vy; ball.z = 0;
-          if (!st.dead) { p.dt = (p.dt || 0) - DT; if (p.skill && !p.skill.done && st.t >= p.skill.at) { const sk = p.skill, o = sk.vs; sk.done = 1; if (sk.ok) { o.beaten = st.t + 1.4; o.flash = { k: '被晃开', until: st.t + 1.2 }; st.tac.takeonOK = (st.tac.takeonOK || 0) + 1; } else if (o.on && hyp(o.x - p.x, o.y - p.y) < 3.2) { ball.owner = o; ball.last = o; ball.lastSide = o.side; ball.pass = null; o.dt = 0.5 + R() * 0.5; o.drib = null; o.flash = { k: '抢断', until: st.t + 1.3 }; p.skill = null; } }
+          if (!st.dead) { p.dt = (p.dt || 0) - DT; if (p.skill && !p.skill.done && st.t >= p.skill.at) { const sk = p.skill, o = sk.vs; sk.done = 1; if (sk.ok) { o.beaten = st.t + 1.4; o.flash = { k: '被晃开', until: st.t + 1.2 }; st.tac.takeonOK = (st.tac.takeonOK || 0) + 1; pev(p, 'dr'); } else if (o.on && hyp(o.x - p.x, o.y - p.y) < 3.2) { pev(o, 'tk'); ball.owner = o; ball.last = o; ball.lastSide = o.side; ball.pass = null; o.dt = 0.5 + R() * 0.5; o.drib = null; o.flash = { k: '抢断', until: st.t + 1.3 }; p.skill = null; } }
             if (ball.owner !== p) { } else if (!p.hurry) { const [, odn] = nearestOpp(p, opp(p.side)); if (odn < 2.8 && p.dt > 0.3) { p.dt = 0.1 + (100 - p.men) / 450 + R() * 0.15; p.hurry = 1; } } /* 被逼近：马上做决定 */
             if (p.dt <= 0) { p.hurry = 0; p.dt = (axOf(p.side, p.x) > L - 32 ? 0.45 + R() * 0.6 : 1.1 + R() * 1.4) * (1.35 - p.men / 200); p.drib = null; decide(p); }
             // 抢断
@@ -2455,9 +2568,9 @@ const PHYS = (() => {
               if (G2 && st.t >= G2.s - 16) pr *= G2.side === q.side ? 3 : 0.1; q.tkc = st.t + (slide ? 2.2 : 1.4);
               if (slide) { const ux = (p.x - q.x) / d, uy = (p.y - q.y) / d; q.vx = ux * q.vmax * 1.25; q.vy = uy * q.vmax * 1.25; q.down = st.t + 1.2; q.flash = { k: '铲球', until: st.t + 1.4 }; }
               const ownBox = axOf(q.side, ball.x) < 17 && Math.abs(ball.y - W / 2) < 20.5, foulP = (slide ? 0.36 : 0.12) * (1.2 - q.def / 125);
-              if (FREE && ownBox && R() < foulP * 0.28 && !st.penalty && !st.freePen) { q.flash = { k: '禁区犯规', until: st.t + 2 }; p.down = st.t + 1; bookFoul(q, p, slide, true); st.fouls = st.fouls || { h: 0, a: 0 }; st.fouls[q.side]++; st.msgs.push({ t: st.t, type: 'foul', side: q.side, who: q.name }); const tk0 = team(p.side).filter(x => !x.gk).sort((a, b) => b.sho - a.sho)[0]; st.freePen = { side: p.side, player: tk0 ? tk0.name : p.name, type: 'free', s: st.t, done: false }; ball.owner = null; return; } /* 禁区内犯规 → 点球 */
-              if (!ownBox && R() < foulP && (!G2 || st.t < G2.s - 16)) { q.flash = { k: '犯规', until: st.t + 2 }; p.down = st.t + 0.9; bookFoul(q, p, slide, false); st.fouls = st.fouls || { h: 0, a: 0 }; st.fouls[q.side]++; st.msgs.push({ t: st.t, type: 'foul', side: q.side, who: q.name }); restart('fk', p.side, clamp(ball.x, 1, L - 1), clamp(ball.y, 1, W - 1)); return; }
-              if (R() < pr) { st.tk = (st.tk || 0) + 1; q.tkw = (q.tkw || 0) + 1; if (!slide && R() < 0.6) { ball.owner = q; ball.last = q; ball.lastSide = q.side; ball.pass = null; q.dt = 0.6 + R() * 0.6; q.drib = null; q.flash = { k: '抢断', until: st.t + 1.4 }; p.dt = 9; }
+              if (FREE && ownBox && R() < foulP * 0.28 && !st.penalty && !st.freePen) { q.flash = { k: '禁区犯规', until: st.t + 2 }; pev(q, 'fo'); p.down = st.t + 1; bookFoul(q, p, slide, true); st.fouls = st.fouls || { h: 0, a: 0 }; st.fouls[q.side]++; st.msgs.push({ t: st.t, type: 'foul', side: q.side, who: q.name }); const tk0 = team(p.side).filter(x => !x.gk).sort((a, b) => b.sho - a.sho)[0]; st.freePen = { side: p.side, player: tk0 ? tk0.name : p.name, type: 'free', s: st.t, done: false }; ball.owner = null; return; } /* 禁区内犯规 → 点球 */
+              if (!ownBox && R() < foulP && (!G2 || st.t < G2.s - 16)) { q.flash = { k: '犯规', until: st.t + 2 }; pev(q, 'fo'); p.down = st.t + 0.9; bookFoul(q, p, slide, false); st.fouls = st.fouls || { h: 0, a: 0 }; st.fouls[q.side]++; st.msgs.push({ t: st.t, type: 'foul', side: q.side, who: q.name }); restart('fk', p.side, clamp(ball.x, 1, L - 1), clamp(ball.y, 1, W - 1)); st.dead += st.cardT === st.t ? 4.5 : 1.2; return; } /* 犯规停表：出牌的话多停一会（裁判掏牌、记名） */
+              const tkw = q.sk && q.sk.tackle ? skR(q, 'tackle') : 0; if (R() < (pr + 0.08 * tkw) * st.sty[q.side].duel) { if (tkw) skShow(q, 'tackle'); st.tk = (st.tk || 0) + 1; q.tkw = (q.tkw || 0) + 1; pev(q, 'tk'); if (!slide && R() < 0.6) { ball.owner = q; ball.last = q; ball.lastSide = q.side; ball.pass = null; q.dt = 0.6 + R() * 0.6; q.drib = null; q.flash = { k: '抢断', until: st.t + 1.4 }; p.dt = 9; }
                 else { ball.owner = null; ball.last = q; ball.lastSide = q.side; const a = Math.atan2(p.y - q.y, p.x - q.x) + (R() - 0.5) * 1.6, v = 4 + R() * 4; ball.vx = Math.cos(a) * v; ball.vy = Math.sin(a) * v; ball.pass = null; if (!slide) q.flash = { k: '断球', until: st.t + 1.4 }; } }
               else if (!slide) { const ux = (p.x - q.x) / (d || 1), uy = (p.y - q.y) / (d || 1); p.vx += ux * 1.5; p.vy += uy * 1.5; } }); } } }
       if (!ball.owner && !st.dead) {
@@ -2470,16 +2583,16 @@ const PHYS = (() => {
           if (hit) { const v0 = hyp(ball.vx, ball.vy) * (0.25 + R() * 0.2), a = Math.atan2(-ball.vy, -ball.vx) + (R() - 0.5) * 2.4; ball.vx = Math.cos(a) * v0; ball.vy = Math.sin(a) * v0; ball.vz = R() < 0.4 ? 3 + R() * 3 : 0; ball.last = hit; ball.lastSide = hit.side; ball.shot = null; hit.flash = { k: '封堵', until: st.t + 1.4 }; st.msgs.push({ t: st.t, type: 'block', side: hit.side, who: hit.name }); } }
         // 门将处理射门
         if (ball.shot && ball.shot.out !== 'block') { const sd = ball.shot.side, gk = keeper(opp(sd)), gx = goalX(sd); if (ball.shot && ball.shot.fk && st.fkWall && st.fkWall.until > st.t) { for (const q of st.fkWall.list) { if (!q.on) continue; if (hyp(q.x - ball.x, q.y - ball.y) < 0.75 && ball.z < 1.85 + (q.phy - 70) / 200) { ball.vx = -ball.vx * 0.3 + (R() - 0.5) * 4; ball.vy = (R() - 0.5) * 10; ball.vz = 2 + R() * 2; ball.curl = 0; ball.last = q; ball.lastSide = q.side; ball.shot = null; q.flash = { k: '人墙挡出', until: st.t + 1.5 }; st.fkWall = null; break; } } } /* 人墙 */ if (ball.shot && ball.shot.out === 'real' && !ball.shot.gkT) { const sdr = ball.shot.side, gkr = keeper(opp(sdr)), gxr = goalX(sdr); if (gkr && Math.abs(ball.x - gxr) < 3.2 + spd * DT) { ball.shot.gkT = 1; const yX = ball.y + ball.vy * Math.abs((gkr.x - ball.x) / (ball.vx || 1e-6)), reach = 2.7 + (gkr.div - 60) / 30, dgk = Math.abs(gkr.y - yX) + Math.max(0, Math.abs(gkr.x - gxr) - 3) * 0.3, tL = Math.abs((gxr - ball.x) / (ball.vx || 1e-6)), inM = Math.abs(ball.y + ball.vy * tL - W / 2) < 3.66 && ball.z + ball.vz * tL - 4.9 * tL * tL < 2.4, corner = Math.min(Math.abs(yX - GY0), Math.abs(yX - GY1)) < 0.5;
-            if (inM && dgk < reach) { const pS = clamp(0.91 - (dgk / reach) * 0.42 - Math.max(0, spd - 20) * 0.015 + (gkr.ref - 70) / 150 + (gkr.div - 70) / 200 - (ball.z > 1.7 ? 0.08 : 0) - (corner ? 0.12 : 0), 0.12, 0.96); if (R() < pS) ball.shot.out = 'save'; } } } /* 自由模式：门将够得着才有机会扑出 */
+            if (inM && dgk < reach) { const gid = ball.shot.pen ? 'pstop' : 'save', gw = skR(gkr, gid), pS = clamp(0.91 - (dgk / reach) * 0.42 - Math.max(0, spd - 20) * 0.015 + (gkr.ref - 70) / 150 + (gkr.div - 70) / 200 - (ball.z > 1.7 ? 0.08 : 0) - (corner ? 0.12 : 0) - (ball.shot.skB || 0) + gw * (gid === 'pstop' ? 0.1 : 0.04), 0.12, 0.97); if (R() < pS) { ball.shot.out = 'save'; if (gw) skShow(gkr, gid); } } } } /* 自由模式：门将够得着才有机会扑出 */
         if (ball.shot && ball.shot.out === 'post' && Math.abs(ball.x - goalX(ball.shot.side)) < 0.5 + spd * DT) { const sdp = ball.shot.side; ball.vx = -ball.vx * (0.35 + R() * 0.25); ball.vy = (R() - 0.5) * 12; ball.vz = R() * 3; ball.x = goalX(sdp) - dirOf(sdp) * 0.6; ball.curl = 0; ball.last = null; ball.lastSide = sdp; const pp = byName[sdp][ball.shot.by]; if (pp) pp.flash = { k: '中柱！', until: st.t + 1.8 }; st.msgs.push({ t: st.t, type: 'post', side: sdp, who: ball.shot.by }); st.tac.post = (st.tac.post || 0) + 1; ball.shot = null; } /* 打中门柱弹回来 */
         if (ball.shot && ball.shot.out === 'save' && gk && Math.abs(ball.x - gx) < 1.3 + spd * DT && hyp(gk.x - ball.x, gk.y - ball.y) > 2.5 + (gk.div - 60) / 35) { /* 门将够不着：后卫门线解围或打中门柱（这球按赛果不进） */ const cl = team(opp(sd)).filter(q => !q.gk && hyp(q.x - ball.x, q.y - ball.y) < 4)[0]; if (cl && R() < 0.6) { ball.vx = -ball.vx * 0.4; ball.vy = (R() - 0.5) * 14; ball.vz = 2 + R() * 3; ball.last = cl; ball.lastSide = cl.side; cl.x += (ball.x - cl.x) * 0.5; cl.y += (ball.y - cl.y) * 0.5; cl.flash = { k: '门线解围', until: st.t + 1.8 }; st.tac.line = (st.tac.line || 0) + 1; ball.shot = null; } else if (R() < 0.3) ball.shot.out = 'post'; else { const tl = Math.abs(gx - ball.x) / Math.max(1, Math.abs(ball.vx)), tyw = ball.y < W / 2 ? GY0 - 0.9 : GY1 + 0.9; ball.vy = (tyw - ball.y) / Math.max(0.1, tl); ball.curl = 0; ball.shot.out = 'wide'; } }
-        if (ball.shot && gk && ball.shot.out === 'save' && Math.abs(ball.x - gx) < 3.2 && hyp(gk.x - ball.x, gk.y - ball.y) < 2.5 + (gk.div - 60) / 35) { const r0 = R(), cP = clamp(0.2 + (gk.han - 60) / 100, 0.15, 0.65); if (r0 < cP) { ball.owner = gk; ball.last = gk; ball.lastSide = gk.side; st.dead = 1.2; } else if (r0 < cP + (1 - cP) * clamp(0.35 + (gk.div - 70) / 120, 0.2, 0.6)) { st.msgs.push({ t: st.t, type: 'save', side: gk.side, who: gk.name }); ball.shot = null; gk.flash = { k: '扑出', until: st.t + 2 }; const cs = sd, cR = gx > L / 2, cy = ball.y > W / 2 ? W - 0.4 : 0.4; restart('corner', cs, cR ? L - 0.4 : 0.4, cy); } /* 门将把球托出底线 → 角球 */ else { ball.vx = -ball.vx * 0.35; ball.vy = (R() - 0.5) * 14; ball.last = gk; ball.lastSide = gk.side; } st.svs[sd]++; st.msgs.push({ t: st.t, type: 'save', side: gk.side, who: gk.name }); ball.shot = null; } }
+        if (ball.shot && gk && ball.shot.out === 'save' && Math.abs(ball.x - gx) < 3.2 && hyp(gk.x - ball.x, gk.y - ball.y) < 2.5 + (gk.div - 60) / 35) { if (!ball.shot.svc) { ball.shot.svc = 1; pevN(ball.shot.side, ball.shot.by, 'ot'); pev(gk, 'sv'); } const r0 = R(), cP = clamp(0.2 + (gk.han - 60) / 100, 0.15, 0.65); if (r0 < cP) { ball.owner = gk; ball.last = gk; ball.lastSide = gk.side; st.dead = 1.2; } else if (r0 < cP + (1 - cP) * clamp(0.35 + (gk.div - 70) / 120, 0.2, 0.6)) { st.msgs.push({ t: st.t, type: 'save', side: gk.side, who: gk.name }); ball.shot = null; gk.flash = { k: '扑出', until: st.t + 2 }; const cs = sd, cR = gx > L / 2, cy = ball.y > W / 2 ? W - 0.4 : 0.4; restart('corner', cs, cR ? L - 0.4 : 0.4, cy); } /* 门将把球托出底线 → 角球 */ else { ball.vx = -ball.vx * 0.35; ball.vy = (R() - 0.5) * 14; ball.last = gk; ball.lastSide = gk.side; } st.svs[sd]++; st.msgs.push({ t: st.t, type: 'save', side: gk.side, who: gk.name }); ball.shot = null; } }
         // 拿球 / 拦截
-        if (!ball.owner && !st.dead && (ball.z < 1.6 || (ball.pass && ball.pass.cross && ball.z < 2.8)) && !(ball.shot && ball.shot.out === 'goal')) { let best = null, bd = 1e9; P.forEach(p => { if (!p.on || (p.cool && ball.last === p) || p.down > st.t) return; const d = hyp(p.x - ball.x, p.y - ball.y), mine = ball.pass && ball.pass.to === p, air = ball.z > 0.6, dEff = air ? d - (p.phy - 70) / 35 + (R() - 0.5) * 0.9 : d; if (d < (mine ? 1.6 : air ? 1.3 + (p.phy - 70) / 50 : spd > 14 ? 0.9 : 1.25) && dEff < bd) { if (ball.pass && ball.pass.side !== p.side && R() > clamp(0.04 + 0.3 * Math.pow(p.def / 80, 1.6) - (spd - 6) * 0.03 + (ball.pass.from ? Math.max(0, 80 - ball.pass.from.pas) / 150 : 0) + (st.icpQ === p ? 0.38 : 0), 0.04, 0.8)) return; if (ball.shot && ball.shot.side !== p.side && !p.gk) { if (R() > (FREE ? 0.5 : 0.15)) return; if (FREE) { p.flash = { k: '封堵', until: st.t + 1.3 }; st.blk = (st.blk || 0) + 1; } } bd = dEff; best = p; } });
+        if (!ball.owner && !st.dead && (ball.z < 1.6 || (ball.pass && ball.pass.cross && ball.z < 2.8)) && !(ball.shot && ball.shot.out === 'goal')) { let best = null, bd = 1e9; P.forEach(p => { if (!p.on || (p.cool && ball.last === p) || p.down > st.t) return; const d = hyp(p.x - ball.x, p.y - ball.y), mine = ball.pass && ball.pass.to === p, air = ball.z > 0.6, dEff = air ? d - (p.phy - 70) / 35 - skPw(p, 'aerial') * 0.25 + (R() - 0.5) * 0.9 : d; if (d < (mine ? 1.6 : air ? 1.3 + (p.phy - 70) / 50 : spd > 14 ? 0.9 : 1.25) && dEff < bd) { if (ball.pass && ball.pass.side !== p.side && R() > clamp(0.04 + 0.3 * Math.pow(p.def / 80, 1.6) - (spd - 6) * 0.03 + (ball.pass.from ? Math.max(0, 80 - ball.pass.from.pas) / 150 : 0) + (st.icpQ === p ? 0.38 : 0), 0.04, 0.8)) return; if (ball.shot && ball.shot.side !== p.side && !p.gk) { if (R() > (FREE ? 0.5 : 0.15)) return; if (FREE) { p.flash = { k: '封堵', until: st.t + 1.3 }; st.blk = (st.blk || 0) + 1; } } bd = dEff; best = p; } });
           if (best && ball.pass && ball.pass.side === best.side && ball.pass.off && ball.pass.off.includes(best)) { const sd = best.side; st.offs[sd]++; st.msgs.push({ t: st.t, type: 'offside', side: sd, who: best.name }); best.flash = { k: '🚩', until: st.t + 2.5 }; restart('fk', opp(sd), clamp(best.x, 1, L - 1), clamp(best.y, 1, W - 1), true); best = null; }
           if (best && ball.pass && ball.pass.side === best.side && !best.gk) { const ctl = clamp(0.86 - Math.max(0, 65 - best.stam) / 160 + (best.dri - 65) / 200 + (best.pas - 65) / 400 - (ball.pass.from ? Math.max(0, 85 - ball.pass.from.pas) / 160 : 0) - Math.max(0, spd - 9) * 0.03 - (ball.z > 0.4 ? 0.07 : 0), 0.62, 0.97); if (R() > ctl) { const s0 = spd || 1, a = (R() - 0.5) * 2.2, c = Math.cos(a), sn = Math.sin(a), k = 0.4; const vx0 = ball.vx, vy0 = ball.vy; ball.vx = (vx0 * c - vy0 * sn) * k; ball.vy = (vx0 * sn + vy0 * c) * k; ball.vz = 0; ball.z = 0; ball.pass = null; ball.last = best; ball.lastSide = best.side; best.cool = 0.5; best = null; st.pst.heavy++; } }
-          if (best && ball.pass) { if (ball.pass.side === best.side) { st.pst.ok++; if (ball.pass.from) best.lastPass = { from: ball.pass.from.name, t: st.t }; st.tac['ok_' + ball.pass.k] = (st.tac['ok_' + ball.pass.k] || 0) + 1; if (ball.pass.from) ball.pass.from.pc = (ball.pass.from.pc || 0) + 1; } else { st.pst.cut++; if (!best.gk) best.flash = { k: '拦截', until: st.t + 1.3 }; } }
-          if (best) { ball.owner = best; ball.last = best; ball.lastSide = best.side; ball.pass = null; if (ball.shot && ball.shot.side !== best.side) ball.shot = null; best.dt = 1.0 + R() * 1.1; best.drib = null; best.hurry = 0; if (best.volley) best.dt = 0.05; if (!best.gk && axOf(best.side, best.x) > L - 19 && Math.abs(best.y - W / 2) < 17) best.dt = 0.12 + R() * 0.2; /* 禁区里接球：一脚或两脚就处理 */ const wasCross = ball.z > 0.6;
+          if (best && ball.pass) { if (ball.pass.side === best.side) { st.pst.ok++; if (ball.pass.from) best.lastPass = { from: ball.pass.from.name, t: st.t }; st.tac['ok_' + ball.pass.k] = (st.tac['ok_' + ball.pass.k] || 0) + 1; if (ball.pass.from) { ball.pass.from.pc = (ball.pass.from.pc || 0) + 1; pev(ball.pass.from, 'pc'); } } else { st.pst.cut++; if (!best.gk) { best.flash = { k: '拦截', until: st.t + 1.3 }; pev(best, 'ic'); if (best.sk && best.sk.icpt && R() < SK_T[best.sk.icpt].trig) skShow(best, 'icpt'); } } }
+          if (best) { ball.owner = best; ball.last = best; ball.lastSide = best.side; ball.pass = null; if (ball.shot && ball.shot.side !== best.side) ball.shot = null; best.dt = (1.0 + R() * 1.1) * st.sty[best.side].tempo; best.drib = null; best.hurry = 0; if (best.volley) best.dt = 0.05; if (!best.gk && axOf(best.side, best.x) > L - 19 && Math.abs(best.y - W / 2) < 17) best.dt = 0.12 + R() * 0.2; /* 禁区里接球：一脚或两脚就处理 */ const wasCross = ball.z > 0.6; if (wasCross && best.sk && best.sk.aerial && R() < SK_T[best.sk.aerial].trig * 1.5) skShow(best, 'aerial');
             const Gh = nextGoal(), bldH = Gh && !Gh.pen && Gh.side === best.side && st.t >= Gh.s - 16; if (wasCross) st.sp = null;
             if (wasCross && axOf(best.side, best.x) > L - 18 && !best.gk) { best.flash = { k: '头球', until: st.t + 1.5 }; st.hdr = (st.hdr || 0) + 1; if (bldH && best.name === Gh.player) { Gh.done = true; shoot(best, 'goal'); } else if (FREE && window.__NOHDR) { if (R() > 0.6) carry(best); else shoot(best); } else if (FREE) { if (axOf(best.side, best.x) > L - 13 || R() < 0.4) shoot(best, 'hdr'); else carry(best); } else if (!bldH && quota[best.side] > 0) shoot(best); else shootExtra(best); } /* 禁区里争到高球：头球攻门 */
             else if (wasCross && axOf(best.side, best.x) < 20) { if (!best.gk) best.flash = { k: '头球解围', until: st.t + 1.5 }; clearBall(best); } /* 防守方争到头球：顶出去 */
@@ -2503,7 +2616,7 @@ const PHYS = (() => {
         else if (ow && ow.side !== G3.side && !hard) { const tk = team(G3.side).filter(q => !q.gk && hyp(q.x - ow.x, q.y - ow.y) < 3)[0]; if (tk) { ball.owner = tk; ball.last = tk; ball.lastSide = tk.side; tk.flash = { k: '抢断', until: t + 1.4 }; tk.dt = 0.2; } }
         else if (!ow && !hard) { const nb = team(G3.side).filter(q => !q.gk).sort((a, b) => hyp(a.x - ball.x, a.y - ball.y) - hyp(b.x - ball.x, b.y - ball.y))[0]; if (nb && hyp(nb.x - ball.x, nb.y - ball.y) < 1.5) { ball.owner = nb; ball.last = nb; ball.lastSide = nb.side; ball.pass = null; nb.dt = 0.2; } }
         else { ball.owner = sc; ball.x = sc.x; ball.y = sc.y; G3.done = true; st.tac.force = (st.tac.force || 0) + 1; shoot(sc, 'goal'); } } }
-      if (t >= TM.END) st.ended = true;
+      if (t >= TM.END && !lastAtk(t, TM.END, 2)) { st.ended = true; TM.END = Math.max(TM.END, t); }
       st.t += DT;
     }
     function snapshot() { return { t: st.t, half: st.half, score: { ...st.score }, ball: { x: ball.x, y: ball.y, z: ball.z, own: ball.owner ? ball.owner.name : null, side: ball.owner ? ball.owner.side : ball.lastSide }, P: P.map(p => ({ side: p.side, name: p.name, no: p.no, x: p.x, y: p.y, on: p.on, gk: p.gk, flash: p.flash && p.flash.until > st.t ? p.flash.k : null, card: p.card })), poss: { ...st.poss }, shots: { ...st.shots } }; }
@@ -2532,7 +2645,7 @@ function physMatch(h, a, opt, forms) {
   const spec = physSpec(h, a, compact(res0), forms, 'phys|' + h + '|' + a + '|' + seed); spec.free = true; spec.events = spec.events.filter(e => !['goal', 'pmiss', 'yellow', 'red'].includes(e.type));
   /* 状态加成：比赛页上的 BUFF / DEBUFF（天气、时段、士气、主帅…）和联赛实力分级调整，换算成该队每个球员能力的小幅加减 */
   spec.buff = {}; [['h', h, a], ['a', a, h]].forEach(([sd, t, o]) => { let m = 1, adj = 0; try { m = ENGINE.condition(t, opt.weather, opt.slot, o).m || 1; } catch (e) { } try { adj = tierAdj(t) || 0; } catch (e) { }
-    let gapA = 0; try { gapA = (ENGINE.strength(t).ovr - ENGINE.strength(o).ovr) * (window.__GAPK != null ? window.__GAPK : 0.35); } catch (e) { } const dlt = window.__NOBUFF ? 0 : Math.max(-6, Math.min(6, (m - 1) * 20 + adj * 0.8 + gapA)), sh = A => { const B = {}; Object.entries(A || {}).forEach(([k, v]) => B[k] = typeof v === 'number' ? Math.max(30, Math.min(99, Math.round(v + dlt))) : v); return B; };
+    let gapA = 0; try { gapA = (ENGINE.strength(t).ovr - ENGINE.strength(o).ovr) * (window.__GAPK != null ? window.__GAPK : 0.3); } catch (e) { } const dlt = window.__NOBUFF ? 0 : Math.max(-6, Math.min(6, (m - 1) * 20 + adj * 0.8 + gapA)), sh = A => { const B = {}; Object.entries(A || {}).forEach(([k, v]) => B[k] = typeof v === 'number' ? Math.max(30, Math.min(99, Math.round(v + dlt))) : v); return B; };
     spec.sides[sd].xi.forEach(x => x.attr = sh(x.attr)); Object.values(spec.sides[sd].bench || {}).forEach(b => b.attr = sh(b.attr)); spec.buff[sd] = +dlt.toFixed(1); });
   const out = physOutcome(spec), res = ENGINE.withSeed(seed, () => ENGINE.simulate(h, a, { ...opt, fixed: out })); spec.info = { poss: out.poss, shots: out.shots };
   res.phys = 1; return { res, spec };
@@ -2543,8 +2656,8 @@ function physSpec(h, a, r, fm, seed, ri) {
     const rows = lu.map(([n, sl], k) => ({ n, sl, start: pl[k] && pl[k][12] != null ? pl[k][12] : (k < 11 ? 1 : 0) })), used = {};
     const mkA = (n) => { const q = physPlayer(t, n); const r0 = q ? q.rating : 75; return { q, attr: (q && q.attributes && Object.keys(q.attributes).length) ? q.attributes : { spd: r0, pas: r0, sho: r0 - 4, dri: r0, def: r0 - 6, phy: r0 } }; };
     let EN = {}; try { EN = teamCtx(t, ri != null ? ri : (S.fx ? playedRounds() : 0)).energy || {}; } catch (e) { EN = {}; } /* 赛前精力 → 比赛开始时的耐力 */
-    const xi = rows.filter(x => x.start).slice(0, 11).map(x => { const c = (F && F.coords[x.sl]) || slotXY(x.sl), key = c.join(','); used[key] = (used[key] || 0) + 1; const A = mkA(x.n); return { name: x.n, slot: x.sl, no: (A.q && A.q.no) || '', fx: c[0], fy: c[1] + (used[key] - 1) * 8, attr: A.attr, gk: /^GK/.test(x.sl), en: EN[x.n] != null ? Math.round(EN[x.n]) : 100 }; });
-    const bench = {}; rows.filter(x => !x.start).forEach(x => { const A = mkA(x.n); bench[x.n] = { no: (A.q && A.q.no) || '', attr: A.attr, en: EN[x.n] != null ? Math.round(EN[x.n]) : 100 }; });
+    const xi = rows.filter(x => x.start).slice(0, 11).map(x => { const c = (F && F.coords[x.sl]) || slotXY(x.sl), key = c.join(','); used[key] = (used[key] || 0) + 1; const A = mkA(x.n); return { name: x.n, slot: x.sl, no: (A.q && A.q.no) || '', fx: c[0], fy: c[1] + (used[key] - 1) * 8, attr: A.attr, sk: skillsOf(A.q), gk: /^GK/.test(x.sl), en: EN[x.n] != null ? Math.round(EN[x.n]) : 100 }; });
+    const bench = {}; rows.filter(x => !x.start).forEach(x => { const A = mkA(x.n); bench[x.n] = { no: (A.q && A.q.no) || '', attr: A.attr, sk: skillsOf(A.q), en: EN[x.n] != null ? Math.round(EN[x.n]) : 100 }; });
     let sty = ''; try { const c0 = coachOf(t), X0 = c0 ? tacFor(t, c0.id) : null; sty = String((X0 && X0.style) || (TD[t] && TD[t].style) || ''); } catch (e) { }
     sides[sd] = { xi, bench, style: sty }; });
   const events = (r.ev || []).map(([m, type, side, player, x4, x5]) => ({ m, type, side, player, assist: type === 'goal' ? x4 || null : null, out: type === 'sub' ? x4 : null, pen: type === 'goal' ? !!x5 : false, saved: type === 'pmiss' ? x5 : 0 })).filter(e => ['goal', 'yellow', 'red', 'inj', 'sub', 'pmiss'].includes(e.type));
@@ -2561,21 +2674,25 @@ function gvSpeed(btn, showOnly) { const list = [...document.querySelectorAll(doc
   if (!showOnly) { i = (i + 1) % list.length; list[i].click(); } btn.textContent = list[i].textContent; }
 function physView(el, spec, kits, opt) {
   opt = opt || {}; const sim = PHYS.create(spec), Lp = PHYS.L, Wp = PHYS.W, k = kits;
-  const pl = sim.P.map((p, i) => `<g id="pp${i}"><circle r="1.15" fill="${p.side === 'h' ? k.h.body : k.a.body}" stroke="${p.side === 'h' ? k.h.trim : k.a.trim}" stroke-width=".32"/><text y=".48" text-anchor="middle" style="font-size:1.2px;font-weight:800;fill:${colLum(p.side === 'h' ? k.h.body : k.a.body) > 0.55 ? '#15171c' : '#f4f2ec'};font-family:var(--mono)"></text><text class="pf" y="-1.6" text-anchor="middle" style="font-size:1.6px;fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:.35px;font-weight:700"></text><rect x="-1.2" y="1.45" width="2.4" height=".38" rx=".15" fill="rgba(0,0,0,.45)"/><rect x="-1.2" y="1.45" width="2.4" height=".38" rx=".15" fill="#3c9"/></g>`).join('');
-  el.innerHTML = `<div class="gvwrap"><div class="gvhud"><span class="hudt">${crest(spec.h, 18)}<b>${esc(spec.h)}</b></span><b class="huds mono" id="hudS">0 : 0</b><span class="hudt"><b>${esc(spec.a)}</b>${crest(spec.a, 18)}</span><span class="mono hudc" id="hudC">1'</span><button class="btn hudsp" type="button" title="切换速度">×1</button><button class="btn hudx" type="button" aria-label="退出横屏">✕</button></div><button class="gvfs" type="button" title="横屏全屏观看">⤢ 横屏</button><svg viewBox="-2 -2 ${Lp + 4} ${Wp + 4}" class="gvsvg" role="img" aria-label="比赛物理模拟">
+  const pl = sim.P.map((p, i) => `<g id="pp${i}"><circle r="1.15" fill="${p.side === 'h' ? k.h.body : k.a.body}" stroke="${p.side === 'h' ? k.h.trim : k.a.trim}" stroke-width=".32"/><text y=".48" text-anchor="middle" style="font-size:1.2px;font-weight:800;fill:${colLum(p.side === 'h' ? k.h.body : k.a.body) > 0.55 ? '#15171c' : '#f4f2ec'};font-family:var(--mono)"></text><text class="pf" y="-1.6" text-anchor="middle" style="font-size:1.6px;fill:#fff;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:.35px;font-weight:700"></text><rect x="-1.2" y="1.45" width="2.4" height=".38" rx=".15" fill="rgba(0,0,0,.45)"/><rect x="-1.2" y="1.45" width="2.4" height=".38" rx=".15" fill="#3c9"/><g class="skg" transform="translate(0,-4.4)" style="display:none"><circle r="1.55" fill="rgba(0,0,0,.35)"/><circle r="1.3" stroke-width=".22" fill="#888" stroke="#fff"/><g fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="color:#fff"><use x="-0.95" y="-0.95" width="1.9" height="1.9"/></g></g></g>`).join('');
+  const skDefs = `<defs>${Object.entries(SK_ICON).map(([id, ic]) => `<symbol id="ski-${id}" viewBox="0 0 24 24">${ic}</symbol>`).join('')}<filter id="skglow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation=".45"/></filter></defs>`;
+  el.innerHTML = `<div class="gvwrap"><div class="gvhud"><span class="hudt">${crest(spec.h, 18)}<b>${esc(spec.h)}</b></span><b class="huds mono" id="hudS">0 : 0</b><span class="hudt"><b>${esc(spec.a)}</b>${crest(spec.a, 18)}</span><span class="mono hudc" id="hudC">1'</span><button class="btn hudsp" type="button" title="切换速度">×1</button><button class="btn hudx" type="button" aria-label="退出横屏">✕</button></div><button class="gvfs" type="button" title="横屏全屏观看">⤢ 横屏</button><svg viewBox="-2 -2 ${Lp + 4} ${Wp + 4}" class="gvsvg" role="img" aria-label="比赛物理模拟">${skDefs}
     <rect x="-2" y="-2" width="${Lp + 4}" height="${Wp + 4}" fill="#2f7a35"/>${[...Array(14)].map((_, i) => i % 2 ? `<rect x="${-2 + i * (Lp + 4) / 14}" y="-2" width="${(Lp + 4) / 14}" height="${Wp + 4}" fill="rgba(255,255,255,.055)"/>` : '').join('')}
     <g fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".22" style="color:rgba(255,255,255,.85)">${pitchMarks(Lp, Wp)}</g>
     ${pl}<ellipse id="pbS" rx=".55" ry=".35" fill="rgba(0,0,0,.35)"/><circle id="pb" r=".55" fill="#fff" stroke="#111" stroke-width=".15"/><text id="pbN" text-anchor="middle" style="font-size:1.7px;fill:#fff;paint-order:stroke;stroke:#000;stroke-width:.4px"></text>
     <g id="pfl" style="display:none"><rect x="${Lp / 2 - 26}" y="${Wp / 2 - 9}" width="52" height="16" rx="2" fill="rgba(0,0,0,.62)"/><text id="pflT" x="${Lp / 2}" y="${Wp / 2 - 1}" text-anchor="middle" style="font-size:5.5px;font-weight:900;fill:#ffd65a">GOAL!</text><text id="pflS" x="${Lp / 2}" y="${Wp / 2 + 4.5}" text-anchor="middle" style="font-size:2.5px;fill:#fff"></text></g></svg>
-    <details class="stam" open><summary>耐力条</summary><div class="stamg"><div id="stH"></div><div id="stA"></div></div></details>
+    <details class="stam" open><summary>耐力 / 球员数据</summary><div class="stmode"><button type="button" data-m="sta" class="on">耐力</button><button type="button" data-m="dat">实时数据</button></div><div class="stamg"><div id="stH"></div><div id="stA"></div></div></details>
     <div class="gvleg"><span>${shirtSVG(k.h, 18)} ${esc(spec.h)}</span><span class="dim" style="font-size:11px" id="pInfo">逐秒物理模拟</span><span>${esc(spec.a)} ${shirtSVG(k.a, 18)}${k.aLab && k.aLab !== '主场' ? ` <span class="dim" style="font-size:10px">${k.aLab}球衣</span>` : ''}</span></div></div>`;
   el.querySelector('.gvfs').onclick = () => gvLand(el, true); el.querySelector('.hudx').onclick = () => gvLand(el, false); el.querySelector('.hudsp').onclick = e => gvSpeed(e.currentTarget);
+  const setMode = m => { stMode = m; el.querySelectorAll('.stmode button').forEach(x => x.classList.toggle('on', x.dataset.m === m)); stPanelT = 0; };
+  el.querySelectorAll('.stmode button').forEach(b => b.onclick = e => { e.preventDefault(); setMode(b.dataset.m); });
+  ['#stH', '#stA'].forEach(q => { const b = el.querySelector(q); if (b) { b.style.cursor = 'pointer'; b.title = '点一下切换：耐力 / 实时数据'; b.onclick = () => setMode(stMode === 'sta' ? 'dat' : 'sta'); } });
   const G = sim.P.map((p, i) => el.querySelector('#pp' + i)), ball = el.querySelector('#pb'), sh = el.querySelector('#pbS'), bn = el.querySelector('#pbN'), fl = el.querySelector('#pfl'), N = sim.P.length;
   // 播放：模拟跑在前面（领先 35 秒），每一步的画面存进缓冲区；显示时间在两步之间插值，所以动作是连续的
-  const LOOK = 35, buf = [], wins = [], END = sim.TM.END, lastSm = [], stCol = v => v >= 70 ? '#3c9' : v >= 50 ? '#d8b45f' : v >= 35 ? '#e93' : '#e55'; let stPanelT = 0; const boardShown = [0, 0]; let lastShot = -1, msgSeen = 0, dispT = 0, flashUntil = 0, jumpUntil = 0, jumpTxt = '', shown = 0, lastNo = [];
+  const LOOK = 35, buf = [], wins = [], ENDg = () => sim.st.ended ? sim.TM.END : sim.TM.END + 22, lastSm = [], stCol = v => v >= 70 ? '#3c9' : v >= 50 ? '#d8b45f' : v >= 35 ? '#e93' : '#e55'; let stPanelT = 0, stMode = 'sta', pevI = 0; const lastSk = []; const PS = {}; const boardShown = [0, 0]; let lastShot = -1, msgSeen = 0, dispT = 0, flashUntil = 0, jumpUntil = 0, jumpTxt = '', shown = 0, lastNo = [];
   spec.events.forEach(e => { if (e.type === 'red') { const t0 = sim.TM.toS(e.m); wins.push([t0 - 10, t0 + 6]); } });
   const rec = () => { const st = sim.st, d = new Float32Array(N * 2 + 3); sim.P.forEach((p, i) => { d[i * 2] = p.x; d[i * 2 + 1] = p.y; }); d[N * 2] = sim.ball.x; d[N * 2 + 1] = sim.ball.y; d[N * 2 + 2] = sim.ball.z;
-    buf.push({ t: st.t, d, sm: sim.P.map(p => Math.round(p.stam)), dn: sim.P.map(p => p.down > st.t), on: sim.P.map(p => p.on), no: sim.P.map(p => p.no), nm: sim.P.map(p => p.name), fl: sim.P.map(p => p.flash && p.flash.until > st.t ? p.flash.k : ''), own: sim.ball.owner ? sim.P.indexOf(sim.ball.owner) : -1, sc: [st.score.h, st.score.a], half: st.half });
+    buf.push({ t: st.t, d, sm: sim.P.map(p => Math.round(p.stam)), dn: sim.P.map(p => p.down > st.t), on: sim.P.map(p => p.on), no: sim.P.map(p => p.no), nm: sim.P.map(p => p.name), fl: sim.P.map(p => p.flash && p.flash.until > st.t ? p.flash.k : ''), sk: sim.P.map(p => p.skf && p.skf.until > st.t ? p.skf.id + ':' + p.skf.t : ''), own: sim.ball.owner ? sim.P.indexOf(sim.ball.owner) : -1, sc: [st.score.h, st.score.a], half: st.half });
     if (sim.ball.shot && sim.ball.shot.t !== lastShot) { lastShot = sim.ball.shot.t; wins.push([lastShot - 20, lastShot + 6]); } };
   const headTo = t => { let n = 0; while (sim.st.t < t && !sim.st.ended && n < 120000) { sim.step(); rec(); n++; } };
   const inWin = t => wins.some(([a, b]) => t >= a && t <= b), nextWin = t => { let best = null; wins.forEach(([a]) => { if (a > t && (best == null || a < best)) best = a; }); return best; };
@@ -2583,30 +2700,40 @@ function physView(el, spec, kits, opt) {
   function frameAt(t) { while (buf.length > 2 && buf[1].t <= t - 3) buf.shift(); let i = 0; while (i < buf.length - 1 && buf[i + 1].t <= t) i++; const A = buf[i], B = buf[Math.min(i + 1, buf.length - 1)]; const f = B.t > A.t ? clamp01((t - A.t) / (B.t - A.t)) : 0; return [A, B, f]; }
   function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
   function render() { const now = performance.now(), [A, B, f] = frameAt(dispT), lp = (k) => A.d[k] + (B.d[k] - A.d[k]) * f;
-    for (let i = 0; i < N; i++) { const g = G[i], on = f < 0.5 ? A.on[i] : B.on[i]; if (!on) { g.style.display = 'none'; continue; } g.style.display = ''; g.setAttribute('transform', `translate(${lp(i * 2).toFixed(2)},${lp(i * 2 + 1).toFixed(2)})`); const no = B.no[i]; if (lastNo[i] !== no) { g.children[1].textContent = no; lastNo[i] = no; } const fk = A.fl[i]; g.children[2].textContent = fk === 'Y' ? '🟨' : fk === 'R' ? '🟥' : fk || ''; g.style.opacity = A.dn[i] ? .55 : 1;
+    for (let i = 0; i < N; i++) { const g = G[i], on = f < 0.5 ? A.on[i] : B.on[i]; if (!on) { g.style.display = 'none'; continue; } g.style.display = ''; g.setAttribute('transform', `translate(${lp(i * 2).toFixed(2)},${lp(i * 2 + 1).toFixed(2)})`); const no = B.no[i]; if (lastNo[i] !== no) { g.children[1].textContent = no; lastNo[i] = no; } const fk = A.fl[i]; g.children[2].textContent = fk === 'Y' ? '🟨' : fk === 'R' ? '🟥' : fk || ''; g.style.opacity = A.dn[i] ? .55 : 1; { const sk = A.sk ? A.sk[i] : ''; if (lastSk[i] !== sk) { lastSk[i] = sk; const sg = g.children[5]; if (sg) { if (!sk) sg.style.display = 'none'; else { const [sid, tr] = sk.split(':'), col = (SK_T[tr] || SK_T.C).col; sg.style.display = ''; sg.children[0].setAttribute('fill', col); sg.children[0].setAttribute('filter', 'url(#skglow)'); sg.children[1].setAttribute('fill', col); sg.querySelector('use').setAttribute('href', '#ski-' + sid); } } } }
       const sm = A.sm[i]; if (lastSm[i] !== sm) { lastSm[i] = sm; g.children[4].setAttribute('width', (2.4 * sm / 100).toFixed(2)); g.children[4].setAttribute('fill', stCol(sm)); } }
-    if (now - stPanelT > 500) { stPanelT = now; ['h', 'a'].forEach(sd => { const box = el.querySelector(sd === 'h' ? '#stH' : '#stA'); if (!box) return; const rows = []; sim.P.forEach((p, i) => { if (p.side !== sd || !A.on[i]) return; rows.push(`<div class="str"><span class="mono">${esc(String(B.no[i] || ''))}</span><span class="nm">${esc(B.nm[i])}</span><span class="bar"><i style="width:${A.sm[i]}%;background:${stCol(A.sm[i])}"></i></span><span class="mono v">${A.sm[i]}</span></div>`); }); box.innerHTML = `<div class="sth">${crest(sd === 'h' ? spec.h : spec.a, 14)} ${esc(sd === 'h' ? spec.h : spec.a)}</div>` + rows.join(''); }); }
+    if (now - stPanelT > 500) { stPanelT = now; const PE = sim.st.pev || []; while (pevI < PE.length && PE[pevI][0] <= dispT) { const [, sd0, nm0, k0] = PE[pevI++], key = sd0 + '|' + nm0; (PS[key] = PS[key] || {})[k0] = (PS[key][k0] || 0) + 1; }
+      ['h', 'a'].forEach(sd => { const box = el.querySelector(sd === 'h' ? '#stH' : '#stA'); if (!box) return; const rows = [], onN = new Set();
+        if (stMode === 'sta') sim.P.forEach((p, i) => { if (p.side !== sd || !A.on[i]) return; rows.push(`<div class="str"><span class="mono">${esc(String(B.no[i] || ''))}</span><span class="nm">${esc(B.nm[i])}</span><span class="bar"><i style="width:${A.sm[i]}%;background:${stCol(A.sm[i])}"></i></span><span class="mono v">${A.sm[i]}</span></div>`); });
+        else { const cell = v => `<span class="mono">${v || v === 0 ? v : ''}</span>`, row = (no, nm, gk, off) => { const X = PS[sd + '|' + nm] || {}, pa = X.pa || 0, pc = X.pc || 0; return `<div class="sdr${off ? ' off' : ''}"><span class="mono">${esc(String(no || ''))}</span><span class="nm">${esc(nm)}</span>${cell(X.g || 0)}${cell(X.as || 0)}${cell((X.sh || 0) + (X.ot ? '/' + X.ot : ''))}${cell(pc)}${cell(pa ? Math.round(pc / pa * 100) : '–')}${cell(X.tk || 0)}${cell(X.ic || 0)}${cell(gk ? (X.sv || 0) + '扑' : X.dr || 0)}</div>`; };
+          rows.push(`<div class="sdr sdh"><span>#</span><span>球员</span><span title="进球">进</span><span title="助攻">助</span><span title="射门/射正">射</span><span title="传球成功">传</span><span title="传球成功率">成%</span><span title="抢断">抢</span><span title="拦截">截</span><span title="过人成功 / 门将扑救">过</span></div>`);
+          sim.P.forEach((p, i) => { if (p.side !== sd || !A.on[i]) return; onN.add(B.nm[i]); rows.push(row(B.no[i], B.nm[i], p.gk, 0)); });
+          Object.keys(PS).forEach(k => { const [s2, n2] = [k.slice(0, 1), k.slice(2)]; if (s2 === sd && !onN.has(n2)) rows.push(row('', n2, 0, 1)); }); }
+        box.innerHTML = `<div class="sth">${crest(sd === 'h' ? spec.h : spec.a, 14)} ${esc(sd === 'h' ? spec.h : spec.a)}</div>` + rows.join(''); }); }
     const bx = lp(N * 2), by = lp(N * 2 + 1), bz = lp(N * 2 + 2); ball.setAttribute('cx', bx.toFixed(2)); ball.setAttribute('cy', (by - bz * 0.55).toFixed(2)); ball.setAttribute('r', (0.55 + Math.min(1.0, bz * 0.13)).toFixed(2)); /* 球越高画得越大、离影子越远 */ sh.setAttribute('cx', bx.toFixed(2)); sh.setAttribute('cy', (by + 0.2).toFixed(2));
     const ow = A.own >= 0 ? A.own : -1; if (ow >= 0 && A.on[ow]) { bn.setAttribute('x', lp(ow * 2).toFixed(2)); bn.setAttribute('y', (lp(ow * 2 + 1) - 2.1).toFixed(2)); bn.textContent = A.nm[ow]; } else bn.textContent = '';
     const M2 = sim.msgs(); while (shown < M2.length && M2[shown].t <= dispT) { const m = M2[shown++]; if (m.type === 'miss') { flashUntil = now + 1100; el.querySelector('#pflT').textContent = m.k; el.querySelector('#pflT').style.fill = '#fff'; el.querySelector('#pflS').textContent = m.who || ''; }
       if (m.type === 'ht') { flashUntil = now + 2200; el.querySelector('#pflT').textContent = '中场休息'; el.querySelector('#pflT').style.fill = '#fff'; el.querySelector('#pflS').textContent = `${spec.h} ${A.sc[0]} : ${A.sc[1]} ${spec.a}`; }
-      if (m.type === 'offside') { flashUntil = now + 1500; el.querySelector('#pflT').textContent = '🚩 越位'; el.querySelector('#pflT').style.fill = '#ffd65a'; el.querySelector('#pflS').textContent = `${m.who || ''} · ${m.side === 'h' ? spec.h : spec.a}`; }
+      if (m.type === 'yellow' || m.type === 'red') { flashUntil = now + 2400; el.querySelector('#pflT').textContent = m.type === 'yellow' ? '🟨 黄牌' : '🟥 红牌'; el.querySelector('#pflT').style.fill = m.type === 'yellow' ? '#ffd65a' : '#ff6b6b'; el.querySelector('#pflS').textContent = `${m.who || ''} · ${m.side === 'h' ? spec.h : spec.a}${m.type === 'red' && !m.straight ? '（两黄变一红）' : ''}`; }
+      if (m.type === 'lastatk') { flashUntil = now + 1600; el.querySelector('#pflT').textContent = '⏱ 最后一攻'; el.querySelector('#pflT').style.fill = '#7CFC8A'; el.querySelector('#pflS').textContent = `${m.side === 'h' ? spec.h : spec.a} 踢完这次进攻`; }
+      if (m.type === 'tac') { flashUntil = now + 2200; el.querySelector('#pflT').textContent = `战术 · ${m.k}`; el.querySelector('#pflT').style.fill = '#9ad0ff'; el.querySelector('#pflS').textContent = `${m.side === 'h' ? spec.h : spec.a} 主帅的打法`; }
+      if (m.type === 'offside') { flashUntil = now + 1500; el.querySelector('#pflT').textContent = /越位/.test((spec.sides[m.side === 'h' ? 'a' : 'h'] || {}).style || '') ? '🚩 造越位成功' : '🚩 越位'; el.querySelector('#pflT').style.fill = '#ffd65a'; el.querySelector('#pflS').textContent = `${m.who || ''} · ${m.side === 'h' ? spec.h : spec.a}`; }
       if (m.type === 'goal') { flashUntil = now + 2200; el.querySelector('#pflT').textContent = 'GOAL!'; el.querySelector('#pflT').style.fill = m.side === 'h' ? k.h.body : k.a.body; el.querySelector('#pflS').textContent = `${m.who || ''} · ${m.side === 'h' ? spec.h : spec.a}`; } if (opt.onMsg) opt.onMsg(m); }
     [[TMv.A1, TMv.add1], [TMv.A2, TMv.add2]].forEach(([at, n], k) => { if (dispT >= at && !boardShown[k] && dispT < at + 8) { boardShown[k] = 1; flashUntil = now + 2600; el.querySelector('#pflT').textContent = `补时 +${n}`; el.querySelector('#pflT').style.fill = '#7CFC8A'; el.querySelector('#pflS').textContent = `第四官员举牌：伤停补时 ${n} 分钟`; } if (dispT >= at + 8) boardShown[k] = 1; }); /* 第四官员举牌 */
     if (now < jumpUntil && now >= flashUntil) { fl.style.display = ''; el.querySelector('#pflT').textContent = '⏩'; el.querySelector('#pflT').style.fill = '#fff'; el.querySelector('#pflS').textContent = jumpTxt; } else fl.style.display = now < flashUntil ? '' : 'none';
-    const pi = el.querySelector('#pInfo'); if (pi && !pi.dataset.set) { pi.dataset.set = 1; const IS = spec.info || spec.stats; pi.textContent = `${spec.free ? '物理模拟决定比分' : '逐秒物理模拟'} · 全场控球 ${IS.poss}% : ${100 - IS.poss}% · 射门 ${IS.shots[0]} : ${IS.shots[1]}`; }
+    const pi = el.querySelector('#pInfo'); if (pi && !pi.dataset.set) { pi.dataset.set = 1; const IS = spec.info || spec.stats; pi.textContent = `${spec.free ? '物理模拟决定比分' : '逐秒物理模拟'} · 全场控球 ${IS.poss}% : ${100 - IS.poss}% · 射门 ${IS.shots[0]} : ${IS.shots[1]}${spec.sides.h.style || spec.sides.a.style ? ` · 战术 ${spec.sides.h.style || '—'} vs ${spec.sides.a.style || '—'}` : ''}`; }
     const hs = el.querySelector('#hudS'); if (hs && el.classList.contains('gvland')) { hs.textContent = `${A.sc[0]} : ${A.sc[1]}`; el.querySelector('#hudC').textContent = clockStr(); }
     return { score: { h: A.sc[0], a: A.sc[1] }, half: A.half }; }
   const TMv = sim.TM, SPMv = PHYS.SPM;
-  const clockStr = () => { const s0 = dispT; if (s0 >= END - 0.05) return '全场结束'; if (s0 < TMv.A1) return `${Math.floor(s0 / SPMv) + 1}'`; if (s0 < TMv.H1) return `45+${Math.min(TMv.add1, Math.floor((s0 - TMv.A1) / SPMv) + 1)}'`; if (s0 < TMv.A2) return `${Math.min(90, 46 + Math.floor((s0 - TMv.H1) / SPMv))}'`; return `90+${Math.min(TMv.add2, Math.floor((s0 - TMv.A2) / SPMv) + 1)}'`; };
+  const clockStr = () => { const s0 = dispT; if (s0 >= ENDg() - 0.05) return '全场结束'; if (s0 < TMv.A1) return `${Math.floor(s0 / SPMv) + 1}'`; if (s0 < TMv.H1) return `45+${Math.floor((s0 - TMv.A1) / SPMv) + 1}'`; if (s0 < TMv.A2) return `${Math.min(90, 46 + Math.floor((s0 - TMv.H1) / SPMv))}'`; return `90+${Math.floor((s0 - TMv.A2) / SPMv) + 1}'`; };
   const evMin = () => { const s0 = dispT; if (s0 < TMv.A1) return (s0 - 0.53 * SPMv) / SPMv + 1; if (s0 < TMv.H1) return 45 + Math.min(0.99, (s0 - TMv.A1) / (TMv.add1 * SPMv * 0.9)); return 46 + (s0 - TMv.H1 - 0.53 * SPMv) / SPMv; };
-  return { sim, render, clock: clockStr, evMin, goals: () => { const [A] = frameAt(dispT); return A.sc[0] + A.sc[1]; }, minute: () => sim.TM.toM(dispT), ended: () => dispT >= END - 0.05, time: () => dispT, END,
+  return { sim, render, clock: clockStr, evMin, goals: () => { const [A] = frameAt(dispT); return A.sc[0] + A.sc[1]; }, minute: () => sim.TM.toM(dispT), ended: () => dispT >= ENDg() - 0.05, time: () => dispT, get END() { return ENDg(); },
     // realDt 秒的真实时间；rate = 倍速；hi = 精华模式（没有看点的时段直接跳过，有看点时按 rate 正常播放）
-    play(realDt, rate, hi) { if (dispT >= END) return; if (hi && !inWin(dispT)) { const nx = nextWin(dispT); headTo(Math.min(END, (nx == null ? sim.st.t + 600 : nx) + LOOK)); const nx2 = nextWin(dispT);
-        if (nx2 == null && sim.st.ended) { dispT = END; } else if (nx2 != null && nx2 - dispT > 4) { dispT = nx2; jumpUntil = performance.now() + 700; jumpTxt = `跳到 ${Math.floor(sim.TM.toM(dispT)) + 1}'`; } else dispT += realDt * rate; }
+    play(realDt, rate, hi) { if (dispT >= ENDg()) return; if (hi && !inWin(dispT)) { const nx = nextWin(dispT); headTo(Math.min(ENDg(), (nx == null ? sim.st.t + 600 : nx) + LOOK)); const nx2 = nextWin(dispT);
+        if (nx2 == null && sim.st.ended) { dispT = ENDg(); } else if (nx2 != null && nx2 - dispT > 4) { dispT = nx2; jumpUntil = performance.now() + 700; jumpTxt = `跳到 ${Math.floor(sim.TM.toM(dispT)) + 1}'`; } else dispT += realDt * rate; }
       else dispT += realDt * rate;
-      dispT = Math.min(END, dispT); headTo(Math.min(END, dispT + LOOK)); },
-    seek(s) { if (s < dispT - 2) return false; headTo(Math.min(END, s + LOOK)); dispT = Math.min(END, s); return true; } };
+      dispT = Math.min(ENDg(), dispT); headTo(Math.min(ENDg(), dispT + LOOK)); },
+    seek(s) { if (s < dispT - 2) return false; headTo(Math.min(ENDg(), s + LOOK)); dispT = Math.min(ENDg(), s); return true; } };
 }
 // 回放：已经踢完的比赛，按赛果重新演一遍（可以暂停、调速、拖动进度、只看精华）
 var RP = null;
@@ -3363,7 +3490,9 @@ const TROPHIES = ['威超冠军', '世联赛冠军', '全联冠', '全联杯', '
    全由已存档的赛果推算（同样的赛果永远得到同样的换帅），不需要额外存档 */
 const COACH_REG = {};
 let COACH_CACHE = null;
-const coachName = (seed, nat) => { const rnd = seeded('coach|' + seed); for (let k = 0; k < 200; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n) && !Object.values(COACH_REG).some(c => c.name === n)) return n; } return oneName(nat, rnd, 999); };
+// 球员用过的名字（威超、外赛区、历史球员）：职业教练不取这些名字，免得和还在踢球的人撞名
+let PNAME_SET = null; const playerNames = () => { if (PNAME_SET) return PNAME_SET; PNAME_SET = new Set(); [PDB0, FDB0, PDB, FDB].forEach(D => Object.values(D || {}).forEach(L => (L || []).forEach(p => p && p.name && PNAME_SET.add(p.name)))); (HIST.players || []).forEach(x => x && PNAME_SET.add(x[0])); return PNAME_SET; };
+const coachName = (seed, nat) => { const rnd = seeded('coach|' + seed), PN = playerNames(); for (let k = 0; k < 200; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n) && !PN.has(n) && !Object.values(COACH_REG).some(c => c.name === n)) return n; } return oneName(nat, rnd, 999) + '·' + (seed.length % 9 + 1); };
 // 球员转教练：没有执教经验，起步能力偏弱（随执教季数成长）；影响力看球员时代的成就（金球、梯队、名宿身份、巅峰）
 const wlHonOf2 = pid => WL && WL.byPid[pid] != null ? wlCareer(WL.byPid[pid]).hon.filter(h => h[0] === '金球奖').length : 0;
 function legendInfluence(pid, pk, clubs) {
@@ -3380,10 +3509,12 @@ function coachPool() {
   const last = {}, clubs = {};
   Object.entries(HIST.squads || {}).forEach(([ss, T]) => Object.entries(T).forEach(([t, l]) => l.forEach(([pid]) => { last[pid] = Math.max(last[pid] || 0, +ss); (clubs[pid] = clubs[pid] || new Set()).add(t); })));
   const L = [];
-  Object.entries(last).forEach(([pid, ls]) => { pid = +pid; const pp = PL[pid]; if (!pp || pp[3] || ls >= 17) return; const pk = pp[7] || 0; if (pk < 88 && pp[4] !== 'l') return;
+  const live = new Set(); [PDB0, FDB0].forEach(D => Object.values(D).forEach(L => L.forEach(p => live.add(p.name)))); /* S18 还在踢球（威超或外赛区）的人不会当教练 */
+  Object.entries(last).forEach(([pid, ls]) => { pid = +pid; const pp = PL[pid]; if (!pp || pp[3] || ls >= 17 || live.has(pp[0])) return; const pk = pp[7] || 0; if (pk < 86 && pp[4] !== 'l') return;
+    let ag = null; try { ag = ageAtSeason(pid, ls); } catch (e) {} if (ag != null && ag < 31) return; /* 离开威超时还年轻：多半是去外赛区踢球了，不算退役 */
     const id = 'P' + pid; COACH_REG[id] = { id, name: pp[0], nat: pp[2] || '', pid, rep: Math.round(Math.max(60, Math.min(78, 64 + (pk - 86) * 0.4 + ghash('cr|' + pid) * 8))), infl: legendInfluence(pid, pk, clubs[pid]), clubs: clubs[pid], kind: '名宿' };
     L.push({ id, from: ls + 1 + Math.floor(ghash('cf|' + pid) * 2), to: ls + 14 }); });
-  Object.entries(H.profiles || {}).forEach(([t, P]) => { if (!P.coach) return; if (L.some(c => COACH_REG[c.id].name === P.coach)) return;
+  Object.entries(H.profiles || {}).forEach(([t, P]) => { if (!P.coach) return; if (L.some(c => COACH_REG[c.id].name === P.coach) || live.has(P.coach)) return;
     const games = P.career ? P.career[1] + P.career[2] + P.career[3] : 38, id = 'N|' + P.coach;
     COACH_REG[id] = { id, name: P.coach, nat: '', rep: Math.round(83 + ghash('nr|' + P.coach) * 7), infl: Math.round(78 + ghash('ni|' + P.coach) * 12), clubs: new Set([t]), kind: '职业教练' };
     L.push({ id, from: Math.max(1, 18 - Math.ceil(games / 38) - 4), to: 40 }); });
@@ -4486,7 +4617,7 @@ function openPersonInner(pid, noRedirect) {
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(name)}</h3>
       <div class="btns" style="margin-top:8px">${statusChips(pid)}<span class="chip mono" style="font-size:11px">${plyId(pid)}</span>${bustChip(pid, ageAtSeason(pid, Math.min(SEASON, (lastSquadSeason(pid) || SEASON))))}${nat ? `<span class="chip">${esc(nat)}</span>` : ''}${abroadOf(pid) ? `<span class="chip">${SN(abroadOf(pid).s)} 起效力 ${esc(abroadOf(pid).club)}（${esc(extTag(abroadOf(pid).club))}）</span>` : (pidTeam(pid) || CUR_TEAM_OF[pid]) && !RETIRED_PID.has(pid) ? `<span class="chip">现效力 ${esc(pidTeam(pid) || CUR_TEAM_OF[pid])}</span>` : (() => { const ph = phaseOf(pid), sp = spanOf(pid); if (ph.k === 'future') { const pc = preCareer(pid), now = pc && pc.find(x => x.cur); const hf = histFirst()[pid], ag = ageAtSeason(pid, SEASON), acad = hf && TD[hf.t] && ageAtSeason(pid, hf.s) <= 23 && ag >= 15; return `<span class="chip">${now ? '效力 ' + esc(now.club) + '（' + esc(now.league) + '）' : acad ? esc(hf.t) + (ag <= 20 ? ' 青训梯队' : ' 预备队') : '青训 / 业余阶段'}</span>`; } if (ph.k === 'gap') return `<span class="chip">目前不在任何球队</span>`; const last = ph.last || (sp && sp[1]); return (sp ? `<span class="chip">威超 ${SN(sp[0])}–${SN(sp[1])}</span>` : '') + (last ? `<span class="chip">${SN(last)} 赛季后退役</span>` : ''); })()}${homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${familyChips(pid)}</div></div></div>
     ${(() => { const pf = personProfile(pid); const sp = spanOf(pid); return `<div class="btns" style="gap:6px">${[`#${pf.no}`, `${pf.ht}cm · ${pf.wt}kg`, pf.f1 > SEASON ? (ageAtSeason(pid, SEASON) != null ? `现年 ${ageAtSeason(pid, SEASON)} 岁` : '') : pf.f1 && pf.debutAge != null ? (pf.preEra ? `威联赛时代出道 · ${SN(pf.f1)} 时 ${pf.debutAge} 岁` : `${SN(pf.f1)} 出道 · ${pf.debutAge} 岁`) : '', pf.endAge ? `${pf.ret ? SN(pf.ret.s) : SN(pf.lastS)} 退役 · ${pf.endAge} 岁` : pf.ageNowP != null && !(pf.f1 > SEASON) ? `现年 ${pf.ageNowP} 岁` : '', (phaseOf(pid).k === 'retired' ? '巅峰身价' : '身价') + ` ⰵ${pf.peakValue}M`].filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')}</div>
-      <div><div class="eyebrow" style="margin-bottom:8px">${phaseOf(pid).k === 'retired' ? '巅峰能力' : phaseOf(pid).k === 'future' ? '目前能力' : '至今最佳能力'}</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div></div>`; })()}
+      <div><div class="eyebrow" style="margin-bottom:8px">${phaseOf(pid).k === 'retired' ? '巅峰能力' : phaseOf(pid).k === 'future' ? '目前能力' : '至今最佳能力'}</div><div class="attrs">${Object.entries(pf.attrs).map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>${skillBlock(skillsOf({ rating: peakCache(pid) || 80, name: PL[pid] ? PL[pid][0] : '', pos: pf.pos || (PL[pid] && PL[pid][1]), attributes: pf.attrs, height: pf.ht }))}</div>`; })()}
     ${(() => { const rows = personSeasons(pid); if (!rows.length && !(WL && WL.byPid[pid] != null)) return ''; const byT = [...new Set(rows.map(r => r[1].team))]; const CA = careerAllRow(pid); const wlT = WL && WL.byPid[pid] != null ? wlCareer(WL.byPid[pid]).L.map(x => x[1].team) : []; const allT = [...new Set(wlT.concat(byT))]; return scopeTabs('pp', [{ label: '职业生涯', note: careerNote(CA, '所有球队合计'), html: statGrid(CA.row, ENGINE.LINE(pos)) }, { label: '威超联赛', note: '只算威超联赛', html: statGrid(sumRows(rows.map(r => r[1])), ENGINE.LINE(pos)) }, ...allT.map(t => { const C = careerAllRow(pid, t); return { label: t, note: careerNote(C, `效力 ${esc(t)} 期间`), html: statGrid(C.row, ENGINE.LINE(pos)) }; })]); })()}
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(PID_UID[pid] || 'H|' + pid)}" style="padding:5px 10px;font-size:12px">✎ 编辑资料</button>${cmpBtn('p:' + pid, name)}</div>
     ${awardChips(pid)}${careerTotalHTML(pid)}${careerCompsHTML(pid)}${wlCareerForPid(pid)}${preCareerHTML(pid)}${loreHTML(pid)}${growthHTML(pid, null)}${careerHTML(pid)}${transferHTML(pid)}</div>`;
@@ -4513,6 +4644,7 @@ function openPlayer(team, name) {
       <div class="btns" style="margin-top:8px"><span class="chip" title="主位置 · 其他可踢位置（可在编辑资料里改）">位置 ${esc(p.pos)}${(p.alt || altDef(p)).length ? ' · ' + (p.alt || altDef(p)).map(esc).join(' / ') : ''}</span><span class="chip">惯用${esc(p.foot || footDef(p))}${footNote(p) ? ` · ${footNote(p)}` : ''}</span><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageP(p, team))}${payMul(p, team) !== 1 ? `（续约${payMul(p, team) > 1 ? '加' : '降'}薪 ${Math.round(Math.abs(payMul(p, team) - 1) * 100)}%）` : ''}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${bustChip(p.cv != null ? p.cv : pid, p.age, p.kidBust, p.kidBloom)}${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(p.uid || '')}" style="padding:5px 10px;font-size:12px" ${p.uid ? '' : 'disabled'}>✎ 编辑资料</button>${cmpBtn(pid != null ? 'p:' + pid : 't:' + team + '|' + p.name, p.name)}${mktActive() && PDB[team] && p.uid && typeof p.age0 === 'number' ? (mktGet().listed[p.uid] ? '<span class="chip">已挂牌</span>' : `<button class="btn ghost" data-act="mkList" data-id="${esc(p.uid)}" style="padding:5px 10px;font-size:12px">挂牌出售</button>`) : ''}${typeof p.age === 'number' && p.age <= 20 ? `<button class="btn ghost" ${scoutBtn({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team, uid: p.uid })} style="padding:5px 10px;font-size:12px">🔍 球探报告</button>` : ''}</div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
+    ${skillBlock(skillsOf(p))}
     ${awardChips(pid, p.uid)}
     ${wlCareerForPid(pid)}${preCareerHTML(pid)}
     ${pid != null ? careerTotalHTML(pid) : ''}${TD[team] ? careerCompsHTML(pid) : ''}
@@ -4800,7 +4932,7 @@ function prizeOf(s) {
 // 年薪（百万）：按能力指数增长（每高 1 分贵约 28%），顶级球星很贵、普通球员便宜；
 // 全联赛的工资总额定为当季国内俱乐部奖金总额的 85%，所以整体收支大致平衡：奖金拿得多的球队有盈余，阵容贵但成绩差的会亏钱
 let WAGE_B = 0.18, WAGE_P = 0.62, WAGE_A = 0.4; // 能力指数 / 工资占全联赛收入比例 / 按球员身价定薪的比重（其余按俱乐部自身收入）
-const wageW = r => Math.exp(WAGE_B * ((r || 75) - 80));
+const wageW = r => Math.exp(WAGE_B * (RX(r || 75) - 80));
 const WAGE_C = {};
 function squadRatings(s) { const A = (S.archive || []).find(x => x.s === s), o = {};
   Object.keys(TD).forEach(t => { let rows = null; if (A && A.sq && A.sq[t]) rows = A.sq[t].map(x => x[5]); else if (s === SEASON) rows = (PDB[t] || []).map(p => p.rating); else if (HIST.squads && HIST.squads[s] && HIST.squads[s][t]) rows = HIST.squads[s][t].map(x => x[2]); if (rows) o[t] = rows; });
@@ -4809,7 +4941,7 @@ function squadRatings(s) { const A = (S.archive || []).find(x => x.s === s), o =
 function commOf(t, s) {
   const R = (squadRatings(s)[t] || []).slice().sort((a, b) => b - a).slice(0, 11), xr = R.length ? R.reduce((a, b) => a + b, 0) / R.length : 76;
   const A = (S.archive || []).find(x => x.s === s) || (s === SEASON && isPending(s) ? pendingArchive() : null), k = A ? A.table.findIndex(r => r.team === t) : -1, rank = k >= 0 ? k + 1 : 24;
-  const size = Math.max(0, Math.min(20, xr - 74)), top = rank <= 4 ? 1 : 0, mid = rank <= 10 ? 1 : 0;
+  const size = Math.max(0, Math.min(20, RX(xr) - 74)), top = rank <= 4 ? 1 : 0, mid = rank <= 10 ? 1 : 0;
   let own = null; try { own = capitalHistory().own[t]; } catch (e) {}
   const merch = Math.round(20 + size * 7 + top * 40 + mid * 15), invest = Math.round(30 + size * 9 + (own && own.since <= s ? 80 : 0)), ads = Math.round(15 + size * 5 + top * 15), stadium = Math.round(25 + size * 6 + top * 20 + mid * 8);
   return { merch, invest, ads, stadium, maint: Math.round(15 + size * 2.5) };

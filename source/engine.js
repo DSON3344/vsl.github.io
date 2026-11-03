@@ -90,15 +90,16 @@ const ENGINE = (() => {
       let why = out[x.name];
       if (!why) {
         const st = streak[x.name] || 0, EN = ctx.energy ? ctx.energy[x.name] : null;
-        let pr = EN != null ? (EN < 45 ? 0.7 : EN < 52 ? 0.45 : EN < 58 ? 0.26 : EN < 64 ? 0.09 : 0.01) : st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
+        let pr = EN != null ? (EN < 58 ? 0.5 : EN < 64 ? 0.18 : EN < 70 ? 0.04 : 0.005) : st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
         if (x.line === 'GK') pr *= 0.12;
         if (x.rating >= best - 1) pr *= 0.7;
-        if (rnd() < Math.min(0.45, pr)) why = 'rest';
+        if (EN != null && EN < 52 && x.line !== 'GK') why = 'tired'; /* 精力见底的主力一定轮换（有人可替时） */
+        else if (rnd() < Math.min(0.5, pr)) why = 'rest';
       }
       if (!why) return { ...x, start: 1 };
-      const p = repl(x.slot, why === 'rest' ? x.rating - 7 : null);
+      const p = repl(x.slot, why === 'rest' ? x.rating - 7 : why === 'tired' ? x.rating - 10 : null);
       if (!p) return { ...x, start: 1 };
-      if (why === 'rest') rested.push(x.name); else missing.push({ name: x.name, why });
+      if (why === 'rest' || why === 'tired') rested.push(x.name); else missing.push({ name: x.name, why });
       const cost = fitCost(x.slot, p);
       return { slot: x.slot, name: p.name, rating: Math.max(60, p.rating - cost), p, x: x.x, y: x.y, line: x.line, start: 1, sub4: x.name };
     });
@@ -153,13 +154,13 @@ const ENGINE = (() => {
   const shiftS = (X, d) => d ? { ...X, atk: X.atk + d, def: X.def + d, ctl: X.ctl + d, xiAvg: X.xiAvg + d, ovr: X.ovr + d, adj: d } : X;
   function expected(home, away, opt = {}) {
     let H = opt.L ? strengthOf(opt.L.h) : strength(home), A = opt.L ? strengthOf(opt.L.a) : strength(away);
-    if (teamAdj) { H = shiftS(H, teamAdj(home) || 0); A = shiftS(A, teamAdj(away) || 0); }
+    if (teamAdj) { H = shiftS(H, (teamAdj(home) || 0) * 0.86); A = shiftS(A, (teamAdj(away) || 0) * 0.86); }
     const ch = condition(home, opt.weather, opt.slot, away), ca = condition(away, opt.weather, opt.slot, home);
     const homeAdv = opt.neutral ? 1 : 1.12, awayPen = opt.neutral ? 1 : 0.94;
-    const k = 0.078;
+    const k = 0.078 / 0.86; // 能力分 78 以上压缩了 0.86，系数同步放大，强弱差距的效果不变
     const sh = styleFx((TEAMS_DATA[home] || {}).style, (TEAMS_DATA[away] || {}).style), sa = styleFx((TEAMS_DATA[away] || {}).style, (TEAMS_DATA[home] || {}).style);
-    let lh = 1.28 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.04 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
-    let la = 1.28 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.04 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
+    let lh = 1.28 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.0465 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
+    let la = 1.28 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.0465 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
     return { lh: Math.min(lh, 5), la: Math.min(la, 5), ch, ca, H, A };
   }
 
