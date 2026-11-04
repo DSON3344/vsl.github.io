@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>自定义联赛</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+/* 自定义联赛：和威超主站同一套配色变量（读同一个 ves_theme），独立存档 */
+:root{--bg:#0c0c0a;--bg-2:#141412;--fg:#ece8df;--fg-2:#a7a195;--fg-3:#6e695f;--tint:236,232,223;--accent:#ff5b1f;--acc-rgb:255,91,31;--acc-ink:#1a0a03;--gold:#d6ad57;--win:#5cc48c;--draw:#8c877c;--loss:#e8574a;
+  --line:rgba(var(--tint),.085);--line-2:rgba(var(--tint),.17);--panel:rgba(var(--tint),.028);--panel-2:rgba(var(--tint),.055);
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--disp:"Barlow Condensed","Noto Sans SC",sans-serif;--sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;--ease:cubic-bezier(.22,1,.36,1);color-scheme:dark}
+:root[data-theme="pitch"]{--bg:#08110c;--bg-2:#0e1913;--fg:#e8efe4;--fg-2:#9db0a0;--fg-3:#5f7466;--tint:222,236,214;--accent:#b4e05a;--acc-rgb:180,224,90;--acc-ink:#0f1a05}
+:root[data-theme="royal"]{--bg:#070a14;--bg-2:#0d1220;--fg:#e8ecf5;--fg-2:#9aa6bd;--fg-3:#5d6880;--tint:214,224,245;--accent:#e4b450;--acc-rgb:228,180,80;--acc-ink:#1d1403}
+:root[data-theme="glacier"]{--bg:#080b0e;--bg-2:#0f1419;--fg:#e6eef2;--fg-2:#98a8b2;--fg-3:#5c6c76;--tint:220,235,242;--accent:#3fd4e6;--acc-rgb:63,212,230;--acc-ink:#03181b}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.55 var(--sans);min-height:100vh;background-image:radial-gradient(1100px 680px at 8% -12%,rgba(var(--tint),.05),transparent 62%)}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}.muted{color:var(--fg-2)}.dim{color:var(--fg-3)}
+header.top{position:sticky;top:0;z-index:20;background:rgba(12,12,10,.96);border-bottom:1px solid var(--line)}
+.top-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}.brand b{font-weight:900;font-size:15px}.brand small{display:block;font:500 9.5px var(--mono);letter-spacing:.18em;color:var(--fg-3)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}nav.tabs button{background:none;border:0;padding:8px 12px;border-radius:4px;color:var(--fg-2);white-space:nowrap;font-size:13.5px}nav.tabs button:hover{color:var(--fg);background:var(--panel)}nav.tabs button.on{color:var(--fg);box-shadow:inset 0 -2px 0 var(--accent)}
+main{max-width:1280px;margin:0 auto;padding:24px 16px 64px;display:grid;gap:18px}
+h1{margin:0;font-weight:900;font-size:clamp(24px,3.4vw,38px);line-height:1.1}h2{margin:0;font-size:16px;font-weight:700}h3{margin:0;font-size:15px}
+.eyebrow{font:500 10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--fg-3)}
+.panel{background:linear-gradient(165deg,rgba(var(--tint),.04),rgba(var(--tint),.012) 40%,rgba(0,0,0,.12)),var(--bg);border:1px solid var(--line);border-top-color:rgba(var(--tint),.14);border-radius:4px;padding:18px;min-width:0}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.grid{display:grid;gap:18px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.g2,.g3,.g4{grid-template-columns:minmax(0,1fr)}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:3px;border:1px solid var(--line-2);background:transparent;color:var(--fg);font-size:13px;text-decoration:none;white-space:nowrap}.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--acc-ink);font-weight:700}.btn.primary:hover{filter:brightness(1.08)}.btn.danger:hover{border-color:var(--loss);color:var(--loss)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:3px;border:1px solid var(--line-2);font-size:11.5px;color:var(--fg-2)}.chip.on{border-color:var(--accent);color:var(--accent)}.chip.bad{border-color:var(--loss);color:var(--loss)}.chip.good{border-color:var(--win);color:var(--win)}
+label.f{display:grid;gap:5px;font-size:12px;color:var(--fg-2)}
+input[type=text],input[type=number],select{width:100%;padding:8px 10px;border-radius:3px;border:1px solid var(--line-2);background:var(--bg-2);color:var(--fg)}input[type=color]{width:42px;height:32px;padding:0;border:1px solid var(--line-2);background:none;border-radius:3px}
+table{width:100%;border-collapse:collapse;font-size:13px}th{font:400 10px var(--mono);letter-spacing:.12em;color:var(--fg-3);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:7px 8px;border-bottom:1px solid rgba(var(--tint),.05);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}th.l,td.l{text-align:left;font-family:var(--sans)}tr.click{cursor:pointer}tr.click:hover td{background:var(--panel)}
+.tw{overflow-x:auto}
+.tcell{display:inline-flex;align-items:center;gap:8px}.crest{display:inline-block;vertical-align:middle;flex:none}
+.arch{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.arch .st{font:500 10.5px var(--mono);letter-spacing:.12em}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}.tcard{display:grid;justify-items:center;gap:6px;padding:16px 10px;border:1px solid var(--line);border-radius:4px;background:var(--panel);text-align:center;cursor:pointer}.tcard:hover{border-color:var(--accent)}.tcard b{font-size:14px}
+dialog{border:1px solid var(--line-2);border-radius:6px;background:var(--bg-2);color:var(--fg);padding:0;max-width:min(900px,calc(100vw - 24px));width:100%}dialog::backdrop{background:rgba(0,0,0,.65)}.dlg{padding:20px;display:grid;gap:16px;max-height:calc(100vh - 60px);overflow:auto}
+.err{display:grid;gap:6px;margin:0;padding-left:18px;color:var(--loss);font-size:13px}.ok{color:var(--win)}
+.fx{display:grid;grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(var(--tint),.05)}.fx .h{justify-self:end}.fx .sc{text-align:center;font:700 16px var(--disp);letter-spacing:.04em}
+.big{font:800 clamp(44px,6vw,72px)/.9 var(--disp)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--bg-2);border:1px solid var(--line-2);padding:9px 16px;border-radius:4px;font-size:13px;z-index:50}
+.sel{width:16px;height:16px;accent-color:var(--accent)}
+.tpl{display:flex;gap:8px;flex-wrap:wrap}.tpl button{padding:6px;border:1px solid var(--line-2);border-radius:4px;background:none}.tpl button.on{border-color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="./" title="回到威超主站"><img id="brandLogo" alt="" height="36"><span><b id="brandName">自定义联赛</b><small id="brandSub">CUSTOM LEAGUE</small></span></a>
+  <nav class="tabs" id="tabs"></nav>
+  <a class="btn" href="./">← 威超主站</a>
+</div></header>
+<main id="app"></main>
+<dialog id="dlg"></dialog>
+<script>/*__ENGINE__*/</script>
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ghash = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+const seeded = str => { let a = Math.floor(ghash(str) * 4294967296); return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+let toastT; const toast = m => { let t = $('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); } t.textContent = m; t.style.display = ''; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 2600); };
+try { const th = localStorage.getItem('ves_theme'); if (th && th !== 'night') document.documentElement.setAttribute('data-theme', th); } catch (e) { }
+/*__SKILLS__*/
+/* ---------- 位置：参考 FIFA 的 15 个标准代码（与主站一致） ---------- */
+const POS_DEF = { GK: ['Goalkeeper', '守门员'], CB: ['Centre Back', '中后卫'], LB: ['Left Back', '左后卫'], RB: ['Right Back', '右后卫'], LWB: ['Left Wing Back', '左翼卫'], RWB: ['Right Wing Back', '右翼卫'], CDM: ['Central Defensive Midfielder', '防守型中场'], CM: ['Central Midfielder', '中央中场'], CAM: ['Central Attacking Midfielder', '攻击型中场'], LM: ['Left Midfielder', '左中场'], RM: ['Right Midfielder', '右中场'], LW: ['Left Winger', '左边锋'], RW: ['Right Winger', '右边锋'], CF: ['Centre Forward', '中锋'], ST: ['Striker', '前锋'] };
+const POS = Object.keys(POS_DEF), posZh = p => (POS_DEF[p] || [])[1] || p;
+const ATTR_TPL = { GK: { div: 3, han: 2, kic: 0, ref: 3, spd: -12, pos_s: 2 }, DF: { spd: -2, sho: -22, pas: -6, dri: -10, def: 4, phy: 3, men: 0, sta: 0 }, MF: { spd: 0, sho: -5, pas: 4, dri: 2, def: -8, phy: -3, men: 1, sta: 3 }, FW: { spd: 3, sho: 5, pas: -4, dri: 3, def: -30, phy: 0, men: 0, sta: -2 } };
+const ATTR_ZH = { spd: '速度', sho: '射门', pas: '传球', dri: '盘带', def: '防守', phy: '身体', men: '心理', sta: '体能', div: '扑救', han: '手型', kic: '开球', ref: '反应', pos_s: '站位' };
+const tplFor = pos => { const t = { ...ATTR_TPL[ENGINE.LINE(pos)] }; if (/W|AM/.test(pos)) { t.dri = (t.dri || 0) + 3; t.spd = (t.spd || 0) + 3; } if (pos === 'CF') { t.pas = (t.pas || 0) + 5; t.dri = (t.dri || 0) + 2; t.sho = (t.sho || 0) - 2; } return t; };
+const attrsFor = (pos, r, rnd) => { const o = {}; Object.entries(tplFor(pos)).forEach(([k, d]) => o[k] = clamp(Math.round(r + d + (rnd() - 0.5) * 8), 20, 99)); return o; };
+const SQUAD_TPL = ['GK', 'GK', 'GK', 'CB', 'CB', 'CB', 'CB', 'LB', 'LB', 'RB', 'RB', 'CDM', 'CDM', 'CM', 'CM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST', 'ST'];
+const XI433 = [['GK', 5, 50, 'GK'], ['LB', 25, 10, 'LB'], ['LCB', 20, 35, 'CB'], ['RCB', 20, 65, 'CB'], ['RB', 25, 90, 'RB'], ['LCM', 50, 30, 'CM'], ['CDM', 40, 50, 'CDM'], ['RCM', 50, 70, 'CM'], ['LW', 80, 15, 'LW'], ['ST', 86, 50, 'ST'], ['RW', 80, 85, 'RW']];
+/* ---------- 名字生成 ---------- */
+const SY = '阿巴卡达德埃法加哈伊卡拉马纳奥帕罗萨塔乌维西扎贝科莱米尼佩里斯托杰克诺布格霍金洛莫蒙普桑索特温亚伯迪费吉胡基利曼奈欧皮雷施泰沃'.split(''), EN = ['斯', '德', '尔', '诺', '森', '克', '特', '罗', '尼', '奇', '曼', '顿', '维奇', '松', '兹', '加', '亚', '里奥', '多', '内'];
+const NATS = ['英格兰', '西班牙', '意大利', '德国', '法国', '荷兰', '葡萄牙', '比利时', '巴西', '阿根廷', '克罗地亚', '丹麦', '瑞典', '挪威', '波兰', '塞尔维亚', '日本', '韩国', '中国', '马来西亚', '美国', '墨西哥', '尼日利亚', '塞内加尔', '摩洛哥'];
+const CITY1 = '北南东西新青云海河湖山港林石金银白黑红星月风雷远长安宁泰华嘉临江沙岩松'.split(''), CITY2 = '州港城川原湾岭滩堡洲阳谷都津源浦岛'.split('');
+const NICK = ['联', '城', '竞技', '流浪者', '体育', '雄鹰', '猛虎', '雄狮', '狼队', '飞龙', '鲨鱼', '黑熊', '猎隼', '骑士', '先锋', '巨人', '海盗', '火箭', '红魔', '蓝鸟'];
+const STY = ['控球进攻', '快速反击', '高位逼抢', '边路突破', '中路渗透', '稳固防守', '全面攻守', '核心终结', '双核爆破', '三叉戟齐飞', '攻击型中场的支援'];
+function personName(rnd, used) { for (let k = 0; k < 60; k++) { const n = SY[Math.floor(rnd() * SY.length)] + (rnd() < 0.7 ? SY[Math.floor(rnd() * SY.length)] : '') + EN[Math.floor(rnd() * EN.length)]; if (!used.has(n)) { used.add(n); return n; } } const n = 'X' + Math.floor(rnd() * 1e6); used.add(n); return n; }
+function teamName(rnd, used) { for (let k = 0; k < 80; k++) { const c = CITY1[Math.floor(rnd() * CITY1.length)] + CITY2[Math.floor(rnd() * CITY2.length)], n = c + NICK[Math.floor(rnd() * NICK.length)]; if (!used.has(n)) { used.add(n); return [n, c]; } } return ['球队' + used.size, '城市']; }
+const LET = 'ABCDEFGHJKLMNPRSTUVWXYZ';
+function shortCode(rnd, used) { for (let k = 0; k < 200; k++) { const c = [0, 1, 2].map(() => LET[Math.floor(rnd() * LET.length)]).join(''); if (!used.has(c)) { used.add(c); return c; } } return 'T' + used.size; }
+const hsl = (h, s, l) => `hsl(${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}%)`;
+const toHex = c => { const d = document.createElement('div'); d.style.color = c; document.body.appendChild(d); const m = getComputedStyle(d).color.match(/\d+/g).map(Number); d.remove(); return '#' + m.slice(0, 3).map(x => x.toString(16).padStart(2, '0')).join(''); };
+/* ---------- 队徽：七种模板，存成参数（不存图片），统一 1:1 比例 ---------- */
+const CREST_TPL = { shield: '盾牌型', circle: '圆形', oval: '椭圆形', classic: '传统徽章', geo: '现代几何', text: '简约文字', symbol: '独立图形' };
+function crestSVG(t, px = 40) {
+  const c = (t && t.crest) || {}, p = c.p || '#c0392b', s = c.s || '#f1c40f', bg = c.bg || '#111', fg = c.fg || '#fff', sh = esc((t && t.short) || '?'), yr = c.year ? esc(String(c.year)) : '', tp = c.tpl || 'shield', id = 'c' + Math.abs(Math.floor(ghash(JSON.stringify(c) + sh) * 1e9));
+  const txt = (y, sz) => `<text x="50" y="${y}" text-anchor="middle" font-family="Barlow Condensed,Noto Sans SC,sans-serif" font-weight="800" font-size="${sz}" fill="${fg}" letter-spacing="1">${sh}</text>`, yt = yr ? `<text x="50" y="86" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="${fg}" opacity=".85">${yr}</text>` : '';
+  let body = '';
+  if (tp === 'shield') body = `<path d="M50 4 L90 14 L88 56 Q84 80 50 96 Q16 80 12 56 L10 14 Z" fill="${p}" stroke="${s}" stroke-width="5"/><path d="M50 14 L80 21 L79 54 Q76 72 50 85 Z" fill="${s}" opacity=".28"/>${txt(60, 26)}${yt}`;
+  else if (tp === 'circle') body = `<circle cx="50" cy="50" r="45" fill="${p}" stroke="${s}" stroke-width="6"/><circle cx="50" cy="50" r="33" fill="none" stroke="${fg}" stroke-opacity=".35" stroke-width="1.5"/>${txt(59, 26)}${yt}`;
+  else if (tp === 'oval') body = `<ellipse cx="50" cy="50" rx="38" ry="46" fill="${p}" stroke="${s}" stroke-width="5"/><path d="M14 50 H86" stroke="${s}" stroke-width="10" opacity=".7"/>${txt(59, 24)}${yt}`;
+  else if (tp === 'classic') body = `<defs><clipPath id="${id}"><path d="M50 4 L92 16 Q92 66 50 96 Q8 66 8 16 Z"/></clipPath></defs><g clip-path="url(#${id})"><rect width="100" height="100" fill="${p}"/>${[0, 1, 2, 3, 4].map(i => `<rect x="${8 + i * 18}" y="0" width="9" height="100" fill="${s}" opacity=".9"/>`).join('')}<rect x="0" y="34" width="100" height="30" fill="${bg}"/></g><path d="M50 4 L92 16 Q92 66 50 96 Q8 66 8 16 Z" fill="none" stroke="${s}" stroke-width="4"/>${txt(58, 22)}${yt}`;
+  else if (tp === 'geo') body = `<path d="M50 4 L90 27 V73 L50 96 L10 73 V27 Z" fill="${bg}" stroke="${p}" stroke-width="6"/><path d="M50 18 L78 34 V66 L50 82 Z" fill="${s}"/><path d="M50 18 L22 34 V66 L50 82 Z" fill="${p}"/>${txt(59, 22)}${yt}`;
+  else if (tp === 'text') body = `<rect x="6" y="20" width="88" height="60" rx="10" fill="${p}"/><rect x="6" y="66" width="88" height="14" rx="0" fill="${s}"/>${txt(58, 30)}`;
+  else body = `<circle cx="50" cy="50" r="46" fill="${bg}"/><path d="M50 12 C 72 26 76 44 70 60 C 64 76 52 86 50 90 C 48 86 36 76 30 60 C 24 44 28 26 50 12 Z" fill="${p}"/><circle cx="50" cy="46" r="12" fill="${s}"/>${txt(78, 14)}`;
+  return `<svg class="crest" width="${px}" height="${px}" viewBox="0 0 100 100" aria-hidden="true">${body}</svg>`;
+}
+/* ---------- 存档：每个联赛一份，localStorage；索引只记名字和状态 ---------- */
+const IDX_K = 'ves_custom_idx_v1', ARC_K = id => 'ves_custom_a_' + id;
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { toast('本机存储空间不足，存档没有保存'); return false; } };
+const idx = () => lsGet(IDX_K) || [];
+function saveArc(A) { A.updated = Date.now(); if (!lsSet(ARC_K(A.id), A)) return; const L = idx().filter(x => x.id !== A.id); L.unshift({ id: A.id, name: A.name, short: A.short, status: A.status, teams: A.teams.length, season: A.season ? A.season.n : 0, updated: A.updated }); lsSet(IDX_K, L); }
+const loadArc = id => lsGet(ARC_K(id));
+function delArc(id) { try { localStorage.removeItem(ARC_K(id)); } catch (e) { } lsSet(IDX_K, idx().filter(x => x.id !== id)); }
+const STATUS = { draft: '编辑中', built: '已建立', started: '已开始' };
+/* ---------- 生成联赛 ---------- */
+const PA_T = [[95, 97], [90, 94], [85, 89], [80, 84]], PA_P = [0.001, 0.005, 0.024, 0.08];
+function genLeague(opt) {
+  const rnd = seeded('lg|' + opt.seed), A = { id: uid('L'), ver: 1, name: opt.name, short: opt.short, country: opt.country || '', region: opt.region || '', seasonName: 'S', status: 'draft', created: Date.now(),
+    rules: { n: opt.n, mode: opt.mode, pts: { w: 3, d: 1, l: 0 }, strength: opt.strength, squad: 24 }, teams: [], players: [], season: null, history: [] };
+  const usedT = new Set(), usedS = new Set(), usedP = new Set();
+  for (let i = 0; i < opt.n; i++) A.teams.push(genTeam(rnd, i, opt, usedT, usedS));
+  A.teams.forEach((t, i) => genSquad(A, t, rnd, usedP));
+  return A;
+}
+function teamBase(opt, i, rnd) { const n = opt.n, f = n > 1 ? i / (n - 1) : 0.5; return opt.strength === 'tiered' ? 81 - f * 11 + (rnd() - 0.5) * 2 : opt.strength === 'random' ? 68 + rnd() * 13 : 75 + (rnd() - 0.5) * 4; }
+function genTeam(rnd, i, opt, usedT, usedS) {
+  const [name, city] = teamName(rnd, usedT), h = rnd() * 360, p = toHex(hsl(h, 55 + rnd() * 30, 32 + rnd() * 14)), s = toHex(rnd() < 0.45 ? hsl(0, 0, 92) : hsl((h + 140 + rnd() * 80) % 360, 60 + rnd() * 25, 50 + rnd() * 12)), tpls = Object.keys(CREST_TPL);
+  return { id: uid('T'), name, short: shortCode(rnd, usedS), city, country: opt.country || '', region: opt.region || '', colors: { p, s }, crest: { tpl: tpls[Math.floor(rnd() * tpls.length)], p, s, bg: '#111111', fg: '#ffffff', year: 1880 + Math.floor(rnd() * 120) },
+    stadium: { name: city + (rnd() < 0.5 ? '体育场' : '球场'), cap: Math.round((8 + rnd() * 52) * 1000), city }, style: STY[Math.floor(rnd() * STY.length)], base: Math.round(teamBase(opt, i, rnd) * 10) / 10 };
+}
+function samplePA(rnd) { let x = rnd(); for (let i = 0; i < 4; i++) { if (x < PA_P[i]) { const [a, b] = PA_T[i]; return a + Math.floor(rnd() * (b - a + 1)); } x -= PA_P[i]; } return Math.round(60 + 19 * Math.sqrt(rnd())); }
+function genPlayer(A, t, pos, k, rnd, usedP, no) {
+  const starter = k < 14, age = clamp(Math.round(starter ? 22 + rnd() * 10 : 18 + rnd() * 15), 17, 36);
+  let ca = clamp(Math.round(t.base + (starter ? 2 : -5) + (rnd() - 0.5) * 6 - (age < 21 ? (21 - age) * 2 : 0) - (age > 32 ? (age - 32) * 1.5 : 0)), 45, 94);
+  let pa = Math.max(ca, age <= 23 ? Math.max(samplePA(rnd), ca + Math.round((24 - age) * (0.8 + rnd() * 1.6))) : ca + Math.round(rnd() * 2)); pa = Math.min(97, pa);
+  const line = ENGINE.LINE(pos), ht = Math.round(line === 'GK' ? 185 + rnd() * 11 : line === 'DF' ? 178 + rnd() * 13 : 168 + rnd() * 18);
+  return { uid: uid('P'), name: personName(rnd, usedP), age, nat: rnd() < 0.6 && A.country ? A.country : NATS[Math.floor(rnd() * NATS.length)], pos, alt: [], height: ht, weight: Math.round(ht - 105 + rnd() * 14), ca, pa, no, skills: null, team: t.id, attrs: attrsFor(pos, ca, rnd) };
+}
+function genSquad(A, t, rnd, usedP) { const nos = new Set(); const pickNo = pos => { const pref = { GK: [1, 13, 31], CB: [4, 5, 6, 15], LB: [3, 23], RB: [2, 22], CDM: [6, 16], CM: [8, 14, 18], CAM: [10, 20], LM: [11, 17], RM: [7, 19], LW: [11, 17], RW: [7, 19], CF: [9, 29], ST: [9, 19, 21] }[pos] || []; for (const n of pref) if (!nos.has(n)) { nos.add(n); return n; } for (let n = 2; n < 99; n++) if (!nos.has(n)) { nos.add(n); return n; } return 99; };
+  const order = SQUAD_TPL.map((pos, k) => ({ pos, k })).sort((a, b) => (a.k % 2) - (b.k % 2)); /* 每个位置先排一个主力 */
+  const NEED = { GK: 1, CB: 2, LB: 1, RB: 1, CDM: 1, CM: 2, CAM: 1, LM: 0, RM: 0, LW: 1, RW: 1, CF: 1, ST: 1 }, seen = {}; /* 首发需要的人数是主力水平，其余是替补水平 */
+  SQUAD_TPL.forEach((pos, k) => { seen[pos] = (seen[pos] || 0) + 1; A.players.push(genPlayer(A, t, pos, seen[pos] <= (NEED[pos] || 0) ? 0 : 20, rnd, usedP, pickNo(pos))); }); }
+const skillsFor = p => Array.isArray(p.skills) ? p.skills : skillsOf({ name: p.name, pos: p.pos, rating: p.ca, height: p.height, attributes: p.attrs }, true);
+/* ---------- 模拟：把档案转成引擎要的 TEAMS_DATA / PLAYER_DATABASE ---------- */
+function loadEngine(A) {
+  const TD = {}, PD = {}; A.teams.forEach(t => { PD[t.id] = A.players.filter(p => p.team === t.id).map(p => ({ name: p.name, pos: p.pos, alt: p.alt, rating: p.ca, attributes: p.attrs, age: p.age, no: p.no })); });
+  A.teams.forEach(t => { const sq = PD[t.id].slice(), used = new Set(), coords = {}; const roster = XI433.map(([sl, x, y]) => { coords[sl] = [x, y]; const c = sq.filter(p => !used.has(p)).sort((a, b) => (b.rating - ENGINE.fitCost(sl, b)) - (a.rating - ENGINE.fitCost(sl, a)))[0]; if (c) used.add(c); return { pos: sl, name: c ? c.name : '空缺', rating: c ? c.rating : 40 }; }); TD[t.id] = { roster, coords, style: t.style || '' }; });
+  window.TEAMS_DATA = TD; window.PLAYER_DATABASE = PD; window.HISTORY = { profiles: {} }; ENGINE.clearCache();
+}
+function makeFixtures(A) { let ids = A.teams.map(t => t.id); const rnd = seeded('fx|' + A.id + '|' + (A.season ? A.season.n + 1 : 1)); ids = ids.map(x => [x, rnd()]).sort((a, b) => a[1] - b[1]).map(x => x[0]); if (ids.length % 2) ids.push('BYE');
+  let R = ENGINE.fixtures(ids); if (A.rules.mode === 'single') R = R.slice(0, ids.length - 1); return R.map(rd => rd.filter(m => m.h !== 'BYE' && m.a !== 'BYE').map(m => ({ h: m.h, a: m.a, r: null }))); }
+function playMatch(A, m) { const res = ENGINE.simulate(m.h, m.a, ENGINE.randomConditions()); const byName = (tid, n) => (A.players.find(p => p.team === tid && p.name === n) || {}).uid || null;
+  m.r = { hg: res.hg, ag: res.ag, g: res.events.filter(e => e.type === 'goal').map(e => [Math.round(e.m), e.side, byName(e.side === 'h' ? m.h : m.a, e.player), e.assist ? byName(e.side === 'h' ? m.h : m.a, e.assist) : null]), shots: res.stats.shots, poss: res.stats.poss, motm: byName(res.motm.team, res.motm.name),
+    apps: ['h', 'a'].flatMap(sd => (res.players[sd] || []).filter(r => r.min > 0).map(r => byName(sd === 'h' ? m.h : m.a, r.name))).filter(Boolean) }; }
+function table(A, upto) { const pts = A.rules.pts, T = {}; A.teams.forEach(t => T[t.id] = { id: t.id, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: [] });
+  (A.season ? A.season.fx : []).forEach((rd, ri) => { if (upto != null && ri >= upto) return; rd.forEach(m => { if (!m.r) return; const h = T[m.h], a = T[m.a]; if (!h || !a) return; h.p++; a.p++; h.gf += m.r.hg; h.ga += m.r.ag; a.gf += m.r.ag; a.ga += m.r.hg;
+    if (m.r.hg > m.r.ag) { h.w++; a.l++; h.pts += pts.w; a.pts += pts.l; h.form.push('W'); a.form.push('L'); } else if (m.r.hg < m.r.ag) { a.w++; h.l++; a.pts += pts.w; h.pts += pts.l; a.form.push('W'); h.form.push('L'); } else { h.d++; a.d++; h.pts += pts.d; a.pts += pts.d; h.form.push('D'); a.form.push('D'); } }); });
+  return Object.values(T).sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf); }
+const played = A => A.season ? A.season.fx.filter(rd => rd.every(m => m.r)).length : 0;
+const nextRd = A => A.season ? A.season.fx.findIndex(rd => rd.some(m => !m.r)) : -1;
+function pstats(A) { const S = {}; const g = u => S[u] = S[u] || { g: 0, a: 0, apps: 0, motm: 0 }; (A.season ? A.season.fx : []).forEach(rd => rd.forEach(m => { if (!m.r) return; (m.r.apps || []).forEach(u => g(u).apps++); m.r.g.forEach(([, , s, a]) => { if (s) g(s).g++; if (a) g(a).a++; }); if (m.r.motm) g(m.r.motm).motm++; })); return S; }
+/* ---------- 开赛前验证：逐条写出原因 ---------- */
+function validate(A) {
+  const E = [], n = A.teams.length, R = A.rules;
+  if (n < 4) E.push(`球队数量只有 ${n} 支，至少需要 4 支`); if (n > 40) E.push(`球队数量 ${n} 支太多，最多 40 支`);
+  const tid = new Set(); A.teams.forEach(t => { if (tid.has(t.id)) E.push(`球队 ID 重复：${t.id}`); tid.add(t.id); if (!String(t.name || '').trim()) E.push(`有一支球队没有名字（ID ${t.id}）`); if (!String(t.short || '').trim()) E.push(`${t.name} 没有简称`); });
+  const names = {}; A.teams.forEach(t => { names[t.name] = (names[t.name] || 0) + 1; }); Object.entries(names).forEach(([k, v]) => v > 1 && E.push(`球队名字重复：「${k}」有 ${v} 支`));
+  const pu = new Set(); A.players.forEach(p => { if (pu.has(p.uid)) E.push(`球员 UID 重复：${p.uid}（${p.name}）`); pu.add(p.uid); if (!tid.has(p.team)) E.push(`${p.name} 的所属球队不存在`); if (!POS_DEF[p.pos]) E.push(`${p.name} 的位置「${p.pos}」不是有效的位置代码`); (p.alt || []).forEach(x => { if (!POS_DEF[x]) E.push(`${p.name} 的次要位置「${x}」无效`); });
+    if (!String(p.name || '').trim()) E.push(`有一名球员没有名字（UID ${p.uid}）`); if (!(p.age >= 15 && p.age <= 45)) E.push(`${p.name} 的年龄 ${p.age} 不合理（15–45）`); if (!(p.ca >= 20 && p.ca <= 99)) E.push(`${p.name} 的当前能力 ${p.ca} 超出 20–99`); if (!(p.pa >= p.ca && p.pa <= 99)) E.push(`${p.name} 的潜在能力 ${p.pa} 必须在当前能力 ${p.ca} 到 99 之间`); if (!(p.no >= 1 && p.no <= 99)) E.push(`${p.name} 的球衣号码 ${p.no} 必须在 1–99 之间`); });
+  A.teams.forEach(t => { const sq = A.players.filter(p => p.team === t.id); if (sq.length < 16) E.push(`${t.name} 只有 ${sq.length} 名球员，至少需要 16 名`); if (sq.length > 40) E.push(`${t.name} 有 ${sq.length} 名球员，最多 40 名`); if (!sq.some(p => p.pos === 'GK')) E.push(`${t.name} 没有守门员`); const nos = {}; sq.forEach(p => { nos[p.no] = (nos[p.no] || []).concat(p.name); }); Object.entries(nos).forEach(([k, L]) => L.length > 1 && E.push(`${t.name} 的 ${k} 号同时给了 ${L.join('、')}`)); });
+  ['w', 'd', 'l'].forEach(k => { if (!Number.isFinite(R.pts[k])) E.push('积分规则需要填数字'); }); if (R.pts.w < R.pts.d || R.pts.d < R.pts.l) E.push(`积分规则不合理：胜 ${R.pts.w} / 平 ${R.pts.d} / 负 ${R.pts.l}，应该胜 ≥ 平 ≥ 负`);
+  if (!['single', 'double'].includes(R.mode)) E.push('赛制无效');
+  if (!E.length) { const fx = makeFixtures(A), cnt = {}, pair = {}; fx.forEach((rd, ri) => { const seen = new Set(); rd.forEach(m => { if (m.h === m.a) E.push(`赛程错误：第 ${ri + 1} 轮有球队和自己比赛`); [m.h, m.a].forEach(x => { if (seen.has(x)) E.push(`赛程错误：第 ${ri + 1} 轮有球队踢两场`); seen.add(x); cnt[x] = (cnt[x] || 0) + 1; }); const k = [m.h, m.a].sort().join('|'); pair[k] = (pair[k] || 0) + 1; }); });
+    const need = R.mode === 'double' ? 2 : 1; Object.values(pair).forEach(v => { if (v !== need) E.push('赛程错误：有球队之间的交手次数不对'); }); const c = new Set(Object.values(cnt)); if (c.size > 1) E.push('赛程错误：各队比赛场数不一致'); }
+  return [...new Set(E)];
+}
+/* ---------- 界面 ---------- */
+let A = null, VIEW = 'home', TEAM = null, SEL = new Set();
+const TN = id => (A && A.teams.find(t => t.id === id)) || { name: '?', short: '?' };
+const tcell = (id, s = 22) => { const t = TN(id); return `<span class="tcell">${crestSVG(t, s)}<span>${esc(t.name)}</span></span>`; };
+function setTabs() { const T = A ? [['home', '概览'], ['teams', '球队'], ['players', '球员'], ['fixtures', '赛程'], ['table', '积分榜'], ['rules', '规则']] : [['home', '我的联赛']];
+  $('#tabs').innerHTML = T.map(([k, n]) => `<button data-v="${k}" class="${VIEW === k ? 'on' : ''}">${n}</button>`).join('') + (A ? `<button data-v="__close">↩ 全部档案</button>` : '');
+  $('#brandName').textContent = A ? A.name : '自定义联赛'; $('#brandSub').textContent = A ? `${A.short} · ${STATUS[A.status]}` : 'CUSTOM LEAGUE'; }
+function render() { setTabs(); const el = $('#app'); el.innerHTML = !A ? homeList() : VIEW === 'teams' ? (TEAM ? teamPage() : teamsPage()) : VIEW === 'players' ? playersPage() : VIEW === 'fixtures' ? fixturesPage() : VIEW === 'table' ? tablePage() : VIEW === 'rules' ? rulesPage() : overview(); window.scrollTo(0, 0); }
+function homeList() { const L = idx();
+  return `<div><div class="eyebrow">CUSTOM LEAGUES</div><h1>我的自定义联赛</h1><p class="muted" style="margin:6px 0 0">每个联赛都是一份独立档案，只存在这台设备上，不会影响威超的正式进度。</p></div>
+  <div class="btns"><button class="btn primary" data-a="new">＋ 新建联赛</button><label class="btn" style="cursor:pointer">导入档案<input type="file" id="imp" accept=".json,application/json" hidden></label></div>
+  <section class="panel"><div class="ph"><h2>档案</h2><span class="dim">${L.length} 份</span></div>${L.length ? `<div style="display:grid;gap:10px">${L.map(x => `<div class="arch"><span class="big" style="font-size:26px;color:var(--accent)">${esc(x.short || '')}</span><div style="min-width:0"><b>${esc(x.name)}</b><div class="dim st">${STATUS[x.status] || ''} · ${x.teams} 支球队${x.season ? ` · 第 ${x.season} 季` : ''} · ${new Date(x.updated).toLocaleString()}</div></div><div class="btns"><button class="btn primary" data-open="${x.id}">打开</button><button class="btn" data-copy="${x.id}">复制</button><button class="btn" data-exp="${x.id}">导出</button><button class="btn danger" data-del="${x.id}">删除</button></div></div>`).join('')}</div>` : `<p class="dim">还没有自定义联赛，点「新建联赛」开始。</p>`}</section>`; }
+function overview() { const E = A.status === 'started' ? [] : validate(A), pr = played(A), tot = A.season ? A.season.fx.length : 0, T = A.season ? table(A) : null, nr = nextRd(A);
+  return `<div class="grid g2" style="align-items:end"><div><div class="eyebrow">${esc(A.country || '')} ${esc(A.region || '')} · ${A.rules.mode === 'double' ? '双循环' : '单循环'} · ${A.teams.length} 队</div><h1>${esc(A.name)}</h1></div>
+  ${A.season ? `<div style="text-align:right"><span class="big">${A.seasonName}${String(A.season.n).padStart(2, '0')}</span> <span class="mono muted">第 ${pr} / ${tot} 轮</span></div>` : ''}</div>
+  ${A.status !== 'started' ? `<section class="panel"><div class="ph"><h2>开赛前检查</h2><span class="${E.length ? 'chip bad' : 'chip good'}">${E.length ? `${E.length} 个问题` : '全部通过'}</span></div>${E.length ? `<ul class="err">${E.slice(0, 40).map(x => `<li>${esc(x)}</li>`).join('')}</ul>${E.length > 40 ? `<p class="dim">还有 ${E.length - 40} 个……</p>` : ''}` : `<p class="ok">球队、球员、积分规则和赛程都检查过了，可以开始联赛。开始后球队数量和赛制就不能再改。</p>`}
+    <div class="btns" style="margin-top:12px"><button class="btn primary" data-a="start" ${E.length ? 'disabled' : ''}>▶ 开始联赛</button><button class="btn" data-v="teams">编辑球队与球员</button><button class="btn" data-v="rules">联赛规则</button></div></section>`
+  : `<div class="grid g2"><section class="panel"><div class="ph"><h2>${nr >= 0 ? `第 ${nr + 1} 轮` : '本季已结束'}</h2><div class="btns">${nr >= 0 ? `<button class="btn primary" data-a="play1">模拟本轮</button><button class="btn" data-a="playall">模拟剩余赛季</button>` : `<button class="btn primary" data-a="nextseason">开始下一季</button>`}</div></div>
+    ${nr >= 0 ? A.season.fx[nr].map(m => `<div class="fx"><span class="h">${tcell(m.h)}</span><span class="sc">VS</span><span>${tcell(m.a)}</span></div>`).join('') : champBox(T)}</section>
+    <section class="panel"><div class="ph"><h2>积分榜</h2><button class="btn" data-v="table">完整榜单</button></div>${tableHTML(T.slice(0, 8))}</section></div>`}`; }
+function champBox(T) { const c = T[0]; return `<div style="display:grid;justify-items:center;gap:8px;padding:20px 0;text-align:center"><div class="eyebrow">冠军</div>${crestSVG(TN(c.id), 84)}<h2 style="font-size:22px">${esc(TN(c.id).name)}</h2><div class="mono muted">${c.pts} 分 · ${c.w} 胜 ${c.d} 平 ${c.l} 负</div></div>`; }
+function tableHTML(T) { return `<div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净</th><th>积分</th><th class="l">近况</th></tr></thead><tbody>${T.map((r, i) => `<tr class="click" data-team="${r.id}"><td>${i + 1}</td><td class="l">${tcell(r.id)}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf - r.ga}</td><td><b>${r.pts}</b></td><td class="l">${r.form.slice(-5).map(f => `<span style="color:${f === 'W' ? 'var(--win)' : f === 'L' ? 'var(--loss)' : 'var(--draw)'}">●</span>`).join('')}</td></tr>`).join('')}</tbody></table></div>`; }
+function tablePage() { return `<div><div class="eyebrow">LEAGUE TABLE</div><h1>积分榜</h1></div><section class="panel">${A.season ? tableHTML(table(A)) : '<p class="dim">联赛还没开始。</p>'}</section>${A.history.length ? `<section class="panel"><div class="ph"><h2>历届冠军</h2></div>${A.history.map(h => `<div class="fx" style="grid-template-columns:80px 1fr auto"><span class="mono">${A.seasonName}${String(h.n).padStart(2, '0')}</span><span>${tcell(h.champ)}</span><span class="mono muted">${h.pts} 分</span></div>`).join('')}</section>` : ''}`; }
+function fixturesPage() { if (!A.season) { const fx = makeFixtures(A); return `<div><div class="eyebrow">FIXTURES</div><h1>赛程预览</h1><p class="muted">联赛还没开始，这是按目前设定生成的赛程（${fx.length} 轮）。正式开始时会重新排一次。</p></div>${roundsHTML(fx)}`; }
+  return `<div><div class="eyebrow">FIXTURES</div><h1>赛程与赛果</h1></div>${roundsHTML(A.season.fx)}`; }
+function roundsHTML(fx) { return `<div class="grid g2">${fx.map((rd, ri) => `<section class="panel"><div class="ph"><h3>第 ${ri + 1} 轮</h3></div>${rd.map(m => `<div class="fx"><span class="h">${tcell(m.h, 20)}</span><span class="sc">${m.r ? `${m.r.hg} : ${m.r.ag}` : 'VS'}</span><span>${tcell(m.a, 20)}</span></div>`).join('')}</section>`).join('')}</div>`; }
+function teamsPage() { return `<div class="ph"><div><div class="eyebrow">TEAMS</div><h1>球队</h1></div>${A.status !== 'started' ? `<div class="btns"><button class="btn" data-a="addteam">＋ 新增球队</button></div>` : ''}</div>
+  <div class="tgrid">${A.teams.map(t => `<div class="tcard" data-team="${t.id}">${crestSVG(t, 64)}<b>${esc(t.name)}</b><span class="mono dim">${esc(t.short)} · ${A.players.filter(p => p.team === t.id).length} 人</span></div>`).join('')}</div>`; }
+function teamPage() { const t = A.teams.find(x => x.id === TEAM); if (!t) { TEAM = null; return teamsPage(); } const sq = A.players.filter(p => p.team === t.id).sort((a, b) => POS.indexOf(a.pos) - POS.indexOf(b.pos) || b.ca - a.ca), ST = pstats(A), locked = false;
+  return `<div class="btns"><button class="btn" data-a="backteams">← 全部球队</button></div>
+  <section class="panel"><div class="grid" style="grid-template-columns:auto minmax(0,1fr);align-items:center">${crestSVG(t, 110)}<div><div class="eyebrow">${esc(t.short)} · ID ${esc(t.id)}</div><h1>${esc(t.name)}</h1><div class="btns" style="margin-top:8px"><span class="chip">${esc(t.city)}</span><span class="chip">主场 ${esc(t.stadium.name)} · ${t.stadium.cap.toLocaleString()} 人</span><span class="chip">打法 ${esc(t.style)}</span><span class="chip">实力基准 ${t.base}</span></div></div></div></section>
+  <section class="panel"><div class="ph"><h2>球队资料与队徽</h2></div>
+    <div class="grid g4"><label class="f">球队名称<input type="text" id="tName" value="${esc(t.name)}" maxlength="16"></label><label class="f">简称<input type="text" id="tShort" value="${esc(t.short)}" maxlength="5"></label><label class="f">城市<input type="text" id="tCity" value="${esc(t.city)}"></label><label class="f">打法<select id="tStyle">${STY.map(x => `<option ${x === t.style ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+      <label class="f">球场名称<input type="text" id="tStad" value="${esc(t.stadium.name)}"></label><label class="f">球场容量<input type="number" id="tCap" value="${t.stadium.cap}" min="1000" max="150000" step="500"></label><label class="f">建队年份<input type="number" id="tYear" value="${t.crest.year || ''}" min="1800" max="2100"></label><label class="f">实力基准（影响重新生成球员）<input type="number" id="tBase" value="${t.base}" min="50" max="92" step="0.5"></label></div>
+    <div class="grid" style="grid-template-columns:auto minmax(0,1fr);gap:22px;margin-top:16px;align-items:start"><div id="crPrev">${crestSVG(t, 140)}</div><div style="display:grid;gap:12px"><div class="tpl" id="crTpl">${Object.entries(CREST_TPL).map(([k, n]) => `<button type="button" data-tpl="${k}" class="${t.crest.tpl === k ? 'on' : ''}" title="${n}">${crestSVG({ ...t, crest: { ...t.crest, tpl: k } }, 40)}</button>`).join('')}</div>
+      <div class="btns"><label class="f">主色<input type="color" id="cP" value="${t.crest.p}"></label><label class="f">辅助色<input type="color" id="cS" value="${t.crest.s}"></label><label class="f">背景色<input type="color" id="cB" value="${t.crest.bg}"></label><label class="f">图案 / 文字色<input type="color" id="cF" value="${t.crest.fg}"></label></div>
+      <div class="btns"><button class="btn primary" data-a="saveteam">保存球队资料</button><button class="btn" data-a="crestreset">恢复默认队徽</button><button class="btn" data-a="crestcopy">把队徽设计复制给其他球队…</button>${A.status !== 'started' ? `<button class="btn danger" data-a="delteam">删除这支球队</button>` : ''}</div></div></div></section>
+  <section class="panel"><div class="ph"><h2>阵容 · ${sq.length} 人</h2><div class="btns"><span class="dim" id="selN">已选 ${[...SEL].filter(u => sq.some(p => p.uid === u)).length} 人</span><button class="btn" data-a="batch">批量编辑…</button><button class="btn" data-a="addp">＋ 新增球员</button>${A.status !== 'started' ? `<button class="btn" data-a="regen">重新生成整队球员</button>` : ''}</div></div>
+    <div class="tw"><table><thead><tr><th><input type="checkbox" class="sel" id="selAll"></th><th>号</th><th class="l">球员</th><th class="l">位置</th><th>年龄</th><th class="l">国籍</th><th>CA</th><th>PA</th><th class="l">技能</th><th>出场</th><th>进球</th><th>助攻</th></tr></thead><tbody>
+    ${sq.map(p => { const s = ST[p.uid] || {}; return `<tr><td><input type="checkbox" class="sel" data-sel="${p.uid}" ${SEL.has(p.uid) ? 'checked' : ''}></td><td>${p.no}</td><td class="l"><button class="btn" style="padding:2px 8px;border:0" data-p="${p.uid}">${esc(p.name)}</button></td><td class="l">${p.pos} <span class="dim">${posZh(p.pos)}</span>${(p.alt || []).length ? ` <span class="dim">/ ${p.alt.join(' ')}</span>` : ''}</td><td>${p.age}</td><td class="l">${esc(p.nat)}</td><td><b>${p.ca}</b></td><td class="dim">${p.pa}</td><td class="l">${skillsFor(p).map(x => skBadge(x.id, x.t, 22)).join('')}</td><td>${s.apps || 0}</td><td>${s.g || 0}</td><td>${s.a || 0}</td></tr>`; }).join('')}</tbody></table></div></section>`; }
+function playersPage() { const q = (window.__pq || '').trim(), L = A.players.filter(p => !q || p.name.includes(q) || TN(p.team).name.includes(q)).sort((a, b) => b.ca - a.ca).slice(0, 300), ST = pstats(A);
+  return `<div><div class="eyebrow">PLAYERS</div><h1>球员 <span class="dim mono" style="font-size:14px">${A.players.length}</span></h1></div><input type="text" id="pq" placeholder="搜索球员或球队" value="${esc(q)}" style="max-width:320px">
+  <section class="panel"><div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">球队</th><th class="l">位置</th><th>年龄</th><th>CA</th><th>PA</th><th class="l">技能</th><th>进球</th><th>助攻</th></tr></thead><tbody>${L.map(p => { const s = ST[p.uid] || {}; return `<tr class="click" data-p="${p.uid}"><td class="l">${esc(p.name)}</td><td class="l">${tcell(p.team, 18)}</td><td class="l">${p.pos}</td><td>${p.age}</td><td><b>${p.ca}</b></td><td class="dim">${p.pa}</td><td class="l">${skillsFor(p).map(x => skBadge(x.id, x.t, 20)).join('')}</td><td>${s.g || 0}</td><td>${s.a || 0}</td></tr>`; }).join('')}</tbody></table></div>${A.players.length > 300 ? '<p class="dim">只显示能力最高的 300 人，用搜索找其他球员。</p>' : ''}</section>`; }
+function rulesPage() { const R = A.rules, lock = A.status === 'started';
+  return `<div><div class="eyebrow">RULES</div><h1>联赛规则</h1><p class="muted">${lock ? '联赛已经开始，球队数量和赛制不能再改；联赛名称和积分规则可以改。' : '开始联赛前都可以改。'}</p></div>
+  <section class="panel"><div class="grid g3"><label class="f">联赛名称<input type="text" id="rName" value="${esc(A.name)}"></label><label class="f">联赛简称<input type="text" id="rShort" value="${esc(A.short)}" maxlength="6"></label><label class="f">赛季前缀<input type="text" id="rSeason" value="${esc(A.seasonName)}" maxlength="4"></label>
+    <label class="f">国家<input type="text" id="rCountry" value="${esc(A.country)}"></label><label class="f">地区<input type="text" id="rRegion" value="${esc(A.region)}"></label><label class="f">赛制<select id="rMode" ${lock ? 'disabled' : ''}><option value="double" ${R.mode === 'double' ? 'selected' : ''}>双循环（主客场各一次）</option><option value="single" ${R.mode === 'single' ? 'selected' : ''}>单循环（每对球队只踢一次）</option></select></label>
+    <label class="f">胜<input type="number" id="rW" value="${R.pts.w}" min="0" max="10"></label><label class="f">平<input type="number" id="rD" value="${R.pts.d}" min="0" max="10"></label><label class="f">负<input type="number" id="rL" value="${R.pts.l}" min="-5" max="10"></label></div>
+    <p class="dim" style="font-size:12px">排名依据：积分 → 净胜球 → 进球数。季后赛、升降级、相互战绩会在之后的版本加入。</p>
+    <div class="btns"><button class="btn primary" data-a="saverules">保存规则</button></div></section>
+  <section class="panel"><div class="ph"><h2>档案</h2></div><div class="btns"><button class="btn" data-exp="${A.id}">导出档案</button><button class="btn" data-copy="${A.id}">复制成新档案</button><button class="btn" data-a="savetpl">另存为模板（不含赛果）</button><button class="btn danger" data-del="${A.id}">删除档案</button></div><p class="dim" style="font-size:12px">联赛 ID ${esc(A.id)} · 改名不会改变 ID</p></section>`; }
+/* ---------- 对话框 ---------- */
+const dlg = $('#dlg'); const openDlg = h => { dlg.innerHTML = `<div class="dlg">${h}</div>`; if (!dlg.open) dlg.showModal(); }; const closeDlg = () => dlg.open && dlg.close();
+function newDlg() { const tpls = (lsGet('ves_custom_tpls_v1') || []), arcs = idx();
+  openDlg(`<div class="ph"><h2>新建联赛</h2><button class="btn" data-a="close">✕</button></div>
+  <label class="f">起点<select id="nFrom"><option value="blank">空白联赛（系统生成球队和球员）</option><option value="preset:8">系统模板 · 小型联赛（8 队双循环）</option><option value="preset:20">系统模板 · 标准联赛（20 队双循环）</option><option value="preset:18">系统模板 · 18 队联赛</option>${tpls.map((t, i) => `<option value="tpl:${i}">我的模板 · ${esc(t.name)}</option>`).join('')}${arcs.map(x => `<option value="copy:${x.id}">复制档案 · ${esc(x.name)}</option>`).join('')}</select></label>
+  <div class="grid g3"><label class="f">联赛名称<input type="text" id="nName" value="新联赛" maxlength="20"></label><label class="f">联赛简称<input type="text" id="nShort" value="NL" maxlength="6"></label><label class="f">国家<input type="text" id="nCountry" placeholder="可留空"></label>
+  <label class="f">地区<input type="text" id="nRegion" placeholder="可留空"></label><label class="f">球队数量<select id="nN">${[8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32].map(n => `<option ${n === 20 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label class="f">赛制<select id="nMode"><option value="double">双循环</option><option value="single">单循环</option></select></label>
+  <label class="f">球队实力<select id="nStr"><option value="tiered">强弱分明</option><option value="balanced">均衡联赛</option><option value="random">随机实力</option></select></label></div>
+  <p class="dim" style="font-size:12px">选「复制档案」或「我的模板」时，球队数量和实力设定照原档案；名字可以改。所有设定在开始联赛前都还能修改。</p>
+  <div class="btns"><button class="btn primary" data-a="create">生成联赛</button></div>`); }
+function playerDlg(u) { const p = A.players.find(x => x.uid === u); if (!p) return; const S = skillsFor(p), manual = Array.isArray(p.skills);
+  openDlg(`<div class="ph"><div><div class="eyebrow">UID ${esc(p.uid)}</div><h2>${esc(p.name)}</h2></div><button class="btn" data-a="close">✕</button></div>
+  <div class="grid g4"><label class="f">姓名<input type="text" id="eName" value="${esc(p.name)}" maxlength="16"></label><label class="f">年龄<input type="number" id="eAge" value="${p.age}" min="15" max="45"></label><label class="f">国籍<input type="text" id="eNat" value="${esc(p.nat)}"></label><label class="f">所属球队<select id="eTeam">${A.teams.map(t => `<option value="${t.id}" ${t.id === p.team ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
+  <label class="f">主要位置<select id="ePos">${POS.map(x => `<option value="${x}" ${x === p.pos ? 'selected' : ''}>${x} · ${posZh(x)}</option>`).join('')}</select></label><label class="f">球衣号码<input type="number" id="eNo" value="${p.no}" min="1" max="99"></label><label class="f">身高 cm<input type="number" id="eH" value="${p.height}" min="140" max="215"></label><label class="f">体重 kg<input type="number" id="eW" value="${p.weight}" min="45" max="130"></label>
+  <label class="f">当前能力 CA<input type="number" id="eCA" value="${p.ca}" min="20" max="99"></label><label class="f">潜在能力 PA<input type="number" id="ePA" value="${p.pa}" min="20" max="99"></label></div>
+  <div><div class="eyebrow" style="margin-bottom:6px">次要位置</div><div class="btns" id="eAlt">${POS.filter(x => x !== 'GK').map(x => `<label class="chip" style="cursor:pointer"><input type="checkbox" data-alt="${x}" ${(p.alt || []).includes(x) ? 'checked' : ''}> ${x}</label>`).join('')}</div></div>
+  <div><div class="eyebrow" style="margin-bottom:6px">属性（改 CA 时会按比例一起调整）</div><div class="grid g4">${Object.entries(p.attrs).map(([k, v]) => `<label class="f">${ATTR_ZH[k] || k}<input type="number" data-attr="${k}" value="${v}" min="20" max="99"></label>`).join('')}</div></div>
+  <div><div class="ph" style="margin-bottom:6px"><div class="eyebrow">球员技能（${manual ? '手动设定' : '按属性自动分配'}，最多 5 项）</div><span class="btns"><button class="btn" data-a="skadd">＋ 新增</button><button class="btn" data-a="skauto">按属性自动分配</button></span></div><div id="eSk" style="display:grid;gap:6px">${skRows(S)}</div></div>
+  <div class="btns"><button class="btn primary" data-a="savep" data-u="${p.uid}">保存</button><button class="btn danger" data-a="delp" data-u="${p.uid}">删除球员</button></div>`);
+  dlg._sk = S.map(x => ({ ...x })); dlg._skManual = manual; }
+const skRows = L => L.length ? L.map((x, i) => `<div style="display:grid;grid-template-columns:30px minmax(0,1fr) 110px 32px;gap:8px;align-items:center">${skBadge(x.id, x.t, 28)}<select data-skid="${i}">${Object.entries(SK_DEF).map(([id, D]) => `<option value="${id}" ${id === x.id ? 'selected' : ''}>${D.n} · ${D.g}</option>`).join('')}</select><select data-skt="${i}">${['C', 'B', 'A', 'S'].map(t => `<option ${t === x.t ? 'selected' : ''}>${t}</option>`).join('')}</select><button class="btn" data-skdel="${i}" style="padding:4px">✕</button></div>`).join('') : '<span class="dim">没有技能</span>';
+function batchDlg() { const t = A.teams.find(x => x.id === TEAM), us = [...SEL].filter(u => A.players.some(p => p.uid === u && p.team === TEAM)); if (!us.length) return toast('先在阵容表里勾选球员');
+  openDlg(`<div class="ph"><h2>批量编辑 · ${us.length} 名球员</h2><button class="btn" data-a="close">✕</button></div><p class="dim">留空的项目不会改动。确认前会再问一次。</p>
+  <div class="grid g3"><label class="f">位置改成<select id="bPos"><option value="">（不改）</option>${POS.map(x => `<option value="${x}">${x} · ${posZh(x)}</option>`).join('')}</select></label><label class="f">年龄 增减<input type="number" id="bAge" placeholder="例如 -2 或 3"></label><label class="f">国籍改成<input type="text" id="bNat" placeholder="（不改）"></label>
+  <label class="f">能力 CA 增减<input type="number" id="bCA" placeholder="例如 5 或 -3"></label><label class="f">球衣号码<select id="bNo"><option value="">（不改）</option><option value="auto">按位置自动重排</option></select></label><label class="f">转到球队<select id="bTeam"><option value="">（不改）</option>${A.teams.filter(x => x.id !== TEAM).map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label></div>
+  <div class="btns"><button class="btn primary" data-a="batchapply">套用到 ${us.length} 人</button><button class="btn" data-a="batchregen">随机重新生成这 ${us.length} 人</button><button class="btn" data-a="batchskreset">技能恢复自动</button></div>`); dlg._us = us; }
+/* ---------- 事件 ---------- */
+function rescaleAttrs(p, nca) { const d = nca - p.ca; Object.keys(p.attrs).forEach(k => p.attrs[k] = clamp(p.attrs[k] + d, 20, 99)); p.ca = nca; if (p.pa < p.ca) p.pa = p.ca; }
+function cloneArc(src, name) { const X = JSON.parse(JSON.stringify(src)), tm = {}; X.id = uid('L'); X.name = name || (src.name + ' 副本'); X.teams.forEach(t => { const n = uid('T'); tm[t.id] = n; t.id = n; }); X.players.forEach(p => { p.uid = uid('P'); p.team = tm[p.team] || p.team; }); X.season = null; X.history = []; X.status = 'draft'; return X; }
+function startSeason() { A.season = { n: A.season ? A.season.n + 1 : 1, fx: [] }; A.season.fx = makeFixtures(A); }
+function endSeasonGrow() { const T = table(A); A.history.push({ n: A.season.n, champ: T[0].id, pts: T[0].pts }); const rnd = seeded('grow|' + A.id + '|' + A.season.n);
+  A.players.forEach(p => { p.age++; let d = 0; if (p.age <= 24) d = Math.min(p.pa - p.ca, Math.round(1 + rnd() * 4)); else if (p.age <= 29) d = p.ca < p.pa ? Math.round(rnd() * 2) : 0; else if (p.age <= 32) d = -Math.round(rnd() * 2); else d = -Math.round(1 + rnd() * 3); rescaleAttrs(p, clamp(p.ca + d, 40, 97)); }); }
+document.addEventListener('click', ev => { const el = ev.target.closest('[data-v],[data-a],[data-open],[data-copy],[data-exp],[data-del],[data-team],[data-p],[data-tpl],[data-skdel]'); if (!el) return;
+  if (el.dataset.v) { if (el.dataset.v === '__close') { A = null; VIEW = 'home'; TEAM = null; } else { VIEW = el.dataset.v; TEAM = null; } closeDlg(); return render(); }
+  if (el.dataset.open) { A = loadArc(el.dataset.open); if (!A) return toast('档案读取失败'); VIEW = 'home'; TEAM = null; return render(); }
+  if (el.dataset.copy) { const src = loadArc(el.dataset.copy); if (!src) return; const X = cloneArc(src); saveArc(X); toast('已复制成新档案：' + X.name); if (A) { A = X; } return render(); }
+  if (el.dataset.exp) { const X = loadArc(el.dataset.exp); if (!X) return; const b = new Blob([JSON.stringify(X)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = (X.short || 'league') + '-' + X.id + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return; }
+  if (el.dataset.del) { const x = idx().find(y => y.id === el.dataset.del); if (!confirm(`删除「${x ? x.name : '这份档案'}」？删除后不能恢复。`)) return; delArc(el.dataset.del); if (A && A.id === el.dataset.del) A = null; VIEW = 'home'; return render(); }
+  if (el.dataset.team && !el.dataset.a) { VIEW = 'teams'; TEAM = el.dataset.team; return render(); }
+  if (el.dataset.p && !el.dataset.a) return playerDlg(el.dataset.p);
+  if (el.dataset.tpl) { const t = A.teams.find(x => x.id === TEAM); t.crest.tpl = el.dataset.tpl; document.querySelectorAll('#crTpl button').forEach(b => b.classList.toggle('on', b === el)); $('#crPrev').innerHTML = crestSVG(liveTeam(t), 140); return; }
+  if (el.dataset.skdel) { dlg._sk.splice(+el.dataset.skdel, 1); dlg._skManual = true; $('#eSk').innerHTML = skRows(dlg._sk); return; }
+  const a = el.dataset.a, t = TEAM && A ? A.teams.find(x => x.id === TEAM) : null;
+  if (a === 'close') return closeDlg();
+  if (a === 'new') return newDlg();
+  if (a === 'create') { const from = $('#nFrom').value, nm = $('#nName').value.trim() || '新联赛', sh = $('#nShort').value.trim() || 'NL'; let X;
+    if (from.startsWith('copy:')) { const src = loadArc(from.slice(5)); X = cloneArc(src, nm); X.short = sh; }
+    else if (from.startsWith('tpl:')) { const tp = (lsGet('ves_custom_tpls_v1') || [])[+from.slice(4)]; X = cloneArc(tp.data, nm); X.short = sh; }
+    else { const n = from.startsWith('preset:') ? +from.slice(7) : +$('#nN').value; X = genLeague({ name: nm, short: sh, country: $('#nCountry').value.trim(), region: $('#nRegion').value.trim(), n, mode: from.startsWith('preset:') ? 'double' : $('#nMode').value, strength: $('#nStr').value, seed: Date.now() + '|' + Math.random() }); }
+    saveArc(X); A = X; VIEW = 'home'; closeDlg(); toast(`已生成 ${X.teams.length} 支球队、${X.players.length} 名球员`); return render(); }
+  if (a === 'start') { const E = validate(A); if (E.length) return render(); A.status = 'started'; startSeason(); saveArc(A); toast('联赛开始！'); return render(); }
+  if (a === 'play1' || a === 'playall') { loadEngine(A); const go = r => A.season.fx[r].forEach(m => { if (!m.r) playMatch(A, m); }); let r = nextRd(A); if (a === 'play1') go(r); else while ((r = nextRd(A)) >= 0) go(r); saveArc(A); return render(); }
+  if (a === 'nextseason') { endSeasonGrow(); startSeason(); saveArc(A); toast(`${A.seasonName}${String(A.season.n).padStart(2, '0')} 赛季开始`); return render(); }
+  if (a === 'backteams') { TEAM = null; return render(); }
+  if (a === 'saveteam' && t) { t.name = $('#tName').value.trim() || t.name; t.short = $('#tShort').value.trim().toUpperCase() || t.short; t.city = $('#tCity').value.trim(); t.style = $('#tStyle').value; t.stadium = { name: $('#tStad').value.trim(), cap: +$('#tCap').value || t.stadium.cap, city: t.city }; t.crest = liveTeam(t).crest; t.base = +$('#tBase').value || t.base; t.colors = { p: t.crest.p, s: t.crest.s }; saveArc(A); toast('已保存'); return render(); }
+  if (a === 'crestreset' && t) { const rnd = seeded('cr|' + t.id); t.crest = { tpl: 'shield', p: t.colors.p, s: t.colors.s, bg: '#111111', fg: '#ffffff', year: t.crest.year }; saveArc(A); return render(); }
+  if (a === 'crestcopy' && t) { openDlg(`<div class="ph"><h2>复制队徽设计</h2><button class="btn" data-a="close">✕</button></div><p class="dim">把 ${esc(t.name)} 的队徽模板和配色套用到勾选的球队（各队保留自己的简称和建队年份）。</p><div class="tgrid">${A.teams.filter(x => x.id !== t.id).map(x => `<label class="tcard"><input type="checkbox" data-cc="${x.id}">${crestSVG(x, 40)}<span>${esc(x.name)}</span></label>`).join('')}</div><div class="btns"><button class="btn primary" data-a="crestcopydo">套用</button></div>`); return; }
+  if (a === 'crestcopydo' && t) { const L = [...document.querySelectorAll('[data-cc]:checked')].map(i => i.dataset.cc); if (!L.length) return toast('先勾选球队'); if (!confirm(`把队徽设计套用到 ${L.length} 支球队？`)) return; L.forEach(id => { const x = A.teams.find(y => y.id === id); x.crest = { ...t.crest, year: x.crest.year }; }); saveArc(A); closeDlg(); toast('已套用'); return render(); }
+  if (a === 'delteam' && t) { if (!confirm(`删除 ${t.name} 和他们的 ${A.players.filter(p => p.team === t.id).length} 名球员？`)) return; A.teams = A.teams.filter(x => x.id !== t.id); A.players = A.players.filter(p => p.team !== t.id); A.rules.n = A.teams.length; TEAM = null; saveArc(A); return render(); }
+  if (a === 'addteam') { const rnd = seeded('add|' + Date.now()), nt = genTeam(rnd, Math.floor(A.teams.length / 2), { ...A.rules, country: A.country, region: A.region }, new Set(A.teams.map(x => x.name)), new Set(A.teams.map(x => x.short))); A.teams.push(nt); genSquad(A, nt, rnd, new Set(A.players.map(p => p.name))); A.rules.n = A.teams.length; saveArc(A); TEAM = nt.id; return render(); }
+  if (a === 'regen' && t) { if (!confirm(`重新生成 ${t.name} 的全部球员？现有球员会被替换（UID 也会换新）。`)) return; A.players = A.players.filter(p => p.team !== t.id); t.base = +$('#tBase').value || t.base; genSquad(A, t, seeded('rg|' + Date.now()), new Set(A.players.map(p => p.name))); saveArc(A); return render(); }
+  if (a === 'addp' && t) { const rnd = seeded('ap|' + Date.now()), nos = new Set(A.players.filter(p => p.team === t.id).map(p => p.no)); let no = 30; while (nos.has(no)) no++; const p = genPlayer(A, t, 'CM', 16, rnd, new Set(A.players.map(x => x.name)), no); A.players.push(p); saveArc(A); render(); return playerDlg(p.uid); }
+  if (a === 'batch') return batchDlg();
+  if (a === 'batchapply') { const us = dlg._us, pos = $('#bPos').value, da = +$('#bAge').value || 0, nat = $('#bNat').value.trim(), dc = +$('#bCA').value || 0, no = $('#bNo').value, tm = $('#bTeam').value; if (!confirm(`确认修改 ${us.length} 名球员？`)) return;
+    us.forEach(u => { const p = A.players.find(x => x.uid === u); if (pos) p.pos = pos; if (da) p.age = clamp(p.age + da, 15, 45); if (nat) p.nat = nat; if (dc) rescaleAttrs(p, clamp(p.ca + dc, 20, 99)); if (tm) p.team = tm; });
+    if (no === 'auto') { const sq = A.players.filter(p => p.team === TEAM).sort((a, b) => POS.indexOf(a.pos) - POS.indexOf(b.pos)); sq.forEach((p, i) => p.no = i + 1); }
+    SEL.clear(); saveArc(A); closeDlg(); toast('已批量修改'); return render(); }
+  if (a === 'batchregen') { const us = dlg._us; if (!confirm(`随机重新生成 ${us.length} 名球员的资料？（保留 UID、位置和号码）`)) return; const rnd = seeded('br|' + Date.now()), names = new Set(A.players.map(p => p.name)); us.forEach(u => { const i = A.players.findIndex(x => x.uid === u), o = A.players[i], n = genPlayer(A, t, o.pos, 16, rnd, names, o.no); n.uid = o.uid; A.players[i] = n; }); SEL.clear(); saveArc(A); closeDlg(); return render(); }
+  if (a === 'batchskreset') { dlg._us.forEach(u => { const p = A.players.find(x => x.uid === u); p.skills = null; }); saveArc(A); closeDlg(); toast('技能已恢复自动分配'); return render(); }
+  if (a === 'skadd') { if (dlg._sk.length >= 5) return toast('最多 5 项技能'); const id = Object.keys(SK_DEF).find(k => !dlg._sk.some(x => x.id === k)); dlg._sk.push({ id, t: 'C' }); dlg._skManual = true; $('#eSk').innerHTML = skRows(dlg._sk); return; }
+  if (a === 'skauto') { const p = A.players.find(x => x.uid === el.closest('.dlg').querySelector('[data-a="savep"]').dataset.u); dlg._sk = skillsOf({ name: p.name, pos: p.pos, rating: p.ca, height: p.height, attributes: p.attrs }, true).map(x => ({ ...x })); dlg._skManual = false; $('#eSk').innerHTML = skRows(dlg._sk); return; }
+  if (a === 'savep') { const p = A.players.find(x => x.uid === el.dataset.u), v = id => $('#' + id).value; p.name = v('eName').trim() || p.name; p.age = clamp(+v('eAge') || p.age, 15, 45); p.nat = v('eNat').trim(); p.team = v('eTeam'); p.pos = v('ePos'); p.no = clamp(+v('eNo') || p.no, 1, 99); p.height = +v('eH') || p.height; p.weight = +v('eW') || p.weight;
+    document.querySelectorAll('#dlg [data-attr]').forEach(i => p.attrs[i.dataset.attr] = clamp(+i.value || p.attrs[i.dataset.attr], 20, 99)); const nca = clamp(+v('eCA') || p.ca, 20, 99); if (nca !== p.ca) rescaleAttrs(p, nca); p.pa = clamp(Math.max(+v('ePA') || p.pa, p.ca), p.ca, 99);
+    p.alt = [...document.querySelectorAll('#eAlt [data-alt]:checked')].map(i => i.dataset.alt).filter(x => x !== p.pos); p.skills = dlg._skManual ? dlg._sk.filter((x, i, L) => L.findIndex(y => y.id === x.id) === i) : null; saveArc(A); closeDlg(); toast('已保存球员资料'); return render(); }
+  if (a === 'delp') { const p = A.players.find(x => x.uid === el.dataset.u); if (!confirm(`删除 ${p.name}？`)) return; A.players = A.players.filter(x => x.uid !== p.uid); saveArc(A); closeDlg(); return render(); }
+  if (a === 'saverules') { A.name = $('#rName').value.trim() || A.name; A.short = $('#rShort').value.trim() || A.short; A.seasonName = $('#rSeason').value.trim() || 'S'; A.country = $('#rCountry').value.trim(); A.region = $('#rRegion').value.trim(); if (A.status !== 'started') A.rules.mode = $('#rMode').value; A.rules.pts = { w: +$('#rW').value, d: +$('#rD').value, l: +$('#rL').value }; saveArc(A); toast('规则已保存'); return render(); }
+  if (a === 'savetpl') { const L = lsGet('ves_custom_tpls_v1') || []; const X = cloneArc(A, A.name); L.push({ name: A.name, data: X }); lsSet('ves_custom_tpls_v1', L); toast('已另存为模板：' + A.name); return; }
+});
+function liveTeam(t) { const g = id => { const e = $('#' + id); return e ? e.value : null; }; return { ...t, short: (g('tShort') || t.short).toUpperCase(), crest: { ...t.crest, p: g('cP') || t.crest.p, s: g('cS') || t.crest.s, bg: g('cB') || t.crest.bg, fg: g('cF') || t.crest.fg, year: +g('tYear') || t.crest.year } }; }
+document.addEventListener('input', ev => { const id = ev.target.id; if (['cP', 'cS', 'cB', 'cF', 'tShort', 'tYear'].includes(id) && TEAM) { const t = A.teams.find(x => x.id === TEAM); $('#crPrev').innerHTML = crestSVG(liveTeam(t), 140); }
+  if (id === 'pq') { window.__pq = ev.target.value; clearTimeout(window.__pqt); window.__pqt = setTimeout(() => { const pos = ev.target.selectionStart; render(); const i = $('#pq'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } }, 300); } });
+document.addEventListener('change', ev => { const e = ev.target;
+  if (e.dataset.sel) { e.checked ? SEL.add(e.dataset.sel) : SEL.delete(e.dataset.sel); const n = $('#selN'); if (n) n.textContent = `已选 ${[...SEL].filter(u => A.players.some(p => p.uid === u && p.team === TEAM)).length} 人`; }
+  if (e.id === 'selAll') { A.players.filter(p => p.team === TEAM).forEach(p => e.checked ? SEL.add(p.uid) : SEL.delete(p.uid)); render(); }
+  if (e.dataset.skid != null) { dlg._sk[+e.dataset.skid].id = e.value; dlg._skManual = true; $('#eSk').innerHTML = skRows(dlg._sk); }
+  if (e.dataset.skt != null) { dlg._sk[+e.dataset.skt].t = e.value; dlg._skManual = true; $('#eSk').innerHTML = skRows(dlg._sk); }
+  if (e.id === 'imp' && e.files[0]) { const f = e.files[0]; if (f.size > 8e6) return toast('档案太大（超过 8 MB）'); f.text().then(txt => { let X; try { X = JSON.parse(txt); } catch (er) { return toast('不是有效的档案文件'); } if (!X || !Array.isArray(X.teams) || !Array.isArray(X.players) || !X.rules) return toast('档案缺少球队、球员或规则资料'); if (idx().some(y => y.id === X.id)) X = cloneArc(X, X.name + '（导入）'); saveArc(X); toast('已导入：' + X.name); render(); }); }
+});
+$('#brandLogo').src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(crestSVG({ short: 'CL', crest: { tpl: 'geo', p: '#ff5b1f', s: '#ece8df', bg: '#0c0c0a', fg: '#0c0c0a' } }, 36).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
+window.__cl = { get A() { return A; }, validate, genLeague, loadArc, saveArc, idx };
+render();
+})();
+</script>
+</body>
+</html>
