@@ -373,62 +373,55 @@ th.sorted{color:var(--accent-2)}
 :root[data-theme="royal"]{--bg:#070a14;--bg-2:#0d1220;--fg:#e8ecf5;--fg-2:#9aa6bd;--fg-3:#5d6880;--tint:214,224,245;--glow:140,170,255;--accent:#e4b450;--acc-rgb:228,180,80;--acc-hi:#fbe6ad;--acc-lo:#a7781f;--acc-deep:#5a3f0c;--acc-ink:#1d1403;--accent-2:#f3f5fb;--gold:#f0cf7a;--z1:#e4b450;--z2:#7fa6ff;--z3:#9aa6bd;--pitch:#0b1612}
 :root[data-theme="glacier"]{--bg:#080b0e;--bg-2:#0f1419;--fg:#e6eef2;--fg-2:#98a8b2;--fg-3:#5c6c76;--tint:220,235,242;--glow:170,228,255;--accent:#3fd4e6;--acc-rgb:63,212,230;--acc-hi:#b8f4fb;--acc-lo:#12899a;--acc-deep:#0a4a54;--acc-ink:#03181b;--accent-2:#f1f8fa;--gold:#dcb65e;--z1:#3fd4e6;--z2:#d9b45a;--z3:#a2b2bb;--pitch:#0c1712}
 .thpick{display:flex;gap:6px;flex-wrap:wrap}.thpick button{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line-2);background:transparent;color:var(--fg-2);cursor:pointer}.thpick button i{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}.thpick button.on{border-color:var(--accent);color:var(--fg)}
-/* ===== 开场 / 登录界面（网游风格） ===== */
-#gate .gcrowd{position:absolute;left:0;right:0;bottom:calc(62vh - 8vh - 2px);height:16vh;opacity:.55;background-repeat:repeat-x;background-size:auto 100%;pointer-events:none}
-#gate .gflash{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;box-shadow:0 0 10px 4px rgba(255,255,255,.7);opacity:0;animation:gfx 5s infinite}
-@keyframes gfx{0%,92%,100%{opacity:0}94%{opacity:1}96%{opacity:0}}
-#gate .gside{position:absolute;top:50%;transform:translateY(-50%);width:260px;display:grid;gap:10px;text-align:left;font-size:12px;color:rgba(var(--tint),.8)}
-#gate .gside.l{left:max(28px,4vw)}#gate .gside.r{right:max(28px,4vw)}
-#gate .gpanel{padding:14px;border-radius:4px;background:linear-gradient(165deg,rgba(var(--tint),.07),rgba(var(--tint),.02));border:1px solid rgba(var(--tint),.12);border-top-color:rgba(var(--tint),.24)}
-#gate .gpanel h4{margin:0 0 8px;font:600 10px var(--mono);letter-spacing:.22em;color:rgba(var(--tint),.55);text-transform:uppercase}
-#gate .gstar{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center}
-#gate .gstar .ov{grid-row:span 2;font:800 54px/0.9 var(--disp);color:var(--accent)}
-#gate .gstar b{font-size:17px;color:#fff}#gate .gstar .sub{display:flex;align-items:center;gap:6px;color:rgba(var(--tint),.65)}
-#gate .gsk{display:flex;gap:6px;margin-top:8px}
-#gate .gtop{display:grid;gap:6px}#gate .gtop div{display:grid;grid-template-columns:16px 20px 1fr auto;gap:8px;align-items:center}#gate .gtop .n{font:600 11px var(--mono);color:rgba(var(--tint),.5)}#gate .gtop .v{font:600 12px var(--mono);color:var(--accent)}
-#gate .gmarq{position:absolute;left:0;right:0;bottom:44px;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
-#gate .gmarq .tr{display:flex;gap:26px;width:max-content;animation:gmq 60s linear infinite}#gate .gmarq img{width:30px;height:30px;opacity:.75;filter:saturate(.8)}
-@keyframes gmq{to{transform:translateX(-50%)}}
-#gate .gbtn2{font:600 13px var(--sans);padding:10px;border-radius:10px;border:1px solid rgba(var(--tint),.22);background:transparent;color:rgba(var(--tint),.9);cursor:pointer;text-decoration:none;text-align:center}#gate .gbtn2:hover{border-color:var(--accent);color:#fff}
-#gate .gth{display:grid;gap:6px}#gate .gth span{font-size:12px;color:rgba(var(--tint),.65)}
-@media (max-width:1080px){#gate .gside{display:none}}
-@media (max-height:640px){#gate .gmarq{display:none}#gate .glogo{width:90px}}
-
-#gate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;overflow:hidden;color:#f4efe2;font-family:var(--sans);background:radial-gradient(120% 80% at 50% 115%,#123d22 0%,#0c1f13 36%,#0c0c0a 72%);transition:opacity .7s ease,transform .7s ease}
-#gate.out{opacity:0;transform:scale(1.06);pointer-events:none}
-#gate .gbeam{position:absolute;top:-30%;width:46vw;height:150vh;background:linear-gradient(180deg,rgba(255,236,210,.16),rgba(255,236,210,0) 70%);filter:blur(6px);transform-origin:50% 0;mix-blend-mode:screen;animation:gsw 7s ease-in-out infinite alternate}
-#gate .gbeam.l{left:-12vw;transform:rotate(-24deg)}#gate .gbeam.r{right:-12vw;transform:rotate(24deg);animation-delay:-3.5s;opacity:.35}
-@keyframes gsw{0%{opacity:.55;transform:rotate(var(--a,-24deg))}100%{opacity:1;transform:rotate(calc(var(--a,-24deg) * .6))}}
-#gate .gbeam.r{--a:24deg}
-#gate .gpitch{position:absolute;left:50%;bottom:-8vh;width:160vw;height:62vh;transform:translateX(-50%) perspective(600px) rotateX(62deg);background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 6vw,rgba(255,255,255,0) 6vw 12vw),#0d4a24;border-top:2px solid rgba(255,255,255,.35);box-shadow:0 -40px 120px rgba(80,255,150,.12) inset}
-#gate .gpitch::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.35)}
-#gate .gpitch::after{content:'';position:absolute;left:50%;top:18%;width:22vw;height:22vw;border:2px solid rgba(255,255,255,.3);border-radius:50%;transform:translateX(-50%)}
-#gate .gdust{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 20% 30%,rgba(255,255,255,.5),transparent),radial-gradient(1px 1px at 70% 20%,rgba(255,255,255,.4),transparent),radial-gradient(1.5px 1.5px at 40% 60%,rgba(255,230,150,.45),transparent),radial-gradient(1px 1px at 85% 55%,rgba(255,255,255,.35),transparent),radial-gradient(1px 1px at 10% 75%,rgba(255,255,255,.3),transparent);animation:gdu 12s linear infinite;opacity:.8}
-@keyframes gdu{to{transform:translateY(-40px)}}
-#gate .gbox{position:relative;display:grid;justify-items:center;gap:14px;text-align:center;padding:24px;width:min(440px,92vw)}
-#gate .glogo{width:min(150px,34vw);filter:drop-shadow(0 18px 30px rgba(0,0,0,.6));animation:gfl 4s ease-in-out infinite}
-@keyframes gfl{50%{transform:translateY(-6px)}}
-#gate h1{margin:0;font-size:clamp(30px,6.4vw,48px);font-weight:900;letter-spacing:.06em;background:linear-gradient(170deg,#fbf8f1 0%,#d8d4cb 46%,#8a877f 62%,#ece8df 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 0 rgba(0,0,0,.25)}
-#gate .gsub{margin-top:-8px;font:600 12px var(--mono);letter-spacing:.42em;color:rgba(244,239,226,.7)}
-#gate .gload{width:100%;display:grid;gap:8px}#gate .gbar{height:8px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}#gate .gbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc-lo),var(--accent) 70%,var(--acc-hi));transition:width .18s linear}
-#gate .gtip{font-size:12px;color:rgba(244,239,226,.72);min-height:1.4em}
-#gate .gtap{font-weight:800;letter-spacing:.3em;font-size:14px;animation:gbl 1.4s ease-in-out infinite;cursor:pointer;padding:10px 18px}
-@keyframes gbl{50%{opacity:.3}}
-#gate .gcard{width:100%;display:none;gap:12px;padding:18px;border-radius:16px;background:linear-gradient(165deg,#1d1d1a,#111110);border:1px solid rgba(var(--tint),.14);border-top-color:rgba(var(--tint),.26);box-shadow:0 30px 60px -20px rgba(0,0,0,.8);text-align:left;animation:gin .45s ease}
-@keyframes gin{from{opacity:0;transform:translateY(14px) scale(.98)}}
-#gate .gcard.on{display:grid}
-#gate label{display:grid;gap:5px;font-size:12px;color:rgba(244,239,226,.75)}
-#gate input[type=text]{font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:#fff;outline:none}#gate input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--acc-rgb),.22)}
-#gate .gsrv{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14);font-size:13px}#gate .gsrv .dot{width:9px;height:9px;border-radius:50%;background:#3c9;box-shadow:0 0 8px #3c9}#gate .gsrv b{font-weight:800}#gate .gsrv span{margin-left:auto;font:600 11px var(--mono);color:rgba(244,239,226,.6)}
-#gate .gplay{font:900 17px var(--sans);letter-spacing:.2em;padding:13px;border-radius:12px;border:0;cursor:pointer;color:var(--acc-ink);background:linear-gradient(175deg,var(--acc-hi),var(--accent) 48%,var(--acc-lo));box-shadow:0 5px 0 var(--acc-deep),0 12px 26px -8px rgba(var(--acc-rgb),.5);transition:transform .08s}#gate .gplay:active{transform:translateY(3px);box-shadow:0 2px 0 var(--acc-deep)}
-#gate .grow{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(244,239,226,.7)}#gate .grow button{font:inherit;background:none;border:0;color:var(--accent);cursor:pointer;padding:0}
-#gate .gver{position:absolute;bottom:12px;left:0;right:0;text-align:center;font:600 10px var(--mono);letter-spacing:.2em;color:rgba(244,239,226,.4)}
-.mgrchip{display:inline-flex;align-items:center;gap:6px}.langmenu{position:fixed;z-index:120;display:grid;gap:2px;min-width:170px;padding:6px;border-radius:6px;background:var(--bg-2);border:1px solid var(--line-2);box-shadow:0 20px 40px -12px rgba(0,0,0,.7)}.langmenu button{text-align:left;font:inherit;font-size:13px;padding:7px 10px;border-radius:4px;border:0;background:none;color:var(--fg-2);cursor:pointer}.langmenu button:hover{background:var(--panel-2);color:var(--fg)}.langmenu button.on{color:var(--accent)}.goog-te-banner-frame,iframe.skiptranslate,#goog-gt-tt,.goog-te-balloon-frame{display:none!important}body{top:0!important}font[style]{background:none!important;box-shadow:none!important}.sbbar{position:relative;z-index:25;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:8px max(16px,env(safe-area-inset-left,0px));background:var(--accent-dim);border-bottom:1px solid var(--accent);font-size:12.5px}.sbbar .btn{padding:4px 10px;font-size:12px;text-decoration:none}
-</style>
+/* ===== 开场 / 登录界面：电影感的夜场主视觉 + 右侧登录栏 ===== */
+#gate{position:fixed;inset:0;z-index:200;overflow:hidden;color:var(--fg);font-family:var(--sans);background:#050505;transition:opacity .8s var(--ease)}
+#gate.out{opacity:0;pointer-events:none}
+#gate .gl{position:absolute;inset:0;pointer-events:none}
+#gate .gsky{background:radial-gradient(70% 60% at 14% -8%,rgba(var(--glow),.20),transparent 62%),radial-gradient(60% 50% at 95% 110%,rgba(var(--acc-rgb),.06),transparent 60%),linear-gradient(180deg,#070707 0%,var(--bg) 70%)}
+#gate .gbeam{left:-18vw;top:-24vh;width:78vw;height:150vh;background:linear-gradient(115deg,rgba(var(--glow),.16) 0%,rgba(var(--glow),.05) 34%,transparent 58%);filter:blur(18px);transform-origin:0 0;animation:gbm 14s var(--ease) infinite alternate}
+@keyframes gbm{from{transform:rotate(-2deg);opacity:.8}to{transform:rotate(3deg);opacity:1}}
+#gate .gfield{top:auto;height:52vh;bottom:0;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%201600%20500%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27f%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%270%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23fff%27%20stop-opacity%3D%270%27/%3E%3Cstop%20offset%3D%27.55%27%20stop-color%3D%27%23fff%27%20stop-opacity%3D%27.75%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23fff%27/%3E%3C/linearGradient%3E%3Cmask%20id%3D%27m%27%3E%3Crect%20width%3D%271600%27%20height%3D%27500%27%20fill%3D%27url%28%23f%29%27/%3E%3C/mask%3E%3C/defs%3E%3Cg%20mask%3D%27url%28%23m%29%27%3E%3Cpolygon%20points%3D%27-800%2C500%20-600%2C500%20-17%2C0%20-133%2C0%27%20fill%3D%27%2312281a%27/%3E%3Cpolygon%20points%3D%27-600%2C500%20-400%2C500%20100%2C0%20-17%2C0%27%20fill%3D%27%230f2216%27/%3E%3Cpolygon%20points%3D%27-400%2C500%20-200%2C500%20217%2C0%20100%2C0%27%20fill%3D%27%2312281a%27/%3E%3Cpolygon%20points%3D%27-200%2C500%200%2C500%20333%2C0%20217%2C0%27%20fill%3D%27%230f2216%27/%3E%3Cpolygon%20points%3D%270%2C500%20200%2C500%20450%2C0%20333%2C0%27%20fill%3D%27%2312281a%27/%3E%3Cpolygon%20points%3D%27200%2C500%20400%2C500%20567%2C0%20450%2C0%27%20fill%3D%27%230f2216%27/%3E%3Cpolygon%20points%3D%27400%2C500%20600%2C500%20683%2C0%20567%2C0%27%20fill%3D%27%2312281a%27/%3E%3Cpolygon%20points%3D%27600%2C500%20800%2C500%20800%2C0%20683%2C0%27%20fill%3D%27%230f2216%27/%3E%3Cpolygon%20points%3D%27800%2C500%201000%2C500%20917%2C0%20800%2C0%27%20fill%3D%27%2312281a%27/%3E%3Cpolygon%20points%3D%271000%2C500%201200%2C500%201033%2C0%20917%2C0%27%20fill%3D%27%230f2216%27/%3E%3Cpolygon%20points%3D%271200%2C500%201400%2C500%201150%2C0%201033%2C0%27%20fill%3D%27%2312281a%27/%3E%3Cpolygon%20points%3D%271400%2C500%201600%2C500%201267%2C0%201150%2C0%27%20fill%3D%27%230f2216%27/%3E%3Cpolygon%20points%3D%271600%2C500%201800%2C500%201383%2C0%201267%2C0%27%20fill%3D%27%2312281a%27/%3E%3Cpolygon%20points%3D%271800%2C500%202000%2C500%201500%2C0%201383%2C0%27%20fill%3D%27%230f2216%27/%3E%3Cpolygon%20points%3D%272000%2C500%202200%2C500%201617%2C0%201500%2C0%27%20fill%3D%27%2312281a%27/%3E%3Cpolygon%20points%3D%272200%2C500%202400%2C500%201733%2C0%201617%2C0%27%20fill%3D%27%230f2216%27/%3E%3Cline%20x1%3D%27800%27%20y1%3D%270%27%20x2%3D%27800%27%20y2%3D%27500%27%20stroke%3D%27rgba%28255%2C255%2C255%2C.2%29%27%20stroke-width%3D%273%27/%3E%3Cellipse%20cx%3D%27800%27%20cy%3D%27300%27%20rx%3D%27300%27%20ry%3D%2790%27%20fill%3D%27none%27%20stroke%3D%27rgba%28255%2C255%2C255%2C.16%29%27%20stroke-width%3D%273%27/%3E%3Cline%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271600%27%20y2%3D%270%27%20stroke%3D%27rgba%28255%2C255%2C255%2C.12%29%27%20stroke-width%3D%272%27/%3E%3C/g%3E%3C/svg%3E") center bottom/100% 100% no-repeat}
+#gate .ghaze{background:linear-gradient(180deg,transparent 40%,rgba(var(--glow),.05) 58%,transparent 72%)}
+#gate .gvig{background:radial-gradient(120% 90% at 40% 45%,transparent 45%,rgba(0,0,0,.75) 100%)}
+#gate .ggrain{opacity:.5;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
+#gate .ghero{position:absolute;left:clamp(24px,7vw,120px);top:50%;transform:translateY(-50%);max-width:min(620px,calc(100vw - 480px));display:grid;justify-items:start;gap:0;opacity:0;transition:opacity 1s var(--ease),transform 1s var(--ease)}
+#gate.ready .ghero{opacity:1;transform:translateY(-52%)}
+#gate .glogo{height:clamp(120px,24vh,230px);width:auto;margin:0 0 26px -8px;filter:drop-shadow(18px 26px 26px rgba(0,0,0,.7))}
+#gate .geye{font:500 11px var(--mono);letter-spacing:.28em;color:var(--accent);text-transform:uppercase;margin-bottom:12px}
+#gate h1{margin:0;font-weight:900;font-size:clamp(40px,6.2vw,92px);line-height:.98;letter-spacing:-.02em;color:#f6f3ec}
+#gate .gen{margin-top:10px;font:600 clamp(16px,1.6vw,22px) var(--disp);letter-spacing:.42em;color:rgba(var(--tint),.55)}
+#gate .gline{margin-top:28px;padding-top:16px;border-top:1px solid rgba(var(--tint),.14);font-size:14px;color:rgba(var(--tint),.78);display:flex;gap:10px;align-items:center;flex-wrap:wrap}#gate .gline b{color:#fff;font-weight:700}#gate .gline .crest{width:22px;height:22px}
+#gate .grail{position:absolute;top:0;right:0;bottom:0;width:min(400px,100vw);display:flex;flex-direction:column;justify-content:center;gap:22px;padding:48px 40px;background:linear-gradient(180deg,rgba(14,14,13,.94),rgba(10,10,9,.97));border-left:1px solid rgba(var(--tint),.1);transform:translateX(100%);transition:transform .9s var(--ease)}
+#gate.ready .grail{transform:none}
+#gate .grail h2{margin:0;font-size:24px;font-weight:900;letter-spacing:.01em}
+#gate .grail .gk{font:500 10.5px var(--mono);letter-spacing:.26em;color:rgba(var(--tint),.45);text-transform:uppercase;margin-bottom:6px}
+#gate .gfld{position:relative;display:block}#gate .gfld input{width:100%;font:500 18px var(--sans);padding:22px 0 10px;border:0;border-bottom:1px solid rgba(var(--tint),.25);background:transparent;color:#fff;outline:none;border-radius:0}#gate .gfld span{position:absolute;left:0;top:22px;font-size:15px;color:rgba(var(--tint),.45);transition:all .25s var(--ease);pointer-events:none}
+#gate .gfld input:focus{border-bottom-color:var(--accent)}#gate .gfld input:focus+span,#gate .gfld input:not(:placeholder-shown)+span{top:2px;font-size:11px;letter-spacing:.12em;color:var(--accent)}
+#gate .gfld input.bad{border-bottom-color:var(--loss)}
+#gate .gplay{display:flex;justify-content:space-between;align-items:center;width:100%;font:800 15px var(--sans);letter-spacing:.14em;padding:16px 18px;border:0;border-radius:2px;cursor:pointer;color:var(--acc-ink);background:var(--accent);transition:transform .2s var(--ease),filter .2s}#gate .gplay:hover{filter:brightness(1.08)}#gate .gplay:active{transform:translateY(1px)}#gate .gplay i{font-style:normal;transition:transform .25s var(--ease)}#gate .gplay:hover i{transform:translateX(4px)}
+#gate .gsrv{display:flex;align-items:center;gap:8px;font:500 11.5px var(--mono);color:rgba(var(--tint),.55)}#gate .gsrv .dot{width:7px;height:7px;border-radius:50%;background:var(--win)}
+#gate .glinks{display:flex;gap:18px;padding-top:18px;border-top:1px solid rgba(var(--tint),.1);font-size:13px}#gate .glinks a,#gate .glinks button{font:inherit;color:rgba(var(--tint),.75);background:none;border:0;padding:0;cursor:pointer;text-decoration:none}#gate .glinks a:hover,#gate .glinks button:hover{color:#fff}
+#gate .gopt{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(var(--tint),.55)}#gate .gopt label{display:flex;gap:8px;align-items:center;cursor:pointer}
+#gate .gsw{display:flex;gap:8px}#gate .gsw button{width:20px;height:20px;border-radius:50%;border:0;padding:0;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.18);transition:box-shadow .2s}#gate .gsw button.on{box-shadow:0 0 0 2px #0e0e0d,0 0 0 3.5px var(--accent)}
+#gate .gfoot{position:absolute;left:clamp(24px,7vw,120px);bottom:22px;font:500 10px var(--mono);letter-spacing:.22em;color:rgba(var(--tint),.3)}
+#gate .gprog{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(var(--tint),.08)}#gate .gprog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s linear}
+#gate .gtip{position:absolute;left:clamp(24px,7vw,120px);bottom:44px;font-size:12px;color:rgba(var(--tint),.5);transition:opacity .5s}#gate.ready .gtip,#gate.ready .gprog{opacity:0}
+@media (max-width:860px){#gate .ghero{left:24px;right:24px;top:9vh;transform:none;max-width:none}#gate.ready .ghero{transform:none}#gate .glogo{height:16vh;margin-bottom:16px}#gate h1{font-size:clamp(34px,10vw,54px)}#gate .gline{display:none}
+  #gate .grail{top:auto;left:0;width:auto;height:auto;padding:26px 24px calc(22px + env(safe-area-inset-bottom,0px));gap:16px;border-left:0;border-top:1px solid rgba(var(--tint),.12);transform:translateY(100%)}#gate.ready .grail{transform:none}#gate .gfoot,#gate .gtip{display:none}}
+@media (prefers-reduced-motion:reduce){#gate .gbeam{animation:none}#gate .ghero,#gate .grail{transition:none}}
+.mgrchip{display:inline-flex;align-items:center;gap:6px}</style>
 </head>
 <body>
 
-<div id="gate" hidden><div class="gbeam l"></div><div class="gbeam r"></div><div class="gpitch"></div><div class="gcrowd" id="gCrowd"></div><div class="gdust"></div><div id="gFlashes"></div><div class="gside l" id="gL"></div><div class="gside r" id="gR"></div><div class="gmarq"><div class="tr" id="gMarq"></div></div><div class="gbox"><img class="glogo" id="gLogo" alt=""><h1>威伊士超联赛</h1><div class="gsub">VES LEAGUE · 足球经理</div><div class="gload" id="gLoad"><div class="gbar"><i id="gBar"></i></div><div class="gtip" id="gTip">正在进入球场…</div></div><div class="gtap" id="gTap" hidden>— 点击屏幕开始 —</div><div class="gcard" id="gCard"><label>经理名称<input type="text" id="gName" maxlength="16" placeholder="输入你的经理名" autocomplete="nickname"></label><div class="gsrv"><i class="dot"></i><b>威超联赛 · 主服</b><span id="gSrv">S1 · 第 1 轮</span></div><button class="gplay" id="gPlay" type="button">进入游戏</button><a class="gbtn2" id="gSand" href="?sandbox">🧪 试玩新存档（从 S01 第 1 轮开始，不影响正式进度）</a><div class="gth"><span>配色方案</span><div id="gTheme"></div></div><div class="grow"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gSkip">下次直接进入</label><button type="button" id="gGuest">游客进入 ›</button></div></div></div><div class="gver" id="gVer">VES LEAGUE CLIENT</div></div>
+<div id="gate" hidden><div class="gl gsky"></div><div class="gl gbeam"></div><div class="gl gfield"></div><div class="gl ghaze"></div><div class="gl gvig"></div><div class="gl ggrain"></div>
+<div class="ghero"><img class="glogo" id="gLogo" alt=""><div class="geye" id="gEye">Season 01</div><h1>威伊士超联赛</h1><div class="gen">VES LEAGUE</div><div class="gline" id="gLine"></div></div>
+<div class="gtip" id="gTip">正在进入球场</div><div class="gprog"><i id="gBar"></i></div><div class="gfoot">VES LEAGUE · FOOTBALL MANAGER</div>
+<aside class="grail" aria-label="经理登录"><div><div class="gk">经理登录</div><h2 id="gHi">欢迎来到威超</h2></div>
+<label class="gfld"><input type="text" id="gName" maxlength="16" placeholder=" " autocomplete="nickname"><span>经理名称</span></label>
+<button class="gplay" id="gPlay" type="button"><span>进入游戏</span><i>→</i></button>
+<div class="gsrv"><i class="dot"></i><span id="gSrv">主服 · S01 第 1 轮</span></div>
+<div class="glinks"><a id="gSand" href="?sandbox">试玩新存档</a><button type="button" id="gGuest">游客进入</button></div>
+<div class="gopt"><label><input type="checkbox" id="gSkip">下次直接进入</label><div class="gsw" id="gTheme" role="group" aria-label="配色"></div></div></aside></div>
 
 <header class="top">
   <div class="top-in">
@@ -2074,52 +2067,35 @@ try { setTheme(localStorage.getItem('ves_theme') || 'night', true); } catch (e) 
 const MGR_K = 'ves_mgr', GSKIP_K = 'ves_gate_skip'; const lsg = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, lss = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
 function gateShow(force) {
   const G = document.getElementById('gate'); if (!G) return; if (!force && (/vesdebug/.test(location.hash) || lsg(GSKIP_K) === '1')) return;
-  document.getElementById('gLogo').src = LOGO['ves-league-logo']; G.hidden = false; G.classList.remove('out'); document.body.style.overflow = 'hidden';
-  const bar = document.getElementById('gBar'), tip = document.getElementById('gTip'), tap = document.getElementById('gTap'), card = document.getElementById('gCard'), load = document.getElementById('gLoad');
-  const TIPS = ['正在载入球队资料…', '正在整理球员能力与技能…', '正在铺设草皮、画好白线…', '正在点亮球场灯光…', '小贴士：技能稀有度 C < B < A < S，越稀有越容易触发', '小贴士：更衣室信任跌太低，主帅会被解雇', '小贴士：精力见底的主力会被自动轮换'];
-  let p = force ? 100 : 0, k = 0; card.classList.remove('on'); tap.hidden = true; load.hidden = false;
-  try { document.getElementById('gSrv').textContent = `${SN(SEASON)} · 第 ${Math.min(38, playedRounds() + 1)} 轮`; } catch (e) {}
-  try { gateDeco(); } catch (e) { }
-  document.getElementById('gName').value = lsg(MGR_K) || ''; document.getElementById('gSkip').checked = lsg(GSKIP_K) === '1';
-  const ready = () => { load.hidden = true; tap.hidden = false; G.onclick = ev => { if (card.classList.contains('on')) return; tap.hidden = true; card.classList.add('on'); setTimeout(() => document.getElementById('gName').focus(), 60); }; };
-  if (force) ready(); else { const iv = setInterval(() => { p = Math.min(100, p + 4 + Math.random() * 9); bar.style.width = p + '%'; if (p > (k + 1) * 16 && k < TIPS.length - 1) tip.textContent = TIPS[++k]; if (p >= 100) { clearInterval(iv); tip.textContent = '准备就绪'; setTimeout(ready, 250); } }, 110); }
-  const enter = guest => { const n = document.getElementById('gName').value.trim(); if (!guest) { if (!n) { const i = document.getElementById('gName'); i.focus(); i.style.borderColor = '#e55'; return; } lss(MGR_K, n); } lss(GSKIP_K, document.getElementById('gSkip').checked ? '1' : null); mgrChip(); G.classList.add('out'); document.body.style.overflow = ''; setTimeout(() => { G.hidden = true; }, 720); };
-  document.getElementById('gPlay').onclick = ev => { ev.stopPropagation(); enter(false); }; document.getElementById('gGuest').onclick = ev => { ev.stopPropagation(); enter(true); };
-  document.getElementById('gName').onkeydown = ev => { if (ev.key === 'Enter') enter(false); };
+  document.getElementById('gLogo').src = LOGO['ves-league-logo']; G.hidden = false; G.classList.remove('out', 'ready'); document.body.style.overflow = 'hidden';
+  const bar = document.getElementById('gBar'), tip = document.getElementById('gTip'), nm = document.getElementById('gName');
+  const TIPS = ['正在进入球场', '正在整理球员资料', '正在点亮泛光灯'];
+  try { gateFill(); } catch (e) { }
+  nm.value = lsg(MGR_K) || ''; document.getElementById('gSkip').checked = lsg(GSKIP_K) === '1';
+  const ready = () => { G.classList.add('ready'); setTimeout(() => { try { nm.focus({ preventScroll: true }); } catch (e) { } }, 500); };
+  if (force) { bar.style.width = '100%'; ready(); } else { let p = 0, k = 0; const iv = setInterval(() => { p = Math.min(100, p + 6 + Math.random() * 10); bar.style.width = p + '%'; if (p > (k + 1) * 33 && k < TIPS.length - 1) tip.textContent = TIPS[++k]; if (p >= 100) { clearInterval(iv); setTimeout(ready, 200); } }, 90); }
+  const enter = guest => { const n = nm.value.trim(); if (!guest) { if (!n) { nm.classList.add('bad'); nm.focus(); return; } lss(MGR_K, n); } nm.classList.remove('bad'); lss(GSKIP_K, document.getElementById('gSkip').checked ? '1' : null); mgrChip(); G.classList.add('out'); document.body.style.overflow = ''; setTimeout(() => { G.hidden = true; }, 820); };
+  document.getElementById('gPlay').onclick = () => enter(false); document.getElementById('gGuest').onclick = () => enter(true);
+  nm.onkeydown = ev => { if (ev.key === 'Enter') enter(false); };
 }
-function gateDeco() {
-  const T = Object.keys(TD); document.getElementById('gMarq').innerHTML = T.concat(T).map(t => `<img src="${LOGO[t] || ''}" alt="">`).join('');
-  document.getElementById('gTheme').innerHTML = themePick();
-  if (SANDBOX) { const a = document.getElementById('gSand'); a.textContent = '← 回到正式进度'; a.href = location.pathname; }
-  // 看台：一排随机的人头剪影，偶尔有闪光灯
-  { let c = ''; const W = 1600, r = seeded('crowd'); for (let i = 0; i < 260; i++) { const x = r() * W, y = 40 + r() * 70, rr = 5 + r() * 5; c += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${rr.toFixed(1)}"/><rect x="${(x - rr * 1.3).toFixed(0)}" y="${(y + rr * 0.8).toFixed(0)}" width="${(rr * 2.6).toFixed(0)}" height="40" rx="${rr.toFixed(0)}"/>`; }
-    document.getElementById('gCrowd').style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 120' preserveAspectRatio='none'><g fill='#000' opacity='.9'>${c}</g></svg>`)}")`;
-    document.getElementById('gFlashes').innerHTML = [...Array(14)].map((_, i) => `<i class="gflash" style="left:${(4 + r() * 92).toFixed(1)}%;bottom:calc(46vh + ${(r() * 12).toFixed(1)}vh);animation-delay:${(r() * 5).toFixed(2)}s;animation-duration:${(3 + r() * 5).toFixed(1)}s"></i>`).join(''); }
-  // 左：本季焦点球员；右：实力榜 / 积分榜前五
-  const all = []; Object.entries(PDB).forEach(([t, L]) => L.forEach(p => all.push([t, p]))); all.sort((a, b) => b[1].rating - a[1].rating);
-  const [st, sp] = all[Math.floor(ghash('star|' + SEASON + '|' + playedRounds()) * Math.min(5, all.length))] || [];
-  if (sp) document.getElementById('gL').innerHTML = `<div class="gpanel"><h4>本季焦点球员</h4><div class="gstar"><span class="ov">${sp.rating}</span><b>${esc(sp.name)}</b><span class="sub">${crest(st, 16)} ${esc(st)} · ${esc(sp.pos)} · ${sp.age} 岁</span></div><div class="gsk">${skillsOf(sp).map(x => skBadge(x.id, x.t, 30)).join('')}</div></div><div class="gpanel"><h4>小贴士</h4>技能稀有度 C &lt; B &lt; A &lt; S，越稀有触发率越高；比赛里技能触发时，球员头顶会亮起图标。</div>`;
-  const pr = playedRounds(); let rows;
-  if (pr > 0) rows = table(pr).slice(0, 5).map((r, i) => [i + 1, r.team, r.pts + ' 分']); else rows = T.slice().sort((a, b) => ENGINE.strength(b).ovr - ENGINE.strength(a).ovr).slice(0, 5).map((t, i) => [i + 1, t, ENGINE.strength(t).ovr.toFixed(1)]);
-  document.getElementById('gR').innerHTML = `<div class="gpanel"><h4>${pr > 0 ? `积分榜 · 第 ${pr} 轮后` : '赛前实力榜'}</h4><div class="gtop">${rows.map(([n, t, v]) => `<div><span class="n">${n}</span>${crest(t, 20)}<span>${esc(t)}</span><span class="v">${v}</span></div>`).join('')}</div></div><div class="gpanel"><h4>${SN(SEASON)} 赛季</h4>${pr >= 38 ? '本季已经踢完' : `已踢 ${pr} / 38 轮`} · ${T.length} 支球队</div>`;
+function gateFill() {
+  const pr = playedRounds(), n = lsg(MGR_K);
+  document.getElementById('gEye').textContent = `${SN(SEASON)} 赛季 · ${pr >= 38 ? '本季已结束' : `第 ${Math.min(38, pr + 1)} 轮`}`;
+  document.getElementById('gHi').textContent = n ? `欢迎回来，${n}` : '欢迎来到威超';
+  document.getElementById('gSrv').textContent = `${SANDBOX ? '试玩存档' : '主服'} · ${SN(SEASON)} 第 ${Math.min(38, pr + 1)} 轮`;
+  let line = ''; if (pr > 0) { const T = table(pr), a = T[0], b = T[1]; line = `${crest(a.team, 22)}<b>${esc(a.team)}</b> 以 ${a.pts} 分领跑积分榜${b ? `，领先 ${esc(b.team)} ${a.pts - b.pts} 分` : ''}`; }
+  else { const t = Object.keys(TD).sort((x, y) => ENGINE.strength(y).ovr - ENGINE.strength(x).ovr)[0]; line = `${Object.keys(TD).length} 支球队，新赛季即将开球 · 赛前最被看好：${crest(t, 22)}<b>${esc(t)}</b>`; }
+  document.getElementById('gLine').innerHTML = line;
+  document.getElementById('gTheme').innerHTML = THEMES.map(([id, nmT, c, bg]) => `<button type="button" data-th="${id}" title="${nmT}" aria-label="${nmT}" class="${THEME_ACC === c ? 'on' : ''}" style="background:linear-gradient(135deg,${bg} 0 50%,${c} 50%)"></button>`).join('');
+  if (SANDBOX) { const a = document.getElementById('gSand'); a.textContent = '回到正式进度'; a.href = location.pathname; }
 }
-/* 翻译：用 Google 网页翻译把整个界面翻成英文 / 马来文（队名保持原名）；选择记在 cookie 里，重新载入后生效 */
-const LANGS = [['zh-CN', '中文'], ['en', 'English'], ['ms', 'Bahasa Melayu']];
-const curLang = () => { const m = document.cookie.match(/googtrans=\/[^/]+\/([^;]+)/); return m ? m[1] : 'zh-CN'; };
-function setLang(l) { const host = location.hostname; const kill = d => { document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + (d ? '; domain=' + d : ''); };
-  if (l === 'zh-CN') { kill(); kill(host); kill('.' + host.split('.').slice(-2).join('.')); } else { document.cookie = 'googtrans=/zh-CN/' + l + '; path=/'; }
-  location.reload(); }
-function loadTranslate() { if (curLang() === 'zh-CN' || window.__gtl) return; window.__gtl = 1; window.__gtInit = () => { try { new google.translate.TranslateElement({ pageLanguage: 'zh-CN', includedLanguages: 'en,ms,zh-CN', autoDisplay: false }, 'gtEl'); } catch (e) {} };
-  const d = document.createElement('div'); d.id = 'gtEl'; d.style.display = 'none'; document.body.appendChild(d);
-  const sc = document.createElement('script'); sc.src = 'https://translate.google.com/translate_a/element.js?cb=__gtInit'; sc.onerror = () => toast('翻译只能在 ves.dson.site 上使用'); document.head.appendChild(sc); }
-function langMenu(btn) { let m = document.getElementById('langMenu'); if (m) { m.remove(); return; } m = document.createElement('div'); m.id = 'langMenu'; m.className = 'langmenu'; const cl = curLang();
-  m.innerHTML = LANGS.map(([k, n]) => `<button type="button" data-l="${k}" class="${k === cl ? 'on' : ''}">${n}</button>`).join('') + '<div class="dim" style="font-size:11px;padding:4px 8px 2px">机器翻译，队名保持原名</div>';
-  m.onclick = ev => { const b = ev.target.closest('[data-l]'); if (!b) return; if (b.dataset.l === cl) return m.remove(); setLang(b.dataset.l); };
-  const r = btn.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.right = Math.max(8, innerWidth - r.right) + 'px'; document.body.appendChild(m); setTimeout(() => document.addEventListener('click', function f(e) { if (!m.contains(e.target) && e.target !== btn) { m.remove(); document.removeEventListener('click', f); } }), 0); }
-function mgrChip() { let c = document.getElementById('mgrChip'); const n = lsg(MGR_K); const sync = document.getElementById('syncChip'); if (!sync) return; if (!c) { c = document.createElement('button'); c.id = 'mgrChip'; c.className = 'roundchip mgrchip'; c.title = '切换经理 / 回到开场界面'; c.onclick = () => gateShow(true); sync.parentNode.insertBefore(c, sync); } c.textContent = '⚽ ' + (n || '游客经理'); if (!document.getElementById('lgChip')) { const g = document.createElement('button'); g.id = 'lgChip'; g.className = 'roundchip notranslate'; g.setAttribute('translate', 'no'); g.title = '语言 / Language'; g.textContent = '文/A ' + ({ 'zh-CN': '中', en: 'EN', ms: 'MS' }[curLang()] || '中'); g.onclick = () => langMenu(g); sync.parentNode.insertBefore(g, c); } if (!document.getElementById('thChip')) { const t = document.createElement('button'); t.id = 'thChip'; t.className = 'roundchip'; t.title = '切换配色'; t.textContent = '🎨'; t.onclick = () => { const i = THEMES.findIndex(x => x[2] === THEME_ACC); setTheme(THEMES[(i + 1) % THEMES.length][0]); toast('配色：' + THEMES[(i + 1) % THEMES.length][1]); }; sync.parentNode.insertBefore(t, c); } }
-setTimeout(() => { mgrChip(); gateShow(false); loadTranslate(); }, 0);
+document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('#gTheme [data-th]'); if (!b) return; setTheme(b.dataset.th, true); document.querySelectorAll('#gTheme [data-th]').forEach(x => x.classList.toggle('on', x === b)); }, true);
+function mgrChip() { let c = document.getElementById('mgrChip'); const n = lsg(MGR_K); const sync = document.getElementById('syncChip'); if (!sync) return; if (!c) { c = document.createElement('button'); c.id = 'mgrChip'; c.className = 'roundchip mgrchip'; c.title = '切换经理 / 回到开场界面'; c.onclick = () => gateShow(true); sync.parentNode.insertBefore(c, sync); } c.textContent = '⚽ ' + (n || '游客经理'); if (!document.getElementById('thChip')) { const t = document.createElement('button'); t.id = 'thChip'; t.className = 'roundchip'; t.title = '切换配色'; t.textContent = '🎨'; t.onclick = () => { const i = THEMES.findIndex(x => x[2] === THEME_ACC); setTheme(THEMES[(i + 1) % THEMES.length][0]); toast('配色：' + THEMES[(i + 1) % THEMES.length][1]); }; sync.parentNode.insertBefore(t, c); } }
+/* 之前的翻译功能已移除：清掉当时留下的 Google 翻译 cookie，免得页面继续被翻译 */
+if (/googtrans=/.test(document.cookie)) { const h = location.hostname, kill = d => { document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + (d ? '; domain=' + d : ''); }; kill(); kill(h); kill('.' + h.split('.').slice(-2).join('.')); let once = 0; try { once = sessionStorage.getItem('ves_gt_clr'); sessionStorage.setItem('ves_gt_clr', '1'); } catch (e) { once = 1; } if (!once) location.reload(); }
+setTimeout(() => { mgrChip(); gateShow(false); }, 0);
 const crest = (t, s = 28) => `<img class="crest" src="${LOGO[t] || ''}" width="${s}" height="${s}" alt="">`;
-const tlink = (t, s = 24) => `<button class="lnk tname" data-team="${esc(t)}">${crest(t, s)}<span class="notranslate" translate="no">${esc(t)}</span></button>`;
+const tlink = (t, s = 24) => `<button class="lnk tname" data-team="${esc(t)}">${crest(t, s)}<span>${esc(t)}</span></button>`;
 const en = t => (H.profiles[t] && H.profiles[t].en) || '';
 function vis(c) { // 让过暗/过亮的队色在深色底上可见
   const h = c.replace('#', ''); const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
