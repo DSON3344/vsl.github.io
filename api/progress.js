@@ -28,14 +28,23 @@ async function redis(cmds) {
 export async function GET(req) {
   try { return await (useRedis ? getRedis(req) : getBlob(req)); } catch (e) { return json({ error: 'store_get_failed', message: String(e && e.message || e).slice(0, 300) }, 503); }
 }
+// 备份：PUT 时每隔 3 小时把被覆盖的旧进度留成一份备份（最多 12 份）；另外有一份永久快照 pre-custom（开始做自定义联赛之前的进度）
+const BAK = RKEY + ':bak', BAK_MAX = 12, BAK_GAP = 3 * 3600e3, SNAP = RKEY + ':snap:pre-custom';
+let snapDone = false;
+async function ensureSnap(meta, parts) {
+  if (snapDone) return; const [have] = await redis([['GET', SNAP + ':meta']]); if (have) { snapDone = true; return; }
+  const cmds = parts.map((x, i) => ['SET', SNAP + ':' + i, x]); cmds.push(['SET', SNAP + ':meta', JSON.stringify({ ...meta, snap: Date.now() })]); await redis(cmds); snapDone = true;
+}
 async function getRedis(req) {
-  const inm = req.headers.get('if-none-match') || undefined;
+  const inm = req.headers.get('if-none-match') || undefined, url = new URL(req.url);
+  if (url.searchParams.get('backups') != null) { const [L, sm] = await redis([['LRANGE', BAK, 0, -1], ['GET', SNAP + ':meta']]); return json({ backups: (L || []).map(x => JSON.parse(x)).map(({ etag, t, season, played }) => ({ etag, t, season, played })), snapshot: sm ? JSON.parse(sm) : null }); }
   const [metaS] = await redis([['GET', RKEY + ':meta']]);
   if (!metaS) return json({ etag: null, state: null, store: 'redis' });
   const meta = JSON.parse(metaS);
   if (inm && inm === meta.etag) return new Response(null, { status: 304, headers: { ETag: inm, 'Cache-Control': 'no-store' } });
   const parts = await redis([['MGET', ...Array.from({ length: meta.n }, (_, i) => RKEY + ':' + meta.etag + ':' + i)]]);
   const text = (parts[0] || []).join('');
+  try { if (!snapDone) await ensureSnap(meta, parts[0] || []); } catch (e) { }
   return json({ etag: meta.etag, state: JSON.parse(text), store: 'redis' }, 200, { ETag: meta.etag });
 }
 async function getBlob(req) {
@@ -49,7 +58,15 @@ async function getBlob(req) {
 
 // 只用来校验密码
 export async function POST(req) {
-  return authed(req) ? json({ ok: true, store: useRedis ? 'redis' : 'blob' }) : json({ error: 'unauthorized' }, 401);
+  if (!authed(req)) return json({ error: 'unauthorized' }, 401);
+  let body = null; try { body = await req.json(); } catch { body = null; }
+  if (useRedis && body && body.restore) { /* 还原备份：把备份内容读出来，当作一次新的上传写回去（当前进度会先被留成一份备份） */
+    let parts;
+    if (body.restore === 'pre-custom') { const [sm] = await redis([['GET', SNAP + ':meta']]); if (!sm) return json({ error: 'no snapshot' }, 404); const m = JSON.parse(sm); [parts] = await redis([['MGET', ...Array.from({ length: m.n }, (_, i) => SNAP + ':' + i)]]); }
+    else { const [L] = await redis([['LRANGE', BAK, 0, -1]]); const b = (L || []).map(x => JSON.parse(x)).find(x => x.etag === body.restore); if (!b) return json({ error: 'no such backup' }, 404); [parts] = await redis([['MGET', ...Array.from({ length: b.n }, (_, i) => RKEY + ':' + b.etag + ':' + i)]]); }
+    const st = JSON.parse((parts || []).join('')); return json({ ok: true, state: st });
+  }
+  return json({ ok: true, store: useRedis ? 'redis' : 'blob' });
 }
 
 export async function PUT(req) {
@@ -68,8 +85,13 @@ async function putImpl(req) {
     const etag = '"' + createHash('sha1').update(text).digest('hex').slice(0, 20) + '"', n = Math.ceil(text.length / CHUNK);
     const [old] = await redis([['GET', RKEY + ':meta']]);
     const cmds = []; for (let i = 0; i < n; i++) cmds.push(['SET', RKEY + ':' + etag + ':' + i, text.slice(i * CHUNK, (i + 1) * CHUNK)]);
-    cmds.push(['SET', RKEY + ':meta', JSON.stringify({ etag, n, t: Date.now() })]);
-    if (old) { const o = JSON.parse(old); if (o.etag !== etag) for (let i = 0; i < o.n; i++) cmds.push(['DEL', RKEY + ':' + o.etag + ':' + i]); }
+    cmds.push(['SET', RKEY + ':meta', JSON.stringify({ etag, n, t: Date.now(), season: body.season || null, played: body.played ?? null })]);
+    if (old) { const o = JSON.parse(old); if (o.etag !== etag) {
+      const [last] = await redis([['LINDEX', BAK, 0]]), lt = last ? JSON.parse(last).t || 0 : 0;
+      if (Date.now() - lt > BAK_GAP) { /* 旧进度留作备份，超过上限的最旧备份连同分块一起删掉 */
+        cmds.push(['LPUSH', BAK, JSON.stringify(o)]); const [ev] = await redis([['LRANGE', BAK, BAK_MAX - 1, -1]]);
+        (ev || []).forEach(x => { const b = JSON.parse(x); for (let i = 0; i < b.n; i++) cmds.push(['DEL', RKEY + ':' + b.etag + ':' + i]); }); cmds.push(['LTRIM', BAK, 0, BAK_MAX - 1]);
+      } else for (let i = 0; i < o.n; i++) cmds.push(['DEL', RKEY + ':' + o.etag + ':' + i]); } }
     await redis(cmds);
     return json({ ok: true, etag, store: 'redis' });
   }
