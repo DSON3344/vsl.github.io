@@ -1,0 +1,28 @@
+# 威超全自动模拟的后台推进：每 30 分钟用无头浏览器打开一次网站，把到点的比赛和转会窗补上并上传。
+# 需要在仓库 Settings → Secrets and variables → Actions 新增 VES_SYNC_KEY（就是网站的同步密码）。
+name: autosim
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+concurrency:
+  group: autosim
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright Chromium
+        run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Advance the league
+        env:
+          VES_SYNC_KEY: ${{ secrets.VES_SYNC_KEY }}
+          VES_URL: https://ves.dson.site/
+        run: node scripts/autorun.mjs
