@@ -2424,7 +2424,7 @@ const PHYS = (() => {
     function anchor(p, mode, raw) { const d = dirOf(p.side), sbx = raw ? ball.x : st.sbx, sby = raw ? ball.y : st.sby, bx = d > 0 ? sbx : L - sbx, by = d > 0 ? sby : W - sby, f = raw ? (mode === 'att' ? 1 : 0) : st.af[p.side];
       if (p.gk) { const gx = 2 + clamp((bx - 20) * 0.08, 0, 14); return toW(p.side, gx, clamp(W / 2 + (by - W / 2) * 0.18, GY0 + 1, GY1 - 1)); }
       const dep = clamp((p.fx - 12) / 76, 0, 1), lerp = (a, b) => a + (b - a) * f, back = lerp(clamp(bx - 22, 10, 36), clamp(bx - 34, 16, 50)), span = lerp(36, 50);
-      let X = back + dep * span, Y = W / 2 + (p.fy / 100 - 0.5) * W * lerp(0.7, 0.92) + (by - W / 2) * lerp(0.3, 0.18); const SPa = st.sty[p.side]; X += SPa.line * (1 - f * 0.5) * (1 - dep * 0.4); if (SPa.counter && dep > 0.75) X += 12 * (1 - f); /* 打法：防线高低；防反球队前锋留在前面等反击 */
+      let X = back + dep * span, Y = W / 2 + (p.fy / 100 - 0.5) * W * lerp(0.7, 0.92) + (by - W / 2) * lerp(0.3, 0.18); const SPa = st.sty[p.side]; X += SPa.line * (1 - f * 0.5) * (1 - dep * 0.4); if (SPa.counter && dep > 0.75) X += 12 * (1 - f); if (dep > 0.7 && Math.abs(p.fy - 50) > 20 && bx > L * 0.58) Y += (W / 2 - Y) * 0.38 * f; /* 边锋进攻三区往肋部收，有内切射门的位置 */ /* 打法：防线高低；防反球队前锋留在前面等反击 */
       if (st.kick) X = Math.min(X, L / 2 - 1.5 - (1 - dep) * 8);
       return toW(p.side, clamp(X, 3, L - 4), clamp(Y, 3, W - 3)); }
     const toW = (side, X, Y) => dirOf(side) > 0 ? [X, Y] : [L - X, W - Y];
@@ -2474,7 +2474,7 @@ const PHYS = (() => {
     /* 射门技能：点球 > 头球 > 单刀 > 禁区 > 远射，一脚射门只看一项 */
     function shotSk(p, plan, hdr, dist, odp) { const id = plan === 'pen' ? 'pen' : hdr ? 'head' : odp > 3.5 && dist < 18 && p.sk && p.sk.solo ? 'solo' : dist < 16.5 ? 'box' : dist > 17 ? 'long' : ''; const w = id ? skR(p, id) : 0; if (!w) return { k: 0, b: 0, id: '' };
       const K = { pen: [0.15, 0.06], head: [0.12, 0.04], solo: [0.12, 0.05], box: [0.1, 0.03], long: [0.12, 0.03] }[id]; return { k: K[0] * w, b: K[1] * w, id }; }
-    function styB(p, q) { const S = st.sty[p.side]; let b = 0; if (q.core) b += S.coreB; const run = q.run && q.run.until > st.t;
+    function styB(p, q) { const S = st.sty[p.side]; let b = 0; { const sl = String(q.slot || ''); if (!/ST|CF/.test(sl) && !q.gk && axOf(q.side, q.x) > L - 22 && Math.abs(q.y - W / 2) < 17) b += 9; if (/ST|CF/.test(String(p.slot || '')) && !/ST|CF/.test(sl) && axOf(q.side, q.x) > L * 0.62) b += 5; } /* 中锋背身做球，回做给插上的队友 */ /* 插进禁区的非中锋也是好的传球对象 */ if (q.core) b += S.coreB; const run = q.run && q.run.until > st.t;
       if (run && S.through && q.run.kind === 'behind' && Math.abs(q.y - W / 2) < 15) b += 6; if (run && S.tri && q.tri && q.run.kind === 'behind') b += 4; if (run && S.am && q.am && q.run.kind === 'late') b += 6; if (run && q.run.kind === 'behind' && p.sk && p.sk.thru) b += 2 * SK_T[p.sk.thru].pw; return b; }
     function pickPass(p, force) { const d = dirOf(p.side), mates = team(p.side).filter(q => q !== p && !q.gk), OLp = offLine(p.side, p.x), crowd = P.filter(o => o.on && o.side !== p.side && hyp(o.x - p.x, o.y - p.y) < 14).length; let best = null, bs = -1e9;
       mates.forEach(q => { const dist = hyp(q.x - p.x, q.y - p.y); if (dist < 5 || dist > 48) return; const prog = (q.x - p.x) * d, [, od] = nearestOpp(q, opp(p.side)); let lane = 99;
@@ -2495,21 +2495,22 @@ const PHYS = (() => {
       if (due && dg < (p.sho > 84 ? 30 : 26) + (behind ? 8 : 0) && Math.abs(p.y - W / 2) < 24) return shoot(p);
       if (!FREE && quota[p.side] > 0 && left < quota[p.side] * 9 && dg < 36 && Math.abs(p.y - W / 2) < 26 && st.t - st.lastShot[p.side] > 3 && (!G || G.side !== p.side || st.t < G.s - 20)) return shoot(p); /* 比赛快结束还有射门没打完：远射 */
       const quiet = !G || G.side !== p.side || st.t < G.s - 20;
-      if (dg < 30 && quiet) { const my = xg(p, p.x, p.y), OLs = offLine(p.side, p.x); let bm = null, bx = 0;
+      if ((dg < 30 || dg < 34 && !/ST|CF/.test(String(p.slot || ''))) && quiet) { const my = xg(p, p.x, p.y), OLs = offLine(p.side, p.x); let bm = null, bx = 0;
         team(p.side).forEach(q => { if (q === p || q.gk || axOf(p.side, q.x) > OLs + 0.25) return; const dq = hyp(q.x - p.x, q.y - p.y); if (dq < 4 || dq > 30) return; let lane = 99;
           P.forEach(o => { if (!o.on || o.side === p.side) return; const t = clamp(((o.x - p.x) * (q.x - p.x) + (o.y - p.y) * (q.y - p.y)) / (dq * dq), 0, 1); lane = Math.min(lane, hyp(p.x + (q.x - p.x) * t - o.x, p.y + (q.y - p.y) * t - o.y)); });
           const v = xg(q, q.x, q.y) * clamp(lane / 3, 0.15, 0.92); if (v > bx) { bx = v; bm = q; } });
         const inBox = dg < 19 && Math.abs(p.y - W / 2) < 20.5;
-        if (bm && bx > my * (inBox ? 2 : 1.3) && bx > (inBox ? 0.14 : 0.07)) return passTo(p, bm, bm.x + bm.vx * 0.4, bm.y + bm.vy * 0.4); /* 队友位置明显更好才传 */
-        const shF = st.sty[p.side].shoot * (p.core ? 1.35 : 1), lgS = p.sk && p.sk.long ? SK_T[p.sk.long].pw : 0, want = FREE ? (inBox ? my > 0.07 && R() < 0.2 * shF : my > 0.13 - 0.015 * lgS && R() < 0.15 * shF * (1 + 0.25 * lgS)) : inBox ? my > 0.02 : my > 0.04 && (my > 0.065 || R() < 0.45);
+        const meST = /ST|CF/.test(String(p.slot || '')), bmST = bm && /ST|CF/.test(String(bm.slot || '')), pf = inBox ? (meST && !bmST ? 1.5 : !meST && bmST ? 2.6 : 2) : (meST ? 1.3 : bmST ? 2.4 : 1.6);
+        if (bm && bx > my * pf && bx > (inBox ? 0.14 : 0.07)) return passTo(p, bm, bm.x + bm.vx * 0.4, bm.y + bm.vy * 0.4); /* 队友位置明显更好才传 */
+        const rsl = String(p.slot || ''), roleSh = /ST/.test(rsl) ? 0.55 : /LW|RW/.test(rsl) ? 1.5 : /AM/.test(rsl) ? 1.45 : /CM|LM|RM/.test(rsl) ? 1.3 : /DM/.test(rsl) ? 1.12 : 1, /* 不只中锋会射门：边锋内切、前腰和插上的中场也敢起脚 */ shF = st.sty[p.side].shoot * (p.core ? 1.35 : 1) * roleSh, lgS = p.sk && p.sk.long ? SK_T[p.sk.long].pw : 0, want = FREE ? (inBox ? my > (roleSh > 1.3 ? 0.05 : 0.07) && R() < 0.2 * shF : my > (roleSh > 1.1 ? 0.045 : 0.11) - 0.012 * lgS && R() < (roleSh > 1.1 ? 0.1 : 0.15) * shF * (1 + 0.25 * lgS)) : inBox ? my > 0.02 : my > 0.04 && (my > 0.065 || R() < 0.45);
         if (want) { if (quota[p.side] <= 0 || st.t - st.lastShot[p.side] <= Math.min(gap * 0.3, 5)) { st.lastEx = st.lastEx || { h: -999, a: -999 }; if (st.t - st.lastEx[p.side] > 85 && (inBox ? my > 0.05 : my > 0.09)) { st.lastEx[p.side] = st.t; return shootExtra(p); } } if (quota[p.side] > 0 && st.t - st.lastShot[p.side] > Math.min(gap * 0.3, 5)) return shoot(p); st.lastBlk = st.lastBlk || { h: -999, a: -999 }; if (dg < 22 && st.t - st.lastBlk[p.side] > 200 && R() < 0.4) return shootBlocked(p); } }
       if (axOf(p.side, p.x) < 20 && od < 5 && R() < 0.65) return clearBall(p);
       const dk = (p.dri - 70) / 20, press = od < 3.2 - dk * 0.6, [q, qs] = pickPass(p), room = !press && od > 6 - dk * 1.5 && axOf(p.side, p.x) < L - 18;
       /* 内切：边锋在前场边路拿球、面前有空间时往禁区弧顶斜插，找机会射门 */
-      if (p.fx > 60 && Math.abs(p.fy - 50) > 22 && Math.abs(p.y - W / 2) > 12 && axOf(p.side, p.x) > L * 0.55 && axOf(p.side, p.x) < L - 15 && od > 3 && R() < 0.3 + (p.dri - 70) / 80) { p.drib = { tx: fromAx(p.side, Math.min(L - 16, axOf(p.side, p.x) + 9)), ty: W / 2 + Math.sign(p.y - W / 2) * 8 }; p.flash = { k: '内切', until: st.t + 1.2 }; st.tac.cut = (st.tac.cut || 0) + 1; return; }
+      if (p.fx > 60 && Math.abs(p.fy - 50) > 22 && Math.abs(p.y - W / 2) > 12 && axOf(p.side, p.x) > L * 0.55 && axOf(p.side, p.x) < L - 15 && od > 3 && R() < 0.42 + (p.dri - 70) / 80) { p.drib = { tx: fromAx(p.side, Math.min(L - 13, axOf(p.side, p.x) + 11)), ty: W / 2 + Math.sign(p.y - W / 2) * 6 }; p.flash = { k: '内切', until: st.t + 1.2 }; st.tac.cut = (st.tac.cut || 0) + 1; return; }
       /* 边路下底传中 */
       if (Math.abs(p.y - W / 2) > 13 && axOf(p.side, p.x) > L - 26) { const tg = team(p.side).filter(q2 => q2 !== p && !q2.gk && axOf(p.side, q2.x) > L - 19 && Math.abs(q2.y - W / 2) < 13);
-        if (tg.length && (R() < (0.4 + (p.pas - 70) / 100) * st.sty[p.side].wing || axOf(p.side, p.x) > L - 9)) { const q2 = tg.sort((a, b) => (b.phy + R() * 25) - (a.phy + R() * 25))[0]; passTo(p, q2, q2.x + q2.vx * 0.5, q2.y + q2.vy * 0.5, true, true); ball.pass.cross = true; p.flash = { k: '传中', until: st.t + 1.4 }; st.tac.cross = (st.tac.cross || 0) + 1; return; }
+        if (tg.length && (R() < (0.4 + (p.pas - 70) / 100) * st.sty[p.side].wing || axOf(p.side, p.x) > L - 9)) { const q2 = tg.sort((a, b) => (b.phy * (/ST|CF/.test(String(b.slot || '')) ? 0.75 : 1) + R() * 45) - (a.phy * (/ST|CF/.test(String(a.slot || '')) ? 0.75 : 1) + R() * 45))[0]; passTo(p, q2, q2.x + q2.vx * 0.5, q2.y + q2.vy * 0.5, true, true); ball.pass.cross = true; p.flash = { k: '传中', until: st.t + 1.4 }; st.tac.cross = (st.tac.cross || 0) + 1; return; }
         if (axOf(p.side, p.x) < L - 7 && od > 2.5) { p.drib = { tx: fromAx(p.side, L - 5), ty: p.y + (W / 2 - p.y) * 0.12 }; return; } }
       const SPd = st.sty[p.side], PF = SPd.pass / SPd.drib, axp = axOf(p.side, p.x);
       /* 过人：面前有防守球员时，盘带好的会尝试突破（前场更敢） */
@@ -2538,8 +2539,10 @@ const PHYS = (() => {
       const SS = st.sty[sd]; if (ax > L * 0.3 && ax < L * 0.75 && R() < (0.2 + (o.men - 70) / 150) * SS.runs) { const fws = mates.filter(q => q.fx > 70 && free(q) && OL - axOf(sd, q.x) < 7 && axOf(sd, q.x) <= OL + 0.2).slice(0, SS.tri ? 2 : 1); fws.forEach((fw, i) => { setRun(fw, Math.min(OL + 9 + R() * 8, L - 6), clamp(fw.y + (W / 2 - fw.y) * (SS.through ? 0.65 : 0.4) + (R() - 0.5) * 10, 8, W - 8), 2.6, 'behind'); if (SS.tri && fw.tri) fw.flash = { k: '三叉戟前插', until: st.t + 1.4 }; else if (SS.through && i === 0) fw.flash = { k: '中路前插', until: st.t + 1.2 }; }); }
       /* 攻击型中场的支援：前腰 / 中场在进攻三区后插上，冲到禁区弧顶等回传 */
       if (SS.am && ax > L * 0.5 && ax < L - 12 && R() < 0.28) { const am = mates.filter(q => q.am && free(q) && axOf(sd, q.x) < ax)[0]; if (am) { setRun(am, Math.min(L - 13 - R() * 3, OL - 0.4), W / 2 + (R() - 0.5) * 12, 2.4, 'late'); am.flash = { k: '后插上', until: st.t + 1.3 }; } }
+      /* 中场后插上：不只前腰，中前卫、边前卫在进攻三区也会插进禁区，制造第二点和远射 */
+      if (ax > L * 0.55 && ax < L - 10 && R() < 0.2 && !mates.some(q => q.run && q.run.kind === 'late' && q.run.until > st.t)) { const cm = mates.filter(q => q.fx > 40 && q.fx < 76 && free(q) && axOf(sd, q.x) < ax + 4).sort(() => R() - 0.5)[0]; if (cm) { const deep = R() < 0.45; setRun(cm, Math.min(deep ? L - 9 - R() * 4 : L - 15 - R() * 5, OL - 0.4), W / 2 + (R() - 0.5) * (deep ? 14 : 20), 2.6, 'late'); } }
       /* 边路传中前：前锋、前腰抢前点、后点、点球点、禁区弧顶 */
-      if (wide && ax > L - 34) { const spots = [[L - 5.5, W / 2 + side0 * 3], [L - 7, W / 2 - side0 * 5.5], [L - 11, W / 2], [L - 17, W / 2 - side0 * 3]]; mates.filter(q => q.fx > 60 && free(q)).sort((a, b) => b.fx - a.fx).slice(0, 4).forEach((q, i) => setRun(q, Math.min(spots[i][0] + (R() - 0.5) * 2, OL - 0.3), spots[i][1] + (R() - 0.5) * 2, 1.4, 'box')); }
+      if (wide && ax > L - 34) { const spots = [[L - 5.5, W / 2 + side0 * 3], [L - 7, W / 2 - side0 * 5.5], [L - 11, W / 2], [L - 17, W / 2 - side0 * 3]]; mates.filter(q => q.fx > 55 && free(q)).map(q => [q, R()]).sort((a, b) => b[1] - a[1]).map(a => a[0]).slice(0, 4).forEach((q, i) => setRun(q, Math.min(spots[i][0] + (R() - 0.5) * 2, OL - 0.3), spots[i][1] + (R() - 0.5) * 2, 1.4, 'box')); }
       /* 反击：前场球员全速往前冲 */
       if (st.counter && st.counter.side === sd && st.counter.until > st.t) mates.filter(q => q.fx > 55 && free(q)).forEach(q => setRun(q, Math.min(OL - 0.6, axOf(sd, q.x) + 18), q.y + (W / 2 - q.y) * 0.25, 1.6, 'counter')); }
     // 界外球：双手举过头顶掷出（球从约 2 米高出手，弧线短、落地后再弹），只能掷给附近的队友

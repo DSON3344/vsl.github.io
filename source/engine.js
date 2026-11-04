@@ -10,7 +10,8 @@ const ENGINE = (() => {
   };
   // 进球/助攻倾向（按位置）
   const GOAL_W = { GK: 0, DF: 0.35, MF: 1.1, FW: 4.2 };
-  const POS_GOAL = p => /CAM|LAM|RAM/.test(p) ? 1.9 : /LW|RW/.test(p) ? 2.3 : /ST/.test(p) ? 3.1 : /WB/.test(p) ? 0.7 : GOAL_W[LINE(p)];
+  // 进球分配（按现实联赛的比例校准：前锋约四成、边锋两成多、中场两成多、后卫一成）
+  const POS_GOAL = p => /CAM|LAM|RAM/.test(p) ? 2.1 : /LW|RW/.test(p) ? 2.7 : /CF/.test(p) ? 2.4 : /ST/.test(p) ? 2.6 : /WB/.test(p) ? 0.7 : /LM|RM/.test(p) ? 1.5 : /DM/.test(p) ? 0.6 : /CB/.test(p) ? 0.6 : /LB|RB/.test(p) ? 0.4 : GOAL_W[LINE(p)];
   const POS_AST = p => /CAM|LAM|RAM/.test(p) ? 3.4 : /LW|RW|LM|RM/.test(p) ? 2.8 : /WB|LB|RB/.test(p) ? 1.6 : /CM/.test(p) ? 2 : /CDM|DM/.test(p) ? 1 : /ST/.test(p) ? 1.6 : LINE(p) === 'GK' ? 0.05 : 0.5;
 
   // ---------- 阵容 ----------
@@ -160,8 +161,8 @@ const ENGINE = (() => {
     const homeAdv = opt.neutral ? 1 : 1.12, awayPen = opt.neutral ? 1 : 0.94;
     const k = 0.078 / 0.86; // 能力分 78 以上压缩了 0.86，系数同步放大，强弱差距的效果不变
     const sh = styleFx((TEAMS_DATA[home] || {}).style, (TEAMS_DATA[away] || {}).style), sa = styleFx((TEAMS_DATA[away] || {}).style, (TEAMS_DATA[home] || {}).style);
-    let lh = 1.28 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.0465 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
-    let la = 1.28 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.0465 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
+    let lh = 1.2 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.0465 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
+    let la = 1.2 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.0465 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
     return { lh: Math.min(lh, 5), la: Math.min(la, 5), ch, ca, H, A };
   }
 
@@ -181,13 +182,13 @@ const ENGINE = (() => {
   const shoOf = s => (s.p && s.p.attributes && s.p.attributes.sho) || s.rating;
   const pasOf = s => (s.p && s.p.attributes && s.p.attributes.pas) || s.rating;
   function goalScorer(on) {
-    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 3) * Math.pow(s.rating / 85, 5));
+    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 1.6) * Math.pow(s.rating / 85, 1.6)); /* 指数调小：球星依然进得多，但不会把全队的进球都包了 */
     return pick(on, w);
   }
   function assister(on, scorer) {
     if (rnd() < 0.22) return null;
     const pool = on.filter(s => s !== scorer); if (!pool.length) return null;
-    const w = pool.map(s => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 3) * Math.pow(s.rating / 85, 5));
+    const w = pool.map(s => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 2) * Math.pow(s.rating / 85, 2.5));
     return pick(pool, w);
   }
   function carder(on) {
