@@ -363,10 +363,43 @@ th.sorted{color:var(--accent-2)}
 .note{font-size:12px;color:var(--fg-3)}
 .split{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== 开场 / 登录界面（网游风格） ===== */
+#gate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;overflow:hidden;color:#f4efe2;font-family:var(--sans);background:radial-gradient(120% 80% at 50% 110%,#0f5a2c 0%,#0a2a17 38%,#05080f 75%);transition:opacity .7s ease,transform .7s ease}
+#gate.out{opacity:0;transform:scale(1.06);pointer-events:none}
+#gate .gbeam{position:absolute;top:-30%;width:46vw;height:150vh;background:linear-gradient(180deg,rgba(255,244,200,.22),rgba(255,244,200,0) 70%);filter:blur(6px);transform-origin:50% 0;mix-blend-mode:screen;animation:gsw 7s ease-in-out infinite alternate}
+#gate .gbeam.l{left:-12vw;transform:rotate(-24deg)}#gate .gbeam.r{right:-12vw;transform:rotate(24deg);animation-delay:-3.5s}
+@keyframes gsw{0%{opacity:.55;transform:rotate(var(--a,-24deg))}100%{opacity:1;transform:rotate(calc(var(--a,-24deg) * .6))}}
+#gate .gbeam.r{--a:24deg}
+#gate .gpitch{position:absolute;left:50%;bottom:-8vh;width:160vw;height:62vh;transform:translateX(-50%) perspective(600px) rotateX(62deg);background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 6vw,rgba(255,255,255,0) 6vw 12vw),#0d4a24;border-top:2px solid rgba(255,255,255,.35);box-shadow:0 -40px 120px rgba(80,255,150,.12) inset}
+#gate .gpitch::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.35)}
+#gate .gpitch::after{content:'';position:absolute;left:50%;top:18%;width:22vw;height:22vw;border:2px solid rgba(255,255,255,.3);border-radius:50%;transform:translateX(-50%)}
+#gate .gdust{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 20% 30%,rgba(255,255,255,.5),transparent),radial-gradient(1px 1px at 70% 20%,rgba(255,255,255,.4),transparent),radial-gradient(1.5px 1.5px at 40% 60%,rgba(255,230,150,.45),transparent),radial-gradient(1px 1px at 85% 55%,rgba(255,255,255,.35),transparent),radial-gradient(1px 1px at 10% 75%,rgba(255,255,255,.3),transparent);animation:gdu 12s linear infinite;opacity:.8}
+@keyframes gdu{to{transform:translateY(-40px)}}
+#gate .gbox{position:relative;display:grid;justify-items:center;gap:14px;text-align:center;padding:24px;width:min(440px,92vw)}
+#gate .glogo{width:min(150px,34vw);filter:drop-shadow(0 0 28px rgba(255,210,110,.55));animation:gfl 4s ease-in-out infinite}
+@keyframes gfl{50%{transform:translateY(-6px)}}
+#gate h1{margin:0;font-size:clamp(30px,6.4vw,48px);font-weight:900;letter-spacing:.06em;background:linear-gradient(180deg,#fff6d6,#e8b84a 60%,#a8741c);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+#gate .gsub{margin-top:-8px;font:600 12px var(--mono);letter-spacing:.42em;color:rgba(244,239,226,.7)}
+#gate .gload{width:100%;display:grid;gap:8px}#gate .gbar{height:8px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}#gate .gbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#e8b84a,#fff1b8);box-shadow:0 0 12px #e8b84a;transition:width .18s linear}
+#gate .gtip{font-size:12px;color:rgba(244,239,226,.72);min-height:1.4em}
+#gate .gtap{font-weight:800;letter-spacing:.3em;font-size:14px;animation:gbl 1.4s ease-in-out infinite;cursor:pointer;padding:10px 18px}
+@keyframes gbl{50%{opacity:.3}}
+#gate .gcard{width:100%;display:none;gap:12px;padding:18px;border-radius:16px;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid rgba(255,220,140,.35);box-shadow:0 20px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.15);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);text-align:left;animation:gin .45s ease}
+@keyframes gin{from{opacity:0;transform:translateY(14px) scale(.98)}}
+#gate .gcard.on{display:grid}
+#gate label{display:grid;gap:5px;font-size:12px;color:rgba(244,239,226,.75)}
+#gate input[type=text]{font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:#fff;outline:none}#gate input[type=text]:focus{border-color:#e8b84a;box-shadow:0 0 0 3px rgba(232,184,74,.25)}
+#gate .gsrv{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14);font-size:13px}#gate .gsrv .dot{width:9px;height:9px;border-radius:50%;background:#3c9;box-shadow:0 0 8px #3c9}#gate .gsrv b{font-weight:800}#gate .gsrv span{margin-left:auto;font:600 11px var(--mono);color:rgba(244,239,226,.6)}
+#gate .gplay{font:900 17px var(--sans);letter-spacing:.2em;padding:13px;border-radius:12px;border:0;cursor:pointer;color:#2a1a00;background:linear-gradient(180deg,#ffe9a6,#e8b84a 55%,#c08a2a);box-shadow:0 6px 0 #7a5410,0 10px 24px rgba(232,184,74,.35);transition:transform .08s}#gate .gplay:active{transform:translateY(3px);box-shadow:0 3px 0 #7a5410}
+#gate .grow{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(244,239,226,.7)}#gate .grow button{font:inherit;background:none;border:0;color:#e8b84a;cursor:pointer;padding:0}
+#gate .gver{position:absolute;bottom:12px;left:0;right:0;text-align:center;font:600 10px var(--mono);letter-spacing:.2em;color:rgba(244,239,226,.4)}
+.mgrchip{display:inline-flex;align-items:center;gap:6px}
 </style>
 </head>
 <body>
 
+<div id="gate" hidden><div class="gbeam l"></div><div class="gbeam r"></div><div class="gpitch"></div><div class="gdust"></div><div class="gbox"><img class="glogo" id="gLogo" alt=""><h1>威伊士超联赛</h1><div class="gsub">VES LEAGUE · 足球经理</div><div class="gload" id="gLoad"><div class="gbar"><i id="gBar"></i></div><div class="gtip" id="gTip">正在进入球场…</div></div><div class="gtap" id="gTap" hidden>— 点击屏幕开始 —</div><div class="gcard" id="gCard"><label>经理名称<input type="text" id="gName" maxlength="16" placeholder="输入你的经理名" autocomplete="nickname"></label><div class="gsrv"><i class="dot"></i><b>威超联赛 · 主服</b><span id="gSrv">S1 · 第 1 轮</span></div><button class="gplay" id="gPlay" type="button">进入游戏</button><div class="grow"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gSkip">下次直接进入</label><button type="button" id="gGuest">游客进入 ›</button></div></div></div><div class="gver" id="gVer">VES LEAGUE CLIENT</div></div>
 
 <header class="top">
   <div class="top-in">
@@ -1999,6 +2032,24 @@ for (const [k, b64] of Object.entries(LOGOS_B64)) {
   LOGO[k] = URL.createObjectURL(new Blob([u], { type: 'image/webp' }));
 }
 $('#brandLogo').src = LOGO['ves-league-logo'];
+/* 开场 / 登录界面：读条 → 点击开始 → 输入经理名进入（只存在这台设备上，不是真的账号）；#vesdebug 测试时跳过 */
+const MGR_K = 'ves_mgr', GSKIP_K = 'ves_gate_skip'; const lsg = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, lss = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+function gateShow(force) {
+  const G = document.getElementById('gate'); if (!G) return; if (!force && (/vesdebug/.test(location.hash) || lsg(GSKIP_K) === '1')) return;
+  document.getElementById('gLogo').src = LOGO['ves-league-logo']; G.hidden = false; G.classList.remove('out'); document.body.style.overflow = 'hidden';
+  const bar = document.getElementById('gBar'), tip = document.getElementById('gTip'), tap = document.getElementById('gTap'), card = document.getElementById('gCard'), load = document.getElementById('gLoad');
+  const TIPS = ['正在载入球队资料…', '正在整理球员能力与技能…', '正在铺设草皮、画好白线…', '正在点亮球场灯光…', '小贴士：技能稀有度 C < B < A < S，越稀有越容易触发', '小贴士：更衣室信任跌太低，主帅会被解雇', '小贴士：精力见底的主力会被自动轮换'];
+  let p = force ? 100 : 0, k = 0; card.classList.remove('on'); tap.hidden = true; load.hidden = false;
+  try { document.getElementById('gSrv').textContent = `${SN(SEASON)} · 第 ${Math.min(38, playedRounds() + 1)} 轮`; } catch (e) {}
+  document.getElementById('gName').value = lsg(MGR_K) || ''; document.getElementById('gSkip').checked = lsg(GSKIP_K) === '1';
+  const ready = () => { load.hidden = true; tap.hidden = false; G.onclick = ev => { if (card.classList.contains('on')) return; tap.hidden = true; card.classList.add('on'); setTimeout(() => document.getElementById('gName').focus(), 60); }; };
+  if (force) ready(); else { const iv = setInterval(() => { p = Math.min(100, p + 4 + Math.random() * 9); bar.style.width = p + '%'; if (p > (k + 1) * 16 && k < TIPS.length - 1) tip.textContent = TIPS[++k]; if (p >= 100) { clearInterval(iv); tip.textContent = '准备就绪'; setTimeout(ready, 250); } }, 110); }
+  const enter = guest => { const n = document.getElementById('gName').value.trim(); if (!guest) { if (!n) { const i = document.getElementById('gName'); i.focus(); i.style.borderColor = '#e55'; return; } lss(MGR_K, n); } lss(GSKIP_K, document.getElementById('gSkip').checked ? '1' : null); mgrChip(); G.classList.add('out'); document.body.style.overflow = ''; setTimeout(() => { G.hidden = true; }, 720); };
+  document.getElementById('gPlay').onclick = ev => { ev.stopPropagation(); enter(false); }; document.getElementById('gGuest').onclick = ev => { ev.stopPropagation(); enter(true); };
+  document.getElementById('gName').onkeydown = ev => { if (ev.key === 'Enter') enter(false); };
+}
+function mgrChip() { let c = document.getElementById('mgrChip'); const n = lsg(MGR_K); const sync = document.getElementById('syncChip'); if (!sync) return; if (!c) { c = document.createElement('button'); c.id = 'mgrChip'; c.className = 'roundchip mgrchip'; c.title = '切换经理 / 回到开场界面'; c.onclick = () => gateShow(true); sync.parentNode.insertBefore(c, sync); } c.textContent = '⚽ ' + (n || '游客经理'); }
+setTimeout(() => { mgrChip(); gateShow(false); }, 0);
 const crest = (t, s = 28) => `<img class="crest" src="${LOGO[t] || ''}" width="${s}" height="${s}" alt="">`;
 const tlink = (t, s = 24) => `<button class="lnk tname" data-team="${esc(t)}">${crest(t, s)}<span>${esc(t)}</span></button>`;
 const en = t => (H.profiles[t] && H.profiles[t].en) || '';
@@ -3703,8 +3754,8 @@ function vMatch() {
     <div id="preZone" style="margin-top:22px;display:grid;gap:22px">
       <div id="probZone">${probHTML(pr, e)}</div>
       <div class="cmp">${cmpRow('进攻', sh.atk, sa.atk)}${cmpRow('中场控制', sh.ctl, sa.ctl)}${cmpRow('防守', sh.def, sa.def)}${cmpRow('板凳深度', sh.depth, sa.depth)}</div>
-      <div class="cmp"><div class="row" style="font-family:var(--sans)"><span></span><span class="l muted" style="font-size:12px">${esc(P(h).style || TD[h].style)} · ${esc(P(h).formation || '')}</span><span class="k">风格</span><span class="muted" style="font-size:12px">${esc(P(a).style || TD[a].style)} · ${esc(P(a).formation || '')}</span><span></span></div>
-      <div class="row" style="font-family:var(--sans)"><span></span><span class="l muted" style="font-size:12px">${esc(P(h).coach || '—')}</span><span class="k">主教练</span><span class="muted" style="font-size:12px">${esc(P(a).coach || '—')}</span><span></span></div></div>
+      <div class="cmp"><div class="row" style="font-family:var(--sans)"><span></span><span class="l muted" style="font-size:12px">${esc(nowStyle(h))} · ${esc(xiFormNow(h) || '')}</span><span class="k">风格</span><span class="muted" style="font-size:12px">${esc(nowStyle(a))} · ${esc(xiFormNow(a) || '')}</span><span></span></div>
+      <div class="row" style="font-family:var(--sans)"><span></span><span class="l muted" style="font-size:12px">${esc(nowCoach(h))}</span><span class="k">主教练</span><span class="muted" style="font-size:12px">${esc(nowCoach(a))}</span><span></span></div></div>
       <div class="btns" id="kickBtns" style="justify-content:center"><button class="btn primary" data-act="kick">▶ 抽天气并开赛</button><button class="btn" data-act="instant">直接出结果</button></div>
       <div class="rollmsg" id="rollMsg" hidden></div>
     </div>
@@ -5149,9 +5200,9 @@ function leagueTableAt(s, upto) {
 }
 const teamsInSeason = s => HS[s] ? HS[s].teams : s === SEASON ? S.teams : null;
 function coachHistory() {
-  const key = SEASONS.join(',') + '|' + SEASON + '|' + (playedRounds() >= 19);
+  const key = SEASONS.join(',') + '|' + SEASON + '|' + playedRounds() + '|' + MOD_VER_SEASON;
   if (COACH_CACHE && COACH_CACHE.key === key) return COACH_CACHE;
-  const pool = coachPool(), cur = {}, stints = [], log = [];
+  const pool = coachPool(), cur = {}, stints = [], log = [], trust = {}, tlog = {};
   const busy = id => Object.values(cur).some(c => c.id === id);
   const strengthRank = s => { const T = teamsInSeason(s) || []; const v = t => s === SEASON ? ENGINE.strength(t).ovr : (xiAvgAt(t, s) || 75); return T.slice().sort((a, b) => v(b) - v(a)); };
   const hire = (t, s, r, why) => {
@@ -5161,7 +5212,7 @@ function coachHistory() {
     let best = null, bv = -1e9;
     avail.forEach(c => { const C = COACH_REG[c.id]; const Tt = TRIDENT.has(t) ? coachTactics(c.id) : null; const eff = C.kind === '名宿' ? C.rep + Math.min(14, coachExpAt(c.id, s) * 1.5) + (C.infl - 75) * 0.5 : C.rep; const v = eff - Math.abs(eff - want - 4) * 0.4 + (C.clubs.has(t) ? (C.kind === '名宿' ? 17 : 9) : 0) + (Tt && isTrident(Tt.form) ? 5 : 0) + (starPower(t) >= 3 ? (C.infl - 75) * 0.45 : 0) + rnd() * 6; if (v > bv) { bv = v; best = c.id; } });
     if (!best || bv < want - 16 || rnd() < 0.35) best = genCoach(t, s, r);
-    cur[t] = { id: best, team: t, s0: s, r0: r, why };
+    cur[t] = { id: best, team: t, s0: s, r0: r, why }; { const C = COACH_REG[best] || {}; trust[t] = Math.max(45, Math.min(82, 62 + ((C.rep || 75) - 80) * 0.4 + (C.kind === '名宿' && C.clubs && C.clubs.has(t) ? 8 : 0))); tlog[t] = []; }
     stints.push(cur[t]);
   };
   const leave = (t, s, r, why) => { const c = cur[t]; if (!c) return; c.s1 = s; c.r1 = r; c.out = why; log.push({ s, r, team: t, out: c.id, why }); delete cur[t]; };
@@ -5170,10 +5221,16 @@ function coachHistory() {
     const order = Object.keys(TD).sort((a, b) => clubBaseApprox(b) - clubBaseApprox(a));
     order.forEach(t => { if (!cur[t]) { hire(t, s, 0, s === 1 ? 'first' : 'new'); if (s > 1) log.push({ s, r: 0, team: t, inn: cur[t].id }); } });
     const exp = strengthRank(s);
-    const mid = leagueTableAt(s, 19);
-    if (mid) T.forEach(t => { const rk = mid.indexOf(t), e = exp.indexOf(t), rnd = seeded('mid|' + t + '|' + s + saltOf(s));
-      const p = rk >= 17 && e <= 11 ? 0.5 : rk >= 15 && e <= 5 ? 0.35 : 0;
-      if (p && rnd() < p && !(cur[t].s0 === s)) { leave(t, s, 19, `半程排第 ${rk + 1}，下课`); hire(t, s, 19, 'mid'); log.push({ s, r: 19, team: t, inn: cur[t].id }); } });
+    /* 更衣室信任：每场按「比预期多拿 / 少拿的分数」涨跌，连败扣得更多；跌破底线（执教满 6 轮后）主帅当场下课，换新帅 */
+    if (s > 1) Object.keys(trust).forEach(t => { trust[t] = trust[t] * 0.5 + 60 * 0.5; }); /* 新赛季：信任部分重置 */
+    const ER = {}; exp.forEach((t, i) => ER[t] = i); const lstk = {};
+    for (let ri = 0; ri < 38; ri++) { const RR = coachRoundRes(s, ri); if (!RR) break;
+      RR.forEach(([h0, a0, hg, ag]) => [[h0, a0, hg, ag], [a0, h0, ag, hg]].forEach(([t, o, gf, ga]) => { if (!cur[t] || trust[t] == null) return;
+        const pts = gf > ga ? 3 : gf === ga ? 1 : 0, ep = Math.max(0.35, Math.min(2.5, 1.4 + ((ER[o] ?? 10) - (ER[t] ?? 10)) * 0.07)); lstk[t] = pts ? 0 : (lstk[t] || 0) + 1;
+        trust[t] = Math.max(0, Math.min(100, trust[t] + (pts - ep) * 4.2 - (lstk[t] >= 3 ? 2 : 0) + (gf - ga >= 3 ? 1.5 : ga - gf >= 3 ? -2 : 0))); trust[t] += (58 - trust[t]) * 0.03; (tlog[t] = tlog[t] || []).push([s, ri, Math.round(trust[t])]); }));
+      if (ri >= 35) continue;
+      Object.keys(cur).forEach(t => { const c = cur[t]; if (!c || !T.includes(t)) return; const inCh = (c.s0 === s ? ri + 1 - c.r0 : ri + 1), C = COACH_REG[c.id] || {}, floor = C.kind === '名宿' && C.clubs && C.clubs.has(t) ? 16 : 22;
+        if (inCh >= 6 && trust[t] < floor) { const tv = Math.round(trust[t]); leave(t, s, ri + 1, `战绩不佳，更衣室信任跌到 ${tv}%，第 ${ri + 1} 轮后下课`); hire(t, s, ri + 1, 'sack'); log.push({ s, r: ri + 1, team: t, inn: cur[t].id, sack: 1 }); } }); }
     if (!HS[s]) break;
     const fin = leagueTableAt(s, 38), next = teamsInSeason(s + 1) || [];
     Object.keys(TD).forEach(t => { const c = cur[t]; if (!c) return; const rk = fin.indexOf(t), e = exp.indexOf(t), ten = s - c.s0 + 1, rnd = seeded('end|' + t + '|' + s + saltOf(s)), C = COACH_REG[c.id];
@@ -5186,8 +5243,14 @@ function coachHistory() {
       else if (C && C.pid != null && ten >= 4 && rnd() < 0.1) why = '退休';
       if (why) leave(t, s, 38, why); });
   }
-  return (COACH_CACHE = { key, cur, stints, log });
+  return (COACH_CACHE = { key, cur, stints, log, trust, tlog });
 }
+function coachRoundRes(s, ri) {
+  if (s === SEASON) { const rd = S.fx && S.fx[ri]; if (!rd || !rd.some(m => m.r)) return null; return rd.filter(m => m.r).map(m => [m.h, m.a, m.r.hg, m.r.ag]); }
+  const H0 = HS[s]; if (!H0 || !H0.rounds || !H0.rounds[ri]) return null; const TT = H0.teams; return H0.rounds[ri].map(m => [TT[m[0]], TT[m[1]], m[2], m[3]]);
+}
+const coachTrust = t => { const H0 = coachHistory(); return H0.trust[t] != null ? Math.round(H0.trust[t]) : null; };
+const trustLv = v => v >= 75 ? ['非常信任', '#3c9'] : v >= 55 ? ['信任', '#8fd18f'] : v >= 40 ? ['动摇', '#d8b45f'] : v >= 28 ? ['岌岌可危', '#e93'] : ['即将下课', '#e55'];
 function coachRecord(st) {
   let w = 0, d = 0, l = 0, gf0 = 0, ga0 = 0;
   for (let s = st.s0; s <= (st.s1 || SEASON); s++) {
@@ -5499,6 +5562,9 @@ function xiPanel(t, st) {
     <p class="note" style="margin:8px 0 0">拖动场上球员互换位置，把下方轮换球员拖到场上的球员身上替换首发（手机上也可以先点一名、再点另一名互换）；红色数字是踢非本位的扣分。安排按阵型分别记住，伤停的球员比赛时会自动由替补顶上。${sel ? `预览 ${esc(sel)}：按这个阵型挑最强的 11 人。${moved.length ? `换上 ${esc(moved.join('、'))}，换下 ${esc(outN.join('、'))}。` : '首发 11 人不变，只调整站位。'}${off.length ? ` ${esc(off.map(x => x.name + '（' + x.slot + '，非本位 -' + x.pen + '）').join('、'))}。` : ''}比赛时主帅按对手强弱自动选用：对手强 3 分以上用「对强队」，弱 3 分以上用「对弱队」，其他用「主打」。` : '点上面的阵型预览站位和首发人选。比赛时主帅按对手强弱自动在三套阵型之间切换。'}</p></div>`;
 }
 // ── 手动首发：在首发阵容图上拖动球员换位置、把轮换球员拖上场替换首发；按阵型分别记住（S.xio[球队][阵型] = {位置: 球员}） ──
+// 比赛页用的主帅和打法：取本季此刻在任的主帅（会随下课 / 换帅变化），不用旧的球队资料
+const nowCoach = t => { try { const c = coachOf(t); if (c && c.name) return c.name; } catch (e) {} return (H.profiles[t] || {}).coach || '—'; };
+const nowStyle = t => { try { const c = coachOf(t), X = c ? tacFor(t, c.id) : null; if (X && X.style) return X.style; } catch (e) {} return (H.profiles[t] || {}).style || (TD[t] && TD[t].style) || ''; };
 function xiFormNow(t) { return TD[t].formNow || TD[t].form || FORM_OF0[t]; }
 function xioMk(sl, p) { const pen = slotPen(sl, p); return { pos: sl, name: p.name, rating: p.rating - pen, pen }; }
 function applyXIO(t, form, r) {
@@ -6039,6 +6105,7 @@ function teamDetail(t) {
         <div><dt>最差状态</dt><dd>${esc((P.worst || '—').replace('；', ' · '))}</dd></div>
         <div><dt>首发均分</dt><dd class="mono">${st.xiAvg.toFixed(2)}</dd></div>
         <div><dt>替补均分</dt><dd class="mono">${st.depth.toFixed(2)}</dd></div>
+        ${(() => { const v = coachTrust(t); if (v == null) return ''; const [lv, col] = trustLv(v); return `<div title="每场比赛按「比预期多拿 / 少拿的分数」涨跌，连败扣得更多；执教满 6 轮后跌破 22%（本队名宿 16%）主帅就会下课"><dt>更衣室对主帅的信任</dt><dd><b style="color:${col}">${v}%</b> ${lv}<div style="height:5px;border-radius:3px;background:rgba(127,127,127,.25);margin-top:5px;overflow:hidden"><i style="display:block;height:100%;width:${v}%;background:${col}"></i></div></dd></div>`; })()}
       </dl></div>
   </div>
   ${teamTabs(t)}
