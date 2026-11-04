@@ -7,10 +7,10 @@
 /* Layout: 控制室仪表盘 — 近黑底、等宽字体数字、细线发光图表、玻璃面板；联赛金只留给冠军与奖杯 */
 :root{
   /* 夜场球场：近黑的混凝土底、粉笔白文字、一盏从左上打下来的泛光灯；唯一的强调色是信号橙，联赛金只留给冠军与奖杯 */
-  --bg:#0c0c0a; --bg-2:#141412; --panel:rgba(236,232,223,.028); --panel-2:rgba(236,232,223,.055);
-  --line:rgba(236,232,223,.085); --line-2:rgba(236,232,223,.17);
+  --bg:#0c0c0a; --bg-2:#141412; --panel:rgba(var(--tint),.028); --panel-2:rgba(var(--tint),.055);
+  --line:rgba(var(--tint),.085); --line-2:rgba(var(--tint),.17);
   --fg:#ece8df; --fg-2:#a7a195; --fg-3:#6e695f;
-  --accent:#ff5b1f; --accent-2:#f4efe4; --accent-dim:rgba(255,91,31,.13);
+  --accent:#ff5b1f; --accent-2:#f4efe4; --accent-dim:rgba(var(--acc-rgb),.13); --acc-rgb:255,91,31; --acc-hi:#ffb48f; --acc-lo:#c2410f; --acc-deep:#6e2406; --acc-ink:#1a0a03; --tint:236,232,223; --glow:255,226,186;
   --gold:#d6ad57; --gold-dim:rgba(214,173,87,.13);
   --win:#5cc48c; --draw:#8c877c; --loss:#e8574a;
   --z1:#ff5b1f; --z2:#e0a14d; --z3:#b9b2a3; --zr:#e8574a;
@@ -24,7 +24,7 @@
 *{box-sizing:border-box}
 html,body{background:var(--bg);color:var(--fg)}
 body{font-family:var(--sans);font-size:14px;line-height:1.55;min-height:100vh;
-  background-image:radial-gradient(1100px 680px at 8% -12%,rgba(255,226,186,.075),transparent 62%),radial-gradient(900px 600px at 100% 115%,rgba(255,91,31,.035),transparent 60%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");background-attachment:fixed}
+  background-image:radial-gradient(1100px 680px at 8% -12%,rgba(var(--glow),.075),transparent 62%),radial-gradient(900px 600px at 100% 115%,rgba(var(--acc-rgb),.035),transparent 60%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");background-attachment:fixed}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
 button,select,input{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -59,7 +59,7 @@ main{max-width:1280px;margin:0 auto;padding-block:24px 64px;padding-left:max(16p
 h1,h2,h3{margin:0;text-wrap:balance}
 h1{font-weight:900;font-size:clamp(26px,3.6vw,40px);letter-spacing:-.01em;line-height:1.1}
 h2{font-weight:700;font-size:16px;letter-spacing:.01em}
-.panel{background:linear-gradient(165deg,rgba(255,236,206,.045) 0%,rgba(236,232,223,.014) 38%,rgba(0,0,0,.12) 100%),var(--bg);border:1px solid var(--line);border-top-color:rgba(236,232,223,.14);border-radius:4px;padding:18px;min-width:0;box-shadow:0 18px 40px -24px rgba(0,0,0,.8)}
+.panel{background:linear-gradient(165deg,rgba(255,236,206,.045) 0%,rgba(var(--tint),.014) 38%,rgba(0,0,0,.12) 100%),var(--bg);border:1px solid var(--line);border-top-color:rgba(var(--tint),.14);border-radius:4px;padding:18px;min-width:0;box-shadow:0 18px 40px -24px rgba(0,0,0,.8)}
 .ph{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 .ph .eyebrow{margin-bottom:2px}
 .grid{display:grid;gap:18px}
@@ -78,7 +78,7 @@ h2{font-weight:700;font-size:16px;letter-spacing:.01em}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 8px;border-radius:3px;border:1px solid var(--line-2);color:var(--fg-2);white-space:nowrap}
-button.chip.lnk{border:1px solid rgba(255,91,31,.4);padding:3px 8px;color:var(--accent-2);font-size:11.5px}
+button.chip.lnk{border:1px solid rgba(var(--acc-rgb),.4);padding:3px 8px;color:var(--accent-2);font-size:11.5px}
 button.chip.lnk:hover{background:var(--accent-dim)}
 .chip.gold{color:var(--gold);border-color:rgba(214,173,87,.4);background:var(--gold-dim)}
 .chip.good{color:var(--win);border-color:rgba(79,209,139,.35)}
@@ -99,9 +99,9 @@ button.lnk:hover span,a.lnk:hover{color:var(--accent-2)}
 .tw{overflow-x:auto;margin-inline:-4px}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.12em;color:var(--fg-3);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:7px 8px;border-bottom:1px solid rgba(236,232,223,0.048);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid rgba(var(--tint),0.048);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 th.l,td.l{text-align:left;font-family:var(--sans)}
-tbody tr:hover{background:rgba(236,232,223,0.032)}
+tbody tr:hover{background:rgba(var(--tint),0.032)}
 td.pos{width:34px;position:relative;color:var(--fg-2)}
 td.pos::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--zc,transparent)}
 tr.z1{--zc:var(--z1)} tr.z2{--zc:var(--z2)} tr.z3{--zc:var(--z3)} tr.zr{--zc:var(--zr)}
@@ -114,8 +114,8 @@ td.pts{color:var(--accent-2);font-weight:500}
 .legend span::before{content:"";width:10px;height:2px;background:var(--c)}
 
 /* fixtures */
-.fx{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid rgba(236,232,223,0.048);cursor:pointer;border-radius:3px}
-.fx:hover{background:rgba(236,232,223,0.032)}
+.fx{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid rgba(var(--tint),0.048);cursor:pointer;border-radius:3px}
+.fx:hover{background:rgba(var(--tint),0.032)}
 .fx .h{justify-content:flex-end;text-align:right}
 .fx .h span{order:-1}
 .fx .sc{font-family:var(--mono);font-size:15px;min-width:76px;text-align:center;display:grid;gap:1px}
@@ -144,7 +144,7 @@ td.pts{color:var(--accent-2);font-weight:500}
 
 .rank-list{display:grid;gap:2px}
 .rk{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 4px;font-size:13px;border-radius:3px}
-.rk:hover{background:rgba(236,232,223,0.032)}
+.rk:hover{background:rgba(var(--tint),0.032)}
 .rk .n{font-family:var(--mono);font-size:11px;color:var(--fg-3)}
 .rk .v{font-family:var(--mono);color:var(--accent-2)}
 .rk .sub{font-size:11px;color:var(--fg-3)}
@@ -152,7 +152,7 @@ td.pts{color:var(--accent-2);font-weight:500}
 /* chart */
 .chart svg{width:100%;height:auto;display:block;overflow:visible}
 .chart text{font-family:var(--mono);font-size:9px;fill:var(--fg-3)}
-.chart .gl{stroke:rgba(236,232,223,0.064)}
+.chart .gl{stroke:rgba(var(--tint),0.064)}
 .chart .ln{fill:none;stroke-width:1.6;filter:url(#glow)}
 .chart .champ-halo{animation:champPulse 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes champPulse{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
@@ -222,14 +222,14 @@ body.gvland-on{overflow:hidden}
 .timeline .mk.red{background:var(--loss);border-radius:1px;width:6px;margin-left:-3px}
 .timeline .ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--fg-3);position:absolute;top:30px;left:0;right:0}
 .feed{display:grid;gap:0;max-height:420px;overflow-y:auto}
-.ev{display:grid;grid-template-columns:48px 22px minmax(0,1fr);gap:10px;align-items:start;padding:9px 4px;border-bottom:1px solid rgba(236,232,223,0.048);font-size:13px}
+.ev{display:grid;grid-template-columns:48px 22px minmax(0,1fr);gap:10px;align-items:start;padding:9px 4px;border-bottom:1px solid rgba(var(--tint),0.048);font-size:13px}
 .ev .m{font-family:var(--mono);color:var(--fg-3);font-size:12px;padding-top:1px}
 .ev.goal .m{color:var(--accent-2)}
 .ev.goal .t b{font-weight:700}
 .ev .ic{width:18px;height:18px;display:grid;place-items:center}
 .ev .ic .card{width:10px;height:14px;border-radius:1.5px}
 .ev.new{animation:evin .5s ease-out}
-@keyframes evin{from{background:rgba(255,91,31,.16)}to{background:transparent}}
+@keyframes evin{from{background:rgba(var(--acc-rgb),.16)}to{background:transparent}}
 .ev.div{grid-template-columns:1fr;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--fg-3);padding:7px}
 .condrow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:24px}.condrow{max-width:100%;min-width:0;box-sizing:border-box}.condrow .chip{max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.35}.board>.side{min-width:0;max-width:100%}@media (max-width:560px){.condrow{gap:4px}.condrow .chip{padding:2px 6px}}
 .reels{display:flex;gap:10px;justify-content:center;margin-top:14px}
@@ -241,7 +241,7 @@ body.gvland-on{overflow:hidden}
 .reel-win::after{bottom:0;background:linear-gradient(transparent,var(--bg-2))}
 .reel-strip div{height:42px;display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--fg)}
 .reel-strip .q{color:var(--fg-3);font-family:var(--mono)}
-.reel.done .reel-win{border-color:var(--accent);box-shadow:0 0 16px rgba(255,91,31,.35),inset 0 0 14px rgba(0,0,0,.7)}
+.reel.done .reel-win{border-color:var(--accent);box-shadow:0 0 16px rgba(var(--acc-rgb),.35),inset 0 0 14px rgba(0,0,0,.7)}
 .reel.done .reel-strip div{color:var(--accent-2)}
 .chip.pop{animation:pop .45s cubic-bezier(.2,1.4,.4,1) both}
 @keyframes pop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
@@ -329,11 +329,11 @@ dialog .dlg [style*="max-height"]{max-height:none!important;overflow:visible!imp
 .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
 .lcard{display:grid;gap:10px;align-content:start}
 .lead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:4px;background:linear-gradient(120deg,var(--tcd),transparent 70%);border:1px solid var(--line)}
-.lead .v{font-family:var(--mono);font-size:34px;font-weight:300;line-height:1;color:var(--accent-2);text-shadow:0 0 18px rgba(255,91,31,.3)}
+.lead .v{font-family:var(--mono);font-size:34px;font-weight:300;line-height:1;color:var(--accent-2);text-shadow:0 0 18px rgba(var(--acc-rgb),.3)}
 .lead b{font-size:16px;font-weight:900;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lead small{font-size:11.5px;color:var(--fg-2)}
-td.hl{color:var(--accent-2);font-weight:500;background:rgba(255,91,31,.05)}
-.prow{display:grid;grid-template-columns:minmax(120px,1fr) 40px 36px 36px 38px 48px 58px 36px 36px 36px 46px;gap:6px;align-items:center;font-size:12.5px;padding:4px 2px;border-bottom:1px solid rgba(236,232,223,0.048)}
+td.hl{color:var(--accent-2);font-weight:500;background:rgba(var(--acc-rgb),.05)}
+.prow{display:grid;grid-template-columns:minmax(120px,1fr) 40px 36px 36px 38px 48px 58px 36px 36px 36px 46px;gap:6px;align-items:center;font-size:12.5px;padding:4px 2px;border-bottom:1px solid rgba(var(--tint),0.048)}
 .prow .rt{font-family:var(--mono);text-align:right}
 .tw thead th{cursor:pointer;user-select:none;-webkit-user-select:none}.tw thead th:hover{color:var(--fg)}.tw thead th[data-dir]{color:var(--accent-2)}.tw thead th[data-dir=desc]::after{content:' ▼';font-size:9px}.tw thead th[data-dir=asc]::after{content:' ▲';font-size:9px}
 .sres{display:grid;gap:2px;max-height:60vh;overflow:auto}.sres button{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;padding:8px 6px;border-radius:4px;width:100%}.sres button:hover,.sres button:focus-visible{background:var(--panel-2)}.sres small{color:var(--fg-3);font-size:11.5px}
@@ -356,7 +356,33 @@ th.sorted{color:var(--accent-2)}
 .split{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+
+/* 配色方案（右上角 🎨 或开场界面切换）：都是深色底 + 单一强调色，只换色温和强调色 */
+:root[data-theme="pitch"]{--bg:#08110c;--bg-2:#0e1913;--fg:#e8efe4;--fg-2:#9db0a0;--fg-3:#5f7466;--tint:222,236,214;--glow:190,255,205;--accent:#b4e05a;--acc-rgb:180,224,90;--acc-hi:#e3f6b4;--acc-lo:#6f9a28;--acc-deep:#33490f;--acc-ink:#0f1a05;--accent-2:#f1f7ea;--gold:#d9b45a;--z1:#b4e05a;--z2:#e0c25a;--z3:#a9b8a6;--pitch:#0d1a11}
+:root[data-theme="royal"]{--bg:#070a14;--bg-2:#0d1220;--fg:#e8ecf5;--fg-2:#9aa6bd;--fg-3:#5d6880;--tint:214,224,245;--glow:140,170,255;--accent:#e4b450;--acc-rgb:228,180,80;--acc-hi:#fbe6ad;--acc-lo:#a7781f;--acc-deep:#5a3f0c;--acc-ink:#1d1403;--accent-2:#f3f5fb;--gold:#f0cf7a;--z1:#e4b450;--z2:#7fa6ff;--z3:#9aa6bd;--pitch:#0b1612}
+:root[data-theme="glacier"]{--bg:#080b0e;--bg-2:#0f1419;--fg:#e6eef2;--fg-2:#98a8b2;--fg-3:#5c6c76;--tint:220,235,242;--glow:170,228,255;--accent:#3fd4e6;--acc-rgb:63,212,230;--acc-hi:#b8f4fb;--acc-lo:#12899a;--acc-deep:#0a4a54;--acc-ink:#03181b;--accent-2:#f1f8fa;--gold:#dcb65e;--z1:#3fd4e6;--z2:#d9b45a;--z3:#a2b2bb;--pitch:#0c1712}
+.thpick{display:flex;gap:6px;flex-wrap:wrap}.thpick button{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line-2);background:transparent;color:var(--fg-2);cursor:pointer}.thpick button i{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}.thpick button.on{border-color:var(--accent);color:var(--fg)}
 /* ===== 开场 / 登录界面（网游风格） ===== */
+#gate .gcrowd{position:absolute;left:0;right:0;bottom:calc(62vh - 8vh - 2px);height:16vh;opacity:.55;background-repeat:repeat-x;background-size:auto 100%;pointer-events:none}
+#gate .gflash{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;box-shadow:0 0 10px 4px rgba(255,255,255,.7);opacity:0;animation:gfx 5s infinite}
+@keyframes gfx{0%,92%,100%{opacity:0}94%{opacity:1}96%{opacity:0}}
+#gate .gside{position:absolute;top:50%;transform:translateY(-50%);width:260px;display:grid;gap:10px;text-align:left;font-size:12px;color:rgba(var(--tint),.8)}
+#gate .gside.l{left:max(28px,4vw)}#gate .gside.r{right:max(28px,4vw)}
+#gate .gpanel{padding:14px;border-radius:4px;background:linear-gradient(165deg,rgba(var(--tint),.07),rgba(var(--tint),.02));border:1px solid rgba(var(--tint),.12);border-top-color:rgba(var(--tint),.24)}
+#gate .gpanel h4{margin:0 0 8px;font:600 10px var(--mono);letter-spacing:.22em;color:rgba(var(--tint),.55);text-transform:uppercase}
+#gate .gstar{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center}
+#gate .gstar .ov{grid-row:span 2;font:800 54px/0.9 var(--disp);color:var(--accent)}
+#gate .gstar b{font-size:17px;color:#fff}#gate .gstar .sub{display:flex;align-items:center;gap:6px;color:rgba(var(--tint),.65)}
+#gate .gsk{display:flex;gap:6px;margin-top:8px}
+#gate .gtop{display:grid;gap:6px}#gate .gtop div{display:grid;grid-template-columns:16px 20px 1fr auto;gap:8px;align-items:center}#gate .gtop .n{font:600 11px var(--mono);color:rgba(var(--tint),.5)}#gate .gtop .v{font:600 12px var(--mono);color:var(--accent)}
+#gate .gmarq{position:absolute;left:0;right:0;bottom:44px;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+#gate .gmarq .tr{display:flex;gap:26px;width:max-content;animation:gmq 60s linear infinite}#gate .gmarq img{width:30px;height:30px;opacity:.75;filter:saturate(.8)}
+@keyframes gmq{to{transform:translateX(-50%)}}
+#gate .gbtn2{font:600 13px var(--sans);padding:10px;border-radius:10px;border:1px solid rgba(var(--tint),.22);background:transparent;color:rgba(var(--tint),.9);cursor:pointer;text-decoration:none;text-align:center}#gate .gbtn2:hover{border-color:var(--accent);color:#fff}
+#gate .gth{display:grid;gap:6px}#gate .gth span{font-size:12px;color:rgba(var(--tint),.65)}
+@media (max-width:1080px){#gate .gside{display:none}}
+@media (max-height:640px){#gate .gmarq{display:none}#gate .glogo{width:90px}}
+
 #gate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;overflow:hidden;color:#f4efe2;font-family:var(--sans);background:radial-gradient(120% 80% at 50% 115%,#123d22 0%,#0c1f13 36%,#0c0c0a 72%);transition:opacity .7s ease,transform .7s ease}
 #gate.out{opacity:0;transform:scale(1.06);pointer-events:none}
 #gate .gbeam{position:absolute;top:-30%;width:46vw;height:150vh;background:linear-gradient(180deg,rgba(255,236,210,.16),rgba(255,236,210,0) 70%);filter:blur(6px);transform-origin:50% 0;mix-blend-mode:screen;animation:gsw 7s ease-in-out infinite alternate}
@@ -373,22 +399,22 @@ th.sorted{color:var(--accent-2)}
 @keyframes gfl{50%{transform:translateY(-6px)}}
 #gate h1{margin:0;font-size:clamp(30px,6.4vw,48px);font-weight:900;letter-spacing:.06em;background:linear-gradient(170deg,#fbf8f1 0%,#d8d4cb 46%,#8a877f 62%,#ece8df 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 0 rgba(0,0,0,.25)}
 #gate .gsub{margin-top:-8px;font:600 12px var(--mono);letter-spacing:.42em;color:rgba(244,239,226,.7)}
-#gate .gload{width:100%;display:grid;gap:8px}#gate .gbar{height:8px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}#gate .gbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c2410f,#ff5b1f 70%,#ffb08a);transition:width .18s linear}
+#gate .gload{width:100%;display:grid;gap:8px}#gate .gbar{height:8px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}#gate .gbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc-lo),var(--accent) 70%,var(--acc-hi));transition:width .18s linear}
 #gate .gtip{font-size:12px;color:rgba(244,239,226,.72);min-height:1.4em}
 #gate .gtap{font-weight:800;letter-spacing:.3em;font-size:14px;animation:gbl 1.4s ease-in-out infinite;cursor:pointer;padding:10px 18px}
 @keyframes gbl{50%{opacity:.3}}
-#gate .gcard{width:100%;display:none;gap:12px;padding:18px;border-radius:16px;background:linear-gradient(165deg,#1d1d1a,#111110);border:1px solid rgba(236,232,223,.14);border-top-color:rgba(236,232,223,.26);box-shadow:0 30px 60px -20px rgba(0,0,0,.8);text-align:left;animation:gin .45s ease}
+#gate .gcard{width:100%;display:none;gap:12px;padding:18px;border-radius:16px;background:linear-gradient(165deg,#1d1d1a,#111110);border:1px solid rgba(var(--tint),.14);border-top-color:rgba(var(--tint),.26);box-shadow:0 30px 60px -20px rgba(0,0,0,.8);text-align:left;animation:gin .45s ease}
 @keyframes gin{from{opacity:0;transform:translateY(14px) scale(.98)}}
 #gate .gcard.on{display:grid}
 #gate label{display:grid;gap:5px;font-size:12px;color:rgba(244,239,226,.75)}
-#gate input[type=text]{font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:#fff;outline:none}#gate input[type=text]:focus{border-color:#ff5b1f;box-shadow:0 0 0 3px rgba(255,91,31,.22)}
+#gate input[type=text]{font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:#fff;outline:none}#gate input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--acc-rgb),.22)}
 #gate .gsrv{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14);font-size:13px}#gate .gsrv .dot{width:9px;height:9px;border-radius:50%;background:#3c9;box-shadow:0 0 8px #3c9}#gate .gsrv b{font-weight:800}#gate .gsrv span{margin-left:auto;font:600 11px var(--mono);color:rgba(244,239,226,.6)}
-#gate .gplay{font:900 17px var(--sans);letter-spacing:.2em;padding:13px;border-radius:12px;border:0;cursor:pointer;color:#1a0a03;background:linear-gradient(175deg,#ffb48f,#ff5b1f 48%,#c2410f);box-shadow:0 5px 0 #6e2406,0 12px 26px -8px rgba(255,91,31,.5);transition:transform .08s}#gate .gplay:active{transform:translateY(3px);box-shadow:0 2px 0 #6e2406}
-#gate .grow{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(244,239,226,.7)}#gate .grow button{font:inherit;background:none;border:0;color:#ff7a45;cursor:pointer;padding:0}
+#gate .gplay{font:900 17px var(--sans);letter-spacing:.2em;padding:13px;border-radius:12px;border:0;cursor:pointer;color:var(--acc-ink);background:linear-gradient(175deg,var(--acc-hi),var(--accent) 48%,var(--acc-lo));box-shadow:0 5px 0 var(--acc-deep),0 12px 26px -8px rgba(var(--acc-rgb),.5);transition:transform .08s}#gate .gplay:active{transform:translateY(3px);box-shadow:0 2px 0 var(--acc-deep)}
+#gate .grow{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(244,239,226,.7)}#gate .grow button{font:inherit;background:none;border:0;color:var(--accent);cursor:pointer;padding:0}
 #gate .gver{position:absolute;bottom:12px;left:0;right:0;text-align:center;font:600 10px var(--mono);letter-spacing:.2em;color:rgba(244,239,226,.4)}
-.mgrchip{display:inline-flex;align-items:center;gap:6px}
+.mgrchip{display:inline-flex;align-items:center;gap:6px}.langmenu{position:fixed;z-index:120;display:grid;gap:2px;min-width:170px;padding:6px;border-radius:6px;background:var(--bg-2);border:1px solid var(--line-2);box-shadow:0 20px 40px -12px rgba(0,0,0,.7)}.langmenu button{text-align:left;font:inherit;font-size:13px;padding:7px 10px;border-radius:4px;border:0;background:none;color:var(--fg-2);cursor:pointer}.langmenu button:hover{background:var(--panel-2);color:var(--fg)}.langmenu button.on{color:var(--accent)}.goog-te-banner-frame,iframe.skiptranslate,#goog-gt-tt,.goog-te-balloon-frame{display:none!important}body{top:0!important}font[style]{background:none!important;box-shadow:none!important}.sbbar{position:relative;z-index:25;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:8px max(16px,env(safe-area-inset-left,0px));background:var(--accent-dim);border-bottom:1px solid var(--accent);font-size:12.5px}.sbbar .btn{padding:4px 10px;font-size:12px;text-decoration:none}
 </style>
-<div id="gate" hidden><div class="gbeam l"></div><div class="gbeam r"></div><div class="gpitch"></div><div class="gdust"></div><div class="gbox"><img class="glogo" id="gLogo" alt=""><h1>威伊士超联赛</h1><div class="gsub">VES LEAGUE · 足球经理</div><div class="gload" id="gLoad"><div class="gbar"><i id="gBar"></i></div><div class="gtip" id="gTip">正在进入球场…</div></div><div class="gtap" id="gTap" hidden>— 点击屏幕开始 —</div><div class="gcard" id="gCard"><label>经理名称<input type="text" id="gName" maxlength="16" placeholder="输入你的经理名" autocomplete="nickname"></label><div class="gsrv"><i class="dot"></i><b>威超联赛 · 主服</b><span id="gSrv">S1 · 第 1 轮</span></div><button class="gplay" id="gPlay" type="button">进入游戏</button><div class="grow"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gSkip">下次直接进入</label><button type="button" id="gGuest">游客进入 ›</button></div></div></div><div class="gver" id="gVer">VES LEAGUE CLIENT</div></div>
+<div id="gate" hidden><div class="gbeam l"></div><div class="gbeam r"></div><div class="gpitch"></div><div class="gcrowd" id="gCrowd"></div><div class="gdust"></div><div id="gFlashes"></div><div class="gside l" id="gL"></div><div class="gside r" id="gR"></div><div class="gmarq"><div class="tr" id="gMarq"></div></div><div class="gbox"><img class="glogo" id="gLogo" alt=""><h1>威伊士超联赛</h1><div class="gsub">VES LEAGUE · 足球经理</div><div class="gload" id="gLoad"><div class="gbar"><i id="gBar"></i></div><div class="gtip" id="gTip">正在进入球场…</div></div><div class="gtap" id="gTap" hidden>— 点击屏幕开始 —</div><div class="gcard" id="gCard"><label>经理名称<input type="text" id="gName" maxlength="16" placeholder="输入你的经理名" autocomplete="nickname"></label><div class="gsrv"><i class="dot"></i><b>威超联赛 · 主服</b><span id="gSrv">S1 · 第 1 轮</span></div><button class="gplay" id="gPlay" type="button">进入游戏</button><a class="gbtn2" id="gSand" href="?sandbox">🧪 试玩新存档（从 S01 第 1 轮开始，不影响正式进度）</a><div class="gth"><span>配色方案</span><div id="gTheme"></div></div><div class="grow"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gSkip">下次直接进入</label><button type="button" id="gGuest">游客进入 ›</button></div></div></div><div class="gver" id="gVer">VES LEAGUE CLIENT</div></div>
 
 <header class="top">
   <div class="top-in">
@@ -446,6 +472,12 @@ for (const [k, b64] of Object.entries(LOGOS_B64)) {
 const VES_MARK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="270 0 540 800"> <defs> <linearGradient id="chr" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#fbf8f1"/><stop offset=".38" stop-color="#b9b5ac"/><stop offset=".52" stop-color="#ece8df"/><stop offset=".78" stop-color="#77746d"/><stop offset="1" stop-color="#c9c5bc"/></linearGradient> <linearGradient id="org" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#ffc3a3"/><stop offset=".35" stop-color="#ff6a2c"/><stop offset=".6" stop-color="#c2410f"/><stop offset=".82" stop-color="#ff7d48"/><stop offset="1" stop-color="#8f2f09"/></linearGradient> <linearGradient id="gph" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#a9a69e"/><stop offset=".42" stop-color="#4a4945"/><stop offset=".68" stop-color="#7c7a73"/><stop offset="1" stop-color="#2a2a28"/></linearGradient> <pattern id="brush" width="6" height="2" patternUnits="userSpaceOnUse"><rect width="6" height="1" fill="#fff" opacity=".07"/></pattern> <filter id="sh" x="-10%" y="-10%" width="130%" height="130%"><feDropShadow dx="5" dy="9" stdDeviation="6" flood-color="#000" flood-opacity=".55"/></filter> </defs> <g filter="url(#sh)" stroke-linejoin="miter"> <!-- crown --> <path d="M366 64 L436 124 L490 92 L540 8 L590 92 L644 124 L714 64 L670 172 L410 172 Z" fill="url(#org)"/> <path d="M540 8 L590 92 L540 150 L490 92 Z" fill="#000" opacity=".18"/> <path d="M448 58 L470 96 L452 108 L440 80 Z M632 58 L610 96 L628 108 L640 80 Z" fill="url(#gph)"/> <path d="M540 104 L556 124 L540 144 L524 124 Z" fill="url(#chr)"/> <rect x="408" y="182" width="264" height="14" fill="url(#org)"/> <!-- handles: left graphite, right orange (asymmetric two-tone like the original) --> <path d="M288 212 L402 212 L392 238 L324 238 C 324 330, 346 410, 408 486 L396 498 C 318 420, 292 330, 292 238 Z" fill="url(#gph)"/> <path d="M792 212 L678 212 L688 238 L756 238 C 756 330, 734 410, 672 486 L684 498 C 762 420, 788 330, 788 238 Z" fill="url(#org)"/> <!-- S --> <path d="M684 230 L456 230 Q422 230 422 264 L422 268 Q422 300 456 300 L628 300 Q662 300 662 334 L662 338 Q662 370 628 370 L402 370" fill="none" stroke="url(#chr)" stroke-width="34"/> <!-- E (tapering, like the cup body) --> <path d="M664 412 L448 412 L462 544 L654 544 M452 478 L636 478" fill="none" stroke="url(#chr)" stroke-width="30"/> <!-- V --> <path d="M452 596 L540 742 L628 596" fill="none" stroke="url(#gph)" stroke-width="36"/> <path d="M462 744 L478 690 L494 744 Z M586 744 L602 690 L618 744 Z" fill="url(#org)"/> <!-- base --> <path d="M408 746 L672 746 L656 786 L424 786 Z" fill="url(#gph)"/> <!-- bevel highlights: light from top-left --> <g fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.4" stroke-linecap="square"> <path d="M684 214 L456 214 Q406 214 406 264"/><path d="M439 284 L628 284"/><path d="M646 334 Q646 354 628 354 L402 354"/> <path d="M664 398 L434 398 L447 532"/><path d="M468 464 L636 464"/> <path d="M368 66 L436 124 L490 92 L540 8" stroke-opacity=".6"/> </g> <g fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2.4"> <path d="M439 316 L628 316"/><path d="M679 338 Q679 386 628 386 L402 386"/><path d="M476 560 L654 560"/><path d="M468 494 L636 494"/> </g> </g> </svg>', VES_MARK_URL = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(VES_MARK);
 LOGO['ves-league-logo'] = VES_MARK_URL; $('#brandLogo').src = VES_MARK_URL;
 { const fi = document.createElement('link'); fi.rel = 'icon'; fi.type = 'image/svg+xml'; fi.href = VES_MARK_URL; document.head.appendChild(fi); }
+const THEMES = [['night', '夜场橙', '#ff5b1f', '#0c0c0a'], ['pitch', '草皮夜', '#b4e05a', '#08110c'], ['royal', '皇家蓝金', '#e4b450', '#070a14'], ['glacier', '冰川青', '#3fd4e6', '#080b0e']];
+let THEME_ACC = '#ff5b1f';
+function setTheme(id, quiet) { const T = THEMES.find(x => x[0] === id) || THEMES[0]; if (T[0] === 'night') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', T[0]); THEME_ACC = T[2]; try { localStorage.setItem('ves_theme', T[0]); } catch (e) {} document.querySelectorAll('.thpick button').forEach(b => b.classList.toggle('on', b.dataset.th === T[0])); if (!quiet && typeof render === 'function') { try { render(); } catch (e) {} } }
+const themePick = () => `<div class="thpick" role="group" aria-label="配色方案">${THEMES.map(([id, n, c, b]) => `<button type="button" data-th="${id}" class="${(THEME_ACC === c) ? 'on' : ''}"><i style="background:linear-gradient(135deg,${b} 0 45%,${c} 45%)"></i>${n}</button>`).join('')}</div>`;
+document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('.thpick button'); if (b) { ev.preventDefault(); ev.stopPropagation(); setTheme(b.dataset.th); } }, true);
+try { setTheme(localStorage.getItem('ves_theme') || 'night', true); } catch (e) { }
 /* 开场 / 登录界面：读条 → 点击开始 → 输入经理名进入（只存在这台设备上，不是真的账号）；#vesdebug 测试时跳过 */
 const MGR_K = 'ves_mgr', GSKIP_K = 'ves_gate_skip'; const lsg = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, lss = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
 function gateShow(force) {
@@ -455,6 +487,7 @@ function gateShow(force) {
   const TIPS = ['正在载入球队资料…', '正在整理球员能力与技能…', '正在铺设草皮、画好白线…', '正在点亮球场灯光…', '小贴士：技能稀有度 C < B < A < S，越稀有越容易触发', '小贴士：更衣室信任跌太低，主帅会被解雇', '小贴士：精力见底的主力会被自动轮换'];
   let p = force ? 100 : 0, k = 0; card.classList.remove('on'); tap.hidden = true; load.hidden = false;
   try { document.getElementById('gSrv').textContent = `${SN(SEASON)} · 第 ${Math.min(38, playedRounds() + 1)} 轮`; } catch (e) {}
+  try { gateDeco(); } catch (e) { }
   document.getElementById('gName').value = lsg(MGR_K) || ''; document.getElementById('gSkip').checked = lsg(GSKIP_K) === '1';
   const ready = () => { load.hidden = true; tap.hidden = false; G.onclick = ev => { if (card.classList.contains('on')) return; tap.hidden = true; card.classList.add('on'); setTimeout(() => document.getElementById('gName').focus(), 60); }; };
   if (force) ready(); else { const iv = setInterval(() => { p = Math.min(100, p + 4 + Math.random() * 9); bar.style.width = p + '%'; if (p > (k + 1) * 16 && k < TIPS.length - 1) tip.textContent = TIPS[++k]; if (p >= 100) { clearInterval(iv); tip.textContent = '准备就绪'; setTimeout(ready, 250); } }, 110); }
@@ -462,10 +495,39 @@ function gateShow(force) {
   document.getElementById('gPlay').onclick = ev => { ev.stopPropagation(); enter(false); }; document.getElementById('gGuest').onclick = ev => { ev.stopPropagation(); enter(true); };
   document.getElementById('gName').onkeydown = ev => { if (ev.key === 'Enter') enter(false); };
 }
-function mgrChip() { let c = document.getElementById('mgrChip'); const n = lsg(MGR_K); const sync = document.getElementById('syncChip'); if (!sync) return; if (!c) { c = document.createElement('button'); c.id = 'mgrChip'; c.className = 'roundchip mgrchip'; c.title = '切换经理 / 回到开场界面'; c.onclick = () => gateShow(true); sync.parentNode.insertBefore(c, sync); } c.textContent = '⚽ ' + (n || '游客经理'); }
-setTimeout(() => { mgrChip(); gateShow(false); }, 0);
+function gateDeco() {
+  const T = Object.keys(TD); document.getElementById('gMarq').innerHTML = T.concat(T).map(t => `<img src="${LOGO[t] || ''}" alt="">`).join('');
+  document.getElementById('gTheme').innerHTML = themePick();
+  if (SANDBOX) { const a = document.getElementById('gSand'); a.textContent = '← 回到正式进度'; a.href = location.pathname; }
+  // 看台：一排随机的人头剪影，偶尔有闪光灯
+  { let c = ''; const W = 1600, r = seeded('crowd'); for (let i = 0; i < 260; i++) { const x = r() * W, y = 40 + r() * 70, rr = 5 + r() * 5; c += `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${rr.toFixed(1)}"/><rect x="${(x - rr * 1.3).toFixed(0)}" y="${(y + rr * 0.8).toFixed(0)}" width="${(rr * 2.6).toFixed(0)}" height="40" rx="${rr.toFixed(0)}"/>`; }
+    document.getElementById('gCrowd').style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 120' preserveAspectRatio='none'><g fill='#000' opacity='.9'>${c}</g></svg>`)}")`;
+    document.getElementById('gFlashes').innerHTML = [...Array(14)].map((_, i) => `<i class="gflash" style="left:${(4 + r() * 92).toFixed(1)}%;bottom:calc(46vh + ${(r() * 12).toFixed(1)}vh);animation-delay:${(r() * 5).toFixed(2)}s;animation-duration:${(3 + r() * 5).toFixed(1)}s"></i>`).join(''); }
+  // 左：本季焦点球员；右：实力榜 / 积分榜前五
+  const all = []; Object.entries(PDB).forEach(([t, L]) => L.forEach(p => all.push([t, p]))); all.sort((a, b) => b[1].rating - a[1].rating);
+  const [st, sp] = all[Math.floor(ghash('star|' + SEASON + '|' + playedRounds()) * Math.min(5, all.length))] || [];
+  if (sp) document.getElementById('gL').innerHTML = `<div class="gpanel"><h4>本季焦点球员</h4><div class="gstar"><span class="ov">${sp.rating}</span><b>${esc(sp.name)}</b><span class="sub">${crest(st, 16)} ${esc(st)} · ${esc(sp.pos)} · ${sp.age} 岁</span></div><div class="gsk">${skillsOf(sp).map(x => skBadge(x.id, x.t, 30)).join('')}</div></div><div class="gpanel"><h4>小贴士</h4>技能稀有度 C &lt; B &lt; A &lt; S，越稀有触发率越高；比赛里技能触发时，球员头顶会亮起图标。</div>`;
+  const pr = playedRounds(); let rows;
+  if (pr > 0) rows = table(pr).slice(0, 5).map((r, i) => [i + 1, r.team, r.pts + ' 分']); else rows = T.slice().sort((a, b) => ENGINE.strength(b).ovr - ENGINE.strength(a).ovr).slice(0, 5).map((t, i) => [i + 1, t, ENGINE.strength(t).ovr.toFixed(1)]);
+  document.getElementById('gR').innerHTML = `<div class="gpanel"><h4>${pr > 0 ? `积分榜 · 第 ${pr} 轮后` : '赛前实力榜'}</h4><div class="gtop">${rows.map(([n, t, v]) => `<div><span class="n">${n}</span>${crest(t, 20)}<span>${esc(t)}</span><span class="v">${v}</span></div>`).join('')}</div></div><div class="gpanel"><h4>${SN(SEASON)} 赛季</h4>${pr >= 38 ? '本季已经踢完' : `已踢 ${pr} / 38 轮`} · ${T.length} 支球队</div>`;
+}
+/* 翻译：用 Google 网页翻译把整个界面翻成英文 / 马来文（队名保持原名）；选择记在 cookie 里，重新载入后生效 */
+const LANGS = [['zh-CN', '中文'], ['en', 'English'], ['ms', 'Bahasa Melayu']];
+const curLang = () => { const m = document.cookie.match(/googtrans=\/[^/]+\/([^;]+)/); return m ? m[1] : 'zh-CN'; };
+function setLang(l) { const host = location.hostname; const kill = d => { document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + (d ? '; domain=' + d : ''); };
+  if (l === 'zh-CN') { kill(); kill(host); kill('.' + host.split('.').slice(-2).join('.')); } else { document.cookie = 'googtrans=/zh-CN/' + l + '; path=/'; }
+  location.reload(); }
+function loadTranslate() { if (curLang() === 'zh-CN' || window.__gtl) return; window.__gtl = 1; window.__gtInit = () => { try { new google.translate.TranslateElement({ pageLanguage: 'zh-CN', includedLanguages: 'en,ms,zh-CN', autoDisplay: false }, 'gtEl'); } catch (e) {} };
+  const d = document.createElement('div'); d.id = 'gtEl'; d.style.display = 'none'; document.body.appendChild(d);
+  const sc = document.createElement('script'); sc.src = 'https://translate.google.com/translate_a/element.js?cb=__gtInit'; sc.onerror = () => toast('翻译只能在 ves.dson.site 上使用'); document.head.appendChild(sc); }
+function langMenu(btn) { let m = document.getElementById('langMenu'); if (m) { m.remove(); return; } m = document.createElement('div'); m.id = 'langMenu'; m.className = 'langmenu'; const cl = curLang();
+  m.innerHTML = LANGS.map(([k, n]) => `<button type="button" data-l="${k}" class="${k === cl ? 'on' : ''}">${n}</button>`).join('') + '<div class="dim" style="font-size:11px;padding:4px 8px 2px">机器翻译，队名保持原名</div>';
+  m.onclick = ev => { const b = ev.target.closest('[data-l]'); if (!b) return; if (b.dataset.l === cl) return m.remove(); setLang(b.dataset.l); };
+  const r = btn.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.right = Math.max(8, innerWidth - r.right) + 'px'; document.body.appendChild(m); setTimeout(() => document.addEventListener('click', function f(e) { if (!m.contains(e.target) && e.target !== btn) { m.remove(); document.removeEventListener('click', f); } }), 0); }
+function mgrChip() { let c = document.getElementById('mgrChip'); const n = lsg(MGR_K); const sync = document.getElementById('syncChip'); if (!sync) return; if (!c) { c = document.createElement('button'); c.id = 'mgrChip'; c.className = 'roundchip mgrchip'; c.title = '切换经理 / 回到开场界面'; c.onclick = () => gateShow(true); sync.parentNode.insertBefore(c, sync); } c.textContent = '⚽ ' + (n || '游客经理'); if (!document.getElementById('lgChip')) { const g = document.createElement('button'); g.id = 'lgChip'; g.className = 'roundchip notranslate'; g.setAttribute('translate', 'no'); g.title = '语言 / Language'; g.textContent = '文/A ' + ({ 'zh-CN': '中', en: 'EN', ms: 'MS' }[curLang()] || '中'); g.onclick = () => langMenu(g); sync.parentNode.insertBefore(g, c); } if (!document.getElementById('thChip')) { const t = document.createElement('button'); t.id = 'thChip'; t.className = 'roundchip'; t.title = '切换配色'; t.textContent = '🎨'; t.onclick = () => { const i = THEMES.findIndex(x => x[2] === THEME_ACC); setTheme(THEMES[(i + 1) % THEMES.length][0]); toast('配色：' + THEMES[(i + 1) % THEMES.length][1]); }; sync.parentNode.insertBefore(t, c); } }
+setTimeout(() => { mgrChip(); gateShow(false); loadTranslate(); }, 0);
 const crest = (t, s = 28) => `<img class="crest" src="${LOGO[t] || ''}" width="${s}" height="${s}" alt="">`;
-const tlink = (t, s = 24) => `<button class="lnk tname" data-team="${esc(t)}">${crest(t, s)}<span>${esc(t)}</span></button>`;
+const tlink = (t, s = 24) => `<button class="lnk tname" data-team="${esc(t)}">${crest(t, s)}<span class="notranslate" translate="no">${esc(t)}</span></button>`;
 const en = t => (H.profiles[t] && H.profiles[t].en) || '';
 function vis(c) { // 让过暗/过亮的队色在深色底上可见
   const h = c.replace('#', ''); const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
@@ -503,11 +565,13 @@ function kitDlg(t) { const K = kitsOf(t), d = $('#dlg'), inp = (id, v) => `<inpu
     <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="kitReset" data-t="${esc(t)}">恢复默认</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="kitSave" data-t="${esc(t)}">保存</button></span></div></div>`;
   if (!d.open) d.showModal();
   ['home', 'away', 'third'].forEach(k => ['kc_', 'kt_'].forEach(pf => $('#' + pf + k).addEventListener('input', () => { $('#kp_' + k).innerHTML = shirtSVG({ body: $('#kc_' + k).value, trim: $('#kt_' + k).value }, 44, 10); }))); }
-const rtColor = r => r >= 90 ? '#d8b45f' : r >= 85 ? '#ff5b1f' : r >= 80 ? '#7fd6b4' : r >= 75 ? '#a9b4c4' : '#6f7b8c';
+const rtColor = r => r >= 90 ? '#d8b45f' : r >= 85 ? THEME_ACC : r >= 80 ? '#7fd6b4' : r >= 75 ? '#a9b4c4' : '#6f7b8c';
 const pct = x => Math.round(x * 100) + '%';
 
 /* ---------- 赛季状态 ---------- */
-const KEY = 'ves-league-s01-v1';
+// 试玩新档（网址带 ?sandbox）：用另一份本机存档、完全不连云端，正式进度不受影响
+const SANDBOX = /[?&#]sandbox\b/.test(location.search + location.hash);
+const KEY = 'ves-league-s01-v1', LKEY = SANDBOX ? 'ves-league-sandbox-v1' : KEY;
 let S;
 // 每个赛季的随机种子：赛季开始时用真随机抽出并存进进度，场外新闻、资本、杯赛、换帅都按它推算（重开网页不变，重踢/回溯会重新抽）
 const newSalt = () => Math.random().toString(36).slice(2, 10);
@@ -523,12 +587,12 @@ const DIRTY = new Set();
 let LS_WARNED = false;
 function localSave() {
   const str = JSON.stringify(S);
-  try { localStorage.setItem(KEY, str); return true; } catch (e) {}
-  try { localStorage.setItem(KEY, 'LZ:' + LZString.compressToUTF16(str)); return true; }
+  try { localStorage.setItem(LKEY, str); return true; } catch (e) {}
+  try { localStorage.setItem(LKEY, 'LZ:' + LZString.compressToUTF16(str)); return true; }
   catch (e) { if (!LS_WARNED) { LS_WARNED = true; setTimeout(() => toast('本机存储空间不足，进度只保存在云端'), 0); } return false; }
 }
 function save() { S.updated = Date.now(); localSave(); cloudQueue(); }
-function load() { try { let raw = localStorage.getItem(KEY); if (raw && raw.startsWith('LZ:')) raw = LZString.decompressFromUTF16(raw.slice(3)); const s = JSON.parse(raw); if (s && s.fx && s.teams) return s; } catch (e) {} return null; }
+function load() { try { let raw = localStorage.getItem(LKEY); if (raw && raw.startsWith('LZ:')) raw = LZString.decompressFromUTF16(raw.slice(3)); const s = JSON.parse(raw); if (s && s.fx && s.teams) return s; } catch (e) {} return null; }
 // 比赛结果压缩存储。ev: [分钟, 类型, 主/客, 球员, 助攻者/被换下者, 附加值（点球=1 / 伤停轮数 / 被扑=1 / 直红=1）]
 // pl: [射门, 射正, 抢断, 扑救, 评分×10, 分钟, 关键传球, 拦截, 传球, 成功传球, 点球进球, 罚丢点球, 是否首发, 尝试过人, 成功过人]；lu: 出场名单 [球员, 位置]
 const compact = res => ({
@@ -2966,7 +3030,7 @@ function finish() {
       <p class="muted" style="margin:0;font-size:13px">${headline(res)}</p>
       <div class="btns">${saved}<button class="btn" data-act="again">再模拟一次</button>${nxt ? `<button class="btn primary" data-act="nextfx">下一场 →</button>` : ''}</div></div></div>
     <div style="margin-top:22px"><div class="eyebrow" style="margin-bottom:10px">球员评分${res.players ? '' : ''}</div>
-    <div class="grid g-2">${[['h', h], ['a', a]].map(([k, t]) => `<div><div class="tname" style="margin-bottom:6px">${crest(t, 18)}<b style="font-size:13px">${esc(t)}</b></div><div class="pscroll"><div class="prow" style="color:var(--fg-3);font-size:10.5px"><span>球员</span><span class="meta">分钟</span><span class="meta">射门</span><span class="meta">射正</span><span class="meta">传球</span><span class="meta">成功率</span><span class="meta">关键传球</span><span class="meta">抢断</span><span class="meta">拦截</span><span class="meta">扑救</span><span class="meta">评分</span></div>${res.players[k].slice().sort((x, y) => y.start - x.start || y.r - x.r).map(r => { const gl = res.events.filter(e => e.type === 'goal' && e.player === r.name && e.team === t).length, as = res.events.filter(e => e.type === 'goal' && e.assist === r.name && e.team === t).length; return `<div class="prow"><button class="lnk" data-player="${esc(t)}|${esc(r.name)}"><span>${esc(r.name)}</span> <span class="dim" style="font-size:10.5px">${ENGINE.ROLE_ZH[r.role] || esc(r.slot)}</span>${gl ? ` <span style="color:var(--accent-2)">⚽${gl > 1 ? '×' + gl : ''}</span>` : ''}${as ? ` <span class="dim">A${as > 1 ? '×' + as : ''}</span>` : ''}${r.start ? '' : ' <span class="dim" style="font-size:10.5px">替补</span>'}${res.events.some(e => e.type === 'inj' && e.player === r.name && e.team === t) ? ' <span style="color:var(--loss);font-size:10.5px">伤</span>' : ''}</button><span class="meta">${r.min}'</span><span class="meta">${r.sh}</span><span class="meta">${r.ot}</span><span class="meta">${r.ps}</span><span class="meta">${r.ps ? Math.round(r.pc / r.ps * 100) + '%' : '–'}</span><span class="meta">${r.kp}</span><span class="meta">${r.tk}</span><span class="meta">${r.int}</span><span class="meta">${r.sv || '–'}</span><span class="rt"><span class="rt-pill" style="background:${r.r >= 8 ? 'var(--gold)' : r.r >= 7 ? '#ff5b1f' : r.r >= 6 ? '#a9b4c4' : '#ff8a8a'}">${r.r.toFixed(1)}</span></span></div>`; }).join('')}</div></div>`).join('')}</div></div>`;
+    <div class="grid g-2">${[['h', h], ['a', a]].map(([k, t]) => `<div><div class="tname" style="margin-bottom:6px">${crest(t, 18)}<b style="font-size:13px">${esc(t)}</b></div><div class="pscroll"><div class="prow" style="color:var(--fg-3);font-size:10.5px"><span>球员</span><span class="meta">分钟</span><span class="meta">射门</span><span class="meta">射正</span><span class="meta">传球</span><span class="meta">成功率</span><span class="meta">关键传球</span><span class="meta">抢断</span><span class="meta">拦截</span><span class="meta">扑救</span><span class="meta">评分</span></div>${res.players[k].slice().sort((x, y) => y.start - x.start || y.r - x.r).map(r => { const gl = res.events.filter(e => e.type === 'goal' && e.player === r.name && e.team === t).length, as = res.events.filter(e => e.type === 'goal' && e.assist === r.name && e.team === t).length; return `<div class="prow"><button class="lnk" data-player="${esc(t)}|${esc(r.name)}"><span>${esc(r.name)}</span> <span class="dim" style="font-size:10.5px">${ENGINE.ROLE_ZH[r.role] || esc(r.slot)}</span>${gl ? ` <span style="color:var(--accent-2)">⚽${gl > 1 ? '×' + gl : ''}</span>` : ''}${as ? ` <span class="dim">A${as > 1 ? '×' + as : ''}</span>` : ''}${r.start ? '' : ' <span class="dim" style="font-size:10.5px">替补</span>'}${res.events.some(e => e.type === 'inj' && e.player === r.name && e.team === t) ? ' <span style="color:var(--loss);font-size:10.5px">伤</span>' : ''}</button><span class="meta">${r.min}'</span><span class="meta">${r.sh}</span><span class="meta">${r.ot}</span><span class="meta">${r.ps}</span><span class="meta">${r.ps ? Math.round(r.pc / r.ps * 100) + '%' : '–'}</span><span class="meta">${r.kp}</span><span class="meta">${r.tk}</span><span class="meta">${r.int}</span><span class="meta">${r.sv || '–'}</span><span class="rt"><span class="rt-pill" style="background:${r.r >= 8 ? 'var(--gold)' : r.r >= 7 ? THEME_ACC : r.r >= 6 ? '#a9b4c4' : '#ff8a8a'}">${r.r.toFixed(1)}</span></span></div>`; }).join('')}</div></div>`).join('')}</div></div>`;
   updateChip();
 }
 function updateChip() { const nr = nextRound(); $('#roundChip').innerHTML = nr < 0 ? `S${SEASON} · <b>已完赛</b>` : `S${SEASON} · 第 <b>${String(nr + 1).padStart(2, '0')}</b> / 38 轮`; }
@@ -6695,7 +6759,7 @@ document.addEventListener('click', e => {
   if (act === 'doResetAll') { $('#dlg').close(); doResetAll(); return; }
   if (act === 'doReset') { if (S.market) { delete S.market[SEASON]; delete S.market['w' + SEASON]; } rollSalt(SEASON); S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
-  if (act === 'sync') openSync();
+  if (act === 'sync') { if (SANDBOX) return toast('试玩新档只存在这台设备上，不会同步'); openSync(); }
   if (act === 'search') openSearch();
   if (act === 'wlTab') { WLV.tab = el.dataset.v; return render(); }
   if (act === 'wlSeason') { WLV.tab = 'season'; WLV.s = +el.dataset.v; $('#dlg').open && $('#dlg').close(); return view === 'wl' ? render() : go('wl'); }
@@ -6827,10 +6891,11 @@ try { WEB.key = localStorage.getItem('ves-sync-key') || ''; } catch (e) {}
 function setSync(st) {
   CLOUD.status = st;
   const el = $('#syncChip'); if (!el) return;
-  el.textContent = { local: '仅本机', cloud: '☁ 已同步', saving: '☁ 同步中…', error: '☁ 同步失败', connecting: '☁ 连接中…', view: '☁ 只读 · 点此解锁' }[st] || st;
+  el.textContent = { local: '仅本机', cloud: '☁ 已同步', saving: '☁ 同步中…', error: '☁ 同步失败', connecting: '☁ 连接中…', view: '☁ 只读 · 点此解锁', sandbox: '🧪 试玩新档 · 不同步' }[st] || st;
   el.style.color = st === 'cloud' ? 'var(--win)' : st === 'error' ? 'var(--loss)' : '';
 }
 function cloudQueue() {
+  if (SANDBOX) return;
   if (CLOUD.db) return cloudFlush();
   if (WEB.on) { clearTimeout(WEB.timer); const wait = Math.max(8000, 45000 - (Date.now() - (WEB.lastPush || 0))); WEB.timer = setTimeout(webPush, wait); } // 云端存储每月有操作次数上限：上传合并成每 45 秒最多一次
 }
@@ -6866,6 +6931,7 @@ async function cloudPull(meta) {
   localSave();
   return true;
 }
+function sandboxBar() { if (document.getElementById('sbBar')) return; const b = document.createElement('div'); b.id = 'sbBar'; b.className = 'sbbar'; b.innerHTML = `<span>🧪 <b>试玩新存档</b> · 这是一份全新的联赛（所有球队和球员都在，从 S01 第 1 轮开始），只存在这台设备上，不会同步、也不会动到你的正式进度。</span><span class="btns"><button type="button" class="btn ghost" id="sbReset">重新开一档</button><a class="btn primary" href="${location.pathname}">回到正式进度</a></span>`; document.body.insertBefore(b, document.body.firstChild.nextSibling); document.getElementById('sbReset').onclick = () => { if (!confirm('清空这份试玩存档，重新从 S01 第 1 轮开始？')) return; try { localStorage.removeItem(LKEY); } catch (e) {} location.reload(); }; }
 async function cloudInit() {
   if (!window.claude || typeof window.claude.use !== 'function') return webInit();
   setSync('connecting');
@@ -6994,7 +7060,7 @@ async function exportSave() {
 if (MIGRATED) setTimeout(() => toast('S01–S17 的球员流动已经重新推演，进度从 S01 重新开始'), 400);
 const h0 = (location.hash || '').slice(1);
 go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
-setSync('local'); cloudInit();
+if (SANDBOX) { setSync('sandbox'); sandboxBar(); } else { setSync('local'); cloudInit(); }
 if (/vesdebug/.test(location.hash)) window.__ves = {
   health: () => { const R = healthReport(); return { err: R.err.length, warn: R.warn.length, e: R.err.slice(0, 15), w: R.warn.slice(0, 15), stats: R.stats }; },
   ev: f => eval('(' + f + ')')(),
