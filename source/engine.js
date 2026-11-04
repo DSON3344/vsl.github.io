@@ -65,6 +65,7 @@ const ENGINE = (() => {
     if (!pos) return 6;
     const a = String(slot).replace(/-.*/, ''), b = String(pos);
     if (a.replace(/^[LR]/, '') === b.replace(/^[LR]/, '') || a === b) return 0;
+    if ((b === 'CF' && /ST$/.test(a)) || (a === 'CF' && /ST$/.test(b))) return 0; // 中锋踢前锋位置不扣分
     if (LINE(a) === 'GK' || LINE(b) === 'GK') return 30;
     if (baseRole(a) === baseRole(b)) return 1;
     if (LINE(a) === LINE(b)) return 4;

@@ -409,7 +409,7 @@ th.sorted{color:var(--accent-2)}
 @media (max-width:860px){#gate .ghero{left:24px;right:24px;top:9vh;transform:none;max-width:none}#gate.ready .ghero{transform:none}#gate .glogo{height:16vh;margin-bottom:16px}#gate h1{font-size:clamp(34px,10vw,54px)}#gate .gline{display:none}
   #gate .grail{top:auto;left:0;width:auto;height:auto;padding:26px 24px calc(22px + env(safe-area-inset-bottom,0px));gap:16px;border-left:0;border-top:1px solid rgba(var(--tint),.12);transform:translateY(100%)}#gate.ready .grail{transform:none}#gate .gfoot,#gate .gtip{display:none}}
 @media (prefers-reduced-motion:reduce){#gate .gbeam{animation:none}#gate .ghero,#gate .grail{transition:none}}
-.mgrchip{display:inline-flex;align-items:center;gap:6px}</style>
+.mgrchip{display:inline-flex;align-items:center;gap:6px}.sbfab{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:90;display:grid;justify-items:end;gap:10px}.sbbtn{width:52px;height:52px;border-radius:50%;border:1px solid var(--accent);background:var(--bg-2);color:var(--fg);font-size:22px;cursor:pointer;box-shadow:0 10px 30px -8px rgba(0,0,0,.7),0 0 0 4px rgba(var(--acc-rgb),.12);transition:transform .2s var(--ease)}.sbbtn:hover{transform:translateY(-2px)}.sbpop{width:min(280px,calc(100vw - 36px));display:grid;gap:8px;padding:14px;border-radius:6px;background:var(--bg-2);border:1px solid var(--line-2);box-shadow:0 20px 40px -12px rgba(0,0,0,.75);font-size:12.5px}.sbpop[hidden]{display:none}.sbpop p{margin:0;color:var(--fg-2);line-height:1.6}.sbpop .btn{text-align:center;text-decoration:none;justify-content:center}</style>
 </head>
 <body>
 
@@ -1606,6 +1606,7 @@ const ENGINE = (() => {
     if (!pos) return 6;
     const a = String(slot).replace(/-.*/, ''), b = String(pos);
     if (a.replace(/^[LR]/, '') === b.replace(/^[LR]/, '') || a === b) return 0;
+    if ((b === 'CF' && /ST$/.test(a)) || (a === 'CF' && /ST$/.test(b))) return 0; // 中锋踢前锋位置不扣分
     if (LINE(a) === 'GK' || LINE(b) === 'GK') return 30;
     if (baseRole(a) === baseRole(b)) return 1;
     if (LINE(a) === LINE(b)) return 4;
@@ -2035,6 +2036,13 @@ const H = HISTORY, PDB = PLAYER_DATABASE, TD = TEAMS_DATA;
 const RC_K = 0.86, RC = r => r <= 78 ? r : 78 + (r - 78) * RC_K, RX = r => r <= 78 ? r : 78 + (r - 78) / RC_K;
 Object.values(HIST.squads || {}).forEach(T => Object.values(T).forEach(L => L.forEach(x => { if (typeof x[2] === 'number') x[2] = Math.round(RC(x[2])); })));
 (HIST.players || []).forEach(x => { if (x && typeof x[7] === 'number') x[7] = Math.round(RC(x[7])); });
+/* 司职位置：统一用参考 FIFA 的 15 个标准代码（GK CB LB RB LWB RWB CDM CM CAM LM RM LW RW CF ST），中英文名称都从这里取 */
+const POS_DEF = { GK: ['Goalkeeper', '守门员'], CB: ['Centre Back', '中后卫'], LB: ['Left Back', '左后卫'], RB: ['Right Back', '右后卫'], LWB: ['Left Wing Back', '左翼卫'], RWB: ['Right Wing Back', '右翼卫'], CDM: ['Central Defensive Midfielder', '防守型中场'], CM: ['Central Midfielder', '中央中场'], CAM: ['Central Attacking Midfielder', '攻击型中场'], LM: ['Left Midfielder', '左中场'], RM: ['Right Midfielder', '右中场'], LW: ['Left Winger', '左边锋'], RW: ['Right Winger', '右边锋'], CF: ['Centre Forward', '中锋'], ST: ['Striker', '前锋'] };
+const POS_ALIAS = { LDM: 'CDM', RDM: 'CDM', DM: 'CDM', LCM: 'CM', RCM: 'CM', LAM: 'CAM', RAM: 'CAM', AM: 'CAM', LST: 'ST', RST: 'ST', LCB: 'CB', RCB: 'CB', LF: 'ST', RF: 'ST', SS: 'CF' };
+const normPos = p => { const b = String(p || '').replace(/-.*/, '').toUpperCase(); return POS_DEF[b] ? b : POS_ALIAS[b] || b; };
+const posZh = p => (POS_DEF[normPos(p)] || [])[1] || '';
+Object.values(PLAYER_DATABASE).forEach(L => L.forEach(q => { if (q && q.pos) { q.pos = normPos(q.pos); if (Array.isArray(q.alt)) q.alt = [...new Set(q.alt.map(normPos))]; } }));
+(HIST.players || []).forEach(x => { if (x && x[1]) x[1] = normPos(x[1]); });
 const $ = (s, r = document) => r.querySelector(s);
 // 手机上对话框里的表格改成卡片：每格带上表头文字
 function dlgLabel(root) { root.querySelectorAll('.tw table').forEach(tb => { const hs = [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim()); tb.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (hs[i] && !td.dataset.l) td.dataset.l = hs[i]; })); }); }
@@ -2342,6 +2350,10 @@ function bustInfo(key) { const X = rrOf(key); if (!X || !X[3]) return null; cons
   Object.entries(TEAMS_DATA).forEach(([t, T]) => { const L = (PLAYER_DATABASE[t] || []).slice(); if (!L.length || !T.roster) return; const used = new Set();
     T.roster = T.roster.map(r => { const ln = ENGINE.LINE(String(r.pos).replace(/^[LR](?=(CB|CM|DM|AM|ST|WB))/, '')); const c = L.filter(p => !used.has(p.name)).sort((a, b) => (ENGINE.LINE(b.pos) === ln) - (ENGINE.LINE(a.pos) === ln) || b.rating - a.rating)[0]; if (!c) return r; used.add(c.name); return { pos: r.pos, name: c.name, rating: c.rating }; }); });
 })();
+// 中锋（CF）：会回撤串联的前锋——传球、盘带不比射门差太多的 ST 改登记为 CF
+const cfScore = q => { const A = q.attributes || {}; return ((A.pas || 60) + (A.dri || 60)) / 2 - (A.sho || 60) + (ghash('cf|' + q.name) - 0.5) * 3; };
+const toCF = L => { const st = L.filter(q => q && q.pos === 'ST' && q.attributes).sort((a, b) => cfScore(b) - cfScore(a)); st.forEach((q, i) => { if (i < Math.floor(st.length / 2) && cfScore(q) > -9 - (i === 0 ? 0 : 4)) q.pos = "CF"; }); };
+Object.values(PDB).forEach(toCF);
 const PDB0 = {}; Object.entries(PDB).forEach(([t, l]) => PDB0[t] = l.map(p => JSON.parse(JSON.stringify(p))));
 const ROSTER0 = {}; Object.entries(TD).forEach(([t, T]) => ROSTER0[t] = T.roster.map(r => ({ ...r })));
 const STYLE0 = {}, COORDS0 = {}, FORMS = {}, FORM_OF0 = {};
@@ -2458,7 +2470,7 @@ function youthName_old(team, rnd) {
   return { name: '青训' + Math.floor(rnd() * 1e4), nat: '—' };
 }
 const ATTR_TPL = { GK: { div: 3, han: 2, kic: 0, ref: 3, spd: -12, pos_s: 2 }, DF: { spd: -2, sho: -22, pas: -6, dri: -10, def: 4, phy: 3, men: 0, sta: 0 }, MF: { spd: 0, sho: -5, pas: 4, dri: 2, def: -8, phy: -3, men: 1, sta: 3 }, FW: { spd: 3, sho: 5, pas: -4, dri: 3, def: -30, phy: 0, men: 0, sta: -2 } };
-var CONV_POS = ['CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST'];
+var CONV_POS = ['CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST'];
 var POS_XY = { GK: [0, 'C'], CB: [1, 'C'], LB: [1, 'L'], RB: [1, 'R'], LWB: [2, 'L'], RWB: [2, 'R'], CDM: [2, 'C'], DM: [2, 'C'], CM: [3, 'C'], LM: [3, 'L'], RM: [3, 'R'], CAM: [4, 'C'], AM: [4, 'C'], LW: [4.5, 'L'], RW: [4.5, 'R'], ST: [5, 'C'], CF: [5, 'C'] };
 var CONV_LV = [['易', 1.25, 15, 3], ['中', 2.25, 30, 6], ['难', 3.25, 57, 10], ['极难', 99, 95, 14]]; // [难度, 距离上限, 需要轮数, 刚开始的能力折扣]
 const YOUTH_UID = new Set();
@@ -2623,7 +2635,7 @@ function acadQ(t) {
   if (!ACQ_C) { ACQ_C = {}; const L = Object.keys(TD).sort((a, b) => acadBase(b) - acadBase(a)), n = L.length; L.forEach((x, i) => { const f = i / n; ACQ_C[x] = f < 0.15 ? '世界级' : f < 0.35 ? '优秀' : f < 0.65 ? '良好' : f < 0.85 ? '普通' : '较差'; }); }
   return ACQ_C[t] || '良好';
 }
-const ACAD_POS = { GK: ['GK'], DF: ['CB', 'CB', 'LB', 'RB'], MF: ['CDM', 'CM', 'CM', 'CAM', 'LM', 'RM'], FW: ['ST', 'ST', 'LW', 'RW'] };
+const ACAD_POS = { GK: ['GK'], DF: ['CB', 'CB', 'LB', 'RB'], MF: ['CDM', 'CM', 'CM', 'CAM', 'LM', 'RM'], FW: ['ST', 'ST', 'CF', 'LW', 'RW'] };
 function acadBase(t) { const v = ((typeof PDB0 !== 'undefined' && PDB0[t]) || PDB[t] || []).map(p => p.rating).sort((a, b) => b - a).slice(0, 11); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 78; }
 function acadKid(t, born, k, gold) {
   const rnd = seeded('acad|' + t + '|' + born + '|' + k);
@@ -2722,6 +2734,7 @@ const FDB0 = {};
     });
   }));
 })();
+Object.values(FDB0).forEach(toCF);
 const FDB = {};
 let EXTP = [], RET_S = {};
 function extYouth(club, old, season) {
@@ -2927,7 +2940,7 @@ function setupHistoric(s) {
     const seen = new Set(), list = [];
     (SQ[t] || []).forEach(([pid, slot, r]) => { const n = HIST.players[pid] && HIST.players[pid][0]; if (!n || seen.has(n)) return; seen.add(n); list.push({ p: histPlayer(pid, t, s, Math.min(97, r + padjOf(pid) + Math.round(histMentor(s)[pid] || 0) + bloomDelta(pid, s))), slot }); });
     if (!list.length) return;
-    PDB[t] = list.map(x => x.p);
+    PDB[t] = list.map(x => x.p); toCF(PDB[t]);
     { const usedNo = new Set(); PDB[t].forEach(p => { let n = p.no; if (usedNo.has(n)) { const pool = { GK: [1, 12, 13, 22, 25, 31], DF: [2, 3, 4, 5, 6, 15, 23, 24, 26, 32], MF: [8, 10, 14, 16, 18, 20, 21, 27, 28], FW: [7, 9, 11, 17, 19, 29, 30] }[ENGINE.LINE(p.pos)]; n = pool.find(x => !usedNo.has(x)) || [...Array(60)].map((_, k) => k + 33).find(x => !usedNo.has(x)); p.no = n; } usedNo.add(n); }); }
     TD[t].roster = list.filter(x => x.slot).map(x => ({ pos: x.slot, name: x.p.name, rating: x.p.rating }));
     TD[t].formNow = null;
@@ -2942,7 +2955,7 @@ function setupHistoric(s) {
   Object.entries(PDB).forEach(([t, l]) => l.forEach(p => { p.team = t; BY_TN[t + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = t; }));
   const XF = {}; Object.keys(FDB).forEach(c => XF[c] = []);
   EXTP.concat(synthExt()).forEach(p => { if (typeof p.age0 !== 'number' || XEX.has(p.uid)) return; const a = p.age0 + (s - p.s0); if (a < 17 || (p.synth && a > 34)) return; const c = p.career ? clubAt(p, s) : (p.stints && p.stints[0] ? p.stints[0][0] : p.team); if (!c || !XF[c]) return; if (XF[c].some(q => q.name === p.name)) return; p.age = a; p.rating = growthOf(p).past(a); XF[c].push(p); });
-  Object.keys(FDB).forEach(c => { FDB[c] = XF[c]; FDB[c].forEach(p => { BY_TN[c + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = c; }); });
+  Object.keys(FDB).forEach(c => { FDB[c] = XF[c]; toCF(FDB[c]); FDB[c].forEach(p => { BY_TN[c + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = c; }); });
   applyAllEdits();
 }
 /* ---------- 自定义编辑球员资料（存进进度，会同步；每个赛季重新推算后都会套用） ---------- */
@@ -2958,7 +2971,7 @@ function applyAllEdits() {
   const E = edAll(); if (!Object.keys(E).length) return;
   const fix = (p, team, dom) => { const e = E[p.uid]; if (!e) return;
     if (e.name && e.name !== p.name) { if (dom) TD[team].roster.forEach(r => { if (r.name === p.name) r.name = e.name; }); p.name = e.name; }
-    ['pos', 'nat', 'height', 'weight', 'no'].forEach(k => { if (e[k] != null && e[k] !== '') p[k] = e[k]; });
+    ['pos', 'nat', 'height', 'weight', 'no'].forEach(k => { if (e[k] != null && e[k] !== '') p[k] = k === 'pos' ? normPos(e[k]) : e[k]; });
     if (Array.isArray(e.alt)) { p.alt = e.alt.filter(x => x !== p.pos); p.altEd = 1; } if (Array.isArray(e.sk)) p.skEd = e.sk; if (e.foot) { p.foot = e.foot; p.footEd = 1; }
     if (e.dr) { p.rating = Math.max(40, Math.min(99, p.rating + e.dr)); p.value = 'ⰵ' + valueM(p.rating, p.age || 25) + 'M'; }
     if (e.la) p.attributes = Object.fromEntries(Object.entries(e.la.a).map(([k, v]) => [k, Math.max(20, Math.min(99, v + p.rating - e.la.r))]));
@@ -2970,12 +2983,12 @@ function applyAllEdits() {
   Object.entries(PDB).forEach(([t, l]) => l.forEach(p => { BY_TN[t + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = t; }));
   Object.entries(FDB).forEach(([c, l]) => l.forEach(p => { BY_TN[c + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = c; }));
 }
-const POS_LIST = ['GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST'];
+const POS_LIST = Object.keys(POS_DEF);
 // 司职位置（主位置以外还能踢的位置）和惯用脚：没手动改过就按位置和球员特点推出默认值
 const ALT_OPT = { GK: [], CB: [['CDM', 0.18], ['RB', 0.08], ['LB', 0.06]], LB: [['LWB', 0.6], ['LM', 0.15], ['CB', 0.1]], RB: [['RWB', 0.6], ['RM', 0.15], ['CB', 0.1]], LWB: [['LB', 0.75], ['LM', 0.3]], RWB: [['RB', 0.75], ['RM', 0.3]],
   CDM: [['CM', 0.65], ['CB', 0.2]], CM: [['CDM', 0.4], ['CAM', 0.35], ['LM', 0.06], ['RM', 0.06]], CAM: [['CM', 0.45], ['ST', 0.15], ['LW', 0.12], ['RW', 0.12]], LM: [['LW', 0.5], ['LB', 0.12], ['CM', 0.1]], RM: [['RW', 0.5], ['RB', 0.12], ['CM', 0.1]],
-  LW: [['LM', 0.4], ['RW', 0.25], ['ST', 0.2]], RW: [['RM', 0.4], ['LW', 0.25], ['ST', 0.2]], ST: [['CAM', 0.15], ['LW', 0.12], ['RW', 0.12]] };
-const posMain = pos => { const b = String(pos || '').replace(/-.*/, '').replace(/^[LR](?=(CB|CM|DM|AM|ST))/, ''); return b === 'DM' ? 'CDM' : b === 'AM' ? 'CAM' : b === 'CF' ? 'ST' : b; };
+  LW: [['LM', 0.4], ['RW', 0.25], ['ST', 0.2]], RW: [['RM', 0.4], ['LW', 0.25], ['ST', 0.2]], ST: [['CF', 0.55], ['CAM', 0.15], ['LW', 0.12], ['RW', 0.12]], CF: [['ST', 0.8], ['CAM', 0.3], ['LW', 0.08], ['RW', 0.08]] };
+const posMain = pos => normPos(pos);
 function altDef(p) { const m = posMain(p.pos), out = []; (ALT_OPT[m] || []).forEach(([x, pr]) => { if (out.length < 2 && x !== m && ghash('alt|' + p.name + '|' + x) < pr) out.push(x); }); if (p.conv && p.conv.from) { const f = posMain(p.conv.from); if (f !== m && !out.includes(f)) out.unshift(f); } return out; }
 function footDef(p) { const m = posMain(p.pos), h = ghash('foot|' + p.name);
   const [l, b] = /^(LB|LWB|LM)$/.test(m) ? [0.62, 0.08] : /^(RB|RWB|RM)$/.test(m) ? [0.07, 0.05] : m === 'LW' ? [0.6, 0.06] : m === 'RW' ? [0.33, 0.06] : m === 'GK' ? [0.17, 0.03] : [0.19, 0.05];
@@ -2985,7 +2998,7 @@ function posTxt(p) { const a = p.alt || altDef(p); return esc(p.pos) + (a.length
 function footNote(p) { const f = p.foot || footDef(p), m = posMain(p.pos); return (m === 'LW' && f === '右脚') || (m === 'RW' && f === '左脚') ? '内切型' : ''; }
 // 位置权重：总评 ≈ 各属性（减去位置模板偏移）按权重平均
 const POS_W = { FW: { sho: 3, spd: 2, dri: 2, phy: 1, men: 1, pas: 1, sta: 0.5 }, MF: { pas: 3, dri: 2, men: 1.5, sta: 1.5, sho: 1, def: 1, spd: 1, phy: 0.5 }, DF: { def: 3, phy: 2, spd: 1.5, men: 1.5, pas: 1, sta: 1, dri: 0.5 }, GK: { ref: 3, div: 3, pos_s: 2, han: 2, kic: 1 } };
-function tplFor(pos) { const line = ENGINE.LINE(pos), t = { ...ATTR_TPL[line] }; if (/W|AM/.test(pos)) { t.dri = (t.dri || 0) + 3; t.spd = (t.spd || 0) + 3; } return t; }
+function tplFor(pos) { const line = ENGINE.LINE(pos), t = { ...ATTR_TPL[line] }; if (/W|AM/.test(pos)) { t.dri = (t.dri || 0) + 3; t.spd = (t.spd || 0) + 3; } if (pos === 'CF') { t.pas = (t.pas || 0) + 5; t.dri = (t.dri || 0) + 2; t.sho = (t.sho || 0) - 2; } return t; }
 function estRating(pos, A) { const line = ENGINE.LINE(pos), W = POS_W[line], T = tplFor(pos); let sw = 0, sv = 0; Object.entries(W).forEach(([k, w]) => { if (A[k] == null) return; sw += w; sv += w * (A[k] - (T[k] || 0)); }); return sw ? sv / sw : null; }
 function attrsFor(pos, r, prev, prevPos) { // 按位置模板生成，保留球员原本的个人特点（和模板的偏差）
   const T = tplFor(pos), PT = prevPos ? tplFor(prevPos) : null, pr = prev && prevPos ? estRating(prevPos, prev) : null, o = {};
@@ -3006,7 +3019,7 @@ function openEditor(uid) {
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div><div class="eyebrow">自定义球员资料${cur ? '' : ' · 退役 / 历史球员'}</div><h2 style="font-size:20px;font-weight:900">${esc(o.name)}</h2><p class="note" style="margin:4px 0 0">${cur ? '改动会存进进度并同步；能力和属性按「比原来高/低多少」保存，以后每个赛季的成长都会带着这个调整。' : '这名球员已经不在任何现役阵容里，改的是他的档案：名字、位置、国籍、号码、身高体重、巅峰评分和巅峰时的能力属性。'}</p></div>
     <div class="grid g-2" style="gap:10px">
-      ${fld('名字', inp('edName', o.name))}${fld('位置', `<select id="edPos">${POS_LIST.concat(POS_LIST.includes(o.pos) ? [] : [o.pos]).map(x => `<option ${x === o.pos ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}
+      ${fld('名字', inp('edName', o.name))}${fld('位置', `<select id="edPos">${POS_LIST.concat(POS_LIST.includes(normPos(o.pos)) ? [] : [o.pos]).map(x => `<option value="${x}" ${x === normPos(o.pos) ? 'selected' : ''}>${x} · ${posZh(x)}</option>`).join('')}</select>`)}
       ${fld('国籍', inp('edNat', o.nat))}${fld('球衣号码', inp('edNo', o.no, 'number', 'min="1" max="99"'))}
       ${fld('身高 (cm)', inp('edH', o.height, 'number'))}${fld('体重 (kg)', inp('edW', o.weight, 'number'))}
       ${fld(cur ? '总评分' : '巅峰评分', inp('edR', o.rating, 'number', 'min="40" max="99"'))}<div class="note" style="align-self:end;font-size:11px">改属性会自动算总评；改总评或位置会按位置自动配属性（保留个人特点）。</div>
@@ -3907,14 +3920,14 @@ const SK_DEF = {
   pass: { n: '传球大师', g: '传球', d: '传球的方向和力度更准，失误更少', pos: x => x === 'MF' || x === 'DF', sc: A => A.pas * 0.7 + A.men * 0.3 },
   thru: { n: '直塞大师', g: '传球', d: '更会找前插队友的身后空当，直塞球更准', pos: (x, p) => x === 'MF' && /AM|CM/.test(p), sc: A => A.pas * 0.6 + A.men * 0.4 },
   cross: { n: '传中大师', g: '传球', d: '边路传中的落点更准，更容易找到抢点的队友', pos: (x, p) => /^[LR]/.test(p) || /W/.test(p), sc: A => A.pas * 0.6 + A.dri * 0.2 + A.spd * 0.2 },
-  head: { n: '头球之王', g: '射门', d: '头球攻门更准、更有力', pos: (x, p) => p === 'ST' || /CB/.test(p), sc: (A, h) => A.phy * 0.6 + A.sho * 0.25 + 12 + (h - 182) * 0.6 },
+  head: { n: '头球之王', g: '射门', d: '头球攻门更准、更有力', pos: (x, p) => p === 'ST' || p === 'CF' || /CB/.test(p), sc: (A, h) => A.phy * 0.6 + A.sho * 0.25 + 12 + (h - 182) * 0.6 },
   solo: { n: '单刀之王', g: '射门', d: '面对门将一对一时更冷静，进球率更高', pos: (x, p) => x === 'FW', sc: A => A.sho * 0.6 + A.men * 0.2 + A.spd * 0.2 },
   box: { n: '禁区杀手', g: '射门', d: '禁区里的射门更准', pos: (x, p) => x === 'FW' && !/W/.test(p), sc: A => A.sho * 0.7 + A.men * 0.3 },
   pace: { n: '速度之王', g: '身体', d: '冲刺速度更快，前插和反击时甩开对手', pos: x => x !== 'GK', sc: A => A.spd },
   engine: { n: '马拉松体能', g: '身体', d: '体力消耗更少，下半场依然能跑', pos: x => x !== 'GK', sc: A => A.sta },
   tackle: { n: '抢断大师', g: '防守', d: '上抢的成功率更高', pos: (x, p) => x === 'DF' || p === 'CDM' || p === 'DM', sc: A => A.def * 0.75 + A.phy * 0.25 },
   icpt: { n: '拦截专家', g: '防守', d: '预判传球线路，更容易切断对手的传球', pos: x => x === 'DF' || x === 'MF', sc: A => A.def * 0.5 + A.men * 0.5 },
-  aerial: { n: '空中霸主', g: '防守', d: '高空球争顶更容易抢到第一点', pos: (x, p) => /CB/.test(p) || p === 'ST' || p === 'CDM', sc: (A, h) => A.phy * 0.6 + A.def * 0.3 + 9 + (h - 182) * 0.5 },
+  aerial: { n: '空中霸主', g: '防守', d: '高空球争顶更容易抢到第一点', pos: (x, p) => /CB/.test(p) || p === 'ST' || p === 'CF' || p === 'CDM', sc: (A, h) => A.phy * 0.6 + A.def * 0.3 + 9 + (h - 182) * 0.5 },
   save: { n: '扑救大师', g: '门将', d: '扑救范围和反应更好', pos: x => x === 'GK', sc: A => (A.ref || 70) * 0.5 + (A.div || 70) * 0.5 },
   pstop: { n: '点球克星', g: '门将', d: '扑点球的成功率更高', pos: x => x === 'GK', sc: A => (A.div || 70) * 0.6 + (A.ref || 70) * 0.4 - 1.5 }
 };
@@ -6373,7 +6386,7 @@ function openPlayer(team, name) {
     <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${TD[team] ? crest(team, 20) : ecrest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}${TD[team] ? '' : ' · ' + esc(extTag(team))}</span></div><h3>${esc(p.name)}</h3>
-      <div class="btns" style="margin-top:8px"><span class="chip" title="主位置 · 其他可踢位置（可在编辑资料里改）">位置 ${esc(p.pos)}${(p.alt || altDef(p)).length ? ' · ' + (p.alt || altDef(p)).map(esc).join(' / ') : ''}</span><span class="chip">惯用${esc(p.foot || footDef(p))}${footNote(p) ? ` · ${footNote(p)}` : ''}</span><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageP(p, team))}${payMul(p, team) !== 1 ? `（续约${payMul(p, team) > 1 ? '加' : '降'}薪 ${Math.round(Math.abs(payMul(p, team) - 1) * 100)}%）` : ''}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${bustChip(p.cv != null ? p.cv : pid, p.age, p.kidBust, p.kidBloom)}${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
+      <div class="btns" style="margin-top:8px"><span class="chip" title="主位置 · 其他可踢位置（可在编辑资料里改）">位置 ${esc(p.pos)}${posZh(p.pos) ? `（${posZh(p.pos)}）` : ''}${(p.alt || altDef(p)).length ? ' · ' + (p.alt || altDef(p)).map(esc).join(' / ') : ''}</span><span class="chip">惯用${esc(p.foot || footDef(p))}${footNote(p) ? ` · ${footNote(p)}` : ''}</span><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageP(p, team))}${payMul(p, team) !== 1 ? `（续约${payMul(p, team) > 1 ? '加' : '降'}薪 ${Math.round(Math.abs(payMul(p, team) - 1) * 100)}%）` : ''}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${bustChip(p.cv != null ? p.cv : pid, p.age, p.kidBust, p.kidBloom)}${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(p.uid || '')}" style="padding:5px 10px;font-size:12px" ${p.uid ? '' : 'disabled'}>✎ 编辑资料</button>${cmpBtn(pid != null ? 'p:' + pid : 't:' + team + '|' + p.name, p.name)}${mktActive() && PDB[team] && p.uid && typeof p.age0 === 'number' ? (mktGet().listed[p.uid] ? '<span class="chip">已挂牌</span>' : `<button class="btn ghost" data-act="mkList" data-id="${esc(p.uid)}" style="padding:5px 10px;font-size:12px">挂牌出售</button>`) : ''}${typeof p.age === 'number' && p.age <= 20 ? `<button class="btn ghost" ${scoutBtn({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team, uid: p.uid })} style="padding:5px 10px;font-size:12px">🔍 球探报告</button>` : ''}</div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${skillBlock(skillsOf(p))}
@@ -8499,7 +8512,12 @@ async function cloudPull(meta) {
   localSave();
   return true;
 }
-function sandboxBar() { if (document.getElementById('sbBar')) return; const b = document.createElement('div'); b.id = 'sbBar'; b.className = 'sbbar'; b.innerHTML = `<span>🧪 <b>试玩新存档</b> · 这是一份全新的联赛（所有球队和球员都在，从 S01 第 1 轮开始），只存在这台设备上，不会同步、也不会动到你的正式进度。</span><span class="btns"><button type="button" class="btn ghost" id="sbReset">重新开一档</button><a class="btn primary" href="${location.pathname}">回到正式进度</a></span>`; document.body.insertBefore(b, document.body.firstChild.nextSibling); document.getElementById('sbReset').onclick = () => { if (!confirm('清空这份试玩存档，重新从 S01 第 1 轮开始？')) return; try { localStorage.removeItem(LKEY); } catch (e) {} location.reload(); }; }
+function sandboxBar() { if (document.getElementById('sbFab')) return; const b = document.createElement('div'); b.id = 'sbFab'; b.className = 'sbfab';
+  b.innerHTML = `<div class="sbpop" hidden><b>🧪 试玩新存档</b><p>一份全新的联赛，只存在这台设备上，不会同步，也不会动到你的正式进度。</p><a class="btn primary" href="${location.pathname}">回到正式进度</a><button type="button" class="btn ghost" data-sb="reset">重新开一档</button></div><button type="button" class="sbbtn" aria-label="试玩新存档：点击查看或回到正式进度" title="试玩新存档 · 点击回到正式进度"><span>🧪</span></button>`;
+  document.body.appendChild(b); const pop = b.querySelector('.sbpop');
+  b.querySelector('.sbbtn').onclick = ev => { ev.stopPropagation(); pop.hidden = !pop.hidden; };
+  b.querySelector('[data-sb="reset"]').onclick = () => { if (!confirm('清空这份试玩存档，重新从 S01 第 1 轮开始？')) return; try { localStorage.removeItem(LKEY); } catch (e) {} location.reload(); };
+  document.addEventListener('click', ev => { if (!b.contains(ev.target)) pop.hidden = true; }); }
 async function cloudInit() {
   if (!window.claude || typeof window.claude.use !== 'function') return webInit();
   setSync('connecting');
