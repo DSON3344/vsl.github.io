@@ -73,7 +73,8 @@ const ENGINE = (() => {
   };
   // 进球/助攻倾向（按位置）
   const GOAL_W = { GK: 0, DF: 0.35, MF: 1.1, FW: 4.2 };
-  const POS_GOAL = p => /CAM|LAM|RAM/.test(p) ? 1.9 : /LW|RW/.test(p) ? 2.3 : /ST/.test(p) ? 3.1 : /WB/.test(p) ? 0.7 : GOAL_W[LINE(p)];
+  // 进球分配（按现实联赛的比例校准：前锋约四成、边锋两成多、中场两成多、后卫一成）
+  const POS_GOAL = p => /CAM|LAM|RAM/.test(p) ? 2.1 : /LW|RW/.test(p) ? 2.7 : /CF/.test(p) ? 2.4 : /ST/.test(p) ? 2.6 : /WB/.test(p) ? 0.7 : /LM|RM/.test(p) ? 1.5 : /DM/.test(p) ? 0.6 : /CB/.test(p) ? 0.6 : /LB|RB/.test(p) ? 0.4 : GOAL_W[LINE(p)];
   const POS_AST = p => /CAM|LAM|RAM/.test(p) ? 3.4 : /LW|RW|LM|RM/.test(p) ? 2.8 : /WB|LB|RB/.test(p) ? 1.6 : /CM/.test(p) ? 2 : /CDM|DM/.test(p) ? 1 : /ST/.test(p) ? 1.6 : LINE(p) === 'GK' ? 0.05 : 0.5;
 
   // ---------- 阵容 ----------
@@ -223,8 +224,8 @@ const ENGINE = (() => {
     const homeAdv = opt.neutral ? 1 : 1.12, awayPen = opt.neutral ? 1 : 0.94;
     const k = 0.078 / 0.86; // 能力分 78 以上压缩了 0.86，系数同步放大，强弱差距的效果不变
     const sh = styleFx((TEAMS_DATA[home] || {}).style, (TEAMS_DATA[away] || {}).style), sa = styleFx((TEAMS_DATA[away] || {}).style, (TEAMS_DATA[home] || {}).style);
-    let lh = 1.28 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.0465 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
-    let la = 1.28 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.0465 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
+    let lh = 1.2 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.0465 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
+    let la = 1.2 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.0465 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
     return { lh: Math.min(lh, 5), la: Math.min(la, 5), ch, ca, H, A };
   }
 
@@ -244,13 +245,13 @@ const ENGINE = (() => {
   const shoOf = s => (s.p && s.p.attributes && s.p.attributes.sho) || s.rating;
   const pasOf = s => (s.p && s.p.attributes && s.p.attributes.pas) || s.rating;
   function goalScorer(on) {
-    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 3) * Math.pow(s.rating / 85, 5));
+    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 1.6) * Math.pow(s.rating / 85, 1.6)); /* 指数调小：球星依然进得多，但不会把全队的进球都包了 */
     return pick(on, w);
   }
   function assister(on, scorer) {
     if (rnd() < 0.22) return null;
     const pool = on.filter(s => s !== scorer); if (!pool.length) return null;
-    const w = pool.map(s => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 3) * Math.pow(s.rating / 85, 5));
+    const w = pool.map(s => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 2) * Math.pow(s.rating / 85, 2.5));
     return pick(pool, w);
   }
   function carder(on) {
@@ -812,7 +813,8 @@ function rescaleAttrs(p, nca) { const d = nca - p.ca; Object.keys(p.attrs).forEa
 function cloneArc(src, name) { const X = JSON.parse(JSON.stringify(src)), tm = {}; X.id = uid('L'); X.name = name || (src.name + ' 副本'); X.teams.forEach(t => { const n = uid('T'); tm[t.id] = n; t.id = n; }); X.players.forEach(p => { p.uid = uid('P'); p.team = tm[p.team] || p.team; }); X.season = null; X.history = []; X.status = 'draft'; return X; }
 function startSeason() { A.season = { n: A.season ? A.season.n + 1 : 1, fx: [] }; A.season.fx = makeFixtures(A); }
 function endSeasonGrow() { const T = table(A); A.history.push({ n: A.season.n, champ: T[0].id, pts: T[0].pts }); const rnd = seeded('grow|' + A.id + '|' + A.season.n);
-  A.players.forEach(p => { p.age++; let d = 0; if (p.age <= 24) d = Math.min(p.pa - p.ca, Math.round(1 + rnd() * 4)); else if (p.age <= 29) d = p.ca < p.pa ? Math.round(rnd() * 2) : 0; else if (p.age <= 32) d = -Math.round(rnd() * 2); else d = -Math.round(1 + rnd() * 3); rescaleAttrs(p, clamp(p.ca + d, 40, 97)); }); }
+  const up = A.season.n % 2 === 0; /* 两个赛季长一岁：S01–S02 同岁，进入单数赛季时 +1；成长和衰退也摊到两季 */
+  A.players.forEach(p => { if (up) p.age++; let d = 0; if (p.age <= 24) d = Math.min(p.pa - p.ca, Math.round(1 + rnd() * 4)); else if (p.age <= 29) d = p.ca < p.pa ? Math.round(rnd() * 2) : 0; else if (p.age <= 32) d = -Math.round(rnd() * 2); else d = -Math.round(1 + rnd() * 3); d = d * 0.5; d = Math.trunc(d) + (rnd() < Math.abs(d % 1) ? Math.sign(d) : 0); rescaleAttrs(p, clamp(p.ca + d, 40, 97)); }); }
 document.addEventListener('click', ev => { const el = ev.target.closest('[data-v],[data-a],[data-open],[data-copy],[data-exp],[data-del],[data-team],[data-p],[data-tpl],[data-skdel]'); if (!el) return;
   if (el.dataset.v) { if (el.dataset.v === '__close') { A = null; VIEW = 'home'; TEAM = null; } else { VIEW = el.dataset.v; TEAM = null; } closeDlg(); return render(); }
   if (el.dataset.open) { A = loadArc(el.dataset.open); if (!A) return toast('档案读取失败'); VIEW = 'home'; TEAM = null; return render(); }
