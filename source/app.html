@@ -626,7 +626,8 @@ function postRound(i) { try { if (S.bids || (S.market && Object.keys(S.market).l
 function playRound(i) { ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => simFx(m, i)); postRound(i); }
 /* 全自动模式：一轮的比赛不再同时出结果，而是按开球时间一场接一场踢。到点时先把整轮的赛果算好放在 m.pr（不计入积分榜），
    每场按自己的开球时间直播，终场后才写进 m.r。赛果用固定种子算，同一份进度在哪台设备上算都一样。 */
-function autoPend(i, T) { const Rr = S.fx[i], C = AUTO_C(), n = Rr.length || 1, slot = C.R / n, du = Math.max(5e3, Math.min(slot * 0.9, 15 * 60e3)), sd0 = Math.floor(ghash('ko|' + SEASON + '|' + saltOf(SEASON) + '|' + i) * 2147480000) + 1;
+const LIVE_DU = 5.5 * 60e3; /* 直播一场约 5.5 分钟：画面速度跟回放的默认速度差不多 */
+function autoPend(i, T) { const Rr = S.fx[i], C = AUTO_C(), n = Rr.length || 1, slot = C.R / n, du = Math.max(5e3, Math.min(slot * 0.9, LIVE_DU)), sd0 = Math.floor(ghash('ko|' + SEASON + '|' + saltOf(SEASON) + '|' + i) * 2147480000) + 1;
   ensureTactics(); Rr.forEach((m, j) => { if (m.r || m.pr) return; ENGINE.withSeed(sd0 + j * 7919, () => { m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.pr = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }); m.ko = Math.round(T + j * slot); m.du = Math.round(du); });
   DIRTY.add(i); MOD_VER++; }
 const fxState = m => !m.pr ? (m.r ? 'ft' : 'pre') : Date.now() < m.ko ? 'wait' : Date.now() < m.ko + m.du ? 'live' : 'done';
@@ -6656,6 +6657,7 @@ function autoStep(now) { const C = AUTO_C(); if (!C.on) return false; if (!C.an 
   const nr = nextRound();
   if (nr >= 0) { const T = autoT(nr); if (T > now) { if (nr === WIN_A) { try { winGen(); } catch (e) { } } return false; }
     const Rr = S.fx[nr]; let ch = false; if (Rr.some(m => !m.r && !m.pr)) { autoPend(nr, T); ch = true; }
+    Rr.forEach(m => { if (m.pr && m.du > LIVE_DU) m.du = LIVE_DU; }); /* 旧版存下来的 13 分钟一场，改成新时长 */
     Rr.forEach(m => { if (!m.r && m.pr && m.ko + m.du <= now) { simFx(m, nr); AUTO_REV.push(m); ch = true; } });
     if (Rr.every(m => m.r)) { DIRTY.add(nr); MOD_VER++; postRound(nr); S.demo = false; return true; }
     if (ch) { DIRTY.add(nr); MOD_VER++; S.demo = false; } return ch; }
