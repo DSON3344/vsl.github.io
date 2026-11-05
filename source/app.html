@@ -398,7 +398,8 @@ th.sorted{color:var(--accent-2)}
 @media (max-width:860px){#gate .ghero{left:24px;right:24px;top:9vh;transform:none;max-width:none}#gate.ready .ghero{transform:none}#gate .glogo{height:16vh;margin-bottom:16px}#gate h1{font-size:clamp(34px,10vw,54px)}#gate .gline{display:none}
   #gate .grail{top:auto;left:0;width:auto;height:auto;padding:26px 24px calc(22px + env(safe-area-inset-bottom,0px));gap:16px;border-left:0;border-top:1px solid rgba(var(--tint),.12);transform:translateY(100%)}#gate.ready .grail{transform:none}#gate .gfoot,#gate .gtip{display:none}}
 @media (prefers-reduced-motion:reduce){#gate .gbeam{animation:none}#gate .ghero,#gate .grail{transition:none}}
-.mgrchip{display:inline-flex;align-items:center;gap:6px}.autoln{font:500 12px var(--mono);color:var(--accent);padding:8px 12px;border:1px solid rgba(var(--acc-rgb),.35);border-radius:3px;background:rgba(var(--acc-rgb),.06)}.sbfab{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:90;display:grid;justify-items:end;gap:10px}.sbbtn{width:52px;height:52px;border-radius:50%;border:1px solid var(--accent);background:var(--bg-2);color:var(--fg);font-size:22px;cursor:pointer;box-shadow:0 10px 30px -8px rgba(0,0,0,.7),0 0 0 4px rgba(var(--acc-rgb),.12);transition:transform .2s var(--ease)}.sbbtn:hover{transform:translateY(-2px)}.sbpop{width:min(280px,calc(100vw - 36px));display:grid;gap:8px;padding:14px;border-radius:6px;background:var(--bg-2);border:1px solid var(--line-2);box-shadow:0 20px 40px -12px rgba(0,0,0,.75);font-size:12.5px}.sbpop[hidden]{display:none}.sbpop p{margin:0;color:var(--fg-2);line-height:1.6}.sbpop .btn{text-align:center;text-decoration:none;justify-content:center}</style>
+.mgrchip{display:inline-flex;align-items:center;gap:6px}.autoln{font:500 12px var(--mono);color:var(--accent);padding:8px 12px;border:1px solid rgba(var(--acc-rgb),.35);border-radius:3px;background:rgba(var(--acc-rgb),.06)}.sbfab{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:90;display:grid;justify-items:end;gap:10px}.sbbtn{width:52px;height:52px;border-radius:50%;border:1px solid var(--accent);background:var(--bg-2);color:var(--fg);font-size:22px;cursor:pointer;box-shadow:0 10px 30px -8px rgba(0,0,0,.7),0 0 0 4px rgba(var(--acc-rgb),.12);transition:transform .2s var(--ease)}.sbbtn:hover{transform:translateY(-2px)}.sbpop{width:min(280px,calc(100vw - 36px));display:grid;gap:8px;padding:14px;border-radius:6px;background:var(--bg-2);border:1px solid var(--line-2);box-shadow:0 20px 40px -12px rgba(0,0,0,.75);font-size:12.5px}.sbpop[hidden]{display:none}.sbpop p{margin:0;color:var(--fg-2);line-height:1.6}.sbpop .btn{text-align:center;text-decoration:none;justify-content:center}.livedot{color:var(--loss,#e55);font-weight:800;font-size:12px;letter-spacing:.02em;white-space:nowrap;animation:lvp 1.6s ease-in-out infinite}@keyframes lvp{50%{opacity:.55}}@media (prefers-reduced-motion:reduce){.livedot{animation:none}}.fx.fxlive{box-shadow:inset 0 0 0 1px rgba(230,85,85,.45);cursor:pointer}
+</style>
 <div id="gate" hidden><div class="gl gsky"></div><div class="gl gbeam"></div><div class="gl gfield"></div><div class="gl ghaze"></div><div class="gl gvig"></div><div class="gl ggrain"></div>
 <div class="ghero"><img class="glogo" id="gLogo" alt=""><div class="geye" id="gEye">Season 01</div><h1>威伊士超联赛</h1><div class="gen">VES LEAGUE</div><div class="gline" id="gLine"></div></div>
 <div class="gtip" id="gTip">正在进入球场</div><div class="gprog"><i id="gBar"></i></div><div class="gfoot">VES LEAGUE · FOOTBALL MANAGER</div>
@@ -620,7 +621,19 @@ function teamCtx(team, ri, fx = S.fx) {
   return { out, streak, energy };
 }
 const ctxPair = (m, ri) => ({ h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) });
-function playRound(i) { ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => { if (!m.r) { m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); } }); try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
+function simFx(m, i) { if (m.r) return; if (m.pr) { m.r = m.pr; delete m.pr; delete m.ko; delete m.du; return; } m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }
+function postRound(i) { try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
+function playRound(i) { ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => simFx(m, i)); postRound(i); }
+/* 全自动模式：一轮的比赛不再同时出结果，而是按开球时间一场接一场踢。到点时先把整轮的赛果算好放在 m.pr（不计入积分榜），
+   每场按自己的开球时间直播，终场后才写进 m.r。赛果用固定种子算，同一份进度在哪台设备上算都一样。 */
+function autoPend(i, T) { const Rr = S.fx[i], C = AUTO_C(), n = Rr.length || 1, slot = C.R / n, du = Math.max(5e3, Math.min(slot * 0.9, 15 * 60e3)), sd0 = Math.floor(ghash('ko|' + SEASON + '|' + saltOf(SEASON) + '|' + i) * 2147480000) + 1;
+  ensureTactics(); Rr.forEach((m, j) => { if (m.r || m.pr) return; ENGINE.withSeed(sd0 + j * 7919, () => { m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.pr = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }); m.ko = Math.round(T + j * slot); m.du = Math.round(du); });
+  DIRTY.add(i); MOD_VER++; }
+const fxState = m => !m.pr ? (m.r ? 'ft' : 'pre') : Date.now() < m.ko ? 'wait' : Date.now() < m.ko + m.du ? 'live' : 'done';
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v; const LIVE_TM = new Map(); let LIVE_SIG = null;
+function liveMin(m, ri) { const k = SEASON + '|' + ri + '|' + m.h; let TM = LIVE_TM.get(k); if (!TM || TM.ko !== m.ko) { try { const sp = physSpec(m.h, m.a, m.pr, m.fm, 'S' + SEASON + '|R' + ri + '|' + m.h + '|' + m.a, ri); TM = PHYS.timeMap(sp.events); TM.ko = m.ko; LIVE_TM.set(k, TM); } catch (e) { return Math.min(90, Math.floor((Date.now() - m.ko) / m.du * 95)); } }
+  const t = clamp((Date.now() - m.ko) / (m.du * 0.95), 0, 1) * TM.END, mm = TM.toM(t); return Math.max(1, Math.floor(mm) + 1); }
+const minTxt = v => v > 90 ? `90+${v - 90}'` : v + "'";
 const nextRound = () => S.fx.findIndex(r => r.some(m => !m.r));
 const playedRounds = () => S.fx.filter(r => r.every(m => m.r)).length;
 
@@ -1905,11 +1918,11 @@ function rankChart(team) {
 
 /* ---------- Overview ---------- */
 function fxRow(m, ri, mi) {
-  const r = m.r, cls = r ? 'fx played' : 'fx';
+  const r = m.r, fs = fxState(m), cls = r ? 'fx played' : fs === 'live' ? 'fx fxlive' : 'fx';
   const hw = r && r.hg > r.ag, aw = r && r.ag > r.hg;
   return `<div class="${cls}" data-fx="${ri}:${mi}" role="button" tabindex="0">
     <div class="tname h ${r ? (hw ? 'win' : aw ? 'lose' : '') : ''}">${crest(m.h, 24)}<span>${esc(m.h)}</span></div>
-    <div class="sc">${r ? `<b>${r.hg} – ${r.ag}</b>` : `<span class="vs">VS</span>`}<small>${r && m.c ? `${m.c.weather} · ${m.c.slot}` : '天气待定'}</small></div>
+    <div class="sc">${r ? `<b>${r.hg} – ${r.ag}</b>` : fs === 'live' ? `<span class="livedot" data-livefx="${ri}:${mi}">● 比赛进行中 ${minTxt(liveMin(m, ri))}</span>` : `<span class="vs">VS</span>`}<small>${r && m.c ? `${m.c.weather} · ${m.c.slot}` : fs === 'wait' ? `${clk(m.ko)} 开球` : fs === 'live' ? '点击观看直播' : fs === 'done' ? '终场 · 结算中' : '天气待定'}</small></div>
     <div class="tname ${r ? (aw ? 'win' : hw ? 'lose' : '') : ''}">${crest(m.a, 24)}<span>${esc(m.a)}</span></div></div>`;
 }
 let ovRound = null;
@@ -1998,7 +2011,7 @@ function vOverview() {
   ${S.demo ? `<div class="panel split" style="padding:12px 16px"><span class="note">为了让你直接看到效果，已经先模拟了前 5 轮。想从第 1 轮自己开始，可以重置赛季。</span><span class="btns"><button class="btn ghost" data-act="reset">重置赛季</button><button class="btn ghost" data-act="dismissDemo">知道了</button></span></div>` : ''}
   <div class="panel ovhero">
     <div><div class="eyebrow">第 ${SEASON} 赛季 · 比赛日</div><div class="big">R${String(showR + 1).padStart(2, '0')}<small>/38</small></div></div>
-    <div style="min-width:0"><h1>${nr < 0 ? `第 ${SEASON} 赛季结束，${esc(T[0].team)} 夺冠` : `第 ${nr + 1} 轮待开赛`}</h1>
+    <div style="min-width:0"><h1>${nr < 0 ? `第 ${SEASON} 赛季结束，${esc(T[0].team)} 夺冠` : S.fx[nr].some(m => m.pr) ? `第 ${nr + 1} 轮进行中` : `第 ${nr + 1} 轮待开赛`}</h1>
       <p class="muted" style="margin:6px 0 12px">已完成 ${played} 轮，共 ${played * 10} 场比赛${S.promoted && S.promoted.length ? ' · 新加入：' + S.promoted.map(esc).join('、') : ''}</p>
       <div class="bar"><i style="width:${played / 38 * 100}%"></i></div></div>
     <div class="btns" style="justify-content:flex-end">
@@ -2141,7 +2154,7 @@ let rollToken = 0;
 function stopLive() { rollToken++; if (live && live.raf) cancelAnimationFrame(live.raf); live = null; }
 function initMatch(fxRef) {
   if (fxRef) { const [ri, mi] = fxRef; const m = S.fx[ri][mi]; M = { h: m.h, a: m.a, weather: null, slot: null, neutral: false, fx: fxRef, res: null, phase: 'pre' }; if (m.r) M.stored = true; }
-  else if (!M) { const nr = nextRound(); if (nr >= 0) { const mi = S.fx[nr].findIndex(m => !m.r); initMatch([nr, mi]); } else M = { h: '猛龙', a: '威龙', weather: null, slot: null, neutral: false, fx: null, res: null, phase: 'pre' }; }
+  else if (!M) { const nr = nextRound(); if (nr >= 0) { const mi0 = S.fx[nr].findIndex(m => !m.r && !m.pr), mi = mi0 >= 0 ? mi0 : S.fx[nr].findIndex(m => !m.r); initMatch([nr, mi]); } else M = { h: '猛龙', a: '威龙', weather: null, slot: null, neutral: false, fx: null, res: null, phase: 'pre' }; }
 }
 // 本场实际首发：联赛比赛按伤停、停赛和轮换来排，友谊赛用默认首发
 function matchLineups() {
@@ -2866,7 +2879,7 @@ function physView(el, spec, kits, opt) {
       if (m.type === 'goal') { flashUntil = now + 2200; el.querySelector('#pflT').textContent = 'GOAL!'; el.querySelector('#pflT').style.fill = m.side === 'h' ? k.h.body : k.a.body; el.querySelector('#pflS').textContent = `${m.who || ''} · ${m.side === 'h' ? spec.h : spec.a}`; } if (opt.onMsg) opt.onMsg(m); }
     [[TMv.A1, TMv.add1], [TMv.A2, TMv.add2]].forEach(([at, n], k) => { if (dispT >= at && !boardShown[k] && dispT < at + 8) { boardShown[k] = 1; flashUntil = now + 2600; el.querySelector('#pflT').textContent = `补时 +${n}`; el.querySelector('#pflT').style.fill = '#7CFC8A'; el.querySelector('#pflS').textContent = `第四官员举牌：伤停补时 ${n} 分钟`; } if (dispT >= at + 8) boardShown[k] = 1; }); /* 第四官员举牌 */
     if (now < jumpUntil && now >= flashUntil) { fl.style.display = ''; el.querySelector('#pflT').textContent = '⏩'; el.querySelector('#pflT').style.fill = '#fff'; el.querySelector('#pflS').textContent = jumpTxt; } else fl.style.display = now < flashUntil ? '' : 'none';
-    const pi = el.querySelector('#pInfo'); if (pi && !pi.dataset.set) { pi.dataset.set = 1; const IS = spec.info || spec.stats; pi.textContent = `${spec.free ? '物理模拟决定比分' : '逐秒物理模拟'} · 全场控球 ${IS.poss}% : ${100 - IS.poss}% · 射门 ${IS.shots[0]} : ${IS.shots[1]}${spec.sides.h.style || spec.sides.a.style ? ` · 战术 ${spec.sides.h.style || '—'} vs ${spec.sides.a.style || '—'}` : ''}`; }
+    const pi = el.querySelector('#pInfo'); if (pi && !pi.dataset.set) { pi.dataset.set = 1; const IS = spec.info || spec.stats; pi.textContent = `${spec.free ? '物理模拟决定比分' : '逐秒物理模拟'}${opt.live ? ' · 直播中' : ` · 全场控球 ${IS.poss}% : ${100 - IS.poss}% · 射门 ${IS.shots[0]} : ${IS.shots[1]}`}${spec.sides.h.style || spec.sides.a.style ? ` · 战术 ${spec.sides.h.style || '—'} vs ${spec.sides.a.style || '—'}` : ''}`; }
     const hs = el.querySelector('#hudS'); if (hs && el.classList.contains('gvland')) { hs.textContent = `${A.sc[0]} : ${A.sc[1]}`; el.querySelector('#hudC').textContent = clockStr(); }
     return { score: { h: A.sc[0], a: A.sc[1] }, half: A.half }; }
   const TMv = sim.TM, SPMv = PHYS.SPM;
@@ -2882,6 +2895,27 @@ function physView(el, spec, kits, opt) {
 }
 // 回放：已经踢完的比赛，按赛果重新演一遍（可以暂停、调速、拖动进度、只看精华）
 var RP = null;
+function liveWatch(ri, mi) {
+  const m = S.fx[ri] && S.fx[ri][mi]; if (!m || !m.pr) return; const h = m.h, a = m.a, spec = physSpec(h, a, m.pr, m.fm, 'S' + SEASON + '|R' + ri + '|' + h + '|' + a, ri), K = matchKits(h, a), d = $('#dlg'), TM = PHYS.timeMap(spec.events), ko = m.ko, du = m.du;
+  const tgt = () => clamp((Date.now() - ko) / (du * 0.95), 0, 1) * TM.END, rate = TM.END / (du * 0.95 / 1000);
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:1100px"><button class="btn ghost dlg-x" data-act="rpClose" aria-label="关闭">✕</button>
+    <div class="btns" style="justify-content:space-between;align-items:center"><span><span class="eyebrow">${SN(SEASON)} · 第 ${ri + 1} 轮 · <span class="livedot">● 直播</span></span></span><span class="mono" style="font-size:22px;font-weight:800;display:inline-flex;align-items:center;gap:8px">${crest(h, 26)}<span style="font-size:14px">${esc(h)}</span> <span id="rpS">0 : 0</span> <span style="font-size:14px">${esc(a)}</span>${crest(a, 26)}</span><span class="mono" id="rpC" style="font-size:16px;margin-right:34px">0'</span></div>
+    <div id="rpV"></div>
+    <p class="note" id="lvN" style="margin:4px 0;text-align:center">直播进度跟真实时间同步：${clk(ko)} 开球，整场约 ${Math.round(du / 60000)} 分钟。中途进来会直接看到当前的比赛时间。</p>
+    <div class="feed" id="rpF" style="max-height:160px"></div></div>`;
+  if (!d.open) d.showModal();
+  RP = { ri, mi, spec, K, rate, play: true, last: performance.now(), raf: null, view: null, live: 1 };
+  d.addEventListener('close', () => { if (RP && RP.raf) cancelAnimationFrame(RP.raf); RP = null; }, { once: true });
+  const lab = { goal: ['⚽', '进球'], yellow: ['🟨', '黄牌'], red: ['🟥', '红牌'], sub: ['⇄', '换上'], inj: ['✚', '受伤'], pmiss: ['✕', '罚丢点球'], offside: ['🚩', '越位'], foul: ['⚠', '犯规'], post: ['▮', '击中门柱'], ht: ['', '— 半场 —'] };
+  let quiet = true; const onMsg = msg => { if (quiet || msg.type === 'save' || msg.type === 'block' || msg.type === 'miss') return; const f = $('#rpF'); if (!f) return; const L0 = lab[msg.type] || ['', msg.type]; f.insertAdjacentHTML('afterbegin', `<div class="ev ${msg.type}"><span class="m">${RP && RP.view ? Math.floor(RP.view.minute()) + 1 : ''}'</span><span class="ic">${L0[0]}</span><span class="t">${msg.side ? crest(msg.side === 'h' ? h : a, 14) + ' ' : ''}<b>${esc(msg.who || '')}</b> ${L0[1]}</span></div>`); };
+  RP.view = physView($('#rpV'), spec, K, { onMsg, live: 1 }); RP.view.seek(tgt()); quiet = false;
+  const frame = now => { if (!RP || !$('#rpV')) { RP = null; return; } const dt = Math.min(0.1, (now - RP.last) / 1000); RP.last = now; const v = RP.view;
+    if (!v.ended()) { const T0 = tgt(), t = v.time(); if (T0 - t > 12 && T0 < TM.END) v.seek(T0); else if (T0 >= TM.END || t < T0 + 1.5) v.play(dt, T0 >= TM.END ? rate * 1.5 : rate * (t < T0 - 2 ? 1.6 : 1)); }
+    const S0 = v.render(); $('#rpS').textContent = `${S0.score.h} : ${S0.score.a}`; $('#rpC').textContent = v.clock();
+    if (v.ended() && !RP.fin) { RP.fin = 1; const n = $('#lvN'); if (n) n.textContent = `全场结束 ${S0.score.h} : ${S0.score.a}。赛果几秒后计入积分榜，之后可以在赛程里看完整回放。`; setTimeout(() => { try { autoRun(); } catch (e) { } }, 4000); }
+    RP.raf = requestAnimationFrame(frame); };
+  RP.raf = requestAnimationFrame(frame);
+}
 function replayOpen(ri, mi) {
   const m = S.fx[ri] && S.fx[ri][mi]; if (!m || !m.r) return; const h = m.h, a = m.a, spec = physSpec(h, a, m.r, m.fm, 'S' + SEASON + '|R' + ri + '|' + h + '|' + a, ri), K = matchKits(h, a), d = $('#dlg');
   const TM = PHYS.timeMap(spec.events), mk = spec.events.filter(e => ['goal', 'red', 'pmiss'].includes(e.type)).map(e => `<span class="mk ${e.type} ${e.side}" style="left:${Math.min(100, TM.toS(e.m) / TM.END * 100)}%" title="${Math.floor(e.m)}' ${esc(e.player)}"></span>`).join('');
@@ -3016,7 +3050,7 @@ function finish() {
   const fxm = M.fx ? S.fx[M.fx[0]][M.fx[1]] : null;
   let saved = '';
   if (fxm && fxm.r) saved = `<span class="chip">本场已有正式赛果 ${fxm.r.hg}:${fxm.r.ag}，这次是重赛，不计入积分</span>`;
-  if (fxm && !fxm.r) { M.storedNow = true; fxm.c = { weather: M.weather, slot: M.slot }; fxm.r = compact(res); M.stored = true; S.demo = false; DIRTY.add(M.fx[0]); save(); saved = `<span class="chip good">已计入第 ${M.fx[0] + 1} 轮</span>`; if (nextRound() < 0) setTimeout(() => { maybeEndSeason(); updateChip(); }, 900); }
+  if (fxm && !fxm.r && !fxm.pr) { M.storedNow = true; fxm.c = { weather: M.weather, slot: M.slot }; fxm.r = compact(res); M.stored = true; S.demo = false; DIRTY.add(M.fx[0]); save(); saved = `<span class="chip good">已计入第 ${M.fx[0] + 1} 轮</span>`; if (nextRound() < 0) setTimeout(() => { maybeEndSeason(); updateChip(); }, 900); }
   const st = res.stats, n = (x, y) => [x / (x + y || 1) * 100, y / (x + y || 1) * 100];
   const srow = (k, x, y, fmt = v => v) => { const [p, q] = n(x, y); return `<div class="row"><b class="r">${fmt(x)}</b><div class="l"><div class="hb" style="width:${p}%;background:${tcol(h)}"></div></div><span class="k">${k}</span><div><div class="hb" style="width:${q}%;background:${tcol(a)}"></div></div><b>${fmt(y)}</b></div>`; };
   const nxt = findNextFixture();
@@ -6611,20 +6645,26 @@ const autoCan = () => !(WEB.on && !WEB.key) && !(CLOUD.status === 'view');
 const hm = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} 小时 ${m % 60} 分` : `${m} 分钟`; };
 const clk = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 function autoStatus() { const C = AUTO_C(); if (!C.on || !C.an) return ''; const now = Date.now(), nr = nextRound();
+  if (nr >= 0 && S.fx[nr].some(m => m.pr)) { const Rr = S.fx[nr], lv = Rr.find(m => fxState(m) === 'live'), nx = Rr.filter(m => fxState(m) === 'wait').sort((a, b) => a.ko - b.ko)[0], done = Rr.filter(m => m.r).length;
+    return `第 ${nr + 1} 轮进行中（已完 ${done}/${Rr.length}）${lv ? ` · 直播：${lv.h} vs ${lv.a} ${minTxt(liveMin(lv, nr))}` : ''}${nx ? ` · 下一场 ${nx.h} vs ${nx.a} ${clk(nx.ko)}` : ''}`; }
   if (nr >= 0) { const t = autoT(nr), win = nr === WIN_A && now < t && now >= autoT(WIN_A - 1) + C.R; return `${win ? '冬窗进行中（系统处理转会） · ' : ''}第 ${nr + 1} 轮 ${clk(t)} 开踢 · ${t > now ? '还有 ' + hm(t - now) : '马上开始'}${autoCan() ? '' : ' · 这台设备只读，由主控设备推进'}`; }
   const ns = autoEnd() + C.Sm; return `夏窗进行中（系统处理转会和续约） · ${SN(SEASON + 1)} 赛季 ${clk(ns)} 开始 · 还有 ${hm(ns - now)}`; }
-let AUTO_BUSY = false;
+let AUTO_BUSY = false, AUTO_REV = [];
 const nextDue = () => { const C = AUTO_C(); if (!C.on || !C.an) return false; const nr = nextRound(); return nr >= 0 ? autoT(nr) <= Date.now() : autoEnd() + C.Sm <= Date.now(); };
 function autoStep(now) { const C = AUTO_C(); if (!C.on) return false; if (!C.an || C.an.s !== SEASON) C.an = { s: SEASON, base: Math.max(0, nextRound() < 0 ? 38 : nextRound()), t: now };
   const c = mktCfg(); if (!c.auto) { C.prevMkt = { auto: !!c.auto, pilot: !!c.pilot }; c.auto = true; } /* 转会、续约全部交给系统 */
   const nr = nextRound();
-  if (nr >= 0) { if (autoT(nr) > now) { if (nr === WIN_A) { try { winGen(); } catch (e) { } } return false; } playRound(nr); S.demo = false; return true; }
+  if (nr >= 0) { const T = autoT(nr); if (T > now) { if (nr === WIN_A) { try { winGen(); } catch (e) { } } return false; }
+    const Rr = S.fx[nr]; let ch = false; if (Rr.some(m => !m.r && !m.pr)) { autoPend(nr, T); ch = true; }
+    Rr.forEach(m => { if (!m.r && m.pr && m.ko + m.du <= now) { simFx(m, nr); AUTO_REV.push(m); ch = true; } });
+    if (Rr.every(m => m.r)) { DIRTY.add(nr); MOD_VER++; postRound(nr); S.demo = false; return true; }
+    if (ch) { DIRTY.add(nr); MOD_VER++; S.demo = false; } return ch; }
   const end = autoEnd(); if (now < end + C.Sm) { return false; }
   QUIET_END = true; try { maybeEndSeason(true); } finally { QUIET_END = false; } C.an = { s: SEASON, base: 0, t: end + C.Sm }; return true; }
 async function autoRun(force) { if (AUTO_BUSY || !S || !S.auto || !S.auto.on) return 0; if (!force && !autoCan()) return 0; if (M && (M.phase === 'live' || M.phase === 'rolling')) return 0; /* 正在看直播时先不打扰，看完再补 */
   if (!force && WEB.on && nextDue()) { try { const r = await webFetch(WEB.etag ? { 'If-None-Match': WEB.etag } : {}); if (r && !r.same && r.state && r.state.s && (r.state.s.updated || 0) > (S.updated || 0)) return 0; } catch (e) { } } /* 先看云端是不是已经被别的设备（或后台任务）推进了，免得两边各踢一次 */
-  AUTO_BUSY = true; let n = 0; try { for (let k = 0; k < 600; k++) { if (!autoStep(Date.now())) break; n++; if (n % 5 === 0) await new Promise(r => setTimeout(r, 0)); } } finally { AUTO_BUSY = false; }
-  if (n) { save(); try { render(); } catch (e) { } toast(`全自动模拟：补上了 ${n} 步（比赛 / 转会窗）`); }
+  AUTO_BUSY = true; AUTO_REV = []; let n = 0; try { for (let k = 0; k < 600; k++) { if (!autoStep(Date.now())) break; n++; if (n % 5 === 0) await new Promise(r => setTimeout(r, 0)); } } finally { AUTO_BUSY = false; }
+  if (n) { save(); try { render(); } catch (e) { } const rv = AUTO_REV.slice(); toast(n <= 2 && rv.length === 1 ? `终场：${rv[0].h} ${rv[0].r.hg}:${rv[0].r.ag} ${rv[0].a}` : n <= 2 && rv.length > 1 ? `${rv.length} 场比赛已经踢完，赛果已计入积分榜` : n <= 2 && !rv.length ? '新一轮比赛开始了，按开球时间一场一场踢' : `全自动模拟：补上了 ${n} 步（比赛 / 转会窗）`); }
   const el = document.getElementById('autoLn'); if (el) el.textContent = autoStatus(); return n; }
 function autoDlg() { const C = AUTO_C(), d = $('#dlg'), h = x => +(x / H_MS).toFixed(2);
   d.innerHTML = `<div class="dlg" style="position:relative;max-width:560px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div><div class="eyebrow">AUTO SIMULATION</div><h2 style="font-size:20px;font-weight:900;margin:4px 0">全自动模拟</h2>
@@ -6696,7 +6736,7 @@ document.addEventListener('click', e => {
   if (el.dataset.ext) return openExtClub(el.dataset.ext);
   if (el.dataset.player) { const [t, n] = el.dataset.player.split('|'); return openPlayer(t, n); }
   if (el.dataset.team) { if (el.tagName === 'LABEL') return; teamSel = el.dataset.team; $('#dlg').open && $('#dlg').close(); return go('teams'); }
-  if (el.dataset.fx) { const [ri, mi] = el.dataset.fx.split(':').map(Number); if (S.fx[ri][mi].r) return openLiveMatch(ri, mi); M = null; initMatch([ri, mi]); return go('match'); }
+  if (el.dataset.fx) { const [ri, mi] = el.dataset.fx.split(':').map(Number); const fm0 = S.fx[ri][mi]; if (fm0.r) return openLiveMatch(ri, mi); if (fm0.pr) { const fs0 = fxState(fm0); if (fs0 === 'wait') return toast(`${fm0.h} vs ${fm0.a} ${clk(fm0.ko)} 开球，到时可以点进来看直播`); if (fs0 === 'done') return toast('这场刚踢完，正在结算，稍等几秒'); return liveWatch(ri, mi); } M = null; initMatch([ri, mi]); return go('match'); }
   if (el.dataset.tbl) { tblSeason = el.dataset.tbl; return render(); }
   if (el.dataset.w) { M.weather = el.dataset.w; M.fx = null; M.stored = false; return render(); }
   if (el.dataset.neutral) { M.neutral = el.dataset.neutral === '1'; M.fx = null; M.stored = false; M.L = null; return render(); }
@@ -7111,6 +7151,7 @@ if (SANDBOX) { setSync('sandbox'); sandboxBar(); } else { setSync('local'); clou
 /* 全自动模拟的心跳：每 20 秒看一下有没有到点的比赛；?autorun=1 是 GitHub 定时任务用的（补完马上上传，然后标记完成） */
 const AUTORUN = /[?&]autorun=1/.test(location.search);
 setInterval(() => { autoRun(); const el = document.getElementById('autoLn'); if (el) el.textContent = autoStatus(); }, 20000);
+setInterval(() => { if (document.visibilityState !== 'visible' || !S) return; document.querySelectorAll('[data-livefx]').forEach(el => { const [ri, mi] = el.dataset.livefx.split(':').map(Number), m = S.fx[ri] && S.fx[ri][mi]; if (m && fxState(m) === 'live') el.textContent = `● 比赛进行中 ${minTxt(liveMin(m, ri))}`; }); if (S.auto && S.auto.on) { const sig = S.fx.map(r => r.map(m => m.pr ? fxState(m)[0] : m.r ? 'f' : 'p').join('')).join('|'); if (sig !== LIVE_SIG) { const first = LIVE_SIG === null; LIVE_SIG = sig; if (!first && !(document.getElementById('dlg') || {}).open) { try { render(); } catch (e) { } } } } const al = document.getElementById('autoLn'); if (al) al.textContent = autoStatus(); }, 10000);
 setTimeout(async () => { if (!AUTORUN) return autoRun(); for (let i = 0; i < 60 && !(WEB.on || CLOUD.db); i++) await new Promise(r => setTimeout(r, 500)); await new Promise(r => setTimeout(r, 2500));
   const n = await autoRun(true); if (n && WEB.on && WEB.key) { clearTimeout(WEB.timer); await webPush(); } window.__autoDone = { steps: n, season: SEASON, played: playedRounds(), status: autoStatus() }; }, 3000);
 if (/vesdebug/.test(location.hash)) window.__ves = {
