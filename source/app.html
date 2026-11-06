@@ -6717,15 +6717,50 @@ function autoStatus() { const C = AUTO_C(); if (!C.on || !C.an) return ''; const
   const ns = autoEnd() + C.Sm; return `夏窗进行中（系统处理转会和续约） · ${SN(SEASON + 1)} 赛季 ${clk(ns)} 开始 · 还有 ${hm(ns - now)}`; }
 let AUTO_BUSY = false, AUTO_REV = [];
 const nextDue = () => { const C = AUTO_C(); if (!C.on || !C.an) return false; const nr = nextRound(); return nr >= 0 ? autoT(nr) <= Date.now() : autoEnd() + C.Sm <= Date.now(); };
+/* 全自动：一线队名单整理。开季和冬窗各一次（夏窗时先挂牌 / 解约冗员）：
+   不到 28 人 → 按能力、潜力、位置缺口和打法适配从青训提拔；超过 32 人 → 从非首发里挑不适配阵型、士气低（尤其不满上场时间）、实力弱的，
+   有身价的挂牌出售（只有夏窗能挂牌），其余解约。首发、非卖品、年轻高潜力的不动，门将至少留 3 人。 */
+function sqCutList(t, n) {
+  const L = PDB[t] || [], xi = new Set((TD[t].roster || []).map(r => r.name)), F = FORMS[xiFormNow(t)], slots = F ? F.slots : (TD[t].roster || []).map(r => r.pos);
+  const top = L.map(q => q.rating).sort((a, b) => b - a), ref = top[Math.min(15, top.length - 1)] || 70, gk = L.filter(q => q.pos === 'GK').length;
+  const C = L.filter(p => !xi.has(p.name) && !nfsOf(t, p) && !(p.pos === 'GK' && gk <= 3)).map(p => { let m = null; try { m = playerMorale(p, t); } catch (e) { }
+    const fit = Math.min(...slots.map(sl => ENGINE.fitCost(sl, p))), mv = m ? m.v : 60, pt = !!(m && m.R.some(([d, x]) => d < 0 && /首发|主力|机会|板凳/.test(x)));
+    let pot = p.rating; try { pot = potentialOf(p); } catch (e) { }
+    const sc = (60 - mv) * 0.06 + (pt ? 1.2 : 0) + (fit >= 10 ? 2.5 : fit >= 4 ? 1 : 0) + (ref - p.rating) * 0.22 + ((p.age || 25) >= 32 ? 0.8 : 0) - ((p.age || 25) <= 21 && pot >= p.rating + 6 ? 2.5 : 0);
+    const why = [mv < 45 ? `士气 ${mv}%${pt ? '（不满上场时间）' : ''}` : '', fit >= 4 ? `不适合 ${xiFormNow(t)} 的位置` : '', p.rating <= ref - 4 ? `能力 ${p.rating} 偏弱` : ''].filter(Boolean).join('、') || '冗员';
+    return { p, sc, why }; }).sort((a, b) => b.sc - a.sc);
+  return C.slice(0, Math.max(0, n));
+}
+function autoSquad(phase) {
+  const log = []; BATCH = 1; BATCH_G = 0; BATCH_W = 0;
+  try {
+    S.teams.filter(t => TD[t]).forEach(t => {
+      const size = phase === 'sum' ? projSize(t) : (PDB[t] || []).length;
+      if (size > SQUAD_MAX) { const cut = sqCutList(t, size - SQUAD_MAX), sold = [], rel = [];
+        cut.forEach(({ p, why }) => { const pay = relPayOf(p, t), rec = { t, s: SEASON, fee: pay, name: p.name }; S.relFee = S.relFee || [];
+          if (phase === 'sum') { if (p.rating >= 74 && (p.age || 25) <= 30) { mktAct('list', p.uid); sold.push(p.name + '（' + why + '）'); } else { S.relFee.push(rec); mktAct('rel', p.uid); rel.push(p.name + '（' + why + '）'); } }
+          else if (phase === 'win') { S.relFee.push(rec); winAct('rel', p.uid); rel.push(p.name + '（' + why + '）'); }
+          else { S.released = S.released || {}; S.released[roleKey(p)] = { t, s: SEASON, name: p.name }; relKid(p, SEASON); S.relFee.push(rec); rel.push(p.name + '（' + why + '）'); } });
+        FIN_C = null; if (sold.length) log.push(`${t} 挂牌出售 ${sold.join('、')}`); if (rel.length) log.push(`${t} 解约 ${rel.join('、')}`); }
+      if (phase !== 'sum' && size < SQUAD_MIN) { const P = fillPlan(t), ups = P.picks.slice(0, SQUAD_MIN - size); ups.forEach(x => kidDecide(x.k.kid.id, 'promote')); if (ups.length) log.push(`${t} 从青训提拔 ${ups.map(x => x.k.name + '（' + x.k.pos + ' ' + x.k.rating + '/' + x.k.pot + '）').join('、')}${size + ups.length < SQUAD_MIN ? `，青训人手不够，还差 ${SQUAD_MIN - size - ups.length} 人` : ''}`); }
+    });
+  } finally { BATCH = 0; }
+  if (BATCH_W) { BATCH_W = 0; try { winApply(); } catch (e) { console.error(e); } }
+  GROWN = 0; applyGrowth(); BATCH_G = 0; TAC_KEY = null; ensureTactics(); try { syncAllPlayers(); } catch (e) { }
+  log.forEach(x => mkNote('全自动 · 名单整理：' + x, true)); S.sqLog = { s: SEASON, phase, log, at: Date.now() };
+  return log.length;
+}
 function autoStep(now) { const C = AUTO_C(); if (!C.on) return false; if (!C.an || C.an.s !== SEASON) C.an = { s: SEASON, base: Math.max(0, nextRound() < 0 ? 38 : nextRound()), t: now };
   const c = mktCfg(); if (!c.auto) { C.prevMkt = { auto: !!c.auto, pilot: !!c.pilot }; c.auto = true; } /* 转会、续约全部交给系统 */
   const nr = nextRound();
   if (nr >= 0) { const T = autoT(nr); if (T > now) { if (nr === WIN_A) { try { winGen(); } catch (e) { } } return false; }
-    const Rr = S.fx[nr]; let ch = false; if (Rr.some(m => !m.r && !m.pr)) { autoPend(nr, T); ch = true; }
+    const Rr = S.fx[nr]; let ch = false;
+    if (Rr.some(m => !m.r && !m.pr)) { const ph = nr >= WIN_A && winActive() ? 'win' : nr < WIN_A ? 'start' : null, k = ph && ph + SEASON; if (k && C.sqK !== k) { C.sqK = k; try { autoSquad(ph); } catch (e) { console.error(e); } } autoPend(nr, T); ch = true; }
     Rr.forEach(m => { if (m.pr && m.du > LIVE_DU) m.du = LIVE_DU; }); /* 旧版存下来的 13 分钟一场，改成新时长 */
     Rr.forEach(m => { if (!m.r && m.pr && m.ko + m.du <= now) { simFx(m, nr); AUTO_REV.push(m); ch = true; } });
     if (Rr.every(m => m.r)) { DIRTY.add(nr); MOD_VER++; postRound(nr); S.demo = false; return true; }
     if (ch) { DIRTY.add(nr); MOD_VER++; S.demo = false; } return ch; }
+  if (C.sqK !== 'sum' + SEASON && mktActive() && !mktLate()) { C.sqK = 'sum' + SEASON; try { autoSquad('sum'); } catch (e) { console.error(e); } return true; }
   const end = autoEnd(); if (now < end + C.Sm) { return false; }
   QUIET_END = true; try { maybeEndSeason(true); } finally { QUIET_END = false; } C.an = { s: SEASON, base: 0, t: end + C.Sm }; return true; }
 async function autoRun(force) { if (AUTO_BUSY || !S || !S.auto || !S.auto.on) return 0; if (!force && !autoCan()) return 0; if (M && (M.phase === 'live' || M.phase === 'rolling')) return 0; /* 正在看直播时先不打扰，看完再补 */
