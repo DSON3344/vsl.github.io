@@ -4124,7 +4124,8 @@ function xiPanel(t, st) {
       return parts.length ? `<div class="btns" style="gap:8px;margin:0 0 8px;align-items:center;flex-wrap:wrap">${parts.join('')}</div>` : ''; })()}
     ${(() => { const ef = sel || cur, ed = S.teams.includes(t) && TD[t] && ef, man = ed && S.xio && S.xio[t] && S.xio[t][ef], C0 = ed ? teamCtx(t, nextRound() >= 0 ? nextRound() : S.fx.length) : null, shown = xi || (ef && ef !== xiFormNow(t) && FORMS[ef] ? previewXI(t, ef) : null) || ENGINE.lineup(t).xi;
       if (!ed) return pitchSVG(t, null, null, xi); setTimeout(xiDragInit, 0);
-      return `<div class="xied" data-t="${esc(t)}" data-f="${esc(ef)}">${man ? `<div class="btns" style="justify-content:space-between;align-items:center;margin:0 0 6px"><span class="chip gold" style="font-size:11px">手动安排 · ${esc(ef)}</span><button class="lnk" data-act="xiReset" data-t="${esc(t)}" data-f="${esc(ef)}" style="font-size:12px">恢复主帅自动安排</button></div>` : ''}${pitchSVG(t, null, null, shown, true)}${xiBenchHtml(t, shown, C0 && C0.energy, C0 && C0.out)}</div>`; })()}
+      const AV = !sel && C0 && C0.out ? availXI(t, shown, C0.out) : { subs: [] };
+      return `<div class="xied" data-t="${esc(t)}" data-f="${esc(ef)}">${AV.subs.length ? `<div class="note" style="margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(230,85,85,.1);border:1px solid rgba(230,85,85,.3)">下一场伤停，比赛时自动换人：${AV.subs.map(x => `<b>${esc(x.off)}</b>（${esc(whyZh(x.why))}）→ <b>${esc(x.on)}</b>`).join('；')}</div>` : ''}${man ? `<div class="btns" style="justify-content:space-between;align-items:center;margin:0 0 6px"><span class="chip gold" style="font-size:11px">手动安排 · ${esc(ef)}</span><button class="lnk" data-act="xiReset" data-t="${esc(t)}" data-f="${esc(ef)}" style="font-size:12px">恢复主帅自动安排</button></div>` : ''}${pitchSVG(t, null, null, shown, true)}${xiBenchHtml(t, shown, C0 && C0.energy, C0 && C0.out)}</div>`; })()}
     <p class="note" style="margin:8px 0 0">拖动场上球员互换位置，把下方轮换球员拖到场上的球员身上替换首发（手机上也可以先点一名、再点另一名互换）；红色数字是踢非本位的扣分。安排按阵型分别记住，伤停的球员比赛时会自动由替补顶上。${sel ? `预览 ${esc(sel)}：按这个阵型挑最强的 11 人。${moved.length ? `换上 ${esc(moved.join('、'))}，换下 ${esc(outN.join('、'))}。` : '首发 11 人不变，只调整站位。'}${off.length ? ` ${esc(off.map(x => x.name + '（' + x.slot + '，非本位 -' + x.pen + '）').join('、'))}。` : ''}比赛时主帅按对手强弱自动选用：对手强 3 分以上用「对强队」，弱 3 分以上用「对弱队」，其他用「主打」。` : '点上面的阵型预览站位和首发人选。比赛时主帅按对手强弱自动在三套阵型之间切换。'}</p></div>`;
 }
 // ── 手动首发：在首发阵容图上拖动球员换位置、把轮换球员拖上场替换首发；按阵型分别记住（S.xio[球队][阵型] = {位置: 球员}） ──
@@ -4132,6 +4133,11 @@ function xiPanel(t, st) {
 const nowCoach = t => { try { const c = coachOf(t); if (c && c.name) return c.name; } catch (e) {} return (H.profiles[t] || {}).coach || '—'; };
 const nowStyle = t => { try { const c = coachOf(t), X = c ? tacFor(t, c.id) : null; if (X && X.style) return X.style; } catch (e) {} return (H.profiles[t] || {}).style || (TD[t] && TD[t].style) || ''; };
 function xiFormNow(t) { return TD[t].formNow || TD[t].form || FORM_OF0[t]; }
+/* 下一场的伤停替换：跟比赛引擎一样，从替补里挑最适合该位置的人顶上（不含随机轮休） */
+function availXI(t, xi, out) { if (!out || !xi) return { xi, subs: [] }; const used = new Set(xi.map(x => x.name)), bench = ENGINE.lineup(t).bench.filter(p => !out[p.name]), subs = [];
+  const nx = xi.map(x => { const why = out[x.name]; if (!why) return x; let bp = null, bv = -1e9; bench.forEach(p => { if (used.has(p.name)) return; const v = p.rating - ENGINE.fitCost(x.slot || x.pos, p) * 1.2; if (v > bv) { bv = v; bp = p; } }); if (!bp) return { ...x, outWhy: why }; used.add(bp.name); const pen = ENGINE.fitCost(x.slot || x.pos, bp); subs.push({ off: x.name, on: bp.name, why }); return { ...x, name: bp.name, rating: Math.max(60, bp.rating - pen), pen, subFor: x.name }; });
+  return { xi: nx, subs }; }
+const whyZh = w => { const k = w && typeof w === 'object' ? w.why : w, l = w && w.left > 1 ? `，还缺 ${w.left} 场` : ''; return (k === 'inj' ? '受伤' : k === 'susp' ? '停赛' : k === 'rest' ? '轮休' : String(k || '缺阵')) + l; };
 function xioMk(sl, p) { const pen = slotPen(sl, p); return { pos: sl, name: p.name, rating: p.rating - pen, pen }; }
 function applyXIO(t, form, r) {
   const O = ((S && S.xio) || {})[t] && S.xio[t][form]; if (!O || !r) return r; const sq = PDB[t] || [], byKey = {}; sq.forEach(p => byKey[roleKey(p)] = p);
@@ -4204,12 +4210,15 @@ function matchForm(t, opp) {
 }
 function ensureTactics() {
   if (typeof SEASONS === 'undefined' || !S || !S.fx) return;
-  const H2 = coachHistory(), key = H2.key + '|' + GROWN + '|' + MOD_VER_SEASON;
+  /* 阵容指纹：转会、能力调整、编辑、你的轮换 / 手动安排一有变化，就按当前主帅的阵型重排每队最强 11 人 */
+  let sig = 0; Object.keys(TD).forEach(t => { const L = PDB[t] || []; let h = L.length; L.forEach(p => { const k = p.name + p.rating + (p.pos || ''); for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0; }); sig = (sig * 17 + h) | 0; });
+  const H2 = coachHistory(), key = H2.key + '|' + GROWN + '|' + MOD_VER_SEASON + '|' + sig + '|' + JSON.stringify((S && S.roles) || {}).length + '|' + JSON.stringify((S && S.xio) || {}) + '|' + JSON.stringify((S && S.formSet) || {});
   if (key === TAC_KEY) return; TAC_KEY = key;
   Object.keys(TD).forEach(t => {
     const c = H2.cur[t], C = c && tacFor(t, c.id);
     if (C) { TD[t].style = C.style; TD[t].form = C.form; }
-    if (C && C.form !== (TD[t].formNow || FORM_OF0[t])) { reslot(t, C.form); TD[t].formNow = C.form; }
+    /* 一律按主帅（或你设定）的主打阵型重排：以前阵型名一样就沿用资料里的旧站位，结果名义上 4-3-3、实际还是 4-2-3-1 */
+    if (C && FORMS[C.form]) { reslot(t, C.form); TD[t].formNow = C.form; }
     else reslot(t, null);
   });
   ENGINE.clearCache(); MOD_VER++;
