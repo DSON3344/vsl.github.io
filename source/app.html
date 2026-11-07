@@ -4381,6 +4381,25 @@ function payFactor(t) { const s = S.fx.length && nextRound() < 0 ? SEASON - 1 : 
 function teamMoraleMed(t) { const L = (PDB[t] || []).map(p => playerMorale(p, t).v).sort((a, b) => a - b); if (!L.length) return 65; const m = L.length >> 1; return L.length % 2 ? L[m] : Math.round((L[m - 1] + L[m]) / 2); }
 function morTip(p, t) { const M = playerMorale(p, t); return `<b>${esc(p.name)} · 士气 <span style="color:${morCol(M.v)}">${M.v}%（${M.lv}）</span></b><br>${M.R.length ? M.R.map(([d, x]) => `<span style="color:${d > 0 ? 'var(--win,#3c9)' : '#e66'}" class="mono">${d > 0 ? '+' : ''}${d}</span> ${esc(x)}`).join('<br>') : '没有特别影响士气的事'}<br><span style="opacity:.65">基础 68%</span>`; }
 // 队史射手榜 / 助攻榜：S01 起在本队的威超联赛数据（含本季已赛场次）
+/* 名宿的巅峰：取他真正踢过的赛季里最高的能力，不看理论成长曲线。
+   威超时代：每季存档的名单能力（含赛季表现调整）+ 本季现役能力；
+   威联赛时代：资料里的当季能力换算成威超的刻度，再按当季表现修正（场均评分比同位置、同能力的球员高就往上推，低就往下压），
+   所以一个在威联赛踢出统治级数据的球员，巅峰会比资料里平平的数字高。 */
+let SPK = null, WLFIT = null;
+function sPeaks() { const k = (S.archive || []).length + '|' + SEASON + '|' + MOD_VER_SEASON; if (SPK && SPK.k === k) return SPK.v; const v = {};
+  const put = (pid, name, r) => { if (!r) return; const kk = pid != null ? 'p' + pid : 'n' + name; if (!v[kk] || r > v[kk].r) v[kk] = { r }; };
+  (S.archive || []).forEach(A => Object.entries(A.sq || {}).forEach(([t, L]) => L.forEach(([uid, name, , , , rating]) => { const pid = uid && UIDPID[uid] != null ? UIDPID[uid] : (String(uid || '').startsWith('H|') ? +String(uid).slice(2) : pidOf(t, name)); put(pid, name, rating); })));
+  Object.entries(PDB).forEach(([t, L]) => L.forEach(p => { const pid = p.uid && UIDPID[p.uid] != null ? UIDPID[p.uid] : (String(p.uid || '').startsWith('H|') ? +String(p.uid).slice(2) : pidOf(t, p.name)); put(pid, p.name, p.rating); }));
+  SPK = { k, v }; return v; }
+function wlFit() { if (WLFIT) return WLFIT; const acc = {}; WL.S.forEach(S2 => S2.rows.forEach(r => { if (r.apps < 20 || !r.avg) return; const l = (wlP(r.id) || {}).line || 'MF', A = acc[l] = acc[l] || { n: 0, x: 0, y: 0, xx: 0, xy: 0 }; A.n++; A.x += r.rt; A.y += r.avg; A.xx += r.rt * r.rt; A.xy += r.rt * r.avg; }));
+  WLFIT = {}; Object.entries(acc).forEach(([l, A]) => { const mx = A.x / A.n, my = A.y / A.n, b = Math.max(0.01, Math.min(0.12, (A.xy / A.n - mx * my) / Math.max(1, A.xx / A.n - mx * mx))); WLFIT[l] = [my - b * mx, b]; });
+  /* 强队整体评分偏高：每季每队的平均超额扣掉一半，免得冠军队人人巅峰虚高 */
+  const tm = {}; WL.S.forEach(S2 => S2.rows.forEach(r => { if (r.apps < 10 || !r.avg) return; const [a, b] = WLFIT[(wlP(r.id) || {}).line || 'MF'] || [6.6, 0.03], k = S2.w + '|' + r.team, T = tm[k] = tm[k] || [0, 0]; T[0] += r.avg - (a + b * r.rt); T[1]++; }));
+  WLFIT.tm = {}; Object.entries(tm).forEach(([k, [x, n]]) => WLFIT.tm[k] = x / n); return WLFIT; }
+function wlSeasonEst(r, line, w0) { const F = wlFit(), [a, b] = (F[line] || [6.6, 0.03]), apps = r.apps + (r.capps || 0); let est = RC(r.rt); if (apps >= 10 && r.avg) { const res = r.avg - (a + b * r.rt) - 0.5 * ((F.tm || {})[w0 + '|' + r.team] || 0), w = Math.min(1, apps / 30); est += Math.max(-4, Math.min(5, res * 6 * w)); } return est; }
+function wlPeakOf(wlId) { if (!WL || wlId == null) return 0; const P2 = wlP(wlId), L = WL.car[wlId] || []; let m = 0; L.forEach(([w, r]) => { if (r.apps + (r.capps || 0) < 5) return; m = Math.max(m, wlSeasonEst(r, (P2 && P2.line) || 'MF', w)); }); return m ? Math.min(98, Math.round(m)) : 0; }
+function legendPeak(o) { if (o.pid != null) { const EA = edAll(), E = EA[PID_UID[o.pid] || ''] || EA['H|' + o.pid]; if (E && E.ret && E.peak) return E.peak; } /* 你手动改过的巅峰优先 */ const SP = sPeaks(), s = o.pid != null ? SP['p' + o.pid] : SP['n' + o.name], wid = o.wl != null ? o.wl : o.pid != null && WL && WL.byPid ? WL.byPid[o.pid] : null;
+  const pk = Math.max(s ? s.r : 0, wlPeakOf(wid)); return pk || (o.pid != null ? peakCache(o.pid) || 0 : o.wpk || 0); }
 // 球队名宿：每支球队都有，按在本队的出场、进球、助攻、联赛冠军和巅峰能力综合排出（威联赛 + 威超）
 function clubLegends(t) {
   const L = clubAgg(t); if (!L.length) return [];
@@ -4389,7 +4408,7 @@ function clubLegends(t) {
   const curSet = new Set((PDB[t] || []).map(p => p.name));
   const R = L.map(o => {
     const titles = o.ws.filter(w => WCH[w] === t).length + o.ss.filter(s => s < SEASON || isPending(s)).filter(s => champS(s) === t).length;
-    const pk = Math.max(o.pid != null ? (peakCache(o.pid) || 0) : 0, o.wpk || 0);
+    const pk = legendPeak(o);
     const yrs = o.ws.length + o.ss.length;
     const line = o.line || (o.pos ? ENGINE.LINE(o.pos) : (o.pid != null && PL[o.pid] ? ENGINE.LINE(PL[o.pid][1]) : 'MF'));
     const att = line === 'GK' ? o.apps * 0.5 : line === 'DF' ? o.g * 2 + o.a * 1.5 : o.g + o.a * 0.9;
@@ -4406,7 +4425,7 @@ function clubLegendsPanel(t) {
   const span = o => { const a = o.ws.length ? WN(Math.min(...o.ws)) : SN(Math.min(...o.ss)); const b = o.ss.length ? SN(Math.max(...o.ss)) : WN(Math.max(...o.ws)); return a === b ? a : a + '–' + b; };
   const link = o => o.pid != null ? `<button class="lnk" data-pid="${o.pid}"><b>${esc(o.name)}</b></button>` : o.wl != null ? `<button class="lnk" data-wl="${o.wl}"><b>${esc(o.name)}</b></button>` : `<button class="lnk" data-player="${esc(t)}|${esc(o.name)}"><b>${esc(o.name)}</b></button>`;
   const LN = { GK: '门将', DF: '后卫', MF: '中场', FW: '前锋' };
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club legends</div><h2>球队名宿</h2></div><span class="note">只看在${esc(t)}的贡献：出场、进球助攻、联赛冠军、效力年数和巅峰能力 · 威联赛 + 威超 · 全部赛事</span></div>
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club legends</div><h2>球队名宿</h2></div><span class="note">只看在${esc(t)}的贡献：出场、进球助攻、联赛冠军、效力年数和巅峰能力 · 威联赛 + 威超 · 全部赛事 · 巅峰是真正踢出来的最高能力，威联赛时代按当季表现推算</span></div>
     <div class="tw"><table><thead><tr><th>#</th><th class="l">球员</th><th class="l">位置</th><th class="l">效力</th><th>出场</th><th>进球</th><th>助攻</th><th>联赛冠军</th><th>巅峰</th><th class="l">地位</th></tr></thead><tbody>
     ${L.map((o, i) => `<tr><td class="dim">${i + 1}</td><td class="l">${link(o)}${o.cur ? ' <span class="chip good" style="font-size:10px;padding:0 5px">现役</span>' : ''}</td><td class="l muted">${LN[o.line] || ''}</td><td class="l mono" style="font-size:12px">${span(o)}</td><td>${o.apps}</td><td>${o.g}</td><td>${o.a}</td><td>${o.titles || '<span class="dim">–</span>'}</td><td>${o.pk ? `<span class="rt-pill" style="background:${rtColor(o.pk)}">${o.pk}</span>` : '–'}</td><td class="l"><span class="chip ${o.tag === '队史传奇' ? 'gold' : ''}" style="font-size:11px">${o.tag}</span></td></tr>`).join('')}
     </tbody></table></div></div>`;
@@ -4871,7 +4890,7 @@ function openPersonInner(pid, noRedirect) {
   const nowT = pidTeam(pid) || (PID_UID[pid] ? null : cur);
   if (!noRedirect && nowT && !RETIRED_PID.has(pid)) return openPlayer(nowT, name);
   const rows = personSeasons(pid); const teams = [...new Set(rows.map(r => r[1].team))];
-  const pk = peakCache(pid);
+  const pk = (() => { try { return legendPeak({ pid, name: (PL[pid] || [])[0] }) || peakCache(pid); } catch (e) { return peakCache(pid); } })();
   const d = $('#dlg');
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(pk || 75)}">${pk || '–'}</div><span class="mono dim" style="font-size:11px">${phaseOf(pid).k === 'future' ? '目前' : phaseOf(pid).k === 'retired' ? '巅峰' : '至今最佳'} · ${esc(pos)}</span></div>
