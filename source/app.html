@@ -4135,7 +4135,7 @@ const nowStyle = t => { try { const c = coachOf(t), X = c ? tacFor(t, c.id) : nu
 function xiFormNow(t) { return TD[t].formNow || TD[t].form || FORM_OF0[t]; }
 /* 下一场的伤停替换：跟比赛引擎一样，从替补里挑最适合该位置的人顶上（不含随机轮休） */
 function availXI(t, xi, out) { if (!out || !xi) return { xi, subs: [] }; const used = new Set(xi.map(x => x.name)), bench = ENGINE.lineup(t).bench.filter(p => !out[p.name]), subs = [];
-  const nx = xi.map(x => { const why = out[x.name]; if (!why) return x; let bp = null, bv = -1e9; bench.forEach(p => { if (used.has(p.name)) return; const v = p.rating - ENGINE.fitCost(x.slot || x.pos, p) * 1.2; if (v > bv) { bv = v; bp = p; } }); if (!bp) return { ...x, outWhy: why }; used.add(bp.name); const pen = ENGINE.fitCost(x.slot || x.pos, bp); subs.push({ off: x.name, on: bp.name, why }); return { ...x, name: bp.name, rating: Math.max(60, bp.rating - pen), pen, subFor: x.name }; });
+  const nx = xi.map(x => { const why = out[x.name]; if (!why) return x; let bp = null, bv = -1e9; bench.forEach(p => { if (used.has(p.name)) return; const v = p.rating - ENGINE.subCost(x.slot || x.pos, p); if (v > bv) { bv = v; bp = p; } }); if (!bp) return { ...x, outWhy: why }; used.add(bp.name); const pen = ENGINE.fitCost(x.slot || x.pos, bp); subs.push({ off: x.name, on: bp.name, why }); return { ...x, name: bp.name, rating: Math.max(60, bp.rating - pen), pen, subFor: x.name }; });
   return { xi: nx, subs }; }
 const whyZh = w => { const k = w && typeof w === 'object' ? w.why : w, l = w && w.left > 1 ? `，还缺 ${w.left} 场` : ''; return (k === 'inj' ? '受伤' : k === 'susp' ? '停赛' : k === 'rest' ? '轮休' : String(k || '缺阵')) + l; };
 function xioMk(sl, p) { const pen = slotPen(sl, p); return { pos: sl, name: p.name, rating: p.rating - pen, pen }; }

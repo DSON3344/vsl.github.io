@@ -62,6 +62,9 @@ const ENGINE = (() => {
       return c; }
     return fitCost0(slot, pos);
   }
+  /* 换人 / 伤停顶替的代价：除了位置适配，跨线再额外扣分——前锋顶中卫、后卫顶前锋几乎不会发生，
+     宁可派一个能力差一点的本位替补；中场补后防、后防补中场代价中等 */
+  function subCost(slot, p) { const c = fitCost(slot, p), a = LINE(String(slot).replace(/-.*/, '')), b = LINE(p.pos || ''); if (c >= 30) return 60; const far = (a === 'FW' && b === 'DF') || (a === 'DF' && b === 'FW'); return c * 1.5 + (a === b ? 0 : far ? 30 : 9); }
   function fitCost0(slot, pos) {
     if (!pos) return 6;
     const a = String(slot).replace(/-.*/, ''), b = String(pos);
@@ -83,7 +86,7 @@ const ENGINE = (() => {
     const best = base.xi.reduce((m, x) => Math.max(m, x.rating), 0);
     const repl = (slot, minR) => {
       let bp = null, bv = -1e9;
-      pool.forEach(p => { if (usedB.has(p)) return; const v = p.rating - fitCost(slot, p) * 1.2; if (v > bv) { bv = v; bp = p; } });
+      pool.forEach(p => { if (usedB.has(p)) return; const v = p.rating - subCost(slot, p); if (v > bv) { bv = v; bp = p; } });
       if (!bp || (minR != null && bp.rating - fitCost(slot, bp) < minR)) return null;
       usedB.add(bp); return bp;
     };
@@ -320,7 +323,7 @@ const ENGINE = (() => {
       const streak = (opt.ctx && opt.ctx[side] && opt.ctx[side].streak) || {}, energy = (opt.ctx && opt.ctx[side] && opt.ctx[side].energy) || null;
       const takeSub = (slot) => {
         let bp = null, bv = -1e9;
-        bench.forEach(p => { const v = p.rating - fitCost(slot, p) * 1.5; if (v > bv) { bv = v; bp = p; } });
+        bench.forEach(p => { const v = p.rating - subCost(slot, p); if (v > bv) { bv = v; bp = p; } });
         if (!bp) return null;
         bench.splice(bench.indexOf(bp), 1); return bp;
       };
@@ -484,6 +487,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
