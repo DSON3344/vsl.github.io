@@ -86,7 +86,7 @@ const ENGINE = (() => {
     const best = base.xi.reduce((m, x) => Math.max(m, x.rating), 0);
     const repl = (slot, minR) => {
       let bp = null, bv = -1e9;
-      pool.forEach(p => { if (usedB.has(p)) return; const v = p.rating - subCost(slot, p); if (v > bv) { bv = v; bp = p; } });
+      pool.forEach(p => { if (usedB.has(p)) return; const v = p.rating + (p.yb || 0) * 1.5 - subCost(slot, p); if (v > bv) { bv = v; bp = p; } });
       if (!bp || (minR != null && bp.rating - fitCost(slot, bp) < minR)) return null;
       usedB.add(bp); return bp;
     };
@@ -321,9 +321,10 @@ const ENGINE = (() => {
       const roster = Ls.xi.map(x => ({ ...x, on: 0, off: 95 }));
       const bench = Ls.bench.slice();
       const streak = (opt.ctx && opt.ctx[side] && opt.ctx[side].streak) || {}, energy = (opt.ctx && opt.ctx[side] && opt.ctx[side].energy) || null;
+      let yw = 1.5; /* 换人时也照顾年轻人：比分领先越多，越愿意换上年轻球员练兵 */
       const takeSub = (slot) => {
         let bp = null, bv = -1e9;
-        bench.forEach(p => { const v = p.rating - subCost(slot, p); if (v > bv) { bv = v; bp = p; } });
+        bench.forEach(p => { const v = p.rating + (p.yb || 0) * yw - subCost(slot, p); if (v > bv) { bv = v; bp = p; } });
         if (!bp) return null;
         bench.splice(bench.indexOf(bp), 1); return bp;
       };
@@ -348,6 +349,7 @@ const ENGINE = (() => {
         if (!cand.length) break;
         const w = cand.map(x => (x.line === 'FW' ? 2.6 : x.line === 'MF' ? 1.8 : 1) * (x.start ? 1 : 0.15) * (1 + Math.max(0, 88 - x.rating) * 0.04));
         const x = pick(cand, w);
+        { const gd = side === 'h' ? hg - ag : ag - hg; yw = gd >= 3 ? 5 : gd >= 2 ? 3.5 : 1.5; }
         const inP = takeSub(x.slot); if (!inP) break;
         x.off = m;
         roster.push({ slot: x.slot, name: inP.name, rating: Math.max(60, inP.rating - fitCost(x.slot, inP)), p: inP, line: x.line, on: m, off: 95, start: 0 });
