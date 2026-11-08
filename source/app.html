@@ -1967,6 +1967,17 @@ function pfSeason(s) {
 /* ---------- U21 联赛：各队青训（16–21 岁、还在梯队的）跟一线队同一天、同一对手踢一场，只算结果和个人数据 ----------
    S.u21 = { s, n: 已踢轮数, t: {队: [赛,胜,平,负,进,失]}, p: {青训id: [出场, 进球, 助攻, 评分×10 合计, 队]} }；赛季结束时按表现给青训加减能力（S.kpf） */
 function u21Squad(t, s) { const L = (ACAD[t] || []).map(k => ({ k, a: kAge(k, s) })).filter(x => x.a >= 16 && x.a <= 21 && kidWhere(x.k, s).at === 'acad').map(x => ({ k: x.k, r: kidRating(x.k, s), line: ENGINE.LINE(x.k.pos) }));
+  /* 青训梯队人不够时（比如刚提拔了一批上一线队），一线队里 21 岁以下、不是主力的青训出身球员可以下放踢 U21 补位 */
+  const NEED = { GK: 1, DF: 4, MF: 3, FW: 3 }, cnt = ln => L.filter(x => x.line === ln).length;
+  if (Object.keys(NEED).some(ln => cnt(ln) < NEED[ln]) && s === SEASON) { let xiN = new Set(); try { xiN = new Set(ENGINE.lineup(t).xi.map(x => x.name)); } catch (e) { }
+    (PDB[t] || []).filter(p => p.acad && ACAD_ID[p.acad] && !p.loanFrom && (p.age ?? 99) <= 21 && !xiN.has(p.name) && !L.some(x => x.k.id === p.acad)).sort((a, b) => a.rating - b.rating)
+      .forEach(p => { const ln = ENGINE.LINE(p.pos); if (cnt(ln) < NEED[ln]) L.push({ k: ACAD_ID[p.acad], r: p.rating, line: ln, up: 1 }); }); }
+  /* 再不够：一线队里不是主力的年轻球员（23 岁以下）或替补门将以超龄球员身份下放 */
+  if (s === SEASON && (Object.keys(NEED).some(ln => cnt(ln) < NEED[ln]) || L.length < 11)) { let xiN = new Set(); try { xiN = new Set(ENGINE.lineup(t).xi.map(x => x.name)); } catch (e) { }
+    (PDB[t] || []).filter(p => !xiN.has(p.name) && !p.loanFrom && !L.some(x => x.k.name === p.name) && (ENGINE.LINE(p.pos) === 'GK' || (p.age ?? 99) <= 23)).sort((a, b) => a.rating - b.rating)
+      .forEach(p => { const ln = ENGINE.LINE(p.pos); if (cnt(ln) < NEED[ln] || (L.length < 11 && ln !== 'GK')) L.push({ k: p.acad && ACAD_ID[p.acad] ? ACAD_ID[p.acad] : { id: 'P|' + p.uid, name: p.name, pos: p.pos }, r: p.rating, line: ln, up: 1 }); }); }
+  /* 还不够就让 15 岁的小将提前上 */
+  if (Object.keys(NEED).some(ln => cnt(ln) < NEED[ln])) (ACAD[t] || []).filter(k => kAge(k, s) === 15 && kidWhere(k, s).at === 'acad').map(k => ({ k, r: kidRating(k, s), line: ENGINE.LINE(k.pos) })).sort((a, b) => b.r - a.r).forEach(x => { if (cnt(x.line) < NEED[x.line]) L.push(x); });
   const pick = (ln, n) => L.filter(x => x.line === ln).sort((a, b) => b.r - a.r).slice(0, n), xi = [...pick('GK', 1), ...pick('DF', 4), ...pick('MF', 3), ...pick('FW', 3)], used = new Set(xi.map(x => x.k.id));
   L.filter(x => !used.has(x.k.id) && x.line !== 'GK').sort((a, b) => b.r - a.r).slice(0, Math.max(0, 11 - xi.length)).forEach(x => xi.push(x)); return xi; }
 function u21Play(h, a, key, P) { const rnd = seeded('u21|' + key), X = { h: u21Squad(h, SEASON), a: u21Squad(a, SEASON) }; if (X.h.length < 7 || X.a.length < 7) return [X.h.length >= 7 ? 3 : 0, X.a.length >= 7 ? 3 : 0, 1]; /* 凑不出人的判负 0:3 */
@@ -2007,7 +2018,7 @@ function kidSeasonPf(s) { const U = S.u21; if (!U || U.s !== s) return; S.kpf = 
     const cur = (S.kpf[x.id] || []).reduce((a, e) => a + e[1], 0), nv = Math.max(-8, Math.min(12, cur + d)); if (nv === cur) return; (S.kpf[x.id] = S.kpf[x.id] || []).push([s + 1, nv - cur]);
     log.push([x.id, x.k.name, x.q[4], nv - cur, Math.round(x.avg * 100) / 100, x.r, `U21 ${x.q[0]} 场 ${x.q[1]} 球 ${x.q[2]} 助`]); });
   S.kpfLog = S.kpfLog || {}; S.kpfLog[s] = log.sort((a2, b2) => b2[3] - a2[3]).slice(0, 40);
-  S.u21h = S.u21h || {}; const tb = u21Table(), ps = Object.entries(U.p).map(([id, q]) => [id, q]).sort((a2, b2) => b2[1][1] - a2[1][1]); S.u21h[s] = { champ: (U.po && U.po.champ) || (tb[0] && tb[0].t), first: tb[0] && tb[0].t, top: ps[0] ? [(ACAD_ID[ps[0][0]] || {}).name, ps[0][1][4], ps[0][1][1]] : null, ...u21Awards(U) }; }
+  S.u21h = S.u21h || {}; const tb = u21Table(), ps = Object.entries(U.p).filter(([id]) => ACAD_ID[id]).map(([id, q]) => [id, q]).sort((a2, b2) => b2[1][1] - a2[1][1]); S.u21h[s] = { champ: (U.po && U.po.champ) || (tb[0] && tb[0].t), first: tb[0] && tb[0].t, top: ps[0] ? [(ACAD_ID[ps[0][0]] || {}).name, ps[0][1][4], ps[0][1][1]] : null, ...u21Awards(U) }; }
 /* U21 个人奖项：金靴（进球最多）、助攻王、最佳球员（出场 10 场以上，场均评分 + 进球助攻 + 冠军加成）、最佳门将（门将场均评分最高） */
 function u21Awards(U) { const P = Object.entries((U && U.p) || {}).filter(([id]) => ACAD_ID[id]).map(([id, q]) => ({ id, k: ACAD_ID[id], q })), nm = x => x ? [x.k.name, x.q[4], x.id] : null; if (!P.length) return {};
   const boot = P.slice().sort((a, b) => b.q[1] - a.q[1] || b.q[2] - a.q[2])[0], ast = P.slice().sort((a, b) => b.q[2] - a.q[2] || b.q[1] - a.q[1])[0], champ = U.po && U.po.champ;
@@ -4900,7 +4911,8 @@ function fillPlan(t, target = SQUAD_MIN) {
   const left = pool.slice(), picks = [], gNeed = R2.map(g => Math.max(g.pri === '高' ? 2 : g.pri === '中' ? 1 : 0, (g.need || 0) - (g.n || 0)));
   for (let i = 0; i < need && left.length; i++) {
     left.forEach(k => { const gi = posGroup(k.pos); k._fit = fitOf(k); k._sc = k.rating * 0.55 + k.pot * 0.35 + gNeed[gi] * 2.5 + k._fit * 1.2 + (k.age >= 18 ? 1 : 0); });
-    left.sort((a, b) => b._sc - a._sc); const k = left.shift(), gi = posGroup(k.pos), g = R2[gi];
+    left.sort((a, b) => b._sc - a._sc); { const u21Left = ln => left.filter(x => ENGINE.LINE(x.pos) === ln && x.age <= 21).length; const j = left.findIndex(x => !(ENGINE.LINE(x.pos) === 'GK' && x.age <= 21 && u21Left('GK') <= 1)); if (j > 0) left.unshift(left.splice(j, 1)[0]); else if (j < 0) break; } /* 不把 U21 最后一个门将提走 */
+    const k = left.shift(), gi = posGroup(k.pos), g = R2[gi];
     const why = [`能力 ${k.rating} / 潜力 ${k.pot}`]; if (gNeed[gi] >= 2) why.push(`${g.name}缺人`); else if (gNeed[gi] === 1) why.push(`${g.name}需要补充`); if (k._fit >= 1) why.push('适合球队打法');
     picks.push({ k, why: why.join(' · '), on: true }); gNeed[gi] = Math.max(0, gNeed[gi] - 1);
   }
