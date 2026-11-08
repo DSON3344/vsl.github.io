@@ -4612,13 +4612,14 @@ function teamMorale(t) {
 // 威超梯队（DSON 设定）：比赛时把球队实力往所属梯队的水平拉，球员能力不变
 const CLUB_TIER = { S: ['猛龙', '罗联', '威龙', '猎豹', '威尔福特', '狂蜂'], 'A+': ['龙王宫殿', '切狐', '猛虎'], A: ['泽尼联', '华尔兹', '金狮', '沃特梅兹', '阿尔法骑士'],
   B: ['蜜蜂', '花豹', '森利西亚虎', '威廉斯', '岚', '普雷斯顿', '科摩多尊龙', '炎狼', '罗杰剧院', '威尔顿联', '飞鹰', '雷克夏', '拉普兰德'] };
-const TIER_P = { pull: 0.35, cap: 4.5, off: { S: 3.6, 'A+': 1.9, A: 0.6, B: -1.5 } };
+const TIER_P = { pull: 0.35, cap: 4.5, off: { S: 3.6, 'A+': 1.2, A: 0.6, B: -1.5 } };
 function clubTier(t) { for (const k in CLUB_TIER) if (CLUB_TIER[k].includes(t)) return k; return null; }
 var TIER_C = { k: null, m: {} };
-/* ---------- 威超梯队标准（DSON 设定）：首发均分 S 级 90+、A+ 级 85–89、A 级 80–84、B 级 79 以下 ----------
+/* ---------- 威超梯队标准（DSON 设定）：球队最强阵首发均分 S 级 87–90+、A 级 80–86、B 级 79 以下 ----------
    每季开踢前检查一次：哪支球队的首发均分跑出了自己梯队的区间，就给这队主力（能力最高的 18 人）记一笔长期的能力调整，把球队拉回区间。
    调整记在球员身上（跟着球员走），所以赛季中不会因为转会忽高忽低；龙王宫殿被财团收购两季后升为 S 级。 */
-const TIER_BAND = { S: [90, 93.5], 'A+': [85, 89.4], A: [80, 84.4], B: [74, 79.4] };
+const TIER_BAND = { S: [87, 91.5], 'A+': [80, 86.4], A: [80, 86.4], B: [76, 79.4] }; /* DSON 设定（球队最强阵）：S 级 87–90+、A 级 80–86、B 级 79 以下（不低于 76，联赛整体水平不能太差） */
+const TIER_AIM = { S: 2.0, 'A+': 1.0, A: 1.0, B: 0.6 }; /* 跑出区间时拉回区间内多少分：S 级拉到 88 左右，体现强队的实力 */
 function curTier(t) { if (t === '龙王宫殿') { try { const e = capitalHistory().ev.find(x => x.team === t && x.kind === 'in'); if (e && SEASON >= e.s + 2) return 'S'; } catch (e) { } } return clubTier(t) || 'B'; }
 /* 球队能排出的最强阵：所有常用阵型里，用现有球员排出的首发均分最高的那一套 */
 function strongXI(t) { const L = (PDB[t] || []).filter(p => !p.loanFrom || true); if (L.length < 11) return null; let best = null;
@@ -4630,7 +4631,7 @@ function tierCal(force, i) {
   for (let pass = 0; pass < 3; pass++) { let moved = 0;
     const todo = pass ? [...MOVED] : Object.keys(TD); MOVED.clear();
     todo.forEach(t => { const L = (PDB[t] || []).filter(p => p.uid); if (L.length < 11) return; const X = strongXI(t); if (!X) return; const xi = X.avg;
-      const [lo, hi] = TIER_BAND[curTier(t)]; let d = 0; if (xi < lo) d = lo + 0.3 - xi; else if (xi > hi) d = hi - 0.3 - xi; if (Math.abs(d) < 0.25) return;
+      const tr = curTier(t), [lo, hi] = TIER_BAND[tr], aim = TIER_AIM[tr]; let d = 0; if (xi < lo) d = lo + aim - xi; else if (xi > hi) d = hi - 0.3 - xi; if (Math.abs(d) < 0.25) return;
       /* 只调最强阵里的 11 人：要拉高时先补最弱的位置（不让球星再往上涨），要压低时先压最强的 */
       const ids = new Set(X.xi.map(p => p.uid)), XI = L.filter(p => ids.has(p.uid)); let need = Math.round(d * XI.length);
       for (let k = 0; k < 400 && need !== 0; k++) { const up = need > 0, cand = XI.slice().sort((a, b) => up ? (a.rating + (S.pf[a.uid] || 0) * 0) - b.rating : b.rating - a.rating); const p = up ? cand.find(q => q.rating + 1 <= 96) : cand[0]; if (!p) break; S.pf[p.uid] = (S.pf[p.uid] || 0) + (up ? 1 : -1); p.rating += up ? 1 : -1; need += up ? -1 : 1; }
