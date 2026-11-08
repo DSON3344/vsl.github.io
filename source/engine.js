@@ -196,8 +196,9 @@ const ENGINE = (() => {
     const w = pool.map(s => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 2) * Math.pow(s.rating / 85, 2.5));
     return pick(pool, w);
   }
-  function carder(on) {
-    const w = on.map(s => (s.line === 'DF' ? 2 : /DM/.test(s.slot) ? 2.6 : s.line === 'MF' ? 1.3 : s.line === 'GK' ? 0.15 : 0.8) * (1 + ((s.p && s.p.attributes && s.p.attributes.phy) || 75) / 200));
+  let hotFn = null; const setHot = f => { hotFn = f; }; /* 性格暴躁的球员更容易吃牌（德比里更明显） */
+  function carder(on, dby) {
+    const w = on.map(s => (s.line === 'DF' ? 2 : /DM/.test(s.slot) ? 2.6 : s.line === 'MF' ? 1.3 : s.line === 'GK' ? 0.15 : 0.8) * (1 + ((s.p && s.p.attributes && s.p.attributes.phy) || 75) / 200) * (hotFn && s.p && hotFn(s.p) ? (dby ? 2.6 : 1.8) : 1));
     return pick(on, w);
   }
   // 点球手：场上射门能力最好的球员（前锋优先）
@@ -270,8 +271,8 @@ const ENGINE = (() => {
     const rows = X.map(x => ({ slot: x.slot, line: x.line, role: roleOf(x.slot), ovr: x.r, min: x.min == null ? 90 : x.min, start: x.start == null ? 1 : x.start, sh: 0, ot: 0, tk: 0, int: 0, kp: 0, sv: 0, g: 0, a: 0, yc: 0, rc: 0, ps: 0, pc: 0, pg: 0, pm: 0, da: 0, ds: 0 }));
     const att = (x, k) => (x.attr && x.attr[k]) || x.r;
     const mf = k => Math.max(0.05, rows[k].min / 90);
-    o.goals.forEach(([gi, ai, pen]) => { if (gi >= 0) { rows[gi].g++; rows[gi].sh++; rows[gi].ot++; if (pen) rows[gi].pg++; } if (ai >= 0) { rows[ai].a++; rows[ai].kp++; } });
-    (o.pmiss || []).forEach(([pi, saved]) => { if (pi >= 0) { rows[pi].pm++; rows[pi].sh++; if (saved) rows[pi].ot++; } });
+    o.goals.forEach(([gi, ai, pen]) => { if (gi >= 0 && rows[gi]) { rows[gi].g++; rows[gi].sh++; rows[gi].ot++; if (pen) rows[gi].pg++; } if (ai >= 0 && rows[ai]) { rows[ai].a++; rows[ai].kp++; } });
+    (o.pmiss || []).forEach(([pi, saved]) => { if (pi >= 0 && rows[pi]) { rows[pi].pm++; rows[pi].sh++; if (saved) rows[pi].ot++; } });
     const gf = o.goals.length;
     const used = rows.reduce((a, r) => a + r.sh, 0), usedOt = rows.reduce((a, r) => a + r.ot, 0);
     const shW = X.map((x, k) => x.line === 'GK' ? 0 : (Math.sqrt(POS_GOAL(x.slot)) * att(x, 'sho') / 80 + 0.25) * Math.pow(x.r / 85, 2) * mf(k));
@@ -302,7 +303,7 @@ const ENGINE = (() => {
       r.pc = Math.round(r.ps * acc);
     });
     const gk = rows.find(r => r.line === 'GK' && r.start) || rows.find(r => r.line === 'GK'); if (gk) gk.sv = Math.max(0, o.oppOt - o.ga);
-    o.cards.forEach(([ci, red, m]) => { if (ci < 0) return; if (red) { rows[ci].rc++; rows[ci].min = Math.min(rows[ci].min, Math.max(1, Math.floor(m) - (90 - rows[ci].min) * 0)); } else rows[ci].yc++; });
+    o.cards.forEach(([ci, red, m]) => { if (ci < 0 || !rows[ci]) return; if (red) { rows[ci].rc++; rows[ci].min = Math.min(rows[ci].min, Math.max(1, Math.floor(m) - (90 - rows[ci].min) * 0)); } else rows[ci].yc++; });
     rows.forEach(r => r.r = matchRating(r, o));
     return rows;
   }
@@ -372,7 +373,7 @@ const ENGINE = (() => {
       const used = {};
       ms.forEach(mm => {
         const m = Math.abs(mm), on = onAt(side, m); if (!on.length) return;
-        const p = carder(on);
+        const p = carder(on, dby);
         if (mm < 0) { events.push({ m, type: 'red', side, team: t, player: p.name, straight: 1, txt: `${p.name} 背后铲抢，直接红牌！` }); p.sent = m; p.off = Math.min(p.off, m); return; }
         used[p.name] = (used[p.name] || 0) + 1;
         if (used[p.name] === 2) { events.push({ m, type: 'red', side, team: t, player: p.name, txt: `${p.name} 两黄变一红，被罚下场` }); p.sent = m; p.off = Math.min(p.off, m); }
@@ -491,6 +492,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
