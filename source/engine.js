@@ -154,14 +154,14 @@ const ENGINE = (() => {
   // ---------- 期望进球 ----------
   // opt.L = { h: pickXI(...), a: pickXI(...) } 时按实际首发计算
   // 俱乐部底蕴：按球队梯队把比赛实力往该梯队的水平拉（单位：能力分），由网页设定
-  let teamAdj = null;
+  let teamAdj = null; let homeBoost = null; const setHomeBoost = f => { homeBoost = f; };
   const setTeamAdj = f => { teamAdj = f; };
   const shiftS = (X, d) => d ? { ...X, atk: X.atk + d, def: X.def + d, ctl: X.ctl + d, xiAvg: X.xiAvg + d, ovr: X.ovr + d, adj: d } : X;
   function expected(home, away, opt = {}) {
     let H = opt.L ? strengthOf(opt.L.h) : strength(home), A = opt.L ? strengthOf(opt.L.a) : strength(away);
     if (teamAdj) { H = shiftS(H, (teamAdj(home) || 0) * 0.86); A = shiftS(A, (teamAdj(away) || 0) * 0.86); }
     const ch = condition(home, opt.weather, opt.slot, away), ca = condition(away, opt.weather, opt.slot, home);
-    const homeAdv = opt.neutral ? 1 : 1.12, awayPen = opt.neutral ? 1 : 0.94;
+    const homeAdv = opt.neutral ? 1 : 1.12 * (1 + (homeBoost ? homeBoost(home) || 0 : 0)), awayPen = opt.neutral ? 1 : 0.94; /* 主场氛围特别强的球队（猛龙、狂蜂）主场加成更高 */
     const k = 0.078 / 0.86; // 能力分 78 以上压缩了 0.86，系数同步放大，强弱差距的效果不变
     const sh = styleFx((TEAMS_DATA[home] || {}).style, (TEAMS_DATA[away] || {}).style), sa = styleFx((TEAMS_DATA[away] || {}).style, (TEAMS_DATA[home] || {}).style);
     let lh = 1.2 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.0465 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
@@ -489,6 +489,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
