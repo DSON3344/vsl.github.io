@@ -7,7 +7,7 @@
 /* Layout: 控制室仪表盘 — 近黑底、等宽字体数字、细线发光图表、玻璃面板；联赛金只留给冠军与奖杯 */
 :root{
   /* 夜场球场：近黑的混凝土底、粉笔白文字、一盏从左上打下来的泛光灯；唯一的强调色是信号橙，联赛金只留给冠军与奖杯 */
-  --bg:#0c0c0a; --bg-2:#141412; --panel:rgba(var(--tint),.028); --panel-2:rgba(var(--tint),.055);
+  --bg:#0c0c0a; --bg-2:#141412; --bg-rgb:12,12,10; --panel:rgba(var(--tint),.028); --panel-2:rgba(var(--tint),.055);
   --line:rgba(var(--tint),.085); --line-2:rgba(var(--tint),.17);
   --fg:#ece8df; --fg-2:#a7a195; --fg-3:#6e695f;
   --accent:#ff5b1f; --accent-2:#f4efe4; --accent-dim:rgba(var(--acc-rgb),.13); --acc-rgb:255,91,31; --acc-hi:#ffb48f; --acc-lo:#c2410f; --acc-deep:#6e2406; --acc-ink:#1a0a03; --tint:236,232,223; --glow:255,226,186;
@@ -34,7 +34,8 @@ button{cursor:pointer}
 .muted{color:var(--fg-2)} .dim{color:var(--fg-3)}
 
 /* ---------- Top bar ---------- */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(12,12,10,.96);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:linear-gradient(180deg,rgba(var(--bg-rgb),.66),rgba(var(--bg-rgb),.5)),linear-gradient(90deg,rgba(var(--acc-rgb),.06),transparent 40%,rgba(var(--glow),.03));-webkit-backdrop-filter:blur(18px) saturate(165%);backdrop-filter:blur(18px) saturate(165%);border-bottom:1px solid rgba(var(--tint),.1);box-shadow:inset 0 -1px 0 rgba(var(--tint),.03),0 10px 30px -18px rgba(0,0,0,.6)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.top{background:rgba(var(--bg-rgb),.96)}}
 .top-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:20px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;flex-shrink:0}
 .brand img{height:40px;width:auto}
@@ -42,7 +43,39 @@ button{cursor:pointer}
 .brand small{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--fg-3)}
 nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
 nav.tabs::-webkit-scrollbar{display:none}
-#cupMenu{position:fixed;z-index:60;display:none;min-width:180px;padding:6px;border-radius:10px;background:var(--panel-2,var(--panel));border:1px solid rgba(var(--tint),.14);box-shadow:0 12px 32px rgba(0,0,0,.35)}#cupMenu.open{display:grid;gap:2px}#cupMenu button{background:none;border:0;text-align:left;padding:8px 10px;border-radius:6px;color:var(--fg-2);font-size:13.5px;cursor:pointer}#cupMenu button:hover,#cupMenu button[aria-current]{background:var(--panel);color:var(--fg)}#cupMenu button:first-child{border-bottom:1px solid rgba(var(--tint),.08);margin-bottom:2px}
+/* ---------- 毛玻璃导航：颜色全部跟着当前配色（--bg-rgb / --tint / --acc-rgb），四套配色自动切换 ---------- */
+.glass{background:linear-gradient(180deg,rgba(var(--bg-rgb),.74),rgba(var(--bg-rgb),.62)),linear-gradient(135deg,rgba(var(--acc-rgb),.07),rgba(var(--glow),.025) 60%,transparent);-webkit-backdrop-filter:blur(18px) saturate(165%);backdrop-filter:blur(18px) saturate(165%);border:1px solid rgba(var(--tint),.12);box-shadow:inset 0 1px 0 rgba(var(--tint),.1),0 18px 40px -12px rgba(0,0,0,.55)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:rgba(var(--bg-rgb),.96)}}
+nav.tabs button .caret{display:inline-block;width:6px;height:6px;margin-left:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);opacity:.6;transition:transform .2s var(--ease)}
+nav.tabs button[aria-expanded] .caret{transform:translateY(1px) rotate(-135deg)}
+#navMenu{position:fixed;z-index:60;display:none;min-width:190px;padding:6px;border-radius:14px}
+#navMenu.open{display:grid;gap:2px;animation:navIn .18s var(--ease)}
+@keyframes navIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#navMenu button,#navSheet .nsh-items button{background:none;border:0;text-align:left;padding:9px 12px;border-radius:8px;color:var(--fg-2);font-size:13.5px;cursor:pointer;white-space:nowrap}
+#navMenu button:hover,#navSheet .nsh-items button:hover{background:rgba(var(--tint),.07);color:var(--fg)}
+#navMenu button[aria-current],#navSheet .nsh-items button[aria-current]{background:rgba(var(--acc-rgb),.16);color:var(--accent-2);box-shadow:inset 2px 0 0 var(--accent)}
+.bnav{display:none}
+#navSheet{position:fixed;inset:0;z-index:70;pointer-events:none}
+#navSheet .nsh-bg{position:absolute;inset:0;background:rgba(0,0,0,.45);opacity:0;transition:opacity .2s}
+#navSheet .nsh{position:absolute;left:8px;right:8px;bottom:calc(76px + env(safe-area-inset-bottom,0px));border-radius:20px;padding:10px 14px 16px;display:grid;gap:12px;transform:translateY(16px);opacity:0;transition:transform .25s var(--ease),opacity .2s;max-height:70vh;overflow:auto}
+#navSheet.open{pointer-events:auto}#navSheet.open .nsh-bg{opacity:1}#navSheet.open .nsh{transform:none;opacity:1}
+#navSheet .nsh-grip{justify-self:center;width:36px;height:4px;border-radius:2px;background:rgba(var(--tint),.25)}
+#navSheet .nsh-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin-top:6px}
+#navSheet .nsh-items button{padding:12px;font-size:14px;background:rgba(var(--tint),.04);border:1px solid rgba(var(--tint),.06)}
+@media (max-width:760px){
+  nav.tabs{display:none}
+  .bnav{display:grid;grid-template-columns:repeat(5,1fr);align-items:end;position:fixed;z-index:65;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));height:62px;padding:0 4px;border-radius:20px}
+  .bnav button{background:none;border:0;display:grid;justify-items:center;gap:2px;padding:8px 0 9px;color:var(--fg-3);font-size:10.5px;position:relative}
+  .bnav button b{font-weight:600}
+  .bnav button .bi{display:grid;place-items:center;height:24px}
+  .bnav button[aria-current],.bnav button[aria-expanded]{color:var(--accent-2)}
+  .bnav button[aria-current]::before{content:"";position:absolute;top:4px;width:22px;height:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 10px rgba(var(--acc-rgb),.7)}
+  .bnav .bmain{align-self:start;margin-top:-18px}
+  .bnav .bmain .bi{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--acc-hi),var(--accent) 55%,var(--acc-lo));color:var(--acc-ink);box-shadow:0 8px 22px -4px rgba(var(--acc-rgb),.65),inset 0 1px 0 rgba(255,255,255,.35);border:3px solid rgba(var(--bg-rgb),.85)}
+  .bnav .bmain[aria-current]::before{display:none}
+  main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion:reduce){#navMenu.open{animation:none}#navSheet .nsh,#navSheet .nsh-bg{transition:none}}
 .cupcard{border:1px solid rgba(var(--tint),.1);color:inherit;font:inherit}.cupcard:hover{border-color:rgba(var(--acc-rgb),.5)}
 nav.tabs button{background:none;border:0;padding:8px 12px;border-radius:4px;color:var(--fg-2);white-space:nowrap;font-weight:500;font-size:13.5px;position:relative}
 nav.tabs button:hover{color:var(--fg);background:var(--panel)}
@@ -360,9 +393,9 @@ th.sorted{color:var(--accent-2)}
 
 
 /* 配色方案（右上角 🎨 或开场界面切换）：都是深色底 + 单一强调色，只换色温和强调色 */
-:root[data-theme="pitch"]{--bg:#08110c;--bg-2:#0e1913;--fg:#e8efe4;--fg-2:#9db0a0;--fg-3:#5f7466;--tint:222,236,214;--glow:190,255,205;--accent:#b4e05a;--acc-rgb:180,224,90;--acc-hi:#e3f6b4;--acc-lo:#6f9a28;--acc-deep:#33490f;--acc-ink:#0f1a05;--accent-2:#f1f7ea;--gold:#d9b45a;--z1:#b4e05a;--z2:#e0c25a;--z3:#a9b8a6;--pitch:#0d1a11}
-:root[data-theme="royal"]{--bg:#070a14;--bg-2:#0d1220;--fg:#e8ecf5;--fg-2:#9aa6bd;--fg-3:#5d6880;--tint:214,224,245;--glow:140,170,255;--accent:#e4b450;--acc-rgb:228,180,80;--acc-hi:#fbe6ad;--acc-lo:#a7781f;--acc-deep:#5a3f0c;--acc-ink:#1d1403;--accent-2:#f3f5fb;--gold:#f0cf7a;--z1:#e4b450;--z2:#7fa6ff;--z3:#9aa6bd;--pitch:#0b1612}
-:root[data-theme="glacier"]{--bg:#080b0e;--bg-2:#0f1419;--fg:#e6eef2;--fg-2:#98a8b2;--fg-3:#5c6c76;--tint:220,235,242;--glow:170,228,255;--accent:#3fd4e6;--acc-rgb:63,212,230;--acc-hi:#b8f4fb;--acc-lo:#12899a;--acc-deep:#0a4a54;--acc-ink:#03181b;--accent-2:#f1f8fa;--gold:#dcb65e;--z1:#3fd4e6;--z2:#d9b45a;--z3:#a2b2bb;--pitch:#0c1712}
+:root[data-theme="pitch"]{--bg-rgb:8,17,12;--bg:#08110c;--bg-2:#0e1913;--fg:#e8efe4;--fg-2:#9db0a0;--fg-3:#5f7466;--tint:222,236,214;--glow:190,255,205;--accent:#b4e05a;--acc-rgb:180,224,90;--acc-hi:#e3f6b4;--acc-lo:#6f9a28;--acc-deep:#33490f;--acc-ink:#0f1a05;--accent-2:#f1f7ea;--gold:#d9b45a;--z1:#b4e05a;--z2:#e0c25a;--z3:#a9b8a6;--pitch:#0d1a11}
+:root[data-theme="royal"]{--bg-rgb:7,10,20;--bg:#070a14;--bg-2:#0d1220;--fg:#e8ecf5;--fg-2:#9aa6bd;--fg-3:#5d6880;--tint:214,224,245;--glow:140,170,255;--accent:#e4b450;--acc-rgb:228,180,80;--acc-hi:#fbe6ad;--acc-lo:#a7781f;--acc-deep:#5a3f0c;--acc-ink:#1d1403;--accent-2:#f3f5fb;--gold:#f0cf7a;--z1:#e4b450;--z2:#7fa6ff;--z3:#9aa6bd;--pitch:#0b1612}
+:root[data-theme="glacier"]{--bg-rgb:8,11,14;--bg:#080b0e;--bg-2:#0f1419;--fg:#e6eef2;--fg-2:#98a8b2;--fg-3:#5c6c76;--tint:220,235,242;--glow:170,228,255;--accent:#3fd4e6;--acc-rgb:63,212,230;--acc-hi:#b8f4fb;--acc-lo:#12899a;--acc-deep:#0a4a54;--acc-ink:#03181b;--accent-2:#f1f8fa;--gold:#dcb65e;--z1:#3fd4e6;--z2:#d9b45a;--z3:#a2b2bb;--pitch:#0c1712}
 .thpick{display:flex;gap:6px;flex-wrap:wrap}.thpick button{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line-2);background:transparent;color:var(--fg-2);cursor:pointer}.thpick button i{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}.thpick button.on{border-color:var(--accent);color:var(--fg)}
 /* ===== 开场 / 登录界面：电影感的夜场主视觉 + 右侧登录栏 ===== */
 #gate{position:fixed;inset:0;z-index:200;overflow:hidden;color:var(--fg);font-family:var(--sans);background:#050505;transition:opacity .8s var(--ease)}
@@ -433,19 +466,11 @@ th.sorted{color:var(--accent-2)}
     <a class="brand" href="#overview" data-go="overview"><img id="brandLogo" alt="威超联赛"><span><b>威伊士超联赛</b><small>VES LEAGUE</small></span></a>
     <nav class="tabs" aria-label="页面">
       <button data-go="overview">总览</button>
-      <button data-go="table">积分榜</button>
-      <button data-go="stats">数据榜</button>
       <button data-go="match">比赛模拟</button>
-      <button data-go="teams">球队</button>
-      <button data-go="players">球员</button>
-      <button data-go="transfers">转会窗</button>
-      <button data-go="cups" data-act="cupMenu" aria-haspopup="menu">赛事 ▾</button>
-      <button data-go="awards">奖项</button>
-      <button data-go="ext">海外联赛</button>
-      <button data-go="u21">U21</button>
-      <button data-go="xi">最强阵容</button>
-      <button data-go="history">历史总榜</button>
-      <button data-go="wl">威联赛</button>
+      <button data-grp="league" aria-haspopup="menu">联赛<i class="caret"></i></button>
+      <button data-grp="squad" aria-haspopup="menu">球队<i class="caret"></i></button>
+      <button data-grp="cups" aria-haspopup="menu">赛事<i class="caret"></i></button>
+      <button data-grp="hist" aria-haspopup="menu">历史<i class="caret"></i></button>
     </nav>
     <div class="roundchip" id="roundChip"></div>
     <button class="roundchip" data-act="search" title="搜索球员或球队（快捷键 /）" aria-label="搜索">⌕ 搜索</button>
@@ -453,6 +478,8 @@ th.sorted{color:var(--accent-2)}
   </div>
 </header>
 <main id="app"></main>
+<nav class="bnav glass" aria-label="页面"><button data-go="overview"><span class="bi"></span><b>总览</b></button><button data-grp="league"><span class="bi"></span><b>联赛</b></button><button data-go="match" class="bmain"><span class="bi"></span><b>比赛</b></button><button data-grp="squad"><span class="bi"></span><b>球队</b></button><button data-grp="more"><span class="bi"></span><b>更多</b></button></nav>
+<div id="navSheet" aria-hidden="true"><div class="nsh-bg" data-act="navClose"></div><div class="nsh glass" role="menu"></div></div>
 <dialog id="dlg"></dialog>
 
 <script>/*__DATA__*/</script>
@@ -483,6 +510,10 @@ const ASIA_NATS = new Set(['日本', '韩国', '中国', '朝鲜', '泰国', '�
 const tid = t => TEAM_ID[t] || {};
 /* 图标：手绘的线性 SVG（跟随文字颜色），取代 emoji。牌用实心色块 */
 const ICO = {
+  home: '<path d="M4 11l8-7 8 7v9h-5.5v-6h-5v6H4z"/>',
+  table: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9 4.5v15"/>',
+  shirt: '<path d="M8.5 4L4 6.8l1.8 3.8 2.2-1V20h8V9.6l2.2 1L20 6.8 15.5 4c-.7 1.3-2 2-3.5 2s-2.8-.7-3.5-2z"/>',
+  more: '<circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/>',
   goal: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5l3.6 2.6-1.4 4.2h-4.4l-1.4-4.2z"/><path d="M12 3v4.5M20.6 9.4l-5 .7M17 19.5l-2.8-5.2M7 19.5l2.8-5.2M3.4 9.4l5 .7"/>',
   sub: '<path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/>',
   inj: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/>',
@@ -2183,7 +2214,7 @@ function go(v, arg = null, push = true) {
   stopLive();
   view = v; viewArg = arg;
   if (push) { try { history.replaceState(null, '', '#' + v); } catch (e) {} }
-  document.querySelectorAll('nav.tabs button').forEach(b => { if (b.dataset.go === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  navClose(); const gv = grpOf(v); document.querySelectorAll('nav.tabs button,.bnav button').forEach(b => { const on = b.dataset.go ? b.dataset.go === v : (b.dataset.grp === gv || (b.dataset.grp === 'more' && (gv === 'cups' || gv === 'hist'))); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   render(); window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
 function render() {
@@ -4030,14 +4061,32 @@ function cupResultHTML(k, r, s) {
 }
 const cupAll = () => SEASONS.slice().concat(pendingArchive() ? [SEASON] : []).sort((a, b) => b - a);
 /* 赛事：总览（赛制、席位、各项赛事本季进度）+ 每项赛事单独一页（导航栏「赛事」下拉选） */
-/* 导航栏「赛事」下拉：nav 本身可以横向滚动（会裁掉下拉），所以菜单用 fixed 定位挂在 body 上 */
-function cupMenuEl() { let m = document.getElementById('cupMenu'); if (!m) { m = document.createElement('div'); m.id = 'cupMenu'; m.setAttribute('role', 'menu'); document.body.appendChild(m); } return m; }
-function cupMenuClose() { const m = document.getElementById('cupMenu'); if (m) m.classList.remove('open'); }
-function cupMenuToggle(btn) { const m = cupMenuEl(); if (m.classList.contains('open')) { m.classList.remove('open'); return false; }
-  m.innerHTML = `<button data-go="cups" role="menuitem">赛事总览</button>` + CUP_KS.map(k => `<button data-go="cups" data-cup="${k}" role="menuitem"${view === 'cups' && viewArg === k ? ' aria-current="page"' : ''}>${k}</button>`).join('');
-  const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(innerWidth - 188, r.left)) + 'px'; m.style.top = (r.bottom + 6) + 'px'; m.classList.add('open'); return true; }
-addEventListener('scroll', cupMenuClose, { passive: true }); addEventListener('resize', cupMenuClose);
-document.addEventListener('pointerdown', e => { if (!e.target.closest('#cupMenu,[data-act="cupMenu"]')) cupMenuClose(); });
+/* ---------- 导航：桌面版顶部 6 项（4 个下拉分组），手机版底部 5 个按钮 + 底部弹出面板 ----------
+   下拉菜单 / 面板都挂在 body 上（顶部 nav 可以横向滚动，会裁掉里面的下拉） */
+const NAV_G = {
+  league: ['联赛', [['table', '积分榜'], ['stats', '数据榜'], ['xi', '最强阵容']]],
+  squad: ['球队', [['teams', '球队'], ['players', '球员'], ['transfers', '转会窗'], ['u21', 'U21']]],
+  cups: ['赛事', [['cups', '赛事总览'], ...['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯'].map(k => ['cups', k, k]), ['ext', '海外联赛']]],
+  hist: ['历史', [['awards', '奖项'], ['history', '历史总榜'], ['wl', '威联赛']]] };
+function grpOf(v) { for (const [g, [, L]] of Object.entries(NAV_G)) if (L.some(x => x[0] === v)) return g; return null; }
+const navItem = ([v, lab, arg]) => `<button data-go="${v}"${arg ? ` data-cup="${arg}"` : ''} role="menuitem"${view === v && (arg ? viewArg === arg : !(v === 'cups' && viewArg)) ? ' aria-current="page"' : ''}>${esc(lab)}</button>`;
+function navMenuEl() { let m = document.getElementById('navMenu'); if (!m) { m = document.createElement('div'); m.id = 'navMenu'; m.className = 'glass'; m.setAttribute('role', 'menu'); m.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') navHoverClose(); }); m.addEventListener('pointerenter', () => clearTimeout(NAV_T)); document.body.appendChild(m); } return m; }
+let NAV_T = 0, NAV_OPEN = null;
+function navClose() { clearTimeout(NAV_T); NAV_OPEN = null; const m = document.getElementById('navMenu'); if (m) m.classList.remove('open'); const sh = document.getElementById('navSheet'); if (sh) { sh.classList.remove('open'); sh.setAttribute('aria-hidden', 'true'); } document.querySelectorAll('[data-grp][aria-expanded]').forEach(b => b.removeAttribute('aria-expanded')); }
+function navHoverClose() { clearTimeout(NAV_T); NAV_T = setTimeout(navClose, 220); }
+function navOpen(g, btn, hover) { clearTimeout(NAV_T);
+  if (btn.closest('.bnav')) { const sh = document.getElementById('navSheet'); if (NAV_OPEN === g && sh.classList.contains('open')) return navClose(); navClose(); NAV_OPEN = g;
+    const groups = g === 'more' ? ['cups', 'hist'] : [g]; sh.querySelector('.nsh').innerHTML = `<i class="nsh-grip"></i>` + groups.map(k => `<div class="nsh-g"><div class="eyebrow">${NAV_G[k][0]}</div><div class="nsh-items">${NAV_G[k][1].map(navItem).join('')}</div></div>`).join('');
+    sh.classList.add('open'); sh.setAttribute('aria-hidden', 'false'); btn.setAttribute('aria-expanded', 'true'); return; }
+  const m = navMenuEl(); if (NAV_OPEN === g && m.classList.contains('open')) { if (!hover) navClose(); return; } navClose(); NAV_OPEN = g;
+  m.innerHTML = NAV_G[g][1].map(navItem).join(''); const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(innerWidth - 200, r.left)) + 'px'; m.style.top = (r.bottom + 8) + 'px'; m.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+{ const BI = { overview: 'home', match: 'goal', league: 'table', squad: 'shirt', more: 'more' }; document.querySelectorAll('.bnav button').forEach(b => { const k = b.dataset.go || b.dataset.grp, sp = b.querySelector('.bi'); if (sp) sp.innerHTML = ic(BI[k] || 'more', b.classList.contains('bmain') ? 24 : 21); }); }
+document.addEventListener('click', e => { const g = e.target.closest && e.target.closest('[data-grp]'); if (g) { e.preventDefault(); e.stopPropagation(); navOpen(g.dataset.grp, g); return; } if (e.target.closest && e.target.closest('[data-act="navClose"]')) { e.preventDefault(); e.stopPropagation(); navClose(); } }, true);
+document.addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return; const g = e.target.closest && e.target.closest('nav.tabs [data-grp]'); if (g) navOpen(g.dataset.grp, g, true); else if (NAV_OPEN && e.target.closest && e.target.closest('nav.tabs button')) navClose(); });
+document.addEventListener('pointerout', e => { if (e.pointerType === 'mouse' && e.target.closest && e.target.closest('nav.tabs [data-grp]') && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('#navMenu'))) navHoverClose(); });
+document.addEventListener('pointerdown', e => { if (!(e.target.closest && e.target.closest('#navMenu,#navSheet .nsh,[data-grp]'))) navClose(); });
+addEventListener('resize', navClose); addEventListener('scroll', () => { if (document.getElementById('navMenu')?.classList.contains('open')) navClose(); }, { passive: true });
+addEventListener('keydown', e => { if (e.key === 'Escape') navClose(); });
 function vCups() {
   const K = CUP_KS.includes(viewArg) ? viewArg : null; if (K) return vCup(K);
   const E = cupEntrants(SEASON), all = cupAll();
@@ -7359,7 +7408,7 @@ document.addEventListener('change', e => { const el = e.target.closest && e.targ
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-pid],[data-hm],[data-statsgo],[data-tmode],[data-pmode],[data-go],[data-act],[data-team],[data-player],[data-fx],[data-tbl],[data-w],[data-neutral],[data-line],[data-speed],[data-hs],[data-sm],[data-scat],[data-sline],[data-ext]');
   if (!el) { if (e.target === $('#dlg')) $('#dlg').close(); return; }
-  if (el.dataset.go) { e.preventDefault(); if (el.dataset.act === 'cupMenu' && cupMenuToggle(el)) return; cupMenuClose(); if (el.dataset.go === 'teams') { teamSel = null; tmSq = null; } return go(el.dataset.go, el.dataset.cup || null); }
+  if (el.dataset.go) { e.preventDefault(); navClose(); if (el.dataset.go === 'teams') { teamSel = null; tmSq = null; } return go(el.dataset.go, el.dataset.cup || null); }
   if (el.dataset.pid != null && el.dataset.pid !== '') { const id = +el.dataset.pid; if (id >= 0) openPerson(id); return; }
   if (el.dataset.hm) { const [s, ri, mi] = el.dataset.hm.split(':').map(Number); return openHistMatch(s, ri, mi); }
   if (el.dataset.statsgo) { const v = el.dataset.statsgo; SM = { mode: 'player', season: /^\d+$/.test(v) ? +v : v, cat: null, team: '', line: '', limit: 50 }; $('#dlg').open && $('#dlg').close(); return go('stats'); }
