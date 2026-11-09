@@ -55,6 +55,7 @@ nav.tabs button[aria-expanded] .caret{transform:translateY(1px) rotate(-135deg)}
 #navMenu button:hover,#navSheet .nsh-items button:hover{background:rgba(var(--tint),.07);color:var(--fg)}
 #navMenu button[aria-current],#navSheet .nsh-items button[aria-current]{background:rgba(var(--acc-rgb),.16);color:var(--accent-2);box-shadow:inset 2px 0 0 var(--accent)}
 .bnav{display:none}
+.roundchip .tl{margin-left:5px}.roundchip .ico{vertical-align:-2px}
 .livefx{display:inline-grid;justify-items:center;gap:1px;line-height:1.15}.livefx .livesc{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--accent-2)}.livefx .livedot{font-size:10.5px;color:var(--loss);font-family:var(--mono)}.livefx.goalflash .livesc{animation:goalFl 1.6s var(--ease)}@keyframes goalFl{0%,40%{color:var(--accent);text-shadow:0 0 14px rgba(var(--acc-rgb),.8);transform:scale(1.18)}100%{transform:none}}@media (prefers-reduced-motion:reduce){.livefx.goalflash .livesc{animation:none}}
 #navSheet{position:fixed;inset:0;z-index:70;pointer-events:none}
 #navSheet .nsh-bg{position:absolute;inset:0;background:rgba(0,0,0,.45);opacity:0;transition:opacity .2s}
@@ -75,6 +76,11 @@ nav.tabs button[aria-expanded] .caret{transform:translateY(1px) rotate(-135deg)}
   .bnav .bmain .bi{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--acc-hi),var(--accent) 55%,var(--acc-lo));color:var(--acc-ink);box-shadow:0 8px 22px -4px rgba(var(--acc-rgb),.65),inset 0 1px 0 rgba(255,255,255,.35);border:3px solid rgba(var(--bg-rgb),.85)}
   .bnav .bmain[aria-current]::before{display:none}
   main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  /* 手机顶栏收成一行：标志、轮次，其余只留图标 */
+  .top-in{flex-wrap:nowrap;gap:6px;padding-block:8px}.brand span{display:none}.brand img{height:32px}
+  #roundChip{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center;font-size:10.5px;padding:6px 6px}
+  .top-in>button.roundchip{padding:7px 8px;display:inline-grid;place-items:center}.top-in>button.roundchip .tl{display:none}
+  .sbfab{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 }
 @media (prefers-reduced-motion:reduce){#navMenu.open{animation:none}#navSheet .nsh,#navSheet .nsh-bg{transition:none}}
 .cupcard{border:1px solid rgba(var(--tint),.1);color:inherit;font:inherit}.cupcard:hover{border-color:rgba(var(--acc-rgb),.5)}
@@ -86,7 +92,7 @@ nav.tabs button[aria-current="page"]::after{content:"";position:absolute;left:12
 .roundchip b{color:var(--accent-2);font-weight:500}
 button.roundchip{background:none;cursor:pointer;font-family:var(--mono)}
 button.roundchip:hover{border-color:var(--accent);color:var(--fg)}
-@media (max-width:760px){.top-in{flex-wrap:wrap;gap:8px 12px}.brand small{display:none}nav.tabs{order:3;flex-basis:100%}nav.tabs button[aria-current="page"]::after{bottom:-3px}}
+@media (max-width:760px){.top-in{flex-wrap:nowrap;gap:6px}.brand small{display:none}nav.tabs{order:3;flex-basis:100%}nav.tabs button[aria-current="page"]::after{bottom:-3px}}
 
 /* ---------- Page ---------- */
 main{max-width:1280px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -474,8 +480,8 @@ th.sorted{color:var(--accent-2)}
       <button data-grp="hist" aria-haspopup="menu">历史<i class="caret"></i></button>
     </nav>
     <div class="roundchip" id="roundChip"></div>
-    <button class="roundchip" data-act="search" title="搜索球员或球队（快捷键 /）" aria-label="搜索">⌕ 搜索</button>
-    <button class="roundchip" id="syncChip" data-act="sync" title="进度同步">仅本机</button>
+    <button class="roundchip" data-act="search" title="搜索球员或球队（快捷键 /）" aria-label="搜索"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tl">搜索</span></button>
+    <button class="roundchip" id="syncChip" data-act="sync" title="进度同步"><span class="tl">仅本机</span></button>
   </div>
 </header>
 <main id="app"></main>
@@ -613,7 +619,7 @@ function gateFill() {
   if (SANDBOX) { const a = document.getElementById('gSand'); a.textContent = '回到正式进度'; a.href = location.pathname; }
 }
 document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('#gTheme [data-th]'); if (!b) return; setTheme(b.dataset.th, true); document.querySelectorAll('#gTheme [data-th]').forEach(x => x.classList.toggle('on', x === b)); }, true);
-function mgrChip() { let c = document.getElementById('mgrChip'); const n = lsg(MGR_K); const sync = document.getElementById('syncChip'); if (!sync) return; if (!c) { c = document.createElement('button'); c.id = 'mgrChip'; c.className = 'roundchip mgrchip'; c.title = '切换经理 / 回到开场界面'; c.onclick = () => gateShow(true); sync.parentNode.insertBefore(c, sync); } c.innerHTML = ic('goal') + ' ' + esc(n || '游客经理'); if (!document.getElementById('thChip')) { const t = document.createElement('button'); t.id = 'thChip'; t.className = 'roundchip'; t.title = '切换配色'; t.innerHTML = ic('palette', 16); t.onclick = () => { const i = THEMES.findIndex(x => x[2] === THEME_ACC); setTheme(THEMES[(i + 1) % THEMES.length][0]); toast('配色：' + THEMES[(i + 1) % THEMES.length][1]); }; sync.parentNode.insertBefore(t, c); } }
+function mgrChip() { let c = document.getElementById('mgrChip'); const n = lsg(MGR_K); const sync = document.getElementById('syncChip'); if (!sync) return; if (!c) { c = document.createElement('button'); c.id = 'mgrChip'; c.className = 'roundchip mgrchip'; c.title = '切换经理 / 回到开场界面'; c.onclick = () => gateShow(true); sync.parentNode.insertBefore(c, sync); } c.innerHTML = ic('goal') + '<span class="tl">' + esc(n || '游客经理') + '</span>'; if (!document.getElementById('thChip')) { const t = document.createElement('button'); t.id = 'thChip'; t.className = 'roundchip'; t.title = '切换配色'; t.innerHTML = ic('palette', 16); t.onclick = () => { const i = THEMES.findIndex(x => x[2] === THEME_ACC); setTheme(THEMES[(i + 1) % THEMES.length][0]); toast('配色：' + THEMES[(i + 1) % THEMES.length][1]); }; sync.parentNode.insertBefore(t, c); } }
 /* 之前的翻译功能已移除：清掉当时留下的 Google 翻译 cookie，免得页面继续被翻译 */
 if (/googtrans=/.test(document.cookie)) { const h = location.hostname, kill = d => { document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + (d ? '; domain=' + d : ''); }; kill(); kill(h); kill('.' + h.split('.').slice(-2).join('.')); let once = 0; try { once = sessionStorage.getItem('ves_gt_clr'); sessionStorage.setItem('ves_gt_clr', '1'); } catch (e) { once = 1; } if (!once) location.reload(); }
 setTimeout(() => { mgrChip(); gateShow(false); }, 0);
@@ -2019,18 +2025,21 @@ function idleMap(t) { const k = t + '|' + SEASON + '|' + MOD_VER + '|' + playedR
   names.forEach(nm => { if (!done.has(nm)) m[nm] = n; }); IDLE_C[t] = { k, m, n }; return m; }
 function youngChance(t, p) { const g = posGroup(p.pos), ahead = (PDB[t] || []).filter(q => q !== p && posGroup(q.pos) === g && q.rating > p.rating).length, slots = { 0: 1, 1: 4, 2: 4, 3: 3 }[g] ?? 3;
   return ahead < slots ? '高' : ahead < slots * 2 ? '中' : '低'; }
-function u21Down(t) { if (!S || !S.fx) return []; const I = idleMap(t); return (PDB[t] || []).filter(p => (p.age ?? 99) <= 21 && !p.loanFrom && I[p.name] >= U21_IDLE); }
+const INJ_C = {};
+function injNow(t) { const ri = Math.max(0, Math.min(S.fx.length - 1, nextRound() < 0 ? S.fx.length - 1 : nextRound())), k = t + '|' + SEASON + '|' + MOD_VER + '|' + ri; if (INJ_C[t] && INJ_C[t].k === k) return INJ_C[t].s; const st = new Set(); try { const o = teamCtx(t, ri).out; Object.entries(o).forEach(([n, x]) => { if (x.why === 'inj') st.add(n); }); } catch (e) { } INJ_C[t] = { k, s: st }; return st; }
+/* 伤停中的球员不算「没机会」：不下放、也不排进 U21 */
+function u21Down(t) { if (!S || !S.fx) return []; const I = idleMap(t), J = injNow(t); return (PDB[t] || []).filter(p => (p.age ?? 99) <= 21 && !p.loanFrom && I[p.name] >= U21_IDLE && !J.has(p.name)); }
 function u21Squad(t, s) { const L = (ACAD[t] || []).map(k => ({ k, a: kAge(k, s) })).filter(x => x.a >= 16 && x.a <= 21 && kidWhere(x.k, s).at === 'acad').map(x => ({ k: x.k, r: kidRating(x.k, s), line: ENGINE.LINE(x.k.pos) }));
   /* 连续多场没进一线队出场名单的年轻球员，正式下放踢 U21 */
   if (s === SEASON) u21Down(t).forEach(p => { const k = p.acad && ACAD_ID[p.acad] ? ACAD_ID[p.acad] : { id: 'P|' + p.uid, name: p.name, pos: p.pos }; if (!L.some(x => x.k.id === k.id)) L.push({ k, r: p.rating, line: ENGINE.LINE(p.pos), down: 1 }); });
   /* 青训梯队人不够时（比如刚提拔了一批上一线队），一线队里 21 岁以下、不是主力的青训出身球员可以下放踢 U21 补位 */
   const NEED = { GK: 1, DF: 4, MF: 3, FW: 3 }, cnt = ln => L.filter(x => x.line === ln).length;
   if (Object.keys(NEED).some(ln => cnt(ln) < NEED[ln]) && s === SEASON) { let xiN = new Set(); try { xiN = new Set(ENGINE.lineup(t).xi.map(x => x.name)); } catch (e) { }
-    (PDB[t] || []).filter(p => p.acad && ACAD_ID[p.acad] && !p.loanFrom && (p.age ?? 99) <= 21 && !xiN.has(p.name) && !L.some(x => x.k.id === p.acad)).sort((a, b) => a.rating - b.rating)
+    (PDB[t] || []).filter(p => p.acad && ACAD_ID[p.acad] && !p.loanFrom && (p.age ?? 99) <= 21 && !xiN.has(p.name) && !injNow(t).has(p.name) && !L.some(x => x.k.id === p.acad)).sort((a, b) => a.rating - b.rating)
       .forEach(p => { const ln = ENGINE.LINE(p.pos); if (cnt(ln) < NEED[ln]) L.push({ k: ACAD_ID[p.acad], r: p.rating, line: ln, up: 1 }); }); }
   /* 再不够：一线队里不是主力的年轻球员（23 岁以下）或替补门将以超龄球员身份下放 */
   if (s === SEASON && (Object.keys(NEED).some(ln => cnt(ln) < NEED[ln]) || L.length < 11)) { let xiN = new Set(); try { xiN = new Set(ENGINE.lineup(t).xi.map(x => x.name)); } catch (e) { }
-    (PDB[t] || []).filter(p => !xiN.has(p.name) && !p.loanFrom && !L.some(x => x.k.name === p.name) && (ENGINE.LINE(p.pos) === 'GK' || (p.age ?? 99) <= 23)).sort((a, b) => a.rating - b.rating)
+    (PDB[t] || []).filter(p => !xiN.has(p.name) && !p.loanFrom && !injNow(t).has(p.name) && !L.some(x => x.k.name === p.name) && (ENGINE.LINE(p.pos) === 'GK' || (p.age ?? 99) <= 23)).sort((a, b) => a.rating - b.rating)
       .forEach(p => { const ln = ENGINE.LINE(p.pos); if (cnt(ln) < NEED[ln] || (L.length < 11 && ln !== 'GK')) L.push({ k: p.acad && ACAD_ID[p.acad] ? ACAD_ID[p.acad] : { id: 'P|' + p.uid, name: p.name, pos: p.pos }, r: p.rating, line: ln, up: 1 }); }); }
   /* 还不够就让 15 岁的小将提前上 */
   if (Object.keys(NEED).some(ln => cnt(ln) < NEED[ln])) (ACAD[t] || []).filter(k => kAge(k, s) === 15 && kidWhere(k, s).at === 'acad').map(k => ({ k, r: kidRating(k, s), line: ENGINE.LINE(k.pos) })).sort((a, b) => b.r - a.r).forEach(x => { if (cnt(x.line) < NEED[x.line]) L.push(x); });
@@ -2101,7 +2110,7 @@ function u21TeamDlg(t) { u21Sync(); const U = S.u21 || { p: {}, t: {} }, C = u21
   const all = (ACAD[t] || []).map(k => ({ k, a: kAge(k, SEASON) })).filter(x => x.a >= 16 && x.a <= 21 && kidWhere(x.k, SEASON).at === 'acad').map(x => ({ ...x, r: kidRating(x.k, SEASON), pot: kidPot(x.k, SEASON), q: U.p[x.k.id] || [0, 0, 0, 0] })).sort((a, b) => ['GK', 'DF', 'MF', 'FW'].indexOf(ENGINE.LINE(a.k.pos)) - ['GK', 'DF', 'MF', 'FW'].indexOf(ENGINE.LINE(b.k.pos)) || b.r - a.r);
   { const ids = new Set(all.map(x => x.k.id)); xi.filter(x => !ids.has(x.k.id)).forEach(x => all.push({ k: x.k, a: (PDB[t] || []).find(p => p.name === x.k.name)?.age ?? '–', r: x.r, pot: x.k.pot ?? '–', q: U.p[x.k.id] || [0, 0, 0, 0], tag: x.down ? '一线队下放' : '超龄补位' })); }
   const I = idleMap(t), yng = (PDB[t] || []).filter(p => (p.age ?? 99) <= 21 && !p.loanFrom).sort((a, b) => b.rating - a.rating);
-  const yHTML = yng.length ? `<div style="margin-top:14px"><div class="eyebrow" style="margin-bottom:6px">一线队的年轻球员（21 岁以下）· 连续 ${U21_IDLE} 场联赛没出场自动下放 U21</div><div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">位置</th><th>龄</th><th>能力</th><th>一线队机会</th><th>连续未出场</th><th class="l">状态</th></tr></thead><tbody>${yng.map(p => { const ch = youngChance(t, p), dn = I[p.name] >= U21_IDLE; return `<tr><td class="l"><button class="lnk" data-player="${esc(t)}|${esc(p.name)}">${esc(p.name)}</button></td><td class="l">${esc(p.pos)}</td><td>${p.age}</td><td>${p.rating}</td><td style="color:${ch === '高' ? 'var(--good)' : ch === '低' ? 'var(--bad)' : 'inherit'}">${ch}</td><td>${I[p.name] ?? 0} 场</td><td class="l">${dn ? '<b>下放 U21</b>' : '一线队'}</td></tr>`; }).join('')}</tbody></table></div></div>` : '';
+  const yHTML = yng.length ? `<div style="margin-top:14px"><div class="eyebrow" style="margin-bottom:6px">一线队的年轻球员（21 岁以下）· 连续 ${U21_IDLE} 场联赛没出场自动下放 U21</div><div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">位置</th><th>龄</th><th>能力</th><th>一线队机会</th><th>连续未出场</th><th class="l">状态</th></tr></thead><tbody>${yng.map(p => { const ch = youngChance(t, p), dn = I[p.name] >= U21_IDLE; return `<tr><td class="l"><button class="lnk" data-player="${esc(t)}|${esc(p.name)}">${esc(p.name)}</button></td><td class="l">${esc(p.pos)}</td><td>${p.age}</td><td>${p.rating}</td><td style="color:${ch === '高' ? 'var(--good)' : ch === '低' ? 'var(--bad)' : 'inherit'}">${ch}</td><td>${I[p.name] ?? 0} 场</td><td class="l">${injNow(t).has(p.name) ? '<span style="color:var(--loss)">伤停中</span>' : dn ? '<b>下放 U21</b>' : '一线队'}</td></tr>`; }).join('')}</tbody></table></div></div>` : '';
   const line = l => xi.filter(x => x.line === l), dot = x => `<div style="display:grid;justify-items:center;gap:2px;min-width:0"><span class="mono" style="display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:rgba(var(--acc-rgb),.18);border:1px solid rgba(var(--acc-rgb),.5);font-weight:800;font-size:13px">${x.r}</span><button class="lnk" ${scoutBtn(x.k)} style="font-size:11.5px;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.k.name)}</button><span class="dim" style="font-size:10px">${esc(x.k.pos)}</span></div>`;
   const row = L => `<div style="display:flex;justify-content:space-evenly;gap:6px">${L.map(dot).join('') || '<span class="dim" style="font-size:12px">缺人</span>'}</div>`;
   const d = $('#dlg'); d.innerHTML = `<div class="dlg" style="position:relative;max-width:min(1040px,96vw);width:min(1040px,96vw)"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
@@ -2742,7 +2751,7 @@ const skBadge = (id, t, px = 30) => { const T = SK_T[t]; return `<svg class="skb
 const skFxTxt = (id, t) => (SK_FX[id] || '').replace(/\{([\d.]+)\}/g, (_, v) => +(+v * SK_T[t].pw).toFixed(1));
 function skillBlock(L) {
   if (!L || !L.length) return `<div class="skw"><div class="eyebrow" style="margin-bottom:6px">球员技能</div><div class="dim" style="font-size:12px">暂无特长技能</div></div>`;
-  return `<div class="skw"><div class="eyebrow" style="margin-bottom:6px">球员技能 <span class="dim" style="font-weight:400;text-transform:none;letter-spacing:0">· 稀有度 C &lt; B &lt; A &lt; S</span></div><div class="skl">${L.map(({ id, t }) => { const D = SK_DEF[id], T = SK_T[t]; return `<div class="ski" style="--c:${T.col}" title="${esc(D.d)}">${skBadge(id, t, 38)}<div style="min-width:0"><div class="skn"><b>${D.n}</b><span class="skt">${t} · ${T.n}</span></div><div class="skd">${esc(D.d)}</div><div class="skd mono">触发率 ${Math.round(T.trig * 100)}% · ${skFxTxt(id, t)}</div></div></div>`; }).join('')}</div></div>`;
+  return `<div class="skw"><div class="eyebrow" style="margin-bottom:6px">球员技能</div><div class="skl">${L.map(({ id, t }) => { const D = SK_DEF[id], T = SK_T[t]; return `<div class="ski" style="--c:${T.col}" title="${esc(D.d)}">${skBadge(id, t, 38)}<div style="min-width:0"><div class="skn"><b>${D.n}</b></div><div class="skd">${esc(D.d)}</div><div class="skd mono">触发率 ${Math.round(T.trig * 100)}% · ${skFxTxt(id, t)}</div></div></div>`; }).join('')}</div></div>`;
 }
 const PHYS = (() => {
   const L = 105, W = 68, GW = 7.32, DT = 0.1, GY0 = W / 2 - GW / 2, GY1 = W / 2 + GW / 2;
@@ -7665,7 +7674,7 @@ try { WEB.key = localStorage.getItem('ves-sync-key') || ''; } catch (e) {}
 function setSync(st) {
   CLOUD.status = st;
   const el = $('#syncChip'); if (!el) return;
-  el.innerHTML = { local: '仅本机', cloud: ic('cloud') + ' ' + '已同步', saving: ic('cloud') + ' ' + '同步中…', error: ic('cloud') + ' ' + '同步失败', connecting: ic('cloud') + ' ' + '连接中…', view: ic('cloud') + ' ' + '只读 · 点此解锁', sandbox: ic('flask') + ' ' + '试玩新档 · 不同步' }[st] || st;
+  el.innerHTML = { local: ic('cloud') + '<span class="tl">仅本机</span>', cloud: ic('cloud') + '<span class="tl">已同步</span>', saving: ic('cloud') + '<span class="tl">同步中…</span>', error: ic('cloud') + '<span class="tl">同步失败</span>', connecting: ic('cloud') + '<span class="tl">连接中…</span>', view: ic('cloud') + '<span class="tl">只读 · 点此解锁</span>', sandbox: ic('flask') + '<span class="tl">试玩新档 · 不同步</span>' }[st] || st; el.title = '进度同步：' + el.textContent;
   el.style.color = st === 'cloud' ? 'var(--win)' : st === 'error' ? 'var(--loss)' : '';
 }
 function cloudQueue() {
