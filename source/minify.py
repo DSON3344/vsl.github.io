@@ -8,7 +8,7 @@ def _run(code, loader):
     exe = _esb()
     if not exe: return code
     r = subprocess.run([exe, '--minify', '--loader=' + loader, '--charset=utf8'], input=code.encode(), capture_output=True)
-    if r.returncode: raise SystemExit(r.stderr.decode()[:2000])
+    if r.returncode: raise SystemExit(r.stderr.decode('utf-8','replace')[:2000])
     return r.stdout.decode().rstrip('\n')
 def minify_html(html):
     if not _esb(): return html
