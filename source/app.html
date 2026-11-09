@@ -1934,7 +1934,7 @@ function pendingArchive() {
   const key = SEASON + '|' + saltOf(SEASON) + '|' + (S.reset || '') + '|' + S.teams.join(',');
   if (PEND && PEND.key === key) return PEND.A;
   const A = makeArchive(); A.cups = simulateCups(SEASON);
-  A.relegated = A.table.slice(-3).map(r => r.team); A.next = pickPromoted(3, S.teams);
+  A.relegated = A.table.slice(-3).map(r => r.team); { const T2 = A.cups && A.cups['威冠联赛']; A.next = T2 && T2.table && T2.table.length >= 3 ? T2.table.slice(0, 3).map(r => r[0]) : pickPromoted(3, S.teams); } /* 威冠联赛前 3 名升级 */
   registerArchive(A, true); delete AWARD_CACHE[SEASON];
   PEND = { key, A }; return A;
 }
@@ -3500,8 +3500,9 @@ const CUPS = [
   { k: '全协联', tier: 'A-', n: 36, fmt: 'swiss', note: '赛制同全联冠', seats: { 威超: 1, 星煌: 1, 鹰超: 1, 犀甲: 1, 得甲: 1, 壹甲: 1, 阀甲: 1, 东海职联: 2, 其他: 27 } },
   { k: '威联赛杯', tier: 'B', n: 27, fmt: 'cup', note: '国内全部 27 支球队单场淘汰（强队首轮轮空）' },
   { k: '社区杯', tier: 'B-', n: 2, fmt: 'super', note: '上季威超冠军对阵上季威联赛杯冠军' },
+  { k: '威冠联赛', tier: 'B', n: 7, fmt: 'league', note: '不在威超的 7 支球队双循环，前 3 名升入威超' },
 ];
-const CUP_TROPHY = { 世联赛: '世联赛冠军', 全联冠: '全联冠', 全联杯: '全联杯', 全协联: '全协联', 威联赛杯: '威联赛杯', 社区杯: '社区杯' };
+const CUP_TROPHY = { 世联赛: '世联赛冠军', 全联冠: '全联冠', 全联杯: '全联杯', 全协联: '全协联', 威联赛杯: '威联赛杯', 社区杯: '社区杯', 威冠联赛: '威冠联赛冠军' };
 const LEAGUE_OF_SHORT = {}; EXT_LEAGUES.forEach(L => LEAGUE_OF_SHORT[L.short] = L);
 // 球队在第 s 季的实力：威超球队用当季首发评分，外赛区按设定实力（每季有小幅波动）
 let CUP_S = null, CUP_QUOTA = null;
@@ -3628,7 +3629,7 @@ function cupMvpPick(o) {
   return { name: q.name, team: q.team, g: q.g, a: q.a, apps: q.apps, avg: q.full && q.apps ? +q.avg.toFixed(2) : null, motm: q.full ? q.motm : null, cs: q.full ? q.cs : null, line: q.line };
 }
 /* ---------- 全赛季数据：威超联赛 + 各项杯赛 / 洲际赛 ---------- */
-const CUP_KS = ['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯'];
+const CUP_KS = ['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯', '威冠联赛'];
 const SEASON_ALL_CACHE = {};
 const cupRowObj = r => { const o = { name: r[0], team: r[1], g: r[2], a: r[3], apps: r[4] || 0, full: r.length > 5 }; CUP_ROW_F.slice(3).forEach((f, k) => o[f] = r[5 + k] || 0); o.rs = (o.rs10 || 0) / 10; o.starts = o.apps; o.pg = 0; o.pm = 0; if (r[21]) o.pos = r[21]; return o; };
 function seasonAll(s) {
@@ -3731,6 +3732,12 @@ function simulateCups(s, finalTable) {
   { const pc = s > 1 ? cupsOf(s - 1) : null; const prevRank = HS[s - 1] ? ranking(s - 1) : cupEntrants(s)['世联赛'].filter(t => TD[t]); const champ = prevRank[0]; let cupW = pc && pc['威联赛杯'] ? pc['威联赛杯'].winner : prevRank[1]; if (cupW === champ) cupW = prevRank[1];
     CUP_REC = []; const r = single(champ, cupW, rnd, true); out['社区杯'] = { winner: r.w, runner: r.l, score: r.score, champ, cupW }; enforceQuota('社区杯', out['社区杯'], [champ, cupW]); const R = out['社区杯']; R.detail = `${R.winner} ${r.score} ${R.runner}（威超冠军 ${champ} 对阵杯赛冠军 ${cupW}）`; R.mvp = cupMvp(R.winner, rnd); cupFinish(R, rnd); }
   CUP_REC = null; CUP_S = prevS;
+  /* 威冠联赛（次级联赛）：不在威超的球队踢双循环，冠亚季军升级；球员数据跟杯赛一样记进个人记录 */
+  { const LG = (s === SEASON ? S.teams : (HS[s] && HS[s].teams)) || [], T = Object.keys(TD).filter(t => !LG.includes(t)); if (T.length >= 2) { const r2 = seeded('t2|' + s + saltOf(s)), pts = {}, w = {}, d = {}, l = {}, gf = {}, ga = {}; T.forEach(t => { pts[t] = w[t] = d[t] = l[t] = gf[t] = ga[t] = 0; }); CUP_REC = [];
+    const MD = ENGINE.fixtures(T.length % 2 ? T.concat(['__BYE__']) : T.slice()).map(R => R.filter(m => TD[m.h] && TD[m.a] && m.h !== m.a)); /* 单数队补一个轮空位，7 队 = 14 轮，每轮 1 队轮空 */ if (D) D.t2 = [];
+    MD.forEach(R => { const day = []; R.forEach(({ h: a, a: b }) => { const [x, y] = cupMatch(a, b, r2); day.push([a, b, x, y]); gf[a] += x; ga[a] += y; gf[b] += y; ga[b] += x; if (x > y) { pts[a] += 3; w[a]++; l[b]++; } else if (x < y) { pts[b] += 3; w[b]++; l[a]++; } else { pts[a]++; pts[b]++; d[a]++; d[b]++; } }); if (D) D.t2.push(day); });
+    const tb = T.slice().sort((a, b) => pts[b] - pts[a] || (gf[b] - ga[b]) - (gf[a] - ga[a]) || gf[b] - gf[a]);
+    out['威冠联赛'] = { winner: tb[0], runner: tb[1], table: tb.map(t => [t, pts[t], w[t], d[t], l[t], gf[t], ga[t]]), detail: `${MD.length} 轮，前 3 名升入威超` }; out['威冠联赛'].mvp = cupMvp(tb[0], r2); cupFinish(out['威冠联赛'], r2); } }
   return out;
 }
 // S01–S17 的杯赛：按配额推演，S17 的四项洲际赛事按官网记录
@@ -4063,6 +4070,7 @@ function cupLiveHTML(only) { const L = cupLive(); if (!L || !L.D || !L.D.wl) ret
     const inner = shown.length ? `${done ? `<p style="margin:0 0 8px"><b>${esc(r.winner)}</b> 夺得威联赛杯（决赛 ${esc(r.ko['决赛'][0].score)} ${esc(r.runner)}）</p>` : ''}<div class="eyebrow" style="margin-bottom:6px">${shown[shown.length - 1]}</div>${cupKoHTML(r.ko[shown[shown.length - 1]])}${!done ? `<p class="note" style="margin:8px 0 0">${names[shown.length]}在威超第 ${CUP_DOM_KO[shown.length]} 轮那周进行</p>` : ''}${shown.length > 1 ? `<details style="margin-top:8px"><summary class="note" style="cursor:pointer">之前的轮次</summary><div class="grid" style="gap:8px;margin-top:6px">${shown.slice(0, -1).reverse().map(n => `<div><div class="eyebrow" style="margin-bottom:4px">${n}</div>${cupKoHTML(r.ko[n])}</div>`).join('')}</div></details>` : ''}` : `<p class="muted" style="margin:0;font-size:13px">国内 27 队单场淘汰，首轮在威超第 ${CUP_DOM_KO[0]} 轮那周进行（最强的 5 队轮空）。</p>`;
     out.push(card('威联赛杯', inner, done ? '已结束' : shown.length ? shown[shown.length - 1] : '未开赛')); } }
   if (out.length > 2 && C['威联赛杯'] && C['威联赛杯'].ko) out.splice(1, 0, out.pop());
+  if (D.t2 && D.t2.length) { const N = D.t2.length, md = Math.min(N, Math.floor(p * N / 38)), last = md ? D.t2[md - 1] : null; out.push(card('威冠联赛', md ? `<div class="grid g-2" style="gap:14px;align-items:start"><div>${cupMiniTable(D.t2.slice(0, md), 3)}</div><div><div class="eyebrow" style="margin-bottom:6px">第 ${md} 轮赛果</div>${cupDayHTML(last)}<p class="note" style="margin:8px 0 0">前 3 名升入威超${md < N ? ` · 第 ${md + 1} 轮在威超第 ${Math.ceil((md + 1) * 38 / N)} 轮那周` : ''}</p></div></div>` : `<p class="muted" style="margin:0;font-size:13px">不在威超的 ${new Set(D.t2.flat().flatMap(m => [m[0], m[1]])).size} 支球队双循环，第 1 轮在威超第 ${Math.ceil(38 / N)} 轮那周开踢，前 3 名升级。</p>`, `第 ${md} / ${N} 轮`, 1)); }
   if (only) { const x = out.find(o => o[0] === only); return x ? x[1] : ''; } /* 社区杯、威联赛杯两张小卡并排 */
   return `<div class="split" style="margin-top:4px"><h2 style="font-size:20px;font-weight:900">${SN(SEASON)} 杯赛进行中</h2><span class="note">威超已赛 ${p} 轮 · 赛果跟着联赛进度揭晓，季末存档</span></div><div class="grid g-2" style="align-items:start">${out.map(o => o[1]).join('')}</div>`; }
 function cupResultHTML(k, r, s) {
@@ -4083,7 +4091,7 @@ const cupAll = () => SEASONS.slice().concat(pendingArchive() ? [SEASON] : []).so
 const NAV_G = {
   league: ['联赛', [['table', '积分榜'], ['stats', '数据榜'], ['xi', '最强阵容']]],
   squad: ['球队', [['teams', '球队'], ['players', '球员'], ['transfers', '转会窗'], ['u21', 'U21']]],
-  cups: ['赛事', [['cups', '赛事总览'], ...['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯'].map(k => ['cups', k, k]), ['ext', '海外联赛']]],
+  cups: ['赛事', [['cups', '赛事总览'], ...['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯', '威冠联赛'].map(k => ['cups', k, k]), ['ext', '海外联赛']]],
   hist: ['历史', [['awards', '奖项'], ['history', '历史总榜'], ['wl', '威联赛']]] };
 function grpOf(v) { for (const [g, [, L]] of Object.entries(NAV_G)) if (L.some(x => x[0] === v)) return g; return null; }
 const navItem = ([v, lab, arg]) => `<button data-go="${v}"${arg ? ` data-cup="${arg}"` : ''} role="menuitem"${view === v && (arg ? viewArg === arg : !(v === 'cups' && viewArg)) ? ' aria-current="page"' : ''}>${esc(lab)}</button>`;
@@ -4164,7 +4172,7 @@ function vExt() {
 const LEAGUE_SHORT_OF = t => { const L = EXT_LEAGUES.find(L => L.clubs.some(c => c[0] === t)); return L ? L.short : '外赛区'; };
 after.cups = () => { const c = $('#cupSelK'); c && c.addEventListener('change', e => { cupSeasonK[c.dataset.k] = +e.target.value; render(); }); };
 after.awards = () => { const c = $('#awSel'); c && c.addEventListener('change', e => { awSeason = +e.target.value; render(); }); };
-const TROPHIES = ['威超冠军', '世联赛冠军', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯'];
+const TROPHIES = ['威超冠军', '世联赛冠军', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯', '威冠联赛冠军'];
 /* ---------- 主教练：每季开局、半程（第 19 轮后）和季末按成绩换帅 ----------
    全由已存档的赛果推算（同样的赛果永远得到同样的换帅），不需要额外存档 */
 const COACH_REG = {};
@@ -5950,22 +5958,23 @@ function mktGenHist(MK, s, C, salt) {
   // 额外报价：没有历史转会、下季还在踢球的强队主力
   const cand = [];
   const FULL = HIST_END > 1e8; /* 全程自主模拟：青训出身的球员（没有历史编号）一样会被别队报价 */
+  const HB = FULL ? 1 + 0.8 * Math.max(0, 1 - Object.keys(MK.sched).length / 25) : 1; /* 历史转会对不上（或用完）时，自主市场补上那部分成交量 */
   Object.entries(PDB).forEach(([t, L]) => { if (!TD[t]) return; L.forEach(p => { const pid = UIDPID[p.uid] ?? (String(p.uid).startsWith('H|') ? +String(p.uid).slice(2) : null);
     const kidOk = FULL && p.acad && !p.kidLoan && !p.loanFrom; /* 青训出身的（可能也有球员编号）不在历史名单里，照样可以被报价 */
     if (pid == null) { if (!kidOk) return; } else if (MK.sched[pid] || (nx[pid] !== t && !(kidOk && nx[pid] == null))) return;
     const a = C.ageN(p), r = p.rating, rnd = seeded('hm|' + (pid ?? p.uid) + '|' + s + salt);
     if (pid != null && ghash('hc|' + pid + '|' + s) < 0.16) MK.hexp.push({ uid: p.uid, pid, from: t });
-    const pr = FULL ? (a <= 31 && r >= C.str[t] + 4 ? 0.34 : a <= 29 && r >= C.str[t] + 1 ? 0.1 : a <= 30 && r >= 88 ? 0.08 : a <= 24 && r >= C.str[t] - 2 ? 0.06 : a <= 27 && r >= 82 ? 0.04 : 0) /* 全程模拟：年轻好手也会被球探盯上 */ : a <= 31 && r >= C.str[t] + 4 ? 0.2 : a <= 29 && r >= C.str[t] + 1 ? 0.04 : 0; if (rnd() < pr) cand.push({ p, t, r, rnd }); }); });
-  cand.sort((x, y) => y.r - x.r).slice(0, FULL ? 30 : 10).forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false), used = new Set(); for (let k = 0; k < 3; k++) { if (k && rnd() > 0.45) break; const to = mktPick(B.dom.filter(x => !used.has(x)), rnd, C); if (!to) break; used.add(to); mktOfferB(MK, p, t, to, C, rnd, FULL ? 0.92 : 0.85, FULL ? 1.2 : 1.15); } if (B.ext.length && rnd() < 0.4) mktOfferB(MK, p, t, B.ext[Math.floor(rnd() * B.ext.length)], C, rnd, 0.95, 1.3); });
-  if (FULL) mktGenBench(MK, s, C, salt);
+    const pr = FULL ? (a <= 31 && r >= C.str[t] + 4 ? 0.34 : a <= 29 && r >= C.str[t] + 1 ? 0.1 : a <= 30 && r >= 88 ? 0.08 : a <= 24 && r >= C.str[t] - 2 ? 0.06 : a <= 27 && r >= 82 ? 0.04 : HB > 1 && a <= 28 && r >= 77 ? 0.03 : 0) * HB /* 全程模拟：年轻好手也会被球探盯上 */ : a <= 31 && r >= C.str[t] + 4 ? 0.2 : a <= 29 && r >= C.str[t] + 1 ? 0.04 : 0; if (rnd() < pr) cand.push({ p, t, r, rnd }); }); });
+  cand.sort((x, y) => y.r - x.r).slice(0, FULL ? Math.round(30 * HB) : 10).forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false), used = new Set(); for (let k = 0; k < 3; k++) { if (k && rnd() > 0.45) break; const to = mktPick(B.dom.filter(x => !used.has(x)), rnd, C); if (!to) break; used.add(to); mktOfferB(MK, p, t, to, C, rnd, FULL ? 0.92 : 0.85, FULL ? 1.2 : 1.15); } if (B.ext.length && rnd() < 0.4) mktOfferB(MK, p, t, B.ext[Math.floor(rnd() * B.ext.length)], C, rnd, 0.95, 1.3); });
+  if (FULL) mktGenBench(MK, s, C, salt, HB);
   mktGenEco(MK, s, C, salt, nx);
 }
 /* 强队坐板凳的好球员：中游球队来报价，让他去当主力（抑制强队囤积球星，也让中游球队变强） */
-function mktGenBench(MK, s, C, salt) {
+function mktGenBench(MK, s, C, salt, HB = 1) {
   const L = [];
   Object.keys(PDB).filter(t => TD[t] && C.str[t] >= 84).forEach(t => { let xi; try { xi = new Set(ENGINE.lineup(t).xi.map(x => x.name)); } catch (e) { return; }
     (PDB[t] || []).forEach(p => { if (xi.has(p.name) || p.loanFrom || p.kidLoan || MK.offers.some(o => o.uid === p.uid)) return; const a = C.ageN(p), r = C.ratN(p); if (r < 80 || a > 30 || nfsOf(t, p)) return; L.push({ p, t, r, a, rnd: seeded('bn|' + p.uid + '|' + s + salt) }); }); });
-  L.sort((x, y) => y.r - x.r).slice(0, 14).forEach(({ p, t, r, rnd }) => { if (rnd() > 0.65) return; const line = ENGINE.LINE(p.pos);
+  L.sort((x, y) => y.r - x.r).slice(0, Math.round(14 * HB)).forEach(({ p, t, r, rnd }) => { if (rnd() > (HB > 1 ? 0.8 : 0.65)) return; const line = ENGINE.LINE(p.pos);
     const dests = Object.keys(PDB).filter(x => x !== t && TD[x] && !isRival(t, x) && C.str[x] >= 76 && C.str[x] < C.str[t] - 1 && (() => { try { const w = ENGINE.lineup(x).xi.filter(q => q.line === line).map(q => q.rating); return !w.length || Math.min(...w) <= r - 2; } catch (e) { return false; } })());
     const used = new Set(); for (let k = 0; k < 2; k++) { const to = mktPick(dests.filter(x => !used.has(x)), rnd, C); if (!to) break; used.add(to); const o = mktOfferB(MK, p, t, to, C, rnd, 0.92, 1.15); if (o) { o.bench = 1; if (o.will != null) o.will = Math.min(0.95, o.will + 0.2); } } }); }
 /* ---------- 小球队的生存之道 ----------
@@ -7321,7 +7330,7 @@ const o2s = x => String(x);
 function autoSquad(phase) {
   const log = [], lnIn = {}; BATCH = 1; BATCH_G = 0; BATCH_W = 0;
   try {
-    S.teams.filter(t => TD[t]).forEach(t => {
+    Object.keys(TD).forEach(t => { /* 包括不在威超、踢威冠联赛的球队 */
       /* 开季：青训里已经够得上一线队轮换水平的（≥ 一线队第 14 好的能力），不管人数够不够都提拔上来（每队每季最多 2 人），多出来的人下面会清掉 */
       if (phase === 'start') { const top = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a), bar = top[Math.min(13, top.length - 1)] || 0; const yc = (() => { try { return (coachOf(t) || {}).kind === 'U21 提拔' ? 3 : 0; } catch (e) { return 0; } })(); /* 梯队出身的主帅更敢用年轻人 */ const up = academyOf(t).filter(k => k.kind === 'acad' && k.kid && k.age >= 17 && k.rating >= bar - yc && !kidEvents(k.kid.id).some(e => e.s >= SEASON)).sort((a, b) => b.rating - a.rating).slice(0, 2);
         up.forEach(k => kidDecide(k.kid.id, 'promote')); if (up.length) { GROWN = 0; applyGrowth(); log.push(`${t} 从青训提拔 ${up.map(k => k.name + '（' + k.pos + ' ' + k.rating + '/' + k.pot + '，已达一线队轮换水平）').join('、')}`); } }
