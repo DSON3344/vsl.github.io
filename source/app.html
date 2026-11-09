@@ -716,8 +716,10 @@ function enProfile(team) { const M = {}; (PDB[team] || []).forEach(p => { const 
 function enStep(E, P, played) { Object.keys(P).forEach(n => { if (E[n] == null) E[n] = 100; }); Object.keys(played).forEach(n => { if (E[n] == null) E[n] = 100; });
   Object.keys(E).forEach(n => { const pr = P[n] || { cost: 1, rec: 1 }, mn = played[n] || 0; if (mn > 0) E[n] -= EN_COST * Math.min(1, mn / 90) * pr.cost; else E[n] += EN_REST * pr.rec; E[n] += EN_ALL * pr.rec; E[n] = Math.max(30, Math.min(100, E[n] + (100 - E[n]) * EN_REC * pr.rec)); }); }
 function teamCtx(team, ri, fx = S.fx) {
-  const ban = {}, why = {}, yel = {}; let streak = {}; const energy = {}, EP = enProfile(team);
-  for (let k = 0; k < ri; k++) {
+  const ban = {}, why = {}, yel = {}; let streak = {}; const energy = {}, EP = enProfile(team), CW = fx === S.fx ? cupWeeks(team) : null;
+  /* 第 w 周的杯赛踢在威超第 w-1 轮和第 w 轮之间：上场的扣体能，受伤的缺阵 */
+  const cupWk = w => { const M = CW && CW[w]; if (!M) return; M.forEach(c => { const played = {}; c.names.forEach(n => played[n] = 90); enStep(energy, EP, played); if (c.inj && c.inj[1] + w - 1 > (ban[c.inj[0]] ?? -1)) { ban[c.inj[0]] = c.inj[1] + w - 1; why[c.inj[0]] = 'inj'; } }); };
+  for (let k = 0; k < ri; k++) { if (k) cupWk(k);
     if (k === 19) Object.keys(energy).forEach(n => energy[n] = Math.min(100, energy[n] + 15)); // 冬歇
     const m = fx[k] && fx[k].find(x => x.h === team || x.a === team); if (!m || !m.r) continue;
     const i = m.h === team ? 0 : 1, side = i ? 'a' : 'h';
@@ -732,6 +734,7 @@ function teamCtx(team, ri, fx = S.fx) {
       if (type === 'red') setBan(pl, k + (x ? 2 : 1), 'susp');
     });
   }
+  if (ri) cupWk(ri);
   const out = {};
   Object.keys(ban).forEach(n => { if (ban[n] >= ri) out[n] = { why: why[n], left: ban[n] - ri + 1 }; });
   if (fx === S.fx) offField().forEach(e => { if (e.team !== team || e.kind === 'flavor' || !(e.ri <= ri && ri < e.ri + e.dur)) return; const left = e.ri + e.dur - ri; if (!out[e.name] || out[e.name].left < left) out[e.name] = { why: e.kind === 'train' ? 'inj' : 'strike', left }; });
@@ -3513,7 +3516,26 @@ const DOM_REF = 90.4, DOM_EDGE = 1.6, DOM_CACHE = {};
 function domTop(s) { const k = s + '|' + GROWN + '|' + SEASON + (cupFrozen(s) ? '|f' : ''); if (DOM_CACHE[k] != null) return DOM_CACHE[k]; const v = Object.keys(TD).map(t => domStrAt(t, s)).sort((a, b) => b - a).slice(0, 4); return DOM_CACHE[k] = v.reduce((a, b) => a + b, 0) / v.length; }
 /* 本季杯赛用的实力在开季时定格（S.cstr），之后整季的杯赛赛果都按这份实力推演：赛季中可以一轮一轮揭晓，季末存档的结果也跟赛季中看到的一样 */
 function cupFrozen(s) { return typeof S !== 'undefined' && S && S.cstr && S.cstr.s === s && s === SEASON ? S.cstr : null; }
-function cupFreeze() { if (!S || !S.teams || (S.cstr && S.cstr.s === SEASON)) return; S.cstr = null; const v = {}, d = {}; Object.keys(TD).forEach(t => { try { d[t] = Math.round(domStrAt(t, SEASON) * 10) / 10; v[t] = Math.round(clubStrAt(t, SEASON) * 10) / 10; } catch (e) { } }); S.cstr = { s: SEASON, v, d }; Object.keys(DOM_CACHE).forEach(k => delete DOM_CACHE[k]); }
+/* 杯赛轻量版：每场杯赛按对手强弱排首发——对手弱就轮换几个主力（替补顶上），对手强就派最强阵。
+   同一支球队碰同一个对手，首发固定（数据统计和体能、伤病用的是同一套首发） */
+function cupXI(t, opp) { const F = cupFrozen(SEASON), pool = F && F.sq && F.sq[t]; if (!pool || pool.length < 11) return null; const C = CUP_XIC[t + '|' + opp]; if (C && C.k === F) return C.L;
+  let d = 0; try { d = clubStr(t) - clubStr(opp); } catch (e) { } const h = k => ghash('cxi|' + SEASON + saltOf(SEASON) + '|' + t + '|' + opp + '|' + k);
+  const nRot = d >= 7 ? 4 + (h('n') < 0.5 ? 1 : 0) : d >= 4 ? 2 + (h('n') < 0.5 ? 1 : 0) : d >= 1 ? (h('n') < 0.5 ? 1 : 0) : 0;
+  const xi = pool.slice(0, 11).map(x => x.slice()), bench = pool.slice(11).map(x => x.slice()), used = new Set();
+  xi.map((x, i) => [i, h('p' + i)]).filter(([i]) => xi[i][1] !== 'GK').sort((a, b) => a[1] - b[1]).slice(0, nRot).forEach(([i]) => { const ln = ENGINE.LINE(xi[i][1]); let j = bench.findIndex((b, k) => !used.has(k) && b[1] !== 'GK' && ENGINE.LINE(b[1]) === ln); if (j < 0) j = bench.findIndex((b, k) => !used.has(k) && b[1] !== 'GK'); if (j < 0) return; used.add(j); xi[i] = [bench[j][0], xi[i][1], bench[j][2]]; });
+  const P = Object.fromEntries((PDB[t] || []).map(p => [p.name, p])), L = xi.map(([name, pos, r]) => ({ name, pos, r, attr: P[name] && P[name].attributes }));
+  CUP_XIC[t + '|' + opp] = { k: F, L }; return L; }
+const CUP_XIC = {};
+/* 某队本季每周的杯赛：首发名单 + 有没有人受伤（伤病用固定种子，同一份进度在哪台设备上算都一样） */
+let CUP_CTX_BUSY = 0;
+function cupWeeks(t) { try { if (CUPD) return null; } catch (e) { return null; } if (CUP_CTX_BUSY || !TD[t] || !S || !S.teams || !S.teams.includes(t)) return null; const F = cupFrozen(SEASON); if (!F || !F.sq || !F.sq[t]) return null; CUP_CTX_BUSY = 1;
+  try { const L = cupLive(); if (!L) return null; L.cw = L.cw || {}; if (L.cw[t]) return L.cw[t]; const W = {};
+    cupCal().forEach(m => { if (m.wk < 1 || (m.a !== t && m.b !== t)) return; const opp = m.a === t ? m.b : m.a, xi = cupXI(t, opp); if (!xi) return; const legs = /强|附加赛|半决赛/.test(m.st) && m.k !== '威联赛杯' ? 2 : 1;
+      for (let g = 0; g < legs; g++) { const h = k => ghash('cinj|' + SEASON + saltOf(SEASON) + '|' + t + '|' + m.k + '|' + m.st + '|' + g + '|' + k); let inj = null;
+        if (h('r') < 0.07) { const cand = xi.filter(x => x.pos !== 'GK'); const x = cand[Math.floor(h('w') * cand.length)]; if (x) inj = [x.name, 1 + Math.floor(h('d') * 3)]; }
+        (W[m.wk] = W[m.wk] || []).push({ k: m.k, st: m.st, opp, names: xi.map(x => x.name), inj }); } });
+    return (L.cw[t] = W); } catch (e) { return null; } finally { CUP_CTX_BUSY = 0; } }
+function cupFreeze() { if (!S || !S.teams || (S.cstr && S.cstr.s === SEASON)) return; S.cstr = null; const v = {}, d = {}; Object.keys(TD).forEach(t => { try { d[t] = Math.round(domStrAt(t, SEASON) * 10) / 10; v[t] = Math.round(clubStrAt(t, SEASON) * 10) / 10; } catch (e) { } }); const sq = {}; S.teams.forEach(t => { try { const xi = ENGINE.lineup(t).xi, inXI = new Set(xi.map(x => x.name)); sq[t] = xi.map(x => [x.name, x.slot, x.rating]).concat((PDB[t] || []).filter(p => !inXI.has(p.name) && !p.loanFrom && !p.kidLoan && p.rating >= 60).sort((a, b) => b.rating - a.rating).slice(0, 9).map(p => [p.name, String(p.pos), p.rating])); } catch (e) { } }); S.cstr = { s: SEASON, v, d, sq }; Object.keys(DOM_CACHE).forEach(k => delete DOM_CACHE[k]); }
 function clubStrAt(t, s) {
   { const F = cupFrozen(s); if (F && F.v[t] != null) return F.v[t]; }
   if (EXT_CLUB[t]) return EXT_CLUB[t].str + (s != null ? (ghash('drift|' + t + '|' + s) - 0.5) * 3 + (domTop(s) - DOM_REF - DOM_EDGE) : 0);
@@ -3593,7 +3615,7 @@ function extEraSquad(t) {
 // 行格式：[名, 队, 进球, 助攻, 出场, 分钟, 射门, 射正, 抢断, 拦截, 关键传球, 传球, 成功传球, 扑救, 零封, 黄牌, 红牌, 全场最佳, 评分×10 合计, 过人尝试, 过人成功, 位置]
 const CUP_ROW_F = ['g', 'a', 'apps', 'min', 'sh', 'ot', 'tk', 'int', 'kp', 'ps', 'pc', 'sv', 'cs', 'y', 'r', 'motm', 'rs10', 'da', 'ds'];
 function cupPlayerStats(matches, rnd) {
-  const SQ = {}, sq = t => SQ[t] || (SQ[t] = TD[t] ? ENGINE.lineup(t).xi.map(x => ({ name: x.name, pos: x.slot, r: x.rating, attr: x.p && x.p.attributes })) : extEraSquad(t));
+  const SQ = {}, sq = (t, opp) => (TD[t] && opp && cupXI(t, opp)) || SQ[t] || (SQ[t] = TD[t] ? ENGINE.lineup(t).xi.map(x => ({ name: x.name, pos: x.slot, r: x.rating, attr: x.p && x.p.attributes })) : extEraSquad(t));
   const gw = pos => /ST|CF/.test(pos) ? 2.4 : /W/.test(pos) ? 1.9 : /AM/.test(pos) ? 1.6 : pos === 'GK' ? 0 : ENGINE.LINE(pos) === 'MF' ? 0.9 : 0.3;
   const aw = pos => /AM/.test(pos) ? 3.4 : /W|LM|RM/.test(pos) ? 2.8 : /B/.test(pos) && !/CB/.test(pos) ? 1.6 : /CM/.test(pos) ? 2 : /ST/.test(pos) ? 1.6 : pos === 'GK' ? 0.05 : 0.6;
   const pk = (L, f, not) => { const w = L.map(x => x === not ? 0 : f(x.pos) * Math.pow(x.r / 85, 2)); let r = rnd() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < L.length; i++) { r -= w[i]; if (r <= 0) return L[i]; } return L[L.length - 1]; };
@@ -3601,11 +3623,11 @@ function cupPlayerStats(matches, rnd) {
   const str = t => { try { return clubStr(t); } catch (e) { return 80; } };
   matches.forEach(([a, b, x, y, et], mi) => {
     const G = { };
-    [[a, x], [b, y]].forEach(([t, n]) => { const L = sq(t); G[t] = []; if (!L.length) return; if (!et) L.forEach(q => get(t, q).apps++); for (let k = 0; k < n; k++) { const sc = pk(L, gw); get(t, sc).g++; let as = null; if (rnd() < 0.75) { as = pk(L, aw, sc); get(t, as).a++; } G[t].push([L.indexOf(sc), as ? L.indexOf(as) : -1, 0]); } });
+    [[a, x, b], [b, y, a]].forEach(([t, n, o]) => { const L = sq(t, o); G[t] = []; if (!L.length) return; if (!et) L.forEach(q => get(t, q).apps++); for (let k = 0; k < n; k++) { const sc = pk(L, gw); get(t, sc).g++; let as = null; if (rnd() < 0.75) { as = pk(L, aw, sc); get(t, as).a++; } G[t].push([L.indexOf(sc), as ? L.indexOf(as) : -1, 0]); } });
     if (et) return;
     // 其余数据：不消耗杯赛的随机数（赛果不变），另用固定种子
     const lr = seeded('cps|' + CUP_S + saltOf(CUP_S) + '|' + mi + '|' + a + '|' + b + '|' + x + '|' + y), sd = 1 + Math.floor(lr() * 2147483000);
-    const La = sq(a), Lb = sq(b); if (!La.length || !Lb.length) return;
+    const La = sq(a, b), Lb = sq(b, a); if (!La.length || !Lb.length) return;
     const poss = Math.max(32, Math.min(68, Math.round(50 + (str(a) - str(b)) * 1.1 + (lr() - 0.5) * 8)));
     const shots = g => g + 4 + Math.floor(lr() * 8), sa = shots(x) + Math.max(0, Math.round((poss - 50) / 6)), sb = shots(y) + Math.max(0, Math.round((50 - poss) / 6));
     const ota = Math.max(x, Math.round(sa * (0.35 + lr() * 0.12))), otb = Math.max(y, Math.round(sb * (0.35 + lr() * 0.12)));
