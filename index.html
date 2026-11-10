@@ -7111,10 +7111,13 @@ function bindScopes(root) {
 }
 // 能力成长曲线：过去各季的首发评分 + 本季 + 往后的预测
 function seasonRatings(pid) { const m = {}; SEASONS.forEach(s => Object.values(HS[s].xi).forEach(x => x.forEach(([id, , r]) => { if (id === pid) m[s] = r; }))); return m; }
-function growthHTML(pid, p) {
+/* 威联赛时代（W01–W50）也画进去：横轴 W50 之后接 S01，W 赛季记成 w − 50（≤ 0） */
+function growthHTML(pid, p, wid) {
   const past = pid != null ? seasonRatings(pid) : {};
+  if (wid == null && pid != null && typeof WL !== 'undefined' && WL && WL.byPid) wid = WL.byPid[pid];
+  if (wid != null && typeof WL !== 'undefined' && WL && WL.car && WL.car[wid]) WL.car[wid].forEach(([w, o]) => { if (o.rt > 0 && (o.apps || o.capps)) { const k = w - 50; past[k] = Math.max(past[k] || 0, o.rt); } });
   if (p && p.stints) for (let s = 1; s < SEASON; s++) { if (past[s] != null) continue; const r = extRow(p, s); if (r) past[s] = r.rating; }
-  const pts = Object.entries(past).map(([s, r]) => ({ s: +s, r, k: 'past' })).filter(x => x.s < SEASON);
+  const pts = Object.entries(past).map(([s, r]) => ({ s: +s, r, k: +s <= 0 ? 'wl' : 'past' })).filter(x => x.s < SEASON), lab = s => s <= 0 ? WN(s + 50) : SN(s), hasWL = pts.some(q => q.k === 'wl');
   let pot = null, future = [];
   if (p && typeof p.age0 === 'number') {
     pot = potentialOf(p);
@@ -7131,19 +7134,20 @@ function growthHTML(pid, p) {
   const peak = all.filter(q => q.k !== 'fut').reduce((m, q) => q.r > m.r ? q : m, { r: -1 });
   let g = '';
   const step = Math.max(1, Math.ceil((s1 - s0) / 10));
-  for (let s = s0; s <= s1; s += step) g += `<text x="${x(s)}" y="${Hh - 6}" text-anchor="middle">${SN(s)}</text>`;
+  for (let s = s0; s <= s1; s += step) g += `<text x="${x(s)}" y="${Hh - 6}" text-anchor="middle">${lab(s)}</text>`;
+  if (hasWL && s1 >= 1) g += `<line x1="${x(0.5)}" x2="${x(0.5)}" y1="${pt}" y2="${Hh - pb}" stroke="var(--line-2)" stroke-dasharray="2 3"/><text x="${x(0.5) - 4}" y="${pt + 8}" text-anchor="end">威联赛</text><text x="${x(0.5) + 4}" y="${pt + 8}">威超</text>`;
   [lo + 2, Math.round((lo + hi) / 2), hi - 2].forEach(v => g += `<line class="gl" x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 6}" y="${y(v) + 3}" text-anchor="end">${Math.round(v)}</text>`);
   if (pot) g += `<line x1="${pl}" x2="${W - pr}" y1="${y(pot)}" y2="${y(pot)}" stroke="var(--gold)" stroke-dasharray="3 4" stroke-width="1"/><text x="${W - pr}" y="${y(pot) - 4}" text-anchor="end" style="fill:var(--gold)">潜力 ${pot}</text>`;
-  g += line(hist, 'stroke="var(--accent)"') + line(fut, 'stroke="var(--fg-3)" stroke-dasharray="5 5"');
-  g += all.map(q => `<circle cx="${x(q.s)}" cy="${y(q.r)}" r="${q.k === 'now' ? 4.5 : 2.6}" fill="${q.k === 'fut' ? 'var(--bg)' : q.k === 'now' ? 'var(--accent-2)' : 'var(--accent)'}" stroke="${q.k === 'fut' ? 'var(--fg-3)' : 'none'}" stroke-width="1.3"><title>${SN(q.s)}${q.k === 'fut' ? '（预测）' : ''}：${q.r}</title></circle>`).join('');
+  g += line(hist.filter(q => q.k === 'wl').concat(hist.filter(q => q.k !== 'wl').slice(0, 1)), 'stroke="var(--gold)" opacity=".85"') + line(hist.filter(q => q.k !== 'wl'), 'stroke="var(--accent)"') + line(fut, 'stroke="var(--fg-3)" stroke-dasharray="5 5"');
+  g += all.map(q => `<circle cx="${x(q.s)}" cy="${y(q.r)}" r="${q.k === 'now' ? 4.5 : 2.6}" fill="${q.k === 'fut' ? 'var(--bg)' : q.k === 'now' ? 'var(--accent-2)' : q.k === 'wl' ? 'var(--gold)' : 'var(--accent)'}" stroke="${q.k === 'fut' ? 'var(--fg-3)' : 'none'}" stroke-width="1.3"><title>${lab(q.s)}${q.k === 'fut' ? '（预测）' : ''}：${q.r}</title></circle>`).join('');
   const futPeak = future.length ? future.reduce((m, q) => q.r > m.r ? q : m) : null;
   const chips = p && typeof p.age0 === 'number'
     ? [`当前 ${p.rating}`, `潜力 ${pot}`, pot > p.rating + 1 && p.age < 27 ? '还在成长期，上限看潜力' : p.age >= 31 ? '已过巅峰期，逐年下滑' : '处在巅峰期']
-    : [`巅峰 ${peak.r}（${SN(peak.s)}）`];
+    : [`巅峰 ${peak.r}（${lab(peak.s)}）`];
   return `<div><div class="eyebrow" style="margin-bottom:8px">能力成长曲线</div>
     <div class="btns" style="gap:6px;margin-bottom:8px">${chips.map((c, i) => `<span class="chip ${i === 1 && p ? 'gold' : ''}">${c}</span>`).join('')}</div>
     <div class="chart"><svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="能力成长曲线">${g}</svg></div>
-    <p class="note" style="margin:6px 0 0">实线是威超各赛季的首发评分，${p && typeof p.age0 === 'number' ? '虚线是按年龄推算的走势：25 岁前朝潜力成长，26–30 岁是巅峰，31 岁起逐年下滑。每进入新赛季，评分会按这条曲线更新。' : '只记录首发的赛季。'}</p></div>`;
+    <p class="note" style="margin:6px 0 0">${hasWL ? '金色线是威联赛时代（W01–W50）每季的评分，' : ''}实线是威超各赛季的首发评分，${p && typeof p.age0 === 'number' ? '虚线是按年龄推算的走势：25 岁前朝潜力成长，26–30 岁是巅峰，31 岁起逐年下滑。每进入新赛季，评分会按这条曲线更新。' : '只记录首发的赛季。'}</p></div>`;
 }
 function careerHTML(pid) {
   if (pid == null) return '';
@@ -8913,7 +8917,7 @@ function openWLPlayer(id) {
     <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(p.name)}</h3>
     <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">威联赛时代球员</span><span class="chip">${C.L[0][0] === 1 ? `W01（威联赛首季）已在队 · ${wlAge(p, 1)} 岁` : `${WN(C.L[0][0])} ${wlAge(p, C.L[0][0]) > 21 ? '加盟' : '出道'} · ${wlAge(p, C.L[0][0])} 岁`}</span><span class="chip">${WN(C.L[C.L.length - 1][0])} 后${C.L[C.L.length - 1][0] === 50 && !p.tag ? '随威联赛落幕' : '退役'} · ${wlAge(p, C.L[C.L.length - 1][0])} 岁</span></div></div></div>
     <div class="btns">${cmpBtn('w:' + id, p.name)}</div>
-    ${wlCareerHTML(id, '威联赛生涯')}</div>`;
+    ${growthHTML(null, null, id)}${wlCareerHTML(id, '威联赛生涯')}</div>`;
   if (!d.open) d.showModal();
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-wl]'); if (!b) return; e.preventDefault(); e.stopPropagation(); openWLPlayer(+b.dataset.wl); }, true);
