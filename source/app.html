@@ -645,9 +645,12 @@ function mgrChip() { let c = document.getElementById('mgrChip'); const n = lsg(M
 /* 之前的翻译功能已移除：清掉当时留下的 Google 翻译 cookie，免得页面继续被翻译 */
 if (/googtrans=/.test(document.cookie)) { const h = location.hostname, kill = d => { document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + (d ? '; domain=' + d : ''); }; kill(); kill(h); kill('.' + h.split('.').slice(-2).join('.')); let once = 0; try { once = sessionStorage.getItem('ves_gt_clr'); sessionStorage.setItem('ves_gt_clr', '1'); } catch (e) { once = 1; } if (!once) location.reload(); }
 setTimeout(() => { mgrChip(); gateShow(false); }, 0);
-const crest = (t, s = 28) => `<img class="crest" src="${LOGO[t] || ''}" width="${s}" height="${s}" alt="">`;
+/* 球队资料编辑（S.tedit[原队名] = { zh, en, img }）：换队徽、中英文名。内部仍用原队名，显示时换成你改的名字 */
+const tEd = t => (typeof S !== 'undefined' && S && S.tedit && S.tedit[t]) || null;
+const tImg = t => { const e = tEd(t); return e && e.img ? e.img : null; };
+const crest = (t, s = 28) => `<img class="crest" src="${tImg(t) || LOGO[t] || ''}" width="${s}" height="${s}" alt="">`;
 const tlink = (t, s = 24) => `<button class="lnk tname" data-team="${esc(t)}">${crest(t, s)}<span>${esc(t)}</span></button>`;
-const en = t => (H.profiles[t] && H.profiles[t].en) || '';
+const en = t => { const e = tEd(t); return (e && e.en) || (H.profiles[t] && H.profiles[t].en) || ''; };
 function vis(c) { // 让过暗/过亮的队色在深色底上可见
   const h = c.replace('#', ''); const r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
   const L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
@@ -719,8 +722,28 @@ function localSave() {
 }
 /* 初始设定：球员资料、阵型、首发安排、队内职务（队长、主罚等）、球衣颜色、非卖品、转会设置。
    第一次存档时自动记下一份；「全部重来」会套回这份，不用再调一遍。可以在重来的确认框里改成「现在的设定」。 */
-const INIT_KEYS = ['edits', 'formSet', 'xio', 'roles', 'kits', 'nfs', 'mktCfg'];
+const INIT_KEYS = ['edits', 'formSet', 'xio', 'roles', 'kits', 'nfs', 'mktCfg', 'tedit'];
 function initSnap() { const o = {}; INIT_KEYS.forEach(k => { if (S[k] != null) o[k] = JSON.parse(JSON.stringify(S[k])); }); o.at = { s: SEASON, r: playedRounds(), t: Date.now() }; return o; }
+function teamEditDlg(t) { const d = $('#dlg'), e = tEd(t) || {}, cur = tImg(t), base = TD[t] ? `<img class="crest" src="${LOGO[t] || ''}" width="72" height="72" alt="">` : ecrest.call(null, t, 72);
+  d.innerHTML = `<div class="dlg" data-noalias style="position:relative;max-width:520px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="eyebrow">编辑球队信息</div><h2 style="margin:4px 0 12px">${esc(t)}${e.zh ? ` <span class="note">（现在显示为「${esc(e.zh)}」）</span>` : ''}</h2>
+    <div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;align-items:center"><div id="teImgBox" style="width:96px;height:96px;display:grid;place-items:center;border:1px dashed var(--line-2);border-radius:14px;overflow:hidden">${cur ? `<img src="${cur}" width="80" height="80" alt="" style="object-fit:contain">` : base}</div>
+      <div><label class="btn" style="cursor:pointer;display:inline-flex">上传队徽图片<input type="file" id="teFile" accept="image/*" style="display:none"></label>${cur ? ' <button class="btn ghost" data-act="teImgReset">恢复原队徽</button>' : ''}<p class="note" style="margin:6px 0 0">PNG、JPG、WebP、SVG 都可以；会缩成 128×128，透明底最好看。</p></div></div>
+    <div style="display:grid;gap:10px;margin-top:14px"><label style="display:grid;gap:4px"><span class="note">中文名</span><input id="teZh" value="${esc(e.zh || '')}" placeholder="${esc(t)}" maxlength="16"></label><label style="display:grid;gap:4px"><span class="note">英文名</span><input id="teEn" value="${esc(e.en || '')}" placeholder="${esc((H.profiles[t] && H.profiles[t].en) || '例如 Thunder Leopards FC')}" maxlength="40"></label></div>
+    <p class="note" style="margin:10px 0 0">改名只改显示：赛程、积分榜、历史记录里会显示新名字，原本的数据和记录都保留。全部重来后照样保留。</p><p class="note" id="teErr" style="color:#e66;margin:4px 0 0"></p>
+    <div class="btns" style="justify-content:space-between;margin-top:12px"><button class="btn ghost" data-act="teReset" data-t="${esc(t)}">全部恢复默认</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="teSave" data-t="${esc(t)}">保存</button></span></div></div>`;
+  d.dataset.teImg = cur || ''; if (!d.open) d.showModal();
+  $('#teFile').addEventListener('change', ev => { const f = ev.target.files && ev.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { const N = 128, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'), k = Math.min(N / im.width, N / im.height); g.drawImage(im, (N - im.width * k) / 2, (N - im.height * k) / 2, im.width * k, im.height * k);
+    let u = c.toDataURL('image/webp', 0.9); if (!u.startsWith('data:image/webp')) u = c.toDataURL('image/png'); d.dataset.teImg = u; $('#teImgBox').innerHTML = `<img src="${u}" width="80" height="80" alt="">`; }; im.onerror = () => { $('#teErr').textContent = '这张图片读不出来，换一张试试'; }; im.src = rd.result; }; rd.readAsDataURL(f); }); }
+function teamEditSave(t, reset) { S.tedit = S.tedit || {}; if (reset) { delete S.tedit[t]; } else { const d = $('#dlg'), zh = ($('#teZh').value || '').trim(), enN = ($('#teEn').value || '').trim(), img = d.dataset.teImg || '';
+    if (zh && zh !== t) { const all = new Set(Object.keys(TD).concat(PYR_NAMES, Object.keys(EXT_CLUB))); Object.entries(S.tedit).forEach(([k, v]) => { if (k !== t && v.zh) all.add(v.zh); }); all.delete(t); if (all.has(zh)) { $('#teErr').textContent = `「${zh}」已经是别的球队的名字了`; return; } }
+    const o = {}; if (zh && zh !== t) o.zh = zh; if (enN) o.en = enN; if (img) o.img = img; if (Object.keys(o).length) S.tedit[t] = o; else delete S.tedit[t]; }
+  TALIAS_RE = null; save(); $('#dlg').close(); render(); toast(reset ? `${t} 已恢复默认` : '球队信息已更新'); }
+/* 显示改名：页面每次更新后，把文字里的原队名换成你改的名字（长名字先换，避免「龙王宫殿」被拆开） */
+let TALIAS_RE = null, TALIAS_MAP = null, TALIAS_Q = 0;
+function taliasApply(root) { if (!S || !S.tedit) return; if (!TALIAS_RE) { TALIAS_MAP = {}; Object.entries(S.tedit).forEach(([k, v]) => { if (v && v.zh && v.zh !== k) TALIAS_MAP[k] = v.zh; }); const ks = Object.keys(TALIAS_MAP).sort((a, b) => b.length - a.length); TALIAS_RE = ks.length ? new RegExp(ks.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g') : false; }
+  if (!TALIAS_RE) return; const w = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT, { acceptNode: n => { const p = n.parentNode; return p && /^(SCRIPT|STYLE|TEXTAREA|INPUT)$/.test(p.nodeName) || p.closest && p.closest('[data-noalias]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } });
+  const L = []; let n; while ((n = w.nextNode())) { TALIAS_RE.lastIndex = 0; if (TALIAS_RE.test(n.nodeValue)) L.push(n); } L.forEach(n => { TALIAS_RE.lastIndex = 0; n.nodeValue = n.nodeValue.replace(TALIAS_RE, m => TALIAS_MAP[m] || m); }); }
+try { new MutationObserver(ms => { if (!S || !S.tedit || TALIAS_RE === false) return; if (TALIAS_Q) return; TALIAS_Q = requestAnimationFrame(() => { TALIAS_Q = 0; try { taliasApply(document.body); } catch (e) { } }); }).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) { }
 function save() { if (S && !S.init) { try { S.init = initSnap(); } catch (e) { } } S.updated = Date.now(); localSave(); cloudQueue(); }
 function load() { try { let raw = localStorage.getItem(LKEY); if (raw && raw.startsWith('LZ:')) raw = LZString.decompressFromUTF16(raw.slice(3)); const s = JSON.parse(raw); if (s && s.__arch) { const A = []; for (const n of s.__arch) { const z = localStorage.getItem(LKEY + '|a' + n); if (!z) throw new Error('arch ' + n); const x = JSON.parse(LZString.decompressFromUTF16(z)); A.push(x); ARCH_W.set(x, (x.cmp ? 'c' : '') + (x.ps ? x.ps.length : 0)); } s.archive = A; delete s.__arch; } if (s && s.fx && s.teams) return s; } catch (e) { console.error(e); } return null; }
 // 比赛结果压缩存储。ev: [分钟, 类型, 主/客, 球员, 助攻者/被换下者, 附加值（点球=1 / 伤停轮数 / 被扑=1 / 直红=1）]
@@ -3637,7 +3660,7 @@ function pyrAdvance(A) { const P = pyrInit(); if (!P || !A || !A.pyr) return; co
   P.T = NT; P.k = (P.k || 0) + 1; P.last = { s: A.s, up: UP, dn: DN }; PYR_C = null; }
 /* 下级球队的队徽：按名字固定一种颜色，写名字的第一个字 */
 const pyrCol = t => `hsl(${Math.floor(ghash('pc|' + t) * 360)} 45% 42%)`;
-const pcrest = (t, n = 18) => `<span aria-hidden="true" style="width:${n}px;height:${n}px;flex:none;display:inline-grid;place-items:center;border-radius:50%;background:${pyrCol(t)};color:#fff;font-size:${Math.round(n * .55)}px;font-weight:800;line-height:1">${esc(t[0])}</span>`;
+const pcrest = (t, n = 18) => tImg(t) ? `<img class="crest" src="${tImg(t)}" width="${n}" height="${n}" alt="" style="flex:none;border-radius:4px">` : `<span aria-hidden="true" style="width:${n}px;height:${n}px;flex:none;display:inline-grid;place-items:center;border-radius:50%;background:${pyrCol(t)};color:#fff;font-size:${Math.round(n * .55)}px;font-weight:800;line-height:1">${esc(t[0])}</span>`;
 let CUP_REC = null, CUPD = null;
 /* 每场杯赛记下属于哪项赛事、哪个阶段、在威超第几周踢（赛程、直播比分、赛后数据都靠它） */
 let CUP_TAG = null, CUP_LEG = 0; const cupTag = () => CUP_TAG ? { ...CUP_TAG, leg: CUP_LEG } : null;
@@ -3910,7 +3933,7 @@ function openExtClub(club) {
   const L = LEAGUE_OF[club], sq = (FDB[club] || []).slice().sort((a, b) => b.rating - a.rating), x = EXT_CLUB[club];
   const d = $('#dlg');
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
-    <div class="tname">${ecrest(club, 48)}<div><div class="eyebrow">${esc(L ? L.name : '外赛区')}${L && L.tiers ? ' · ' + (Object.entries(L.tiers).find(([k, v]) => v.includes(club)) || [''])[0] + ' 级' : ''}</div><h2 style="font-size:22px;font-weight:900">${esc(club)}</h2><div class="muted mono" style="font-size:12px">球队实力 ${x ? x.str : '–'} · ${sq.length} 名球员</div></div></div>
+    <div class="tname">${ecrest(club, 48)}<div><div class="eyebrow">${esc(L ? L.name : '外赛区')}${L && L.tiers ? ' · ' + (Object.entries(L.tiers).find(([k, v]) => v.includes(club)) || [''])[0] + ' 级' : ''}</div><h2 style="font-size:22px;font-weight:900">${esc(club)} <button class="btn ghost" data-act="teamEdit" data-t="${esc(club)}" style="font-size:12px;padding:3px 9px;vertical-align:middle">✎ 编辑</button></h2><div class="muted mono" style="font-size:12px">${en(club) ? esc(en(club)) + ' · ' : ''}球队实力 ${x ? x.str : '–'} · ${sq.length} 名球员</div></div></div>
     <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>潜力</th><th>身价</th></tr></thead><tbody>
     ${sq.map(p => `<tr><td class="dim">${p.no}</td><td class="l"><button class="lnk" data-player="${esc(club)}|${esc(p.name)}"><span>${esc(p.name)}</span></button></td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${potentialOf(p) > p.rating ? `<span class="mono" style="color:var(--gold)">${potentialOf(p)}</span>` : '<span class="dim">–</span>'}</td><td class="muted">${esc(p.value)}</td></tr>`).join('')}
     </tbody></table></div><p class="note" style="margin:0">外赛区球员的名字都是化名；联赛数据按能力和球队实力估算。</p></div>`;
@@ -4372,7 +4395,7 @@ function vPyr() { pyrInit(); const k = PYR_TABS().includes(PYR_TAB) ? PYR_TAB : 
 const PYR_TABS = () => PYR_TIERS.map(x => x[0]);
 function pyrTeamDlg(t) { const d = $('#dlg'), k = pyrTierOf(t); const H = (S.archive || []).map(A => { let tier = null, pos = null, n = 0; const c = A.cups && A.cups['威冠联赛']; if (c && c.table) { const i = c.table.findIndex(r => r[0] === t); if (i >= 0) { tier = '威冠'; pos = i + 1; n = c.table.length; } }
     if (!tier && A.pyr) PYR_LOW.forEach(k2 => { const x = A.pyr[k2]; if (!x || tier) return; const i = x.table.findIndex(r => r[0] === t); if (i >= 0) { tier = k2; pos = i + 1; n = x.table.length; } }); return tier ? { s: A.s, tier, pos, n, champ: (tier === '威冠' ? c.winner : A.pyr[tier].champ) === t } : null; }).filter(Boolean).reverse();
-  d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="tname" style="gap:12px">${pcrest(t, 44)}<div><div class="eyebrow">${esc(k || '')}联赛</div><h2 style="margin:2px 0 0">${esc(t)}</h2></div></div>
+  d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="tname" style="gap:12px">${pcrest(t, 44)}<div><div class="eyebrow">${esc(k || '')}联赛${en(t) ? ' · ' + esc(en(t)) : ''}</div><h2 style="margin:2px 0 0">${esc(t)} <button class="btn ghost" data-act="teamEdit" data-t="${esc(t)}" style="font-size:12px;padding:3px 9px;vertical-align:middle">✎ 编辑</button></h2></div></div>
     <p class="muted" style="margin:10px 0">实力值 <b class="mono">${pyrStr(t) ?? '–'}</b>（威超球队的最强阵大约在 76–91 之间）。这支球队没有威超执照，没有完整球员名单，按球队实力模拟比赛。</p>
     ${H.length ? `<div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">级别</th><th>名次</th></tr></thead><tbody>${H.map(h => `<tr><td class="l mono">${SN(h.s)}</td><td class="l">${h.tier}联赛</td><td>${h.pos} / ${h.n}${h.champ ? ' 🏆' : ''}</td></tr>`).join('')}</tbody></table></div>` : '<p class="note">赛季结束后会记下每季的名次。</p>'}
     <div class="btns" style="justify-content:flex-end;margin-top:10px"><button class="btn" data-act="pyrGo" data-v="${esc(k || '')}">看${esc(k || '')}联赛积分榜</button></div></div>`;
@@ -5434,7 +5457,7 @@ function teamDetail(t) {
   <div><button class="btn ghost" data-act="backTeams">← 所有球队</button></div>
   <div class="panel thero" style="--tc:${tcol(t)}">
     <div class="glow">${crest(t, 168)}</div>
-    <div style="min-width:0"><div class="eyebrow">${esc(P.en || '')}${inLeague ? ` · 威超 S${SEASON}${posNow && playedRounds() ? ' 第 ' + posNow + ' 名' : ''}` : ' · 非威超'}</div><h1>${esc(t)}</h1>
+    <div style="min-width:0"><div class="eyebrow">${esc(en(t))}${inLeague ? ` · 威超 S${SEASON}${posNow && playedRounds() ? ' 第 ' + posNow + ' 名' : ''}` : ' · 非威超'}</div><h1>${esc(t)} <button class="btn ghost" data-act="teamEdit" data-t="${esc(t)}" style="font-size:12px;padding:4px 10px;vertical-align:middle">✎ 编辑球队信息</button></h1>
       <div class="btns" style="margin-top:10px"><span class="chip">${esc(D.style || P.style)}</span><span class="chip">${esc(D.formNow || D.form || P.formation || '')}</span>${hon['威超冠军'] ? `<span class="chip gold">威超冠军 ×${hon['威超冠军']}</span>` : ''}${(() => { const E = cupEntrants(SEASON); return ['世联赛', '全联冠', '全联杯', '全协联'].filter(k => E[k].includes(t)).map(k => `<span class="chip good">${SN(SEASON)} ${k}</span>`).join(''); })()}</div>
       <div style="margin-top:10px">${kitRow(t, S.teams.includes(t) || !!TD[t])}</div>
       <dl class="facts">
@@ -5846,7 +5869,7 @@ rebuildTransfers();
 const feeTxt = (f, free) => free ? '自由转会' : 'ⰵ' + f + 'M';
 // 外赛区球队（不在威超、没有队徽）
 const isExt = t => !TD[t];
-const ecrest = (t, n = 18) => PYR_SET.has(t) ? pcrest(t, n) : isExt(t) ? `<span title="外赛区" style="width:${n}px;height:${n}px;flex:none;display:inline-grid;place-items:center;border:1px dashed var(--line-2);border-radius:50%;font-size:${Math.round(n * .5)}px;color:var(--fg-3)">外</span>` : crest(t, n);
+const ecrest = (t, n = 18) => PYR_SET.has(t) ? pcrest(t, n) : tImg(t) ? `<img class="crest" src="${tImg(t)}" width="${n}" height="${n}" alt="" style="flex:none">` : isExt(t) ? `<span title="外赛区" style="width:${n}px;height:${n}px;flex:none;display:inline-grid;place-items:center;border:1px dashed var(--line-2);border-radius:50%;font-size:${Math.round(n * .5)}px;color:var(--fg-3)">外</span>` : crest(t, n);
 const extTag = t => EXT_CLUB[t] ? EXT_CLUB[t].league : PYR_SET.has(t) ? (pyrTierOf(t) || '') + '联赛' : '外赛区';
 const clubCell = (t, n = 18) => isExt(t) ? (EXT_CLUB[t] ? `<button class="lnk tname" data-ext="${esc(t)}">${ecrest(t, n)}<span class="muted">${esc(t)} <span class="dim" style="font-size:11px">${esc(extTag(t))}</span></span></button>` : `<span class="tname">${ecrest(t, n)}<span class="muted">${esc(t)} <span class="dim" style="font-size:11px">外赛区</span></span></span>`) : tlink(t, n);
 // 母队：第一笔转会的出发球队，没转会过就是第一次出场的球队
@@ -7661,7 +7684,8 @@ function autoSimTo(target) {
 }
 async function doResetAll() {
   const I = (S && S.init) || (S ? initSnap() : null); /* 套回初始设定（球员资料、阵型、首发、职务、球衣、非卖品、转会设置） */
-  S = newSeason(); if (I) { INIT_KEYS.forEach(k => { if (I[k] != null) S[k] = JSON.parse(JSON.stringify(I[k])); }); S.init = I; } S.updated = Date.now(); S.reset = S.updated;
+  const LIVE = S ? { edits: S.edits, tedit: S.tedit } : {}; /* 球员资料和球队信息是你手动改的，一律保留最新版本 */
+  S = newSeason(); if (I) { INIT_KEYS.forEach(k => { const v = LIVE[k] != null ? LIVE[k] : I[k]; if (v != null) S[k] = JSON.parse(JSON.stringify(v)); }); S.init = I; } S.updated = Date.now(); S.reset = S.updated;
   localSave();
   for (let i = 0; i < 38; i++) DIRTY.add(i);
   toast('正在重置…');
@@ -7805,6 +7829,10 @@ document.addEventListener('click', e => {
   if (act === 'autoCfg') return autoDlg();
   if (act === 'pfAll') return pfAllDlg();
   if (act === 'u21t') return u21TeamDlg(el.dataset.t);
+  if (act === 'teamEdit') return teamEditDlg(el.dataset.t);
+  if (act === 'teSave') return teamEditSave(el.dataset.t, false);
+  if (act === 'teReset') return teamEditSave(el.dataset.t, true);
+  if (act === 'teImgReset') { $('#dlg').dataset.teImg = ''; $('#teImgBox').innerHTML = '<span class="note">原队徽</span>'; return; }
   if (act === 'cupStSort') { CUPST_SORT = el.dataset.v; return render(); }
   if (act === 'cupFxAll') { CUPFX_ALL = !CUPFX_ALL; return render(); }
   if (act === 'pyrTab') { PYR_TAB = el.dataset.v; return render(); }
