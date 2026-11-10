@@ -4267,7 +4267,7 @@ const cupAll = () => SEASONS.slice().concat(pendingArchive() ? [SEASON] : []).so
 const NAV_G = {
   league: ['联赛', [['table', '积分榜'], ['stats', '数据榜'], ['xi', '最强阵容'], ['pyr', '联赛金字塔']]],
   squad: ['球队', [['teams', '球队'], ['players', '球员'], ['transfers', '转会窗'], ['u21', 'U21']]],
-  cups: ['赛事', [['cups', '赛事总览'], ...['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯', '威冠联赛'].map(k => ['cups', k, k]), ['ext', '海外联赛']]],
+  cups: ['赛事', [['cups', '赛事总览'], ...['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯', '威冠联赛'].map(k => ['cups', k, k]), ['ext', '各赛区联赛'], ['pyr', '联赛金字塔']]],
   hist: ['历史', [['awards', '奖项'], ['history', '历史总榜'], ['wl', '威联赛']]] };
 function grpOf(v) { for (const [g, [, L]] of Object.entries(NAV_G)) if (L.some(x => x[0] === v)) return g; return null; }
 const navItem = ([v, lab, arg]) => `<button data-go="${v}"${arg ? ` data-cup="${arg}"` : ''} role="menuitem"${view === v && (arg ? viewArg === arg : !(v === 'cups' && viewArg)) ? ' aria-current="page"' : ''}>${esc(lab)}</button>`;
@@ -4352,7 +4352,7 @@ function vPyr() { pyrInit(); const k = PYR_TABS().includes(PYR_TAB) ? PYR_TAB : 
   const head = `<div><div class="eyebrow">League pyramid</div><h1>联赛金字塔</h1><p class="muted" style="margin:6px 0 0;font-size:13px">威超下面还有五级联赛，共 188 支球队。持有威超执照的 27 家俱乐部有完整球员名单；其余球队按球队实力模拟，跟威超同一周揭晓赛果。</p></div>
     <div class="panel"><div style="display:grid;gap:6px;justify-items:center">${['威超'].concat(PYR_TIERS.map(x => x[0])).map((t, i) => `<button class="btn ${t === k ? 'primary' : ''}" ${t === '威超' ? 'data-go="table"' : `data-act="pyrTab" data-v="${t}"`} aria-pressed="${t === k}" style="width:${30 + i * 12}%;min-width:170px;justify-content:space-between"><b>${t}${t === '威超' ? '' : '联赛'}</b><span class="mono" style="font-size:12px;opacity:.8">${cnt[t]} 队</span></button>`).join('')}</div></div>`;
   if (!X) return `<section class="view">${head}<div class="empty">赛季开始后显示</div></section>`;
-  const tb = pyrTable(X.T, X.days), lic = tb.filter(r => TD[r[0]]).slice(0, 3).map(r => r[0]), nonLic = tb.filter(r => !TD[r[0]]), dn = k === '业余' ? [] : (k === '威冠' ? nonLic : tb).slice(-4).map(r => r[0]);
+  const tb = X.md ? pyrTable(X.T, X.days) : pyrTable(X.T, []).sort((p, q) => (TD[q[0]] ? 1 : 0) - (TD[p[0]] ? 1 : 0) || (pyrStr(q[0]) ?? 0) - (pyrStr(p[0]) ?? 0)), lic = tb.filter(r => TD[r[0]]).slice(0, 3).map(r => r[0]), nonLic = tb.filter(r => !TD[r[0]]), dn = k === '业余' ? [] : (k === '威冠' ? nonLic : tb).slice(-4).map(r => r[0]);
   const up = k === '威冠' ? lic : PYR_PO[k] ? [] : tb.slice(0, 4).map(r => r[0]), po8 = PYR_PO[k] ? tb.slice(0, 8).map(r => r[0]) : [];
   const cls = t => up.includes(t) ? 'z1' : po8.includes(t) ? 'z2' : dn.includes(t) ? 'zr' : '';
   const rows = tb.map((r, i) => `<tr class="${cls(r[0])}"><td class="pos">${i + 1}</td><td class="l">${pyrCell(r[0])}${TD[r[0]] ? ' <span class="chip" style="font-size:10px;padding:0 5px">持照</span>' : ''}</td><td>${r[2] + r[3] + r[4]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td class="mono">${r[5]}/${r[6]}</td><td>${r[5] - r[6] > 0 ? '+' : ''}${r[5] - r[6]}</td><td class="pts">${r[1]}</td><td class="mono dim">${TD[r[0]] ? '–' : (pyrStr(r[0]) ?? '–')}</td></tr>`).join('');
@@ -4365,7 +4365,7 @@ function vPyr() { pyrInit(); const k = PYR_TABS().includes(PYR_TAB) ? PYR_TAB : 
     return `<tr><td class="l mono">${SN(A.s)}</td><td class="l">${pyrCell(ch, 16)}</td><td class="l" style="font-size:12px">${u.map(t => esc(t)).join('、')}</td><td class="l dim" style="font-size:12px">${d.map(t => esc(t)).join('、') || '–'}</td></tr>`; }).join('');
   return `<section class="view">${head}
     <div class="grid g-main"><div class="panel"><div class="ph"><div><div class="eyebrow">${SN(SEASON)} · 第 ${X.md} / ${X.N} 轮</div><h2>${k}联赛积分榜</h2></div><span class="note">${rule}</span></div>
-      <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进/失</th><th>净</th><th>积分</th><th title="球队实力值，每季会浮动">实力</th></tr></thead><tbody>${X.md ? rows : `<tr><td colspan="10" class="l muted">第 1 轮在威超第 ${Math.ceil((PYR_PO[k] ? 34 : 38) / X.N)} 周揭晓。参赛球队：${X.T.length} 队</td></tr>`}</tbody></table></div>
+      <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进/失</th><th>净</th><th>积分</th><th title="球队实力值，每季会浮动">实力</th></tr></thead><tbody>${X.md ? '' : `<tr><td colspan="10" class="l note">还没开踢：第 1 轮在威超第 ${Math.ceil((PYR_PO[k] ? 34 : 38) / X.N)} 周揭晓。下面先按实力排出 ${X.T.length} 支参赛球队。</td></tr>`}${rows}</tbody></table></div>
       <p class="note" style="margin:8px 0 0">绿色：升级区${PYR_PO[k] ? ' · 蓝色：季后赛区' : ''}${k === '业余' ? '' : ' · 红色：降级区'}${k === '威冠' ? ' · 只有持照球队能升威超，持照球队也不会降到威甲' : ''}</p></div>
       <div style="display:grid;gap:16px;align-content:start">${last ? `<div class="panel"><div class="eyebrow" style="margin-bottom:6px">第 ${X.md} 轮赛果</div><div class="rank-list">${last.map(([a, b, x, y]) => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px"><span style="min-width:0;overflow:hidden;white-space:nowrap">${pyrCell(a, 16)}</span><span class="v mono" style="font-size:12px">${x}–${y}</span><span style="justify-self:end;min-width:0;overflow:hidden;white-space:nowrap">${pyrCell(b, 16)}</span></div>`).join('')}</div></div>` : ''}
       ${hist ? `<div class="panel"><div class="eyebrow" style="margin-bottom:6px">历届</div><div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">冠军</th><th class="l">升级</th><th class="l">降级</th></tr></thead><tbody>${hist}</tbody></table></div></div>` : ''}</div></div>${po}</section>`; }
@@ -4395,7 +4395,11 @@ function vAwards() {
 }
 /* 海外联赛：各外赛区联赛的球队和球员名单 */
 function vExt() {
-  return `<section class="view"><div><div class="eyebrow">Foreign leagues</div><h1>海外联赛</h1><p class="muted" style="margin:6px 0 0;font-size:13px">星煌联赛和其他外赛区联赛的球队、实力和球员名单（联赛和球队都是化名）。点球队名看完整资料。</p></div>
+  return `<section class="view"><div><div class="eyebrow">Foreign leagues</div><h1>各赛区联赛</h1><p class="muted" style="margin:6px 0 0;font-size:13px">威伊士国内的下级联赛，以及星煌联赛和其他外赛区联赛的球队、实力和球员名单（联赛和球队都是化名）。点球队名看完整资料。</p></div>
+  ${(() => { try { pyrInit(); return `<div class="panel"><div class="ph"><div><div class="eyebrow">Domestic pyramid</div><h2>威伊士国内联赛</h2></div><button class="btn ghost" data-go="pyr">看积分榜和升降级 →</button></div>
+    <p class="note" style="margin:0 0 10px">威超下面还有五级联赛。这些球队没有完整球员名单，按球队实力模拟；数字是实力值（威超球队的最强阵大约 76–91）。</p>
+    <div class="grid g-2" style="gap:10px;align-items:start">${PYR_TIERS.map(([k, n]) => { const L = pyrMembers(k).sort((a, b) => (TD[b] ? 99 : pyrStr(b) ?? 0) - (TD[a] ? 99 : pyrStr(a) ?? 0)); return `<details style="border:1px solid rgba(var(--tint),.1);border-radius:10px;padding:10px 12px"><summary style="cursor:pointer;display:flex;align-items:center;gap:8px"><b>${k}联赛</b><span class="dim" style="margin-left:auto;font-size:12px">${n} 队 · 实力 ${Math.min(...L.filter(t => !TD[t]).map(t => pyrStr(t))).toFixed(0)}–${Math.max(...L.filter(t => !TD[t]).map(t => pyrStr(t))).toFixed(0)}</span></summary>
+      <div class="rank-list" style="margin-top:8px;max-height:320px;overflow:auto">${L.map(t => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>${pyrCell(t, 16)}${TD[t] ? ' <span class="chip" style="font-size:10px;padding:0 5px">持照</span>' : ''}</span><span class="mono dim">${TD[t] ? '–' : pyrStr(t)}</span></div>`).join('')}</div></details>`; }).join('')}</div></div>`; } catch (e) { return ''; } })()}
   ${EXT_LEAGUES.map(L => `<div class="panel"><div class="ph"><div><div class="eyebrow">${esc(L.short || '')}</div><h2>${esc(L.name)}</h2></div><span class="note">${L.clubs.length} 队</span></div>
     <div class="grid g-2" style="gap:10px;align-items:start">${L.clubs.map(([cl, st]) => { const R = (FDB[cl] || []).slice().sort((a, b) => b.rating - a.rating); return `<details class="extclub" style="border:1px solid rgba(var(--tint),.1);border-radius:10px;padding:10px 12px"><summary style="cursor:pointer;display:flex;align-items:center;gap:8px"><button class="lnk tname" data-ext="${esc(cl)}">${ecrest(cl, 20)}<b>${esc(cl)}</b></button><span class="dim" style="margin-left:auto;font-size:12px">实力 ${Math.round(st)} · ${R.length} 人</span></summary>
       <div class="tw" style="margin-top:8px;max-height:320px;overflow:auto"><table><thead><tr><th class="l">球员</th><th class="l">位置</th><th>龄</th><th>能力</th></tr></thead><tbody>${R.map(p => `<tr><td class="l"><button class="lnk" data-player="${esc(cl)}|${esc(p.name)}">${esc(p.name)}</button></td><td class="l">${esc(p.pos)}</td><td>${p.age ?? '–'}</td><td>${p.rating}</td></tr>`).join('') || '<tr><td colspan="4" class="l muted">暂无名单</td></tr>'}</tbody></table></div></details>`; }).join('')}</div></div>`).join('')}
@@ -5870,7 +5874,13 @@ function transferPanel() {
 /* ---------- 转会窗：合同到期、潜在新星、历史重磅转会 ---------- */
 const hashOf = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
 // 合同到期赛季：按年龄和名字固定生成；到期后若还在队里，视为续约 2–4 年
-function contractEnd(p, team) { const o = BY_TN[(team || p.team) + '|' + p.name] || p; return o.cEnd != null ? o.cEnd : SEASON + 1; }
+/* 全程自主模拟：合同按固定种子排到期年份（年纪越大合同越短），续约成功就改成续到的那一季（S.cren） */
+const hcP = a => a >= 33 ? 0.42 : a >= 30 ? 0.24 : a <= 21 ? 0.1 : 0.16;
+const hcKey = p => { const pid = UIDPID[p.uid] ?? (String(p.uid || '').startsWith('H|') ? +String(p.uid).slice(2) : null); return pid != null ? pid : p.uid; };
+const hcHit = (key, s, a) => ghash('hc|' + key + '|' + s) < hcP(a);
+function contractEnd(p, team) { const o = BY_TN[(team || p.team) + '|' + p.name] || p;
+  if (HIST_END > 1e8 && o.uid) { const cr = S.cren && S.cren[o.uid]; if (cr != null && cr >= SEASON) return cr; const key = hcKey(o), a0 = typeof o.age === 'number' ? o.age : 26; for (let s2 = Math.max(SEASON, (cr || 0) + 1); s2 < SEASON + 8; s2++) if (hcHit(key, s2, a0 + s2 - SEASON)) return s2; return SEASON + 8; }
+  return o.cEnd != null ? o.cEnd : SEASON + 1; }
 const ageNow = p => typeof p.age === 'number' ? p.age : null;
 function potentialOf(p) { // 球探眼中的潜力：伤病 / 个人问题还没发生之前看不出来
   if (typeof p.age0 !== 'number') return p.rating;
@@ -6199,7 +6209,7 @@ function mktGenHist(MK, s, C, salt) {
     const kidOk = FULL && p.acad && !p.kidLoan && !p.loanFrom; /* 青训出身的（可能也有球员编号）不在历史名单里，照样可以被报价 */
     if (pid == null) { if (!kidOk) return; } else if (MK.sched[pid] || (nx[pid] !== t && !(kidOk && nx[pid] == null))) return;
     const a = C.ageN(p), r = p.rating, rnd = seeded('hm|' + (pid ?? p.uid) + '|' + s + salt);
-    if (pid != null && ghash('hc|' + pid + '|' + s) < 0.16) MK.hexp.push({ uid: p.uid, pid, from: t });
+    if ((pid != null || kidOk) && !p.loanFrom && contractEnd(p, t) <= s) MK.hexp.push({ uid: p.uid, pid, from: t }); /* 合同本季到期（跟球员卡上的「合同至」一致） */
     const pr = FULL ? (a <= 31 && r >= C.str[t] + 4 ? 0.34 : a <= 29 && r >= C.str[t] + 1 ? 0.1 : a <= 30 && r >= 88 ? 0.08 : a <= 24 && r >= C.str[t] - 2 ? 0.06 : a <= 27 && r >= 82 ? 0.04 : HB > 1 && a <= 28 && r >= 77 ? 0.03 : 0) * HB /* 全程模拟：年轻好手也会被球探盯上 */ : a <= 31 && r >= C.str[t] + 4 ? 0.2 : a <= 29 && r >= C.str[t] + 1 ? 0.04 : 0; if (rnd() < pr) cand.push({ p, t, r, rnd }); }); });
   cand.sort((x, y) => y.r - x.r).slice(0, FULL ? Math.round(30 * HB) : 10).forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false), used = new Set(); for (let k = 0; k < 3; k++) { if (k && rnd() > 0.45) break; const to = mktPick(B.dom.filter(x => !used.has(x)), rnd, C); if (!to) break; used.add(to); mktOfferB(MK, p, t, to, C, rnd, FULL ? 0.92 : 0.85, FULL ? 1.2 : 1.15); } if (B.ext.length && rnd() < 0.4) mktOfferB(MK, p, t, B.ext[Math.floor(rnd() * B.ext.length)], C, rnd, 0.95, 1.3); });
   if (FULL) mktGenBench(MK, s, C, salt, HB);
@@ -6300,7 +6310,7 @@ function mktAct(kind, id, opt) {
   if (kind === 'renew' || kind === 'list') { const [p, t] = mktFind(id); if (!p) return;
     if (kind === 'renew') { if (MK.renew[id] || late) return; const a = C.ageN(p), m = opt && opt.m ? opt.m : 1, yrs0 = opt && opt.yrs ? opt.yrs : (a >= 32 ? 1 : 2 + Math.floor(ghash('ry|' + id + SEASON) * 3)), pr = opt && opt.force ? 1 : renewProb(stayProb(p, t, C), m, yrs0, a), ok = seeded('rn|' + id + '|' + SEASON + salt)() < pr;
       if (!ok && opt && opt.dlg && !opt.final && pr >= 0.2) { MK.rneg = MK.rneg || {}; const need = renewNeed(stayProb(p, t, C), yrs0, a); if (need <= 1.6) { MK.rneg[id] = { m: need, yrs: yrs0, tried: m }; save(); return renewDlg(id); } }
-      MK.renew[id] = { ok, pr: Math.round(pr * 100), yrs: ok ? yrs0 : 0, m: ok ? m : undefined }; if (MK.rneg) delete MK.rneg[id];
+      MK.renew[id] = { ok, pr: Math.round(pr * 100), yrs: ok ? yrs0 : 0, m: ok ? m : undefined }; if (MK.rneg) delete MK.rneg[id]; if (ok) { S.cren = S.cren || {}; S.cren[id] = s0 + yrs0; }
       if (ok && m !== 1) { S.pay = S.pay || {}; S.pay[roleKey(p)] = { t, m, from: s0 + 1, until: s0 + yrs0, r: C.ratN(p) }; Object.keys(WAGE_C).forEach(k => delete WAGE_C[k]); FIN_C = null; }
       if (ok) toast(`${p.name} 续约成功（${MK.renew[id].yrs} 年${m !== 1 ? ` · 年薪${m > 1 ? '+' : '−'}${Math.round(Math.abs(m - 1) * 100)}%` : ''}）`);
       else { const rnd = seeded('fa|' + id + '|' + SEASON + salt), B = mktBuyers(p, t, C, true), to = B.ext.length && rnd() < 0.3 ? B.ext[Math.floor(rnd() * B.ext.length)] : mktPick(B.dom, rnd, C);
@@ -7591,17 +7601,34 @@ function autoSquad(phase) {
   log.forEach(x => mkNote('全自动 · 名单整理：' + x, true)); S.sqLog = { s: SEASON, phase, log, at: Date.now() };
   return log.length;
 }
+/* 全自动模式下的转会、续约：开窗时让小助手把所有球队的事一次办完——
+   报价（接受 / 要求加价 / 拒绝）、合同到期的续约（需要时加薪）或挂牌、按需求买人、提拔青训；夏窗再一天天推进到对方回复完 */
+function autoMarket(win) { const T = { acc: 0, ren: 0, renF: 0, list: 0, bought: 0, promo: 0, gave: 0 }; PILOT = 1;
+  try { for (let i = 0; i < (win ? 1 : 10); i++) { const P = batchPlan(win), R = batchExec(win, P, true); T.acc += R.acc.length; T.ren += R.ren; T.renF += R.renF; T.list += R.list; T.bought += R.bought.length; T.promo += R.promo; T.gave += R.gave;
+      if (win) break; const MK = mktGet(), waiting = Object.values(S.bids || {}).some(B => B.season === SEASON && B.wait) || MK.offers.some(o => o.st === 'p' && o.ctrWait); if (!waiting && i > 0) break; MK.day = (MK.day || 1) + 1; try { bidTick(); } catch (e) { } } }
+  finally { PILOT = 0; }
+  /* 合同到期、小助手建议放走的（边缘球员、老将）：不续约，以自由身离队 */
+  if (!win) { try { const MK = mktGet(), C = mktCtx(MS()); const cand = batchPlan(false).exp.filter(x => x.d === 'skip' && !MK.renew[x.p.uid] && !mktSold(MK, x.p.uid)), byT = {}, go = new Set();
+      cand.forEach(x => (byT[x.t] = byT[x.t] || []).push(x));
+      /* 每队最多放走 2 人：30 岁以上的非主力、或能力排在全队 18 名以外的；其余的照原薪续约 */
+      Object.entries(byT).forEach(([t, L]) => { const bar = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a)[17] || 0; L.filter(x => x.a >= 30 || x.r < bar).sort((a, b) => (b.a - a.a) || (a.r - b.r)).slice(0, Math.max(0, Math.min(2, (() => { try { return projSize(t); } catch (e) { return 30; } })() - 26))).forEach(x => go.add(x.p.uid)); }); /* 人数快不够的球队少放人 */
+      cand.forEach(x => { if (!go.has(x.p.uid)) { mktAct('renew', x.p.uid, { force: true }); T.ren++; } });
+      cand.filter(x => go.has(x.p.uid)).forEach(x => { const id = x.p.uid, pid = UIDPID[id] ?? (String(id).startsWith('H|') ? +String(id).slice(2) : null); if (pid == null) return;
+      const rnd = seeded('lg|' + id + '|' + SEASON + saltOf(SEASON)), B = mktBuyers(x.p, x.t, C, true), exts = Object.keys(EXT_CLUB), to = B.dom.length && rnd() < 0.5 ? mktPick(B.dom, rnd, C) : B.ext.length ? B.ext[Math.floor(rnd() * B.ext.length)] : exts[Math.floor(rnd() * exts.length)];
+      MK.renew[id] = { ok: false, pr: 0, yrs: 0, letgo: 1 }; MK.free.push({ uid: id, pid, name: x.p.name, pos: x.p.pos, a: x.a, r: x.r, from: x.t, to: to || null }); T.free = (T.free || 0) + 1; }); } catch (e) { console.error(e); } }
+  const bits = []; if (T.acc) bits.push(`卖出 ${T.acc} 笔`); if (T.free) bits.push(`合同到期放走 ${T.free} 人`); if (T.bought) bits.push(`发出买人报价 ${T.bought} 份`); if (T.ren || T.renF) bits.push(`续约成功 ${T.ren} 人、谈崩 ${T.renF} 人`); if (T.list) bits.push(`挂牌 ${T.list} 人`); if (T.promo) bits.push(`提拔青训 ${T.promo} 人`);
+  if (bits.length) mkNote(`全自动 · ${win ? '冬窗' : '夏窗'}：` + bits.join('；'), true); S.mktLog = S.mktLog || {}; S.mktLog[SEASON + (win ? 'w' : 's')] = T; return T; }
 function autoStep(now) { const C = AUTO_C(); if (!C.on) return false; if (!C.an || C.an.s !== SEASON) C.an = { s: SEASON, base: Math.max(0, nextRound() < 0 ? 38 : nextRound()), t: now };
   const c = mktCfg(); if (!c.auto) { C.prevMkt = { auto: !!c.auto, pilot: !!c.pilot }; c.auto = true; } /* 转会、续约全部交给系统 */
   const nr = nextRound();
   if (nr >= 0) { const T = autoT(nr); if (T > now) { if (nr === WIN_A) { try { winGen(); } catch (e) { } } return false; }
     const Rr = S.fx[nr]; let ch = false;
-    if (Rr.some(m => !m.r && !m.pr)) { const ph = nr >= WIN_A && winActive() ? 'win' : nr < WIN_A ? 'start' : null, k = ph && ph + SEASON; if (k && C.sqK !== k) { C.sqK = k; try { autoSquad(ph); } catch (e) { console.error(e); } } autoPend(nr, T); ch = true; }
+    if (Rr.some(m => !m.r && !m.pr)) { const ph = nr >= WIN_A && winActive() ? 'win' : nr < WIN_A ? 'start' : null, k = ph && ph + SEASON; if (k && C.sqK !== k) { C.sqK = k; try { autoSquad(ph); } catch (e) { console.error(e); } if (ph === 'win') { try { autoMarket(true); } catch (e) { console.error(e); } } } autoPend(nr, T); ch = true; }
     Rr.forEach(m => { if (m.pr && m.du > LIVE_DU) m.du = LIVE_DU; }); /* 旧版存下来的 13 分钟一场，改成新时长 */
     Rr.forEach(m => { if (!m.r && m.pr && m.ko + m.du <= now) { simFx(m, nr); AUTO_REV.push(m); ch = true; } });
     if (Rr.every(m => m.r)) { DIRTY.add(nr); MOD_VER++; postRound(nr); S.demo = false; return true; }
     if (ch) { DIRTY.add(nr); MOD_VER++; S.demo = false; } return ch; }
-  if (C.sqK !== 'sum' + SEASON && mktActive() && !mktLate()) { C.sqK = 'sum' + SEASON; try { autoSquad('sum'); } catch (e) { console.error(e); } return true; }
+  if (C.sqK !== 'sum' + SEASON && mktActive() && !mktLate()) { C.sqK = 'sum' + SEASON; try { autoSquad('sum'); } catch (e) { console.error(e); } try { autoMarket(false); } catch (e) { console.error(e); } return true; }
   const end = autoEnd(); if (now < end + C.Sm) { return false; }
   QUIET_END = true; try { maybeEndSeason(true); } finally { QUIET_END = false; } C.an = { s: SEASON, base: 0, t: end + C.Sm }; return true; }
 async function autoRun(force) { if (AUTO_BUSY || !S || !S.auto || !S.auto.on) return 0; if (!force && !autoCan()) return 0; if (M && (M.phase === 'live' || M.phase === 'rolling')) return 0; /* 正在看直播时先不打扰，看完再补 */
