@@ -712,6 +712,10 @@ const luOf = (m, i) => m.r.lu ? m.r.lu[i].map(([n, sl], k) => ({ name: n, slot: 
 // 某队在第 ri 轮开赛前的伤停与连续首发情况，全部由已赛结果推出（伤病、红牌停赛、累计 5/10 张黄牌停赛）
 // 精力（0–100）：赛季开始满格；每场按上场分钟消耗（耐力属性高、年轻的消耗少），每轮之间恢复，没上场的恢复更多；冬歇期额外恢复
 const EN_COST = 20.5, EN_REC = 0.32, EN_REST = 10, EN_ALL = 4; // 每轮所有人先回 3 点，再恢复与满格差距的 30%；一直踢满全场的主力大约稳定在 59（会被轮换）
+/* 球员性格（放在最前面：开场算成长曲线时就要用） */
+var PERS = { 职业: ['自律，训练一丝不苟', '潜力上限 +2；赛季成长多 1 分，下滑少三成；33 岁才开始掉速度和体能'], 散漫: ['天赋够但不够用功', '潜力上限 −3；赛季成长打七折，下滑多掉 1 分；30 岁就开始掉速度和体能'], 忠诚: ['以球队为家', '续约意愿更高，坐板凳的怨气减半'], 野心: ['想去更大的舞台', '潜力上限 +1；坐板凳的怨气翻倍；在非豪门踢出名堂后更想走'], 领袖: ['更衣室的主心骨', '他在首发名单里时，队友士气 +3'], 暴躁: ['脾气火爆', '潜力上限 −1；球队输球时士气掉得更多，德比里更容易吃牌'], 大心脏: ['越是大场面越兴奋', '潜力上限 +1；球队打进联赛前 4 或夺冠的赛季，成长 +1'], 平和: ['情绪稳定', '没有特别的加成或短板'] };
+var PERS_W = [['平和', 0.3], ['职业', 0.14], ['野心', 0.12], ['忠诚', 0.1], ['散漫', 0.09], ['暴躁', 0.09], ['大心脏', 0.08], ['领袖', 0.08]];
+var PERS_C = new Map(), PERS_POT = { 职业: 2, 野心: 1, 大心脏: 1, 暴躁: -1, 散漫: -3 }, PERS_AGE = { 职业: 2, 散漫: -1 };
 function enProfile(team) { const M = {}; (PDB[team] || []).forEach(p => { const a = p.age || 26, sta = (p.attributes && p.attributes.sta) || 78; M[p.name] = { cost: (String(p.pos) === 'GK' ? 0.35 : 1.3 - sta / 200) * (a >= 32 ? 1.2 : a >= 30 ? 1.1 : a <= 21 ? 0.95 : 1), rec: a >= 32 ? 0.85 : a <= 23 ? 1.1 : 1 }; }); return M; }
 function enStep(E, P, played) { Object.keys(P).forEach(n => { if (E[n] == null) E[n] = 100; }); Object.keys(played).forEach(n => { if (E[n] == null) E[n] = 100; });
   Object.keys(E).forEach(n => { const pr = P[n] || { cost: 1, rec: 1 }, mn = played[n] || 0; if (mn > 0) E[n] -= EN_COST * Math.min(1, mn / 90) * pr.cost; else E[n] += EN_REST * pr.rec; E[n] += EN_ALL * pr.rec; E[n] = Math.max(30, Math.min(100, E[n] + (100 - E[n]) * EN_REC * pr.rec)); }); }
@@ -840,12 +844,12 @@ function growthOf(p) {
   if (p._g) return p._g;
   if (p.cv != null && rrOf(p.cv)) { const off = typeof p.cv === 'number' ? wlAgeOff(p.cv) : 0, at = a => Math.min(97, rateAtR(p.cv, a - off) + Math.round(mbAt(p, a))); return (p._g = { pot: peakR(p.cv), at, past: at }); }
   const A0 = p.age0, R0 = p.rating0, h = ghash('pot|' + p.name);
-  const pot = p.potFix ? Math.max(R0, p.potFix) : A0 < 25 ? Math.min(94, Math.max(R0, R0 + Math.round((25 - A0) * (p.youth ? 0.9 + h * 1.1 : 0.4 + h * 0.7)))) : R0;
-  const dec = a => { let d = 0; for (let y = 31; y <= a; y++) d += 0.6 + (y - 31) * 0.45 + ghash(p.name + 'd' + y) * 0.5; return d; };
+  const PE = persOf(p), pot = p.potFix ? Math.max(R0, p.potFix) : A0 < 25 ? Math.min(94, Math.max(R0, R0 + Math.round((25 - A0) * (p.youth ? 0.9 + h * 1.1 : 0.4 + h * 0.7)) + (PERS_POT[PE] || 0))) : R0, on = 31 + (PERS_AGE[PE] || 0);
+  const dec = a => { let d = 0; for (let y = on; y <= a; y++) d += 0.6 + (y - on) * 0.45 + ghash(p.name + 'd' + y) * 0.5; return d; };
   const at = a => {
     if (a <= A0) return R0;
     let r = A0 < 26 ? R0 + (pot - R0) * Math.min(1, (a - A0) / (26 - A0)) : R0;
-    r -= dec(a) - dec(Math.max(A0, 30));
+    r -= dec(a) - dec(Math.max(A0, on - 1));
     r += (ghash(p.name + '|' + a) - 0.5) * 1.2;
     return Math.max(50, Math.min(97, Math.round(r + mbAt(p, a))));
   };
@@ -1597,7 +1601,7 @@ function openEditor(uid) {
     </div>
     ${cur ? (() => { const alt = cur.alt || altDef(cur), ft = cur.foot || footDef(cur);
       return `<div style="display:grid;gap:10px"><div><div class="eyebrow" style="margin-bottom:6px">其他可踢位置 <span class="dim" style="letter-spacing:0;text-transform:none">（主位置之外，踢这些位置不扣分）</span></div><div class="btns" id="edAlt" style="gap:6px;flex-wrap:wrap">${POS_LIST.map(x => `<label class="chip" style="cursor:pointer;display:inline-flex;gap:4px;align-items:center;font-size:12px"><input type="checkbox" data-alt="${x}" ${alt.includes(x) ? 'checked' : ''} ${x === posMain(o.pos) ? 'disabled' : ''}>${x}</label>`).join('')}</div></div>
-        ${fld('惯用脚', `<select id="edFoot" style="max-width:180px">${['右脚', '左脚', '双脚'].map(x => `<option ${x === ft ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}</div>`; })() : ''}
+        <div class="grid g-2" style="gap:10px">${fld('惯用脚', `<select id="edFoot" style="max-width:180px">${['右脚', '左脚', '双脚'].map(x => `<option ${x === ft ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}${fld('性格', `<select id="edPers">${Object.entries(PERS).map(([n, [a, b]]) => `<option value="${n}" ${n === persOf(cur) ? 'selected' : ''}>${n} · ${esc(a)}</option>`).join('')}</select>`)}</div><p class="note" id="edPersNote" style="margin:-4px 0 0">${esc(PERS[persOf(cur)][1])}</p></div>`; })() : ''}
     <div id="edSkW" data-mode="${Array.isArray(e.sk) ? 'manual' : 'auto'}"><div class="split" style="margin-bottom:6px"><div class="eyebrow">球员技能 <span class="dim" style="letter-spacing:0;text-transform:none">（稀有度 C &lt; B &lt; A &lt; S，最多 5 项）</span></div><span class="btns" style="gap:10px"><button type="button" class="lnk" data-skact="add" style="font-size:12px;color:var(--gold)">＋ 新增技能</button><button type="button" class="lnk" data-skact="auto" style="font-size:12px">按属性自动分配</button></span></div><div id="edSk" style="display:grid;gap:6px"></div><div class="note" id="edSkNote" style="font-size:11px;margin-top:4px"></div></div>
     <div><div class="split" style="margin-bottom:6px"><div class="eyebrow">能力属性${cur ? '' : '（巅峰）'}</div><button class="lnk" data-act="edAuto" style="font-size:12px;color:var(--gold)">按总评重新配属性</button></div><div id="edAttrs">${attrGrid(o.attributes)}</div></div>
     <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="edReset" data-uid="${esc(uid)}" ${S.edits && S.edits[uid] ? '' : 'disabled'}>恢复原始资料</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="edSave" data-uid="${esc(uid)}">保存</button></span></div></div>`;
@@ -1643,7 +1647,7 @@ function saveEditor(uid, swap) {
   if (mate && swap && mate.uid) { S.edits = S.edits || {}; const me = edAll()[mate.uid] || {}; S.edits[mate.uid] = { ...me, no: cur.no }; }
   const e = { orig: old.orig, origPos: old.origPos, origNat: old.origNat };
   const nm = v('edName'); if (nm) e.name = nm; e.pos = v('edPos'); e.nat = v('edNat');
-  if (cur && $('#edAlt')) { e.alt = [...document.querySelectorAll('#edAlt [data-alt]')].filter(i => i.checked && !i.disabled).map(i => i.dataset.alt).filter(x => x !== posMain(e.pos)); e.foot = v('edFoot'); }
+  if (cur && $('#edAlt')) { e.alt = [...document.querySelectorAll('#edAlt [data-alt]')].filter(i => i.checked && !i.disabled).map(i => i.dataset.alt).filter(x => x !== posMain(e.pos)); e.foot = v('edFoot'); const pv = v('edPers'); if (pv && PERS[pv]) { const base = (() => { const k0 = persKey(cur); return persOf0(k0); })(); if (pv !== base) e.pers = pv; } }
   e.no = num('edNo'); e.height = num('edH'); e.weight = num('edW'); { const dl = $('#dlg'), L = dl && dl._skGet ? dl._skGet() : (Array.isArray(old.sk) ? old.sk : null); if (L) e.sk = L; }
   const A = {}; document.querySelectorAll('#dlg [data-attr]').forEach(i => { if (i.value !== '') A[i.dataset.attr] = Math.max(20, Math.min(99, +i.value)); });
   if (cur) {
@@ -1652,7 +1656,7 @@ function saveEditor(uid, swap) {
     if (sameKeys && !old.la) { e.da = { ...(old.da || {}) }; Object.entries(cur.attributes || {}).forEach(([k, val]) => { if (A[k] != null && A[k] !== val) e.da[k] = (e.da[k] || 0) + A[k] - val; }); }
     else e.la = { a: A, r: nr != null ? nr : cur.rating };
   } else { e.ret = 1; const pk = num('edR'); if (pk != null) e.peak = Math.max(40, Math.min(99, pk)); if (Object.keys(A).length) e.attrs = A; }
-  S.edits = S.edits || {}; S.edits[uid] = e;
+  S.edits = S.edits || {}; S.edits[uid] = e; PERS_C.clear(); if (cur) delete cur._g;
   refreshAfterEdit(); toast('已保存球员资料');
 }
 function refreshAfterEdit() {
@@ -1739,6 +1743,7 @@ function applyGrowth() {
   applyReleases();
   applyConversions();
   applyPosFoot();
+  try { applyAgeCuts(); } catch (e) { console.error(e); }
   ENGINE.clearCache();
   if (GROWN && GROWN !== SEASON && ALLP_READY) syncAllPlayers();
   GROWN = SEASON;
@@ -1955,12 +1960,18 @@ function injKind(dur, key, what) { const h = ghash('ik|' + key); if (dur >= 15) 
 /* [下滑概率, 最少掉几分, 最多掉几分] */
 function INJ_SEV(k) { return ({ '十字韧带断裂': [0.75, 3, 7], '跟腱撕裂': [0.55, 2, 6], '骨折': [0.4, 2, 4], '膝关节韧带撕裂': [0.35, 1, 4], '半月板损伤': [0.3, 1, 3], '肩膀脱臼': [0.15, 1, 2], '肌肉撕裂': [0.1, 1, 2], '背部劳损': [0.08, 1, 2] })[k] || [0.03, 1, 1]; }
 /* ---------- 球员性格：每人一种，跟着球员一辈子（按球员身份固定算出来） ---------- */
-var PERS = { 职业: ['自律，训练一丝不苟', '赛季表现带来的成长多 1 分，状态下滑的幅度少三成'], 散漫: ['天赋够但不够用功', '赛季成长打七折，下滑时多掉 1 分'], 忠诚: ['以球队为家', '续约意愿更高，坐板凳的怨气减半'], 野心: ['想去更大的舞台', '坐板凳的怨气翻倍；在非豪门踢出名堂后更想走'], 领袖: ['更衣室的主心骨', '他在首发名单里时，队友士气 +3'], 暴躁: ['脾气火爆', '球队输球时士气掉得更多，德比里更容易吃牌'], 大心脏: ['越是大场面越兴奋', '球队打进联赛前 4 或夺冠的赛季，成长 +1'], 平和: ['情绪稳定', '没有特别的加成或短板'] };
-var PERS_W = [['平和', 0.3], ['职业', 0.14], ['野心', 0.12], ['忠诚', 0.1], ['散漫', 0.09], ['暴躁', 0.09], ['大心脏', 0.08], ['领袖', 0.08]];
 function persKey(x) { if (x == null) return ''; if (typeof x === 'string') return x; const pid = x.uid != null ? UIDPID[x.uid] : null; return pid != null ? 'p' + pid : x.acad ? 'K|' + x.acad : String(x.uid || x.name || ''); }
-var PERS_C = new Map(); const OFF_IDX = new WeakMap();
+const OFF_IDX = new WeakMap();
 function offIdx(MK) { let c = OFF_IDX.get(MK); const n = (MK.offers || []).length; if (!c || c.n !== n) { const m = new Map(); (MK.offers || []).forEach(o => { const L = m.get(o.uid); if (L) L.push(o); else m.set(o.uid, [o]); }); c = { n, m }; OFF_IDX.set(MK, c); } return c.m; }
-function persOf(x) { const k = persKey(x); const hit = PERS_C.get(k); if (hit) return hit; const v = persOf0(k); PERS_C.set(k, v); return v; }
+/* 性格可以在「编辑资料」里改（存在 S.edits[uid].pers），改了就以你选的为准 */
+function persEd(x) { if (typeof S === 'undefined' || !S || !S.edits) return null; let uid = null; if (x && typeof x === 'object') uid = x.uid; else if (typeof x === 'string') uid = /^p\d+$/.test(x) ? PID_UID[+x.slice(1)] : x; const e = uid && S.edits[uid]; return e && e.pers && PERS[e.pers] ? e.pers : null; }
+/* 性格决定上限和走向：潜力上限加减、开始衰退的年龄 */
+/* 老将：速度和体能逐年下滑（其他能力不动），体能低了更容易累、更常被轮换，年轻替补就有机会上场 */
+function ageCut(p) { const on = 31 + (PERS_AGE[persOf(p)] || 0), y = (p.age || 0) - on + 1; return y > 0 ? { spd: Math.round(Math.min(14, y * 2.2)), sta: Math.round(Math.min(16, y * 2.6)) } : null; }
+var AC_DONE = new WeakMap();
+function applyAgeCuts() { Object.values(PDB).forEach(L => L.forEach(p => { const A = p.attributes; if (!A || typeof p.age !== 'number') return; if (!AC_DONE) AC_DONE = new WeakMap(); const prev = AC_DONE.get(A); if (prev) { if (A.spd != null) A.spd += prev.spd; if (A.sta != null) A.sta += prev.sta; }
+  const c = ageCut(p) || { spd: 0, sta: 0 }, got = { spd: 0, sta: 0 }; ['spd', 'sta'].forEach(k => { if (A[k] != null && c[k]) { const nv = Math.max(30, A[k] - c[k]); got[k] = A[k] - nv; A[k] = nv; } }); AC_DONE.set(A, got); p.ageCut = got.spd || got.sta ? got : null; })); }
+function persOf(x) { const ov = persEd(x); if (ov) return ov; const k = persKey(x); const hit = PERS_C.get(k); if (hit) return hit; const v = persOf0(k); PERS_C.set(k, v); return v; }
 function persOf0(k) { let h = ghash('pers|' + k); for (const [n, w] of PERS_W) { if (h < w) return n; h -= w; } return '平和'; }
 const persChip = x => { const n = persOf(x), d = PERS[n]; return `<span class="chip" title="${esc(d[0] + '：' + d[1])}" style="font-size:11px">性格 · ${n}</span>`; };
 function pfSeason(s) {
@@ -5608,7 +5619,7 @@ function openPlayer(team, name) {
     <button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(p.rating)};text-shadow:0 0 22px ${rtColor(p.rating)}55">${p.rating}</div><span class="mono dim" style="font-size:11px">${p.pos} · #${p.no}</span></div>
       <div style="min-width:0"><div class="tname" style="margin-bottom:4px">${TD[team] ? crest(team, 20) : ecrest(team, 20)}<span class="muted" style="font-size:12px">${esc(team)}${TD[team] ? '' : ' · ' + esc(extTag(team))}</span></div><h3>${esc(p.name)}</h3>
-      <div class="btns" style="margin-top:8px"><span class="chip" title="主位置 · 其他可踢位置（可在编辑资料里改）">位置 ${esc(p.pos)}${(p.alt || altDef(p)).length ? ' · ' + (p.alt || altDef(p)).map(esc).join(' / ') : ''}</span><span class="chip">惯用${esc(p.foot || footDef(p))}${footNote(p) ? ` · ${footNote(p)}` : ''}</span><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span><span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageP(p, team))}${payMul(p, team) !== 1 ? `（续约${payMul(p, team) > 1 ? '加' : '降'}薪 ${Math.round(Math.abs(payMul(p, team) - 1) * 100)}%）` : ''}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
+      <div class="btns" style="margin-top:8px"><span class="chip" title="主位置 · 其他可踢位置（可在编辑资料里改）">位置 ${esc(p.pos)}${(p.alt || altDef(p)).length ? ' · ' + (p.alt || altDef(p)).map(esc).join(' / ') : ''}</span><span class="chip">惯用${esc(p.foot || footDef(p))}${footNote(p) ? ` · ${footNote(p)}` : ''}</span><span class="chip">${esc(p.nat)}</span><span class="chip">${p.age} 岁</span>${p.uid || pid != null ? persChip(p.uid ? p : 'p' + pid) : ''}${p.ageCut ? `<span class="chip" title="老将：速度和体能逐年下滑，其他能力不变">年龄 · 速度 −${p.ageCut.spd} 体能 −${p.ageCut.sta}</span>` : ''}<span class="chip">${p.height}cm · ${p.weight}kg</span><span class="chip gold">${esc(p.value)}</span><span class="chip">年薪 ${money(wageP(p, team))}${payMul(p, team) !== 1 ? `（续约${payMul(p, team) > 1 ? '加' : '降'}薪 ${Math.round(Math.abs(payMul(p, team) - 1) * 100)}%）` : ''}</span><span class="chip mono" style="font-size:11px">${plyId(pid, p.uid)}</span>${S.teams.includes(team) ? `<span class="chip ${contractEnd(p, team) === SEASON ? 'bad' : ''}">合同至 ${SN(contractEnd(p, team))}</span>` : ''}${p.fromClub ? `<span class="chip">外援 · 来自 ${esc(p.fromClub)}（${esc(extTag(p.fromClub))}）</span>` : p.youth ? '<span class="chip">青训出品</span>' : pid != null && homeClub(pid) ? `<span class="chip">母队 ${esc(homeClub(pid))}</span>` : ''}${pid != null ? familyChips(pid) : ''}</div></div></div>
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(p.uid || '')}" style="padding:5px 10px;font-size:12px" ${p.uid ? '' : 'disabled'}>✎ 编辑资料</button>${cmpBtn(pid != null ? 'p:' + pid : 't:' + team + '|' + p.name, p.name)}${mktActive() && PDB[team] && p.uid && typeof p.age0 === 'number' ? (mktGet().listed[p.uid] ? '<span class="chip">已挂牌</span>' : `<button class="btn ghost" data-act="mkList" data-id="${esc(p.uid)}" style="padding:5px 10px;font-size:12px">挂牌出售</button>`) : ''}${typeof p.age === 'number' && p.age <= 20 ? `<button class="btn ghost" ${scoutBtn({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team, uid: p.uid })} style="padding:5px 10px;font-size:12px">${ic('search')} 球探报告</button>` : ''}</div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${skillBlock(skillsOf(p))}
@@ -7285,7 +7296,7 @@ function wlCareerHTML(id, title = '威联赛时代（W01–W50）') {
   const t = C.tot, cell = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
   return `<div><div class="eyebrow" style="margin-bottom:6px">${title} · ${WN(C.L[0][0])}–${WN(C.L[C.L.length - 1][0])}</div>
     <div class="stats3">${cell(t.apps + t.capps, '出场（全部赛事）')}${cell(t.g + t.cg, '进球')}${cell(t.a + t.ca, '助攻')}</div>
-    <div class="btns" style="gap:6px;margin-top:8px">${tg && wlP(id).pid >= 0 ? `<span class="chip gold">${esc(WL_TAGS[tg] ? WL_TAGS[tg].title : tg)}</span>` : ''}${wlP(id).pid < 0 && C.best && !by['金球奖'] ? `<span class="chip">金球奖最高排名：第 ${C.best.rk} 名 <span class="dim" style="font-size:10.5px">${WN(C.best.w)}</span></span>` : ''}${chips}</div>
+    <div class="btns" style="gap:6px;margin-top:8px">${wlP(id).pid < 0 && C.best && !by['金球奖'] ? `<span class="chip">金球奖最高排名：第 ${C.best.rk} 名 <span class="dim" style="font-size:10.5px">${WN(C.best.w)}</span></span>` : ''}${chips}</div>
     <details style="margin-top:8px"><summary class="note" style="cursor:pointer">逐季数据（联赛 + 杯赛）</summary><div class="tw" style="margin-top:6px"><table><thead><tr><th class="l">赛季</th><th class="l">球队</th><th>年龄</th><th>能力</th><th>联赛出场</th><th>联赛进球</th><th>联赛助攻</th><th>联赛评分</th><th>杯赛出场</th><th>杯赛进球</th><th>杯赛助攻</th><th>全场最佳</th></tr></thead><tbody>
     ${C.L.map(([w, r]) => `<tr><td class="l mono">${WN(w)}</td><td class="l">${esc(r.team)}${r.inLg ? '' : ' <span class="dim" style="font-size:11px">次级联赛</span>'}</td><td>${wlAge(wlP(id), w)}</td><td>${r.rt}</td><td>${r.apps}</td><td>${r.g}</td><td>${r.a}</td><td>${r.apps ? r.avg.toFixed(2) : '–'}</td><td>${r.capps}</td><td>${r.cg}</td><td>${r.ca}</td><td>${r.motm}</td></tr>`).join('')}
     <tr style="font-weight:800"><td class="l">合计</td><td class="l">${C.L.length} 季</td><td></td><td></td><td>${t.apps}</td><td>${t.g}</td><td>${t.a}</td><td>${t.apps ? t.avg.toFixed(2) : '–'}</td><td>${t.capps}</td><td>${t.cg}</td><td>${t.ca}</td><td>${t.motm}</td></tr></tbody></table></div></details></div>`;
@@ -7298,7 +7309,7 @@ function openWLPlayer(id) {
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div class="pcard"><div style="display:grid;justify-items:center;gap:6px"><div class="ovr" style="color:${rtColor(peak)}">${peak}</div><span class="mono dim" style="font-size:11px">巅峰 · ${esc(p.pos)}</span></div>
     <div style="min-width:0"><div class="tname" style="margin-bottom:4px;gap:4px">${teams.map(t => crest(t, 20)).join('')}<span class="muted" style="font-size:12px;margin-left:4px">${teams.map(esc).join(' · ')}</span></div><h3>${esc(p.name)}</h3>
-    <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span>${p.tag ? `<span class="chip gold">${esc(WL_TAGS[p.tag] ? WL_TAGS[p.tag].title : p.tag)}</span>` : ''}<span class="chip">威联赛时代球员</span><span class="chip">${C.L[0][0] === 1 ? `W01（威联赛首季）已在队 · ${wlAge(p, 1)} 岁` : `${WN(C.L[0][0])} ${wlAge(p, C.L[0][0]) > 21 ? '加盟' : '出道'} · ${wlAge(p, C.L[0][0])} 岁`}</span><span class="chip">${WN(C.L[C.L.length - 1][0])} 后${C.L[C.L.length - 1][0] === 50 && !p.tag ? '随威联赛落幕' : '退役'} · ${wlAge(p, C.L[C.L.length - 1][0])} 岁</span></div></div></div>
+    <div class="btns" style="margin-top:8px"><span class="chip">${esc(p.nat)}</span><span class="chip">威联赛时代球员</span><span class="chip">${C.L[0][0] === 1 ? `W01（威联赛首季）已在队 · ${wlAge(p, 1)} 岁` : `${WN(C.L[0][0])} ${wlAge(p, C.L[0][0]) > 21 ? '加盟' : '出道'} · ${wlAge(p, C.L[0][0])} 岁`}</span><span class="chip">${WN(C.L[C.L.length - 1][0])} 后${C.L[C.L.length - 1][0] === 50 && !p.tag ? '随威联赛落幕' : '退役'} · ${wlAge(p, C.L[C.L.length - 1][0])} 岁</span></div></div></div>
     <div class="btns">${cmpBtn('w:' + id, p.name)}</div>
     ${wlCareerHTML(id, '威联赛生涯')}</div>`;
   if (!d.open) d.showModal();
@@ -7603,6 +7614,7 @@ function confirmReset() {
   document.addEventListener('click', () => { box.style.display = 'none'; }, true);
 })();
 /* ---------- Events ---------- */
+document.addEventListener('change', e => { if (e.target && e.target.id === 'edPers') { const n = document.getElementById('edPersNote'); if (n && PERS[e.target.value]) n.textContent = PERS[e.target.value][1]; } });
 document.addEventListener('change', e => { const el = e.target.closest && e.target.closest('[data-role]'); if (!el) return; setRole(el.dataset.t, el.dataset.role, el.value); });
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-pid],[data-hm],[data-statsgo],[data-tmode],[data-pmode],[data-go],[data-act],[data-team],[data-player],[data-fx],[data-tbl],[data-w],[data-neutral],[data-line],[data-speed],[data-hs],[data-sm],[data-scat],[data-sline],[data-ext],[data-cupm]');
