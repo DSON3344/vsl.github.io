@@ -1268,6 +1268,17 @@ function acadQ(t) {
   return ACQ_C[t] || '良好';
 }
 const ACAD_POS = { GK: ['GK'], DF: ['CB', 'CB', 'LB', 'RB'], MF: ['CDM', 'CM', 'CM', 'CAM', 'LM', 'RM'], FW: ['ST', 'ST', 'CF', 'LW', 'RW'] };
+/* 联赛金字塔和自动生成球队的常量（放在开场计算之前，免得旧存档里有升上来的下级球队时读不到） */
+const PYR_NAMES = ["雷豹", "银狐", "赤鹰", "黑熊", "铁犀", "野牛", "苍狼", "金雕", "海鲨", "战象", "白虎", "灰熊", "烈马", "雪豹", "夜枭", "青蛇", "火蜥", "沙狐", "巨鳄", "狂狮", "风隼", "斑马", "铁羚", "蓝鲸", "山猫", "赤狐", "冰狼", "雷鹰", "狂牛", "飞鱼", "海狮", "雄鹿", "金蝎", "黑曼巴", "赤蚁", "狂犀", "铁甲龟", "红隼", "夜狼", "刺猬", "獠牙", "角马", "秃鹫", "蜂鸟", "海燕", "野马", "红狼", "霜熊", "金羚", "暴熊", "疾鹰", "血狼", "银鲨", "黑鹳", "毒蛛", "鬣狗", "狼獾", "渡鸦", "猎犬", "卡斯塔尼亚", "亚特伦", "伯恩斯特", "艾斯托利", "弗雷德港", "克雷斯顿", "萨尔瓦诺", "雅瑟兰", "泽维尔堡", "德拉维亚", "戈德里克", "伊斯特林", "基斯顿", "尼斯特鲁", "佩里兰", "奎恩斯维", "塔尔加", "乌尔班尼", "西尔维亚", "赞德拉", "贝克斯利", "卡斯维尔", "达尔顿", "埃文斯堡", "菲尔德", "格兰维尔", "霍克斯顿", "艾斯林", "杰拉德港", "克莱蒙", "莱德维尔", "蒙特罗", "纳维尔", "奥兰顿", "普莱斯通", "奎罗斯", "雷德蒙", "索尔特港", "汤普顿", "厄尔登", "瓦伦蒂", "韦斯特罗", "亚伦德", "泽兰德", "布雷克联", "艾尔多城", "维多兰联", "莫德林城", "塞尔维克联", "霍尔堡竞技", "格林联", "奥斯维尔城", "科尔丁联", "达文波特城", "梅里亚竞技", "诺斯联", "托伦斯联", "瓦尔德克竞技", "温特联", "艾伦城", "贝尔芬联", "卡朗德竞技", "埃尔斯通城", "费尔海文联", "哈伯联", "洛文斯竞技", "马雷诺城", "欧文联", "罗斯蒙竞技", "斯坦联", "维斯塔竞技", "沃伦联", "约克塞城", "阿尔德联", "雷霆鹿", "风暴鲨", "烈焰鹰", "冰川熊", "黄昏狼", "晨星马", "夜雾狐", "雷谷豹", "赤沙蝎", "银月狼", "铁峰鹰", "蓝湖鹤", "黑石熊", "金原狮", "白崖隼", "红岩狐", "碧海鲸", "苍山虎", "绿洲羚", "寒霜鹿", "卡德拉", "米尔顿港", "斯普林维尔", "塔维斯托", "里弗代尔", "布兰德利", "奥克伍德", "赛伦斯特"];
+const PYR_SET = new Set(PYR_NAMES), PYR_TIERS = [['威冠', 20], ['威甲', 24], ['威乙', 28], ['威丙', 32], ['业余', 64]], PYR_LOW = ['威甲', '威乙', '威丙', '业余'];
+const PYR_BAND = { 威冠: [72, 79], 威甲: [66, 74], 威乙: [60, 68], 威丙: [54, 62], 业余: [44, 57] }, PYR_PO = { 威丙: 1, 业余: 1 };
+const GEN_PLAN = [['GK', 3, 1], ['DF', 9, 4], ['MF', 8, 4], ['FW', 6, 2]];
+const pyrStr = t => (typeof S !== 'undefined' && S && S.pyr && S.pyr.str[t] != null) ? S.pyr.str[t] : null;
+const pyrStrAny = t => TD[t] ? clubStrAt(t, SEASON) : (pyrStr(t) ?? 70); /* 有完整名单的球队按名单算实力 */
+let PYR_C = null;
+const PYR_PO_WK = { qf: 35, sf: 36, f: 38 };
+const pyrCol = t => `hsl(${Math.floor(ghash('pc|' + t) * 360)} 45% 42%)`;
+const pcrest = (t, n = 18) => tImg(t) ? `<img class="crest" src="${tImg(t)}" width="${n}" height="${n}" alt="" style="flex:none;border-radius:4px">` : `<span aria-hidden="true" style="width:${n}px;height:${n}px;flex:none;display:inline-grid;place-items:center;border-radius:50%;background:${pyrCol(t)};color:#fff;font-size:${Math.round(n * .55)}px;font-weight:800;line-height:1">${esc(t[0])}</span>`;
 function acadBase(t) { const v = ((typeof PDB0 !== 'undefined' && PDB0[t]) || PDB[t] || []).map(p => p.rating).sort((a, b) => b - a).slice(0, 11); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 78; }
 /* 青训少年的生成很慢（取名要避开所有已用的名字），而且每次重算都完全一样：第一次生成后记下来，之后直接复制（同时把名字标记为已用） */
 var KID_MEMO = new Map();
@@ -3660,12 +3671,8 @@ const pois = (l, rnd) => { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p
    只有 27 家持有威超执照的俱乐部有完整球员名单、能踢威超；其余 161 队只有名字和实力值，按球队踢（像杯赛一样快）。
    威冠前 3 名升威超（下级球队会自动生成完整名单），最后 4 名降威甲。其余各级之间升 4 降 4。
    威丙、业余单循环，前 8 名打季后赛（单场淘汰），4 强升级。 */
-const PYR_NAMES = ["雷豹", "银狐", "赤鹰", "黑熊", "铁犀", "野牛", "苍狼", "金雕", "海鲨", "战象", "白虎", "灰熊", "烈马", "雪豹", "夜枭", "青蛇", "火蜥", "沙狐", "巨鳄", "狂狮", "风隼", "斑马", "铁羚", "蓝鲸", "山猫", "赤狐", "冰狼", "雷鹰", "狂牛", "飞鱼", "海狮", "雄鹿", "金蝎", "黑曼巴", "赤蚁", "狂犀", "铁甲龟", "红隼", "夜狼", "刺猬", "獠牙", "角马", "秃鹫", "蜂鸟", "海燕", "野马", "红狼", "霜熊", "金羚", "暴熊", "疾鹰", "血狼", "银鲨", "黑鹳", "毒蛛", "鬣狗", "狼獾", "渡鸦", "猎犬", "卡斯塔尼亚", "亚特伦", "伯恩斯特", "艾斯托利", "弗雷德港", "克雷斯顿", "萨尔瓦诺", "雅瑟兰", "泽维尔堡", "德拉维亚", "戈德里克", "伊斯特林", "基斯顿", "尼斯特鲁", "佩里兰", "奎恩斯维", "塔尔加", "乌尔班尼", "西尔维亚", "赞德拉", "贝克斯利", "卡斯维尔", "达尔顿", "埃文斯堡", "菲尔德", "格兰维尔", "霍克斯顿", "艾斯林", "杰拉德港", "克莱蒙", "莱德维尔", "蒙特罗", "纳维尔", "奥兰顿", "普莱斯通", "奎罗斯", "雷德蒙", "索尔特港", "汤普顿", "厄尔登", "瓦伦蒂", "韦斯特罗", "亚伦德", "泽兰德", "布雷克联", "艾尔多城", "维多兰联", "莫德林城", "塞尔维克联", "霍尔堡竞技", "格林联", "奥斯维尔城", "科尔丁联", "达文波特城", "梅里亚竞技", "诺斯联", "托伦斯联", "瓦尔德克竞技", "温特联", "艾伦城", "贝尔芬联", "卡朗德竞技", "埃尔斯通城", "费尔海文联", "哈伯联", "洛文斯竞技", "马雷诺城", "欧文联", "罗斯蒙竞技", "斯坦联", "维斯塔竞技", "沃伦联", "约克塞城", "阿尔德联", "雷霆鹿", "风暴鲨", "烈焰鹰", "冰川熊", "黄昏狼", "晨星马", "夜雾狐", "雷谷豹", "赤沙蝎", "银月狼", "铁峰鹰", "蓝湖鹤", "黑石熊", "金原狮", "白崖隼", "红岩狐", "碧海鲸", "苍山虎", "绿洲羚", "寒霜鹿", "卡德拉", "米尔顿港", "斯普林维尔", "塔维斯托", "里弗代尔", "布兰德利", "奥克伍德", "赛伦斯特"];
-const PYR_SET = new Set(PYR_NAMES), PYR_TIERS = [['威冠', 20], ['威甲', 24], ['威乙', 28], ['威丙', 32], ['业余', 64]], PYR_LOW = ['威甲', '威乙', '威丙', '业余'];
-const PYR_BAND = { 威冠: [72, 79], 威甲: [66, 74], 威乙: [60, 68], 威丙: [54, 62], 业余: [44, 57] }, PYR_PO = { 威丙: 1, 业余: 1 };
 /* ---------- 下级球队升上威超：自动生成完整的一线队名单（S.gen：{ 队名: { s0: 升上来的赛季, str: 当时的实力值 } }） ----------
    名单走跟青训球员同一套机制（ACAD + 「s0 提拔进一线队」）：会成长、会老、会被买卖、30 岁后下滑、35 岁左右退役。之后它就跟原本的球队一样有阵容、青训、U21、转会 */
-const GEN_PLAN = [['GK', 3, 1], ['DF', 9, 4], ['MF', 8, 4], ['FW', 6, 2]];
 function genKids(t) { const G = S.gen[t], rnd = seeded('gen|' + t + '|' + G.s0), out = []; let i = 0;
   GEN_PLAN.forEach(([line, n, st]) => { for (let j = 0; j < n; j++, i++) { const age = st > j ? 23 + Math.floor(rnd() * 9) : 18 + Math.floor(rnd() * 15), tgt = st > j ? G.str + 1 + rnd() * 3 : G.str - 3 - rnd() * 8;
     const pot = Math.round(Math.min(92, tgt + Math.max(0, 22 - age) * 2.6 + (age <= 21 ? rnd() * 4 : 0))), pos = ACAD_POS[line][Math.floor(rnd() * ACAD_POS[line].length)], { name, nat } = youthName(t, rnd); YOUTH_USED.add(name);
@@ -3684,14 +3691,11 @@ function pyrInit() { if (typeof S === 'undefined' || !S) return null; if (S.pyr 
   if (S.pyr && S.pyr.v === 1) { S.pyr.T['威冠'] = Object.keys(TD).filter(t => !S.teams.includes(t)).concat(S.pyr.T['威冠'].filter(t => !TD[t])); S.pyr.v = 2; return S.pyr; } /* 旧存档：有完整名单的球队也正式放进威冠名单 */ const r = seeded('pyr0|v1'), L = PYR_NAMES.slice(); for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [L[i], L[j]] = [L[j], L[i]]; }
   const T = {}, str = {}; let i = 0; const nLic = Math.max(0, Object.keys(TD).length - 20); PYR_TIERS.forEach(([k, n]) => { const m = k === '威冠' ? n - nLic : n; T[k] = L.slice(i, i + m); i += m; const [lo, hi] = PYR_BAND[k]; T[k].forEach(t => str[t] = Math.round((lo + r() * (hi - lo)) * 10) / 10); });
   T['威冠'] = Object.keys(TD).filter(t => !S.teams.includes(t)).concat(T['威冠']); S.pyr = { v: 2, k: 0, T, str }; return S.pyr; }
-const pyrStr = t => (typeof S !== 'undefined' && S && S.pyr && S.pyr.str[t] != null) ? S.pyr.str[t] : null;
 function pyrTierOf(t) { if (S.teams.includes(t)) return '威超'; const P = pyrInit(); if (!P) return null; for (const k in P.T) if (P.T[k].includes(t)) return k; return null; }
 function pyrMembers(k) { const P = pyrInit(); if (!P) return []; return (P.T[k] || []).filter(t => !S.teams.includes(t)); }
-const pyrStrAny = t => TD[t] ? clubStrAt(t, SEASON) : (pyrStr(t) ?? 70); /* 有完整名单的球队按名单算实力 */
 function pyrMatch(a, b, rnd, neutral) { const d = pyrStrAny(a) - pyrStrAny(b), adv = neutral ? 1 : 1.12; return [pois(1.35 * Math.exp(0.08 * d) * adv, rnd), pois(1.35 * Math.exp(-0.08 * d) / adv, rnd)]; }
 const pyrTable = (T, days) => { const R = {}; T.forEach(t => R[t] = [t, 0, 0, 0, 0, 0, 0]); days.forEach(day => day.forEach(([a, b, x, y]) => { const A = R[a], B = R[b]; if (!A || !B) return; A[5] += x; A[6] += y; B[5] += y; B[6] += x; if (x > y) { A[1] += 3; A[2]++; B[4]++; } else if (x < y) { B[1] += 3; B[2]++; A[4]++; } else { A[1]++; B[1]++; A[3]++; B[3]++; } })); return Object.values(R).sort((p, q) => q[1] - p[1] || (q[5] - q[6]) - (p[5] - p[6]) || q[5] - p[5] || (p[0] < q[0] ? -1 : 1)); };
 /* 本季下面四级的全部比赛（固定种子，同一份进度在哪台设备上算都一样） */
-let PYR_C = null;
 function pyrSeason() { const P = pyrInit(); if (!P) return null; const key = SEASON + '|' + saltOf(SEASON) + '|' + (S.reset || '') + '|' + P.k; if (PYR_C && PYR_C.key === key) return PYR_C.R; const R = {};
   PYR_LOW.forEach(k => { const T = P.T[k].slice(), rnd = seeded('pyr|' + k + '|' + key), po = PYR_PO[k]; let FX = ENGINE.fixtures(T.slice().sort(() => rnd() - 0.5)); if (po) FX = FX.slice(0, T.length - 1);
     const days = FX.map(Rd => Rd.map(({ h, a }) => { const [x, y] = pyrMatch(h, a, rnd); return [h, a, x, y]; })), table = pyrTable(T, days), o = { days, table };
@@ -3700,7 +3704,6 @@ function pyrSeason() { const P = pyrInit(); if (!P) return null; const key = SEA
     o.champ = o.champ || table[0][0]; R[k] = o; });
   PYR_C = { key, R }; return R; }
 /* 揭晓进度：常规赛按威超的周数等比例揭晓；有季后赛的级别常规赛在第 34 周踢完，第 35 周 8 强、第 36 周半决赛、第 38 周决赛 */
-const PYR_PO_WK = { qf: 35, sf: 36, f: 38 };
 function pyrMd(k, N, p) { return PYR_PO[k] ? Math.min(N, Math.floor(Math.min(p, 34) * N / 34)) : Math.min(N, Math.floor(p * N / 38)); }
 /* 季末存档：各级最终积分榜、季后赛、冠军 */
 function pyrArchive() { const R = pyrSeason(); if (!R) return null; const o = {}; PYR_LOW.forEach(k => { const x = R[k]; o[k] = { table: x.table, champ: x.champ }; if (x.qf) { o[k].qf = x.qf; o[k].sf = x.sf; o[k].f = x.f; } }); return o; }
@@ -3714,8 +3717,6 @@ function pyrAdvance(A, rel) { const P = pyrInit(); if (!P || !A || !A.pyr) retur
   ks.forEach(k => { const [lo, hi] = PYR_BAND[k]; NT[k].forEach(t => { if (TD[t]) return; let v = (P.str[t] ?? (lo + hi) / 2) + (rnd() - 0.5) * 2.4 + (moved[t] || 0); if (v < lo) v += (lo - v) * 0.5; if (v > hi) v -= (v - hi) * 0.5; P.str[t] = Math.round(v * 10) / 10; }); });
   P.T = NT; P.k = (P.k || 0) + 1; P.last = { s: A.s, up: UP, dn: DN }; PYR_C = null; }
 /* 下级球队的队徽：按名字固定一种颜色，写名字的第一个字 */
-const pyrCol = t => `hsl(${Math.floor(ghash('pc|' + t) * 360)} 45% 42%)`;
-const pcrest = (t, n = 18) => tImg(t) ? `<img class="crest" src="${tImg(t)}" width="${n}" height="${n}" alt="" style="flex:none;border-radius:4px">` : `<span aria-hidden="true" style="width:${n}px;height:${n}px;flex:none;display:inline-grid;place-items:center;border-radius:50%;background:${pyrCol(t)};color:#fff;font-size:${Math.round(n * .55)}px;font-weight:800;line-height:1">${esc(t[0])}</span>`;
 let CUP_REC = null, CUPD = null;
 /* 每场杯赛记下属于哪项赛事、哪个阶段、在威超第几周踢（赛程、直播比分、赛后数据都靠它） */
 let CUP_TAG = null, CUP_LEG = 0; const cupTag = () => CUP_TAG ? { ...CUP_TAG, leg: CUP_LEG } : null;
