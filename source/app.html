@@ -695,7 +695,11 @@ function localSave() {
   try { localStorage.setItem(LKEY, 'LZ:' + LZString.compressToUTF16(str)); return true; }
   catch (e) { if (!LS_WARNED) { LS_WARNED = true; setTimeout(() => toast('本机存储空间不足，进度只保存在云端'), 0); } return false; }
 }
-function save() { S.updated = Date.now(); localSave(); cloudQueue(); }
+/* 初始设定：球员资料、阵型、首发安排、队内职务（队长、主罚等）、球衣颜色、非卖品、转会设置。
+   第一次存档时自动记下一份；「全部重来」会套回这份，不用再调一遍。可以在重来的确认框里改成「现在的设定」。 */
+const INIT_KEYS = ['edits', 'formSet', 'xio', 'roles', 'kits', 'nfs', 'mktCfg'];
+function initSnap() { const o = {}; INIT_KEYS.forEach(k => { if (S[k] != null) o[k] = JSON.parse(JSON.stringify(S[k])); }); o.at = { s: SEASON, r: playedRounds(), t: Date.now() }; return o; }
+function save() { if (S && !S.init) { try { S.init = initSnap(); } catch (e) { } } S.updated = Date.now(); localSave(); cloudQueue(); }
 function load() { try { let raw = localStorage.getItem(LKEY); if (raw && raw.startsWith('LZ:')) raw = LZString.decompressFromUTF16(raw.slice(3)); const s = JSON.parse(raw); if (s && s.__arch) { const A = []; for (const n of s.__arch) { const z = localStorage.getItem(LKEY + '|a' + n); if (!z) throw new Error('arch ' + n); const x = JSON.parse(LZString.decompressFromUTF16(z)); A.push(x); ARCH_W.set(x, (x.cmp ? 'c' : '') + (x.ps ? x.ps.length : 0)); } s.archive = A; delete s.__arch; } if (s && s.fx && s.teams) return s; } catch (e) { console.error(e); } return null; }
 // 比赛结果压缩存储。ev: [分钟, 类型, 主/客, 球员, 助攻者/被换下者, 附加值（点球=1 / 伤停轮数 / 被扑=1 / 直红=1）]
 // pl: [射门, 射正, 抢断, 扑救, 评分×10, 分钟, 关键传球, 拦截, 传球, 成功传球, 点球进球, 罚丢点球, 是否首发, 尝试过人, 成功过人]；lu: 出场名单 [球员, 位置]
@@ -7451,7 +7455,7 @@ function vHistory() {
 
 function confirmResetAll() {
   const d = $('#dlg'), n = (S.archive || []).length;
-  d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">全部重来，回到 S01 第 1 轮？</h2><p class="muted" style="margin:0">会清空 ${n ? `已经踢完的 ${n} 个赛季（${S.archive.map(A => SN(A.s)).join('、')}）和` : ''}本季已模拟的 ${playedRounds()} 轮，各队每季的阵容和人员变动保持不变。<br><b>你改过的球员资料（${Object.keys(S.edits || {}).length} 名）会保留</b>，重来后不用再改一遍。${WEB.on && !WEB.key ? '<br>这台设备还没解锁云端同步，只会重置这台设备上的进度。' : ''}</p>
+  d.innerHTML = `<div class="dlg"><h2 style="font-size:18px;font-weight:900">全部重来，回到 S01 第 1 轮？</h2><p class="muted" style="margin:0">会清空 ${n ? `已经踢完的 ${n} 个赛季（${S.archive.map(A => SN(A.s)).join('、')}）和` : ''}本季已模拟的 ${playedRounds()} 轮，各队每季的阵容和人员变动保持不变。<br><b>会套回初始设定</b>（${S.init && S.init.at ? `记于 ${SN(S.init.at.s)} ${S.init.at.r ? `第 ${S.init.at.r} 轮后` : '开赛前'} · ${clk(S.init.at.t)}` : '就是现在的设定'}）：${Object.keys((S.init || S).edits || {}).length} 名球员的资料、各队阵型和首发安排、队内职务、球衣颜色、非卖品、转会设置。${S.init ? '<br><button class="btn ghost" data-act="initNow" style="margin-top:6px;padding:4px 10px;font-size:12px">改用现在的设定当初始设定</button>' : ''}${WEB.on && !WEB.key ? '<br>这台设备还没解锁云端同步，只会重置这台设备上的进度。' : ''}</p>
     <p class="note" style="margin:0">S01–S17 的阵容是固定的历史；S18 起的成长、退役、青训会按同样的方式推算，转会则会因为你在转会市场里的决定而不同。重来会清空所有转会市场的决定。</p>
     <div class="btns" style="justify-content:flex-end"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="doResetAll">全部重来</button></div></div>`;
   if (!d.open) d.showModal();
@@ -7584,8 +7588,8 @@ function autoSimTo(target) {
   step();
 }
 async function doResetAll() {
-  const keepEd = S && S.edits; /* 你改过的球员资料（名字、号码、位置、能力等）全部重来后照样保留 */
-  S = newSeason(); if (keepEd && Object.keys(keepEd).length) S.edits = JSON.parse(JSON.stringify(keepEd)); S.updated = Date.now(); S.reset = S.updated;
+  const I = (S && S.init) || (S ? initSnap() : null); /* 套回初始设定（球员资料、阵型、首发、职务、球衣、非卖品、转会设置） */
+  S = newSeason(); if (I) { INIT_KEYS.forEach(k => { if (I[k] != null) S[k] = JSON.parse(JSON.stringify(I[k])); }); S.init = I; } S.updated = Date.now(); S.reset = S.updated;
   localSave();
   for (let i = 0; i < 38; i++) DIRTY.add(i);
   toast('正在重置…');
@@ -7744,6 +7748,7 @@ document.addEventListener('click', e => {
   if (act === 'autoGo') { $('#dlg').close(); return autoSimTo(SEASON + (+el.dataset.n)); }
   if (act === 'calendar') return openCalendar();
   if (act === 'newsAll') { newsAll = !newsAll; return render(); }
+  if (act === 'initNow') { S.init = initSnap(); save(); toast('已把现在的设定存为初始设定'); return confirmResetAll ? confirmResetAll() : $('#dlg').close(); }
   if (act === 'doResetAll') { $('#dlg').close(); doResetAll(); return; }
   if (act === 'doReset') { if (S.market) { delete S.market[SEASON]; delete S.market['w' + SEASON]; } rollSalt(SEASON); S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
