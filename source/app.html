@@ -2184,21 +2184,22 @@ function u21Play(h, a, key, P) { const rnd = seeded('u21|' + key), X = { h: u21S
     if (P) L.forEach(x => { const o = st[x.k.id], rt = Math.max(4.5, Math.min(10, 6.5 + (gd > 0 ? 0.35 : gd < 0 ? -0.3 : 0) + o.g * 0.85 + o.a * 0.5 + (x.r - mAv) * 0.035 + (x.line === 'GK' || x.line === 'DF' ? (conc === 0 ? 0.45 : -conc * 0.12) : 0) + (rnd() - 0.5) * 0.9));
       const q = P[x.k.id] = P[x.k.id] || [0, 0, 0, 0, sd === 'h' ? h : a]; q[0]++; q[1] += o.g; q[2] += o.a; q[3] += Math.round(rt * 10); q[4] = sd === 'h' ? h : a; }); });
   return [hg, ag, 0, (EV.h || []).join('|') + '#' + (EV.a || []).join('|')]; } /* 第 4 项：进球 / 助攻（「射手>助攻」，| 分隔，# 前主队后客队），存在赛程里给比赛详情用 */
-/* 27 队单循环（圆圈法，单数队每轮一队轮空）：跟一线队第 1–27 轮同步；前 8 名进季后赛：第 29 轮 8 强、第 31 轮半决赛、第 33 轮决赛 */
+/* S04 起：U21 就是当季威超 20 队的青训，双循环 38 轮，跟一线队每轮同步，积分榜第一夺冠，不打季后赛。
+   S03 及以前（存档里 U.drr 没有标记的）照旧：27 队单循环 + 前 8 名季后赛，第 29 轮 8 强、第 31 轮半决赛、第 33 轮决赛 */
 const U21_QF = 28, U21_SF = 30, U21_F = 32;
-function u21Teams() { const L = Object.keys(TD).filter(t => (ACAD[t] || []).length); if (L.length <= 27) return L; const tier = t => { const k = S.teams.includes(t) ? 0 : (() => { try { return ['威冠', '威甲', '威乙', '威丙', '业余'].indexOf(pyrTierOf(t)) + 1; } catch (e) { return 9; } })(); return k; }; return L.sort((a, b) => tier(a) - tier(b) || (clubStrAt(b, SEASON) - clubStrAt(a, SEASON))).slice(0, 27); } /* U21 联赛固定 27 队：威超和威冠的球队优先 */
+function u21Teams() { return S.teams.filter(t => TD[t]); } /* U21 联赛的球队 = 当季威超 20 队 */
 function u21Fixtures(s) { const T = u21Teams().sort(), rnd = seeded('u21fx|' + s + '|' + saltOf(s)); for (let i = T.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [T[i], T[j]] = [T[j], T[i]]; }
   const L = T.length % 2 ? T.concat([null]) : T.slice(), n = L.length, R = [];
   for (let r = 0; r < n - 1; r++) { const M = []; for (let i = 0; i < n / 2; i++) { const x = L[i], y = L[n - 1 - i]; if (x && y) M.push((r + i) % 2 ? [y, x] : [x, y]); } R.push(M); L.splice(1, 0, L.pop()); }
-  return R; }
-function u21Sync() { if (!S || !S.fx || !TD) return; let U = S.u21; if (!U || U.s !== SEASON || !U.fx) U = S.u21 = { s: SEASON, n: 0, t: {}, p: {}, fx: u21Fixtures(SEASON).map(r => r.map(([h, a]) => [h, a])) , po: {} };
+  return R.concat(R.map(M => M.map(([h, a]) => [a, h]))); } /* 双循环：后半程主客对调 */
+function u21Sync() { if (!S || !S.fx || !TD) return; let U = S.u21; if (!U || U.s !== SEASON || !U.fx) U = S.u21 = { s: SEASON, n: 0, t: {}, p: {}, fx: u21Fixtures(SEASON).map(r => r.map(([h, a]) => [h, a])) , po: {}, drr: 1 };
   const done = playedRounds(); let ch = false;
   while (U.n < done && S.fx[U.n] && S.fx[U.n].every(m => m.r)) { const ri = U.n, key = SEASON + '|' + saltOf(SEASON) + '|' + ri;
     if (ri < U.fx.length) U.fx[ri].forEach(m => { const r = u21Play(m[0], m[1], key + '|' + m[0], U.p); m[2] = r[0]; m[3] = r[1]; if (r[3] && r[3] !== '#') m[4] = r[3]; [[m[0], r[0], r[1]], [m[1], r[1], r[0]]].forEach(([t, f, a]) => { const T = U.t[t] = U.t[t] || [0, 0, 0, 0, 0, 0]; T[0]++; T[f > a ? 1 : f === a ? 2 : 3]++; T[4] += f; T[5] += a; }); });
     const ko = (h, a, k2) => { const r = u21Play(h, a, key + '|' + k2, U.p); let w = r[0] > r[1] ? h : r[1] > r[0] ? a : null, pen = null; if (!w) { const hp = 3 + Math.floor(ghash('pen|' + key + k2) * 3), ap = hp + (ghash('pen2|' + key + k2) < 0.5 ? 1 : -1); pen = [hp, ap]; w = hp > ap ? h : a; } return [h, a, r[0], r[1], w, pen, r[3] && r[3] !== '#' ? r[3] : '']; };
-    if (ri === U21_QF) { const tb = u21Table(); if (tb.length >= 8) U.po.qf = [[0, 7], [3, 4], [1, 6], [2, 5]].map(([x, y], k) => ko(tb[x].t, tb[y].t, 'qf' + k)); }
-    if (ri === U21_SF) { if (U.po.qf) U.po.sf = [ko(U.po.qf[0][4], U.po.qf[1][4], 'sf1'), ko(U.po.qf[2][4], U.po.qf[3][4], 'sf2')]; else { const tb = u21Table(); if (tb.length >= 4) U.po.sf = [ko(tb[0].t, tb[3].t, 'sf1'), ko(tb[1].t, tb[2].t, 'sf2')]; } }
-    if (ri === U21_F && U.po.sf) { U.po.f = ko(U.po.sf[0][4], U.po.sf[1][4], 'f'); U.po.champ = U.po.f[4]; }
+    if (!U.drr && ri === U21_QF) { const tb = u21Table(); if (tb.length >= 8) U.po.qf = [[0, 7], [3, 4], [1, 6], [2, 5]].map(([x, y], k) => ko(tb[x].t, tb[y].t, 'qf' + k)); }
+    if (!U.drr && ri === U21_SF) { if (U.po.qf) U.po.sf = [ko(U.po.qf[0][4], U.po.qf[1][4], 'sf1'), ko(U.po.qf[2][4], U.po.qf[3][4], 'sf2')]; else { const tb = u21Table(); if (tb.length >= 4) U.po.sf = [ko(tb[0].t, tb[3].t, 'sf1'), ko(tb[1].t, tb[2].t, 'sf2')]; } }
+    if (!U.drr && ri === U21_F && U.po.sf) { U.po.f = ko(U.po.sf[0][4], U.po.sf[1][4], 'f'); U.po.champ = U.po.f[4]; }
     U.n++; ch = true; }
   return ch; }
 function u21Table() { const U = S.u21 || { t: {} }; return Object.entries(U.t).map(([t, T]) => ({ t, P: T[0], W: T[1], D: T[2], L: T[3], GF: T[4], GA: T[5], pts: T[1] * 3 + T[2] })).sort((a, b) => b.pts - a.pts || (b.GF - b.GA) - (a.GF - a.GA) || b.GF - a.GF); }
@@ -2216,13 +2217,13 @@ function kidSeasonPf(s) { const U = S.u21; if (!U || U.s !== s) return; S.kpf = 
   S.u21h = S.u21h || {}; const tb = u21Table(), ps = Object.entries(U.p).filter(([id]) => ACAD_ID[id]).map(([id, q]) => [id, q]).sort((a2, b2) => b2[1][1] - a2[1][1]); S.u21h[s] = { champ: (U.po && U.po.champ) || (tb[0] && tb[0].t), first: tb[0] && tb[0].t, top: ps[0] ? [(ACAD_ID[ps[0][0]] || {}).name, ps[0][1][4], ps[0][1][1]] : null, ...u21Awards(U) }; }
 /* U21 个人奖项：金靴（进球最多）、助攻王、最佳球员（出场 10 场以上，场均评分 + 进球助攻 + 冠军加成）、最佳门将（门将场均评分最高） */
 function u21Awards(U) { const P = Object.entries((U && U.p) || {}).filter(([id]) => ACAD_ID[id]).map(([id, q]) => ({ id, k: ACAD_ID[id], q })), nm = x => x ? [x.k.name, x.q[4], x.id] : null; if (!P.length) return {};
-  const boot = P.slice().sort((a, b) => b.q[1] - a.q[1] || b.q[2] - a.q[2])[0], ast = P.slice().sort((a, b) => b.q[2] - a.q[2] || b.q[1] - a.q[1])[0], champ = U.po && U.po.champ;
+  const boot = P.slice().sort((a, b) => b.q[1] - a.q[1] || b.q[2] - a.q[2])[0], ast = P.slice().sort((a, b) => b.q[2] - a.q[2] || b.q[1] - a.q[1])[0], champ = (U.po && U.po.champ) || (U.drr && U.n >= (U.fx || []).length && (() => { const t0 = u21Table()[0]; return t0 && t0.t; })());
   const sc = x => x.q[3] / 10 / x.q[0] + (x.q[1] + 0.6 * x.q[2]) / Math.max(10, x.q[0]) * 1.2 + (x.q[4] === champ ? 0.15 : 0), mvp = P.filter(x => x.q[0] >= 10).sort((a, b) => sc(b) - sc(a))[0];
   const gk = P.filter(x => x.q[0] >= 10 && ENGINE.LINE(x.k.pos) === 'GK').sort((a, b) => b.q[3] / b.q[0] - a.q[3] / a.q[0])[0];
   return { boot: boot ? [...nm(boot), boot.q[1]] : null, ast: ast ? [...nm(ast), ast.q[2]] : null, mvp: mvp ? [...nm(mvp), Math.round(mvp.q[3] / mvp.q[0]) / 10] : null, gk: gk ? [...nm(gk), Math.round(gk.q[3] / gk.q[0]) / 10] : null }; }
 function kpfOf(id, s) { const L = typeof S !== 'undefined' && S && S.kpf && S.kpf[id]; if (!L) return 0; let d = 0; L.forEach(([s0, v]) => { if (s >= s0) d += v; }); return d; }
 const u21N = t => `<button class="lnk" data-act="u21t" data-t="${esc(t)}" style="display:inline-flex;align-items:center;gap:6px">${u21c(t)}<span>${esc(t)} <span class="u21tag">U21</span></span></button>`;
-const u21Row = (x, i, t) => `<tr${x.t === t ? ' style="background:rgba(var(--acc-rgb),.12)"' : ''}${i < 8 && x.t !== t ? ' class="z1"' : ''}><td>${i + 1}</td><td class="l">${u21N(x.t)}</td><td>${x.P}</td><td>${x.W}</td><td>${x.D}</td><td>${x.L}</td><td class="mono">${x.GF}/${x.GA}</td><td><b>${x.pts}</b></td></tr>`;
+const u21Row = (x, i, t) => `<tr${x.t === t ? ' style="background:rgba(var(--acc-rgb),.12)"' : ''}${i < (S.u21 && S.u21.drr ? 1 : 8) && x.t !== t ? ' class="z1"' : ''}><td>${i + 1}</td><td class="l">${u21N(x.t)}</td><td>${x.P}</td><td>${x.W}</td><td>${x.D}</td><td>${x.L}</td><td class="mono">${x.GF}/${x.GA}</td><td><b>${x.pts}</b></td></tr>`;
 const U21_HEAD = '<thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进/失</th><th>分</th></tr></thead>';
 /* 球队页「青训」里：自家在 U21 的排名和梯队数据，完整的联赛在导航栏的「U21」 */
 function u21Panel(t) { if (SEASON >= HIST_END) return ''; u21Sync(); const U = S.u21, tb = u21Table(), me = tb.findIndex(x => x.t === t);
@@ -2264,14 +2265,14 @@ function vU21() { u21Sync(); const U = S.u21 || { n: 0, fx: [], p: {}, po: {} },
   const ko = (m, lab) => m ? `<div class="rk" style="grid-template-columns:70px minmax(0,1fr) auto minmax(0,1fr)"><span class="dim">${lab}</span><span style="display:flex;justify-content:flex-end;${m[4] === m[0] ? 'font-weight:800' : ''}">${u21N(m[0])}</span><b class="mono">${m[2]} : ${m[3]}${m[5] ? ` <span class="dim" style="font-size:11px">（点球 ${m[5][0]}:${m[5][1]}）</span>` : ''}</b><span style="display:flex;${m[4] === m[1] ? 'font-weight:800' : ''}">${u21N(m[1])}</span></div>${u21EvRow(m[6])}` : '';
   const hist = Object.entries(S.u21h || {}).sort((a, b) => b[0] - a[0]), AW = u21Awards(U), fin = U.n >= nR || !!(S.u21h && S.u21h[SEASON]);
   const awRow = (lab, x, unit) => x ? `<div class="rk" style="grid-template-columns:72px minmax(0,1fr) auto auto"><span class="dim">${lab}</span><span style="display:flex;align-items:center;gap:6px;min-width:0"><span style="display:inline-flex;flex:none">${crest(x[1], 14)}</span>${ACAD_ID[x[2]] ? `<button class="lnk" ${scoutBtn(ACAD_ID[x[2]])}><b>${esc(x[0])}</b></button>` : `<b>${esc(x[0])}</b>`}</span><span class="dim" style="font-size:11px;white-space:nowrap">${esc(x[1])} U21</span><b class="mono">${x[3]}${unit}</b></div>` : '';
-  return `<section class="view"><div><div class="eyebrow">Under-21 league</div><h1>U21 联赛</h1><p class="muted" style="margin:6px 0 0;font-size:13px">${Object.keys(TD).length} 支球队的青训（16–21 岁、还在梯队的）单循环 ${nR} 轮，每轮一队轮空，跟一线队同一天开踢；常规赛前 8 名进季后赛：第 29 轮 8 强（1 对 8、2 对 7、3 对 6、4 对 5）、第 31 轮半决赛、第 33 轮决赛，都是一场定胜负。赛季结束时按 U21 的表现给青训加减能力，被提拔进一线队会带着这些加分。</p></div>
-  ${(() => { const tb8 = u21Table().slice(0, 8).map(x => x.t); if (tb8.length < 8 || !U.n) return ''; const po = U.po || {}, sd = t => tb8.indexOf(t) + 1, played = po.qf || po.sf || po.champ;
+  return `<section class="view"><div><div class="eyebrow">Under-21 league</div><h1>U21 联赛</h1><p class="muted" style="margin:6px 0 0;font-size:13px">${U.drr ? `当季威超 ${tb.length || u21Teams().length} 支球队的青训（16–21 岁、还在梯队的）双循环 ${nR} 轮，跟一线队同一天开踢，积分榜第一名夺冠。` : `${Object.keys(TD).length} 支球队的青训（16–21 岁、还在梯队的）单循环 ${nR} 轮，每轮一队轮空，跟一线队同一天开踢；常规赛前 8 名进季后赛：第 29 轮 8 强（1 对 8、2 对 7、3 对 6、4 对 5）、第 31 轮半决赛、第 33 轮决赛，都是一场定胜负。`}赛季结束时按 U21 的表现给青训加减能力，被提拔进一线队会带着这些加分。</p></div>
+  ${(() => { const tb8 = u21Table().slice(0, 8).map(x => x.t); if (U.drr || tb8.length < 8 || !U.n) return ''; const po = U.po || {}, sd = t => tb8.indexOf(t) + 1, played = po.qf || po.sf || po.champ;
     const qf = po.qf || [[0, 7], [3, 4], [1, 6], [2, 5]].map(([i, j]) => ({ a: tb8[i], b: tb8[j] }));
     return `<div class="panel"><div class="ph"><div><div class="eyebrow">Playoffs · ${played ? '常规赛前 8 名' : '按目前排名预计'}</div><h2>${po.champ ? `${ic('trophy', 18)} ${esc(po.champ)} U21 夺得 ${SN(SEASON)} U21 冠军` : 'U21 季后赛'}</h2></div><span class="note">第 29 轮 8 强 · 第 31 轮半决赛 · 第 33 轮决赛</span></div>
       ${bracketHTML({ qf, sf: po.sf, f: po.f, champ: po.champ, seed: sd, nm: t => `<button class="lnk tname" data-act="u21t" data-t="${esc(t)}">${u21c(t)}<span>${esc(t)}</span></button>`, title: `${SN(SEASON)} U21 冠军` })}
       ${played ? `<details style="margin-top:6px"><summary class="note" style="cursor:pointer">比分和进球详情</summary>${(po.qf || []).map(m => ko(m, '8 强')).join('')}${ko(po.sf && po.sf[0], '半决赛')}${ko(po.sf && po.sf[1], '半决赛')}${ko(po.f, '决赛')}</details>` : ''}</div>`; })()}
   <div class="grid g-main">
-    <div class="panel"><div class="ph"><div><div class="eyebrow">${SN(SEASON)} · 已踢 ${Math.min(U.n, nR)} / ${nR} 轮</div><h2>积分榜</h2></div><span class="note">前 8 名进季后赛</span></div>
+    <div class="panel"><div class="ph"><div><div class="eyebrow">${SN(SEASON)} · 已踢 ${Math.min(U.n, nR)} / ${nR} 轮</div><h2>积分榜</h2></div><span class="note">${U.drr ? (fin && tb[0] ? `${ic('trophy', 13)} ${esc(tb[0].t)} 夺冠` : '第一名夺冠') : '前 8 名进季后赛'}</span></div>
       <div class="tw"><table>${U21_HEAD}<tbody>${tb.map((x, i) => u21Row(x, i, null)).join('') || '<tr><td colspan="8" class="l muted">第 1 轮踢完后出现</td></tr>'}</tbody></table></div></div>
     <div style="display:grid;gap:16px;align-content:start">
       <div class="panel"><div class="ph"><div><div class="eyebrow">赛程</div><h2>第 ${cur + 1} 轮</h2></div><div class="btns"><button class="btn ghost" data-act="u21r" data-d="-1" ${cur <= 0 ? 'disabled' : ''}>‹</button><button class="btn ghost" data-act="u21r" data-d="1" ${cur >= nR - 1 ? 'disabled' : ''}>›</button></div></div>
