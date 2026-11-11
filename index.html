@@ -381,7 +381,7 @@ body.gvland-on{overflow:hidden}
 .tier.S{color:var(--gold);border-color:rgba(214,173,87,.45)}
 
 /* players */
-.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.pff{display:inline-flex;align-items:center;gap:6px}.pff .eyebrow{margin:0;white-space:nowrap}.pfadv input[type=number]{padding:7px 8px}
 .filters input[type=search]{flex:1;min-width:180px}
 .rt-pill{display:inline-block;min-width:30px;text-align:center;padding:1px 5px;border-radius:2px;font-weight:700;font-size:12px;color:#05080c}
 dialog{border:1px solid var(--line-2);background:var(--bg-2);color:var(--fg);border-radius:8px;padding:0;width:fit-content;max-width:calc(100vw - 24px);max-height:calc(100vh - 48px)}
@@ -7349,7 +7349,28 @@ function teamDetail(t) {
 }
 
 /* ---------- Players ---------- */
-let PF = { mode: 'cur', q: '', team: '', line: '', sort: 'rating', limit: 60 };
+let PF = { mode: 'cur', q: '', team: '', line: '', sort: 'rating', limit: 60, pos: '', alt: false, rmin: '', rmax: '', amin: '', amax: '', potmin: '', appmin: '' };
+/* 球员页的进阶筛选：司职位置（可含副位置）、评分区间、年龄区间、最低潜力、本季最少出场 */
+const PF_POS = ['GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST'];
+const pfNum = v => v === '' || v == null || isNaN(+v) ? null : +v;
+function pfPass(p, opt = {}) { const r = opt.rating != null ? opt.rating : p.rating, age = opt.age !== undefined ? opt.age : p.age;
+  if (PF.pos) { const alts = (p.alt || []).map(String); if (!(p.pos === PF.pos || (PF.alt && alts.includes(PF.pos)))) return false; }
+  const rmin = pfNum(PF.rmin), rmax = pfNum(PF.rmax), amin = pfNum(PF.amin), amax = pfNum(PF.amax);
+  if (rmin != null && !(r >= rmin)) return false; if (rmax != null && !(r <= rmax)) return false;
+  if ((amin != null || amax != null) && typeof age !== 'number') return false; if (amin != null && age < amin) return false; if (amax != null && age > amax) return false;
+  if (opt.pot !== undefined && pfNum(PF.potmin) != null && !(opt.pot >= pfNum(PF.potmin))) return false;
+  if (opt.apps !== undefined && pfNum(PF.appmin) != null && !(opt.apps >= pfNum(PF.appmin))) return false;
+  return true; }
+const pfActive = () => !!(PF.pos || PF.rmin !== '' || PF.rmax !== '' || PF.amin !== '' || PF.amax !== '' || PF.potmin !== '' || PF.appmin !== '');
+function pfAdv(hist) { const ni = (id, v, ph, w = 64) => `<input type="number" id="${id}" value="${esc(v)}" placeholder="${ph}" inputmode="numeric" style="width:${w}px" aria-label="${ph}">`;
+  return `<div class="filters pfadv" style="margin-top:10px">
+    <label class="pff"><span class="eyebrow">司职</span><select id="ppos" aria-label="司职位置"><option value="">全部位置</option>${PF_POS.map(k => `<option ${PF.pos === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+    <label class="pff" style="gap:6px"><input type="checkbox" id="palt" ${PF.alt ? 'checked' : ''}><span class="note" style="margin:0">含副位置</span></label>
+    <label class="pff"><span class="eyebrow">${hist ? '巅峰评分' : '评分'}</span>${ni('prmin', PF.rmin, '最低')}<span class="dim">–</span>${ni('prmax', PF.rmax, '最高')}</label>
+    ${hist ? '' : `<label class="pff"><span class="eyebrow">年龄</span>${ni('pamin', PF.amin, '最小', 58)}<span class="dim">–</span>${ni('pamax', PF.amax, '最大', 58)}</label>
+    <label class="pff"><span class="eyebrow">潜力 ≥</span>${ni('ppot', PF.potmin, '不限')}</label>
+    <label class="pff"><span class="eyebrow">S${SEASON} 出场 ≥</span>${ni('papp', PF.appmin, '不限')}</label>`}
+    ${pfActive() ? '<button class="btn ghost" data-act="pfReset" style="padding:6px 12px">清除筛选</button>' : ''}</div>`; }
 const ALL_PLAYERS = [];
 function buildAllPlayers() {
   ALL_PLAYERS.length = 0;
@@ -7365,7 +7386,7 @@ function vPlayers() {
   const lineSeg = `<div class="seg" role="group" aria-label="位置">${[['', '全部'], ['GK', '门将'], ['DF', '后卫'], ['MF', '中场'], ['FW', '前锋']].map(([k, l]) => `<button data-line="${k}" aria-pressed="${PF.line === k}">${l}</button>`).join('')}</div>`;
   if (PF.mode === 'hist') {
     let list = allT.filter(p => p.pid != null && PL[p.pid] && (!PL[p.pid][3] || RETIRED_PID.has(p.pid)) && !isActive(p.pid));
-    list = list.filter(p => (!PF.q || p.name.includes(PF.q) || (PL[p.pid][2] || '').includes(PF.q)) && (!PF.team || p.teams.includes(PF.team)) && (!PF.line || p.line === PF.line));
+    list = list.filter(p => (!PF.q || p.name.includes(PF.q) || (PL[p.pid][2] || '').includes(PF.q)) && (!PF.team || p.teams.includes(PF.team)) && (!PF.line || p.line === PF.line) && pfPass(p, { rating: peakCache(p.pid) || 0, age: null }));
     const key = { rating: p => -(peakCache(p.pid) || 0), goals: p => -p.g, assists: p => -p.a, apps: p => -p.apps }[PF.sort] || (p => -p.g);
     list.sort((a, b) => key(a) - key(b) || b.apps - a.apps);
     const total = list.length; list = list.slice(0, PF.limit);
@@ -7373,14 +7394,14 @@ function vPlayers() {
     <div class="panel"><div class="filters">
       <input type="search" id="pq" placeholder="搜索球员或国籍" value="${esc(PF.q)}" aria-label="搜索球员">
       <select id="pt" aria-label="球队"><option value="">全部球队</option>${ALL_TEAMS.map(t => `<option ${PF.team === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>${lineSeg}
-      <select id="ps" aria-label="排序">${[['goals', '按威超进球'], ['assists', '按威超助攻'], ['apps', '按威超出场'], ['rating', '按巅峰评分']].map(([k, l]) => `<option value="${k}" ${PF.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <select id="ps" aria-label="排序">${[['goals', '按威超进球'], ['assists', '按威超助攻'], ['apps', '按威超出场'], ['rating', '按巅峰评分']].map(([k, l]) => `<option value="${k}" ${PF.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>${pfAdv(true)}
     <p class="note" style="margin:12px 0 4px">球员资料库以外、有威超出场记录的退役球员，共 ${total} 人。</p>
     <div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">类型</th><th class="l">位置</th><th class="l">国籍</th><th class="l">效力球队</th><th>赛季</th><th>巅峰评分</th><th>出场</th><th>进球</th><th>助攻</th></tr></thead><tbody>
     ${list.map(p => { const span = (PSEASONS[p.pid] || []).map(x => x[0]); return `<tr><td class="l"><button class="lnk" data-pid="${p.pid}"><span>${esc(p.name)}</span></button></td><td class="l"><span class="btns" style="gap:4px;flex-wrap:nowrap">${statusChips(p.pid, true)}</span></td><td class="l mono" style="font-size:12px">${esc(p.pos)}</td><td class="l muted">${esc(PL[p.pid][2] || '—')}</td><td class="l"><span class="tname" style="gap:4px">${p.teams.map(t => crest(t, 18)).join('')}</span></td><td class="muted">${span.length ? SN(Math.min(...span)) + '–' + SN(Math.max(...span)) : ''}</td><td>${peakCache(p.pid) ? `<span class="rt-pill" style="background:${rtColor(peakCache(p.pid))}">${peakCache(p.pid)}</span>` : '–'}</td><td>${p.apps}</td><td>${p.g}</td><td>${p.a}</td></tr>`; }).join('')}
     </tbody></table></div>
     ${total > PF.limit ? `<div style="text-align:center;margin-top:14px"><button class="btn" data-act="more">再显示 60 名</button></div>` : ''}</div></section>`;
   }
-  let list = ALL_PLAYERS.filter(p => (!PF.q || p.name.includes(PF.q) || p.nat.includes(PF.q)) && (!PF.team || p.team === PF.team) && (!PF.line || p.line === PF.line));
+  let list = ALL_PLAYERS.filter(p => (!PF.q || p.name.includes(PF.q) || p.nat.includes(PF.q)) && (!PF.team || p.team === PF.team) && (!PF.line || p.line === PF.line) && pfPass(p, { pot: pfNum(PF.potmin) != null ? potentialOf(p) : undefined, apps: pfNum(PF.appmin) != null ? ((pm[p.team + '|' + p.name] || {}).apps || 0) : undefined }));
   const A = p => at[pidOf(p.team, p.name)] || {};
   const key = { rating: p => -p.rating, pot: p => -potentialOf(p) - p.rating / 1000, value: p => -valNum(p.value), age: p => typeof p.age === 'number' ? p.age : 99, goals: p => -((pm[p.team + '|' + p.name] || {}).g || 0) - p.rating / 1000, assists: p => -((pm[p.team + '|' + p.name] || {}).a || 0) - p.rating / 1000, avg: p => -((pm[p.team + '|' + p.name] || {}).avg || 0) - p.rating / 10000, vg: p => -(A(p).g || 0), vapps: p => -(A(p).apps || 0) }[PF.sort] || (p => -p.rating);
   list.sort((a, b) => key(a) - key(b));
@@ -7390,8 +7411,8 @@ function vPlayers() {
     <input type="search" id="pq" placeholder="搜索球员或国籍" value="${esc(PF.q)}" aria-label="搜索球员">
     <select id="pt" aria-label="球队"><option value="">全部球队</option>${ALL_TEAMS.map(t => `<option ${PF.team === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>${lineSeg}
     <select id="ps" aria-label="排序">${[['rating', '按评分'], ['pot', '按潜力'], ['value', '按身价'], ['age', '按年龄（小→大）'], ['vg', '按威超生涯进球'], ['vapps', '按威超生涯出场'], ['goals', `按 S${SEASON} 进球`], ['assists', `按 S${SEASON} 助攻`], ['avg', `按 S${SEASON} 评分`]].map(([k, l]) => `<option value="${k}" ${PF.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
-  </div>
-  <p class="note" style="margin:12px 0 4px">共 ${total} 名现役球员</p>
+  </div>${pfAdv(false)}
+  <p class="note" style="margin:12px 0 4px">${pfActive() || PF.q || PF.team || PF.line ? '符合条件的' : '共 '}${total} 名现役球员${pfActive() ? ' · 已套用筛选' : ''}</p>
   <div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">球队</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>潜力</th><th>身价</th><th>威超出场</th><th>威超进球</th><th>威超助攻</th><th>S${SEASON} 出场</th><th>S${SEASON} 进球</th><th>S${SEASON} 助攻</th><th>S${SEASON} 评分</th></tr></thead><tbody>
   ${list.map(p => { const s = pm[p.team + '|' + p.name], a = A(p); return `<tr><td class="l"><button class="lnk" ${plink(p.team, p.name)}><span>${esc(p.name)}</span></button>${FATHER_OF[pidOf(p.team, p.name)] ? ' <span class="chip" style="font-size:10px;padding:0 5px">二代</span>' : ''}</td><td class="l"><span class="tname">${crest(p.team, 18)}<span class="muted">${esc(p.team)}</span></span></td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${typeof p.age0 === 'number' && potentialOf(p) > p.rating ? `<span class="mono" style="color:var(--gold)">${potentialOf(p)}</span>` : '<span class="dim">–</span>'}</td><td class="muted">${esc(p.value)}</td><td class="muted">${a.apps ? a.apps : '<span class="dim">–</span>'}</td><td class="muted">${a.apps ? a.g : '<span class="dim">–</span>'}</td><td class="muted">${a.apps ? a.a : '<span class="dim">–</span>'}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
   </tbody></table></div>
@@ -7402,6 +7423,8 @@ after.players = () => {
   let tm; $('#pq').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => { PF.q = e.target.value.trim(); PF.limit = 60; render(); const i = $('#pq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 220); });
   $('#pt').addEventListener('change', e => { PF.team = e.target.value; PF.limit = 60; render(); });
   $('#ps').addEventListener('change', e => { PF.sort = e.target.value; render(); });
+  let rq = 0; const on = (id, k, f = e => e.target.value.trim()) => { const el = $('#' + id); if (el) el.addEventListener('change', e => { const v = f(e); if (PF[k] === v) return; PF[k] = v; PF.limit = 60; clearTimeout(rq); rq = setTimeout(() => { const fid = document.activeElement && document.activeElement.id; render(); if (fid) { const n = document.getElementById(fid); if (n) n.focus(); } }, 0); }); }; /* 延后重绘，避免跟切换输入框时的失焦撞在一起 */
+  on('ppos', 'pos'); on('palt', 'alt', e => e.target.checked); on('prmin', 'rmin'); on('prmax', 'rmax'); on('pamin', 'amin'); on('pamax', 'amax'); on('ppot', 'potmin'); on('papp', 'appmin');
 };
 const ATTR = { spd: '速度', sho: '射门', pas: '传球', dri: '盘带', def: '防守', phy: '身体', men: '心理', sta: '体能', div: '扑救', han: '手型', kic: '开球', ref: '反应', pos_s: '站位' };
 // 一组数据的格子：出场、进球、传球、点球、防守等
@@ -9638,6 +9661,7 @@ document.addEventListener('click', e => {
   if (act === 'loanExt') return loanExtend(el.dataset.id);
   if (act === 'recOpen') return recDlg(el.dataset.t);
   if (act === 'recPrev') { XI_PREV = { t: el.dataset.t, f: el.dataset.f }; $('#dlg').close(); render(); const x = document.querySelector('.xied'); if (x) x.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+  if (act === 'pfReset') { Object.assign(PF, { pos: '', alt: false, rmin: '', rmax: '', amin: '', amax: '', potmin: '', appmin: '', limit: 60 }); return render(); }
   if (act === 'recUse') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; S.formSet[t] = f; if (S.xio && S.xio[t]) delete S.xio[t][f]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; save(); $('#dlg').close(); toast(`${t} 采用推荐阵型 ${f}`); return render(); }
   if (act === 'formSet') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; if (f) S.formSet[t] = f; else delete S.formSet[t]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; toast(f ? `${t} 改用 ${f} 作为主打阵型（对强队 / 对弱队仍按主帅安排）` : `${t} 恢复主帅的主打阵型`); save(); return render(); }
   if (act === 'rpOpen') return replayOpen(+el.dataset.ri, +el.dataset.mi);
