@@ -7972,6 +7972,21 @@ function mktCtx(s) {
 function mkChip(p, t) { if (!mktActive() || !p.uid || typeof p.age0 !== 'number') return ''; const MK = mktGet(), C = mktCtx(MS()); if (mktLate()) return MK.listed[p.uid] ? ' <span class="chip" style="font-size:10px;padding:0 5px">挂牌中</span>' : ''; if (MK.listed[p.uid]) return ' <span class="chip" style="font-size:10px;padding:0 5px">挂牌中</span>'; if (C.hist ? !(MK.hexp || []).some(h => h.uid === p.uid) : (p.cEnd > SEASON || !C.alive(p))) return ''; const d = MK.renew[p.uid]; return d ? ` <span class="chip ${d.ok ? 'good' : 'bad'}" style="font-size:10px;padding:0 5px">${d.ok ? '已续约' : '谈崩'}</span>` : ` <span class="chip" style="font-size:10px;padding:0 5px">合同到期 · 留队 ${Math.round(stayProb(p, t, C) * 100)}%</span>`; }
 const mktFind = uid => { for (const t of Object.keys(PDB)) { const p = PDB[t].find(q => q.uid === uid); if (p) return [p, t]; } return [null, null]; };
 const fee$ = m => money(m);
+/* ---------- 降级出走：威超降级的球队，主力 / 明星大多不愿留下 ----------
+   每支降级球队能力最高的最多 4 人（31 岁以下、能力 75 以上且不低于球队平均 −1）。性格决定去留：野心 95% 想走、一般 80%、忠诚只有 30%。
+   想走的人：夏窗会有更强的球队以身价 55–85% 的低价来买，母队留不住只能放人（不受非卖品限制）；合同到期的续约意愿大降，谈不拢就以自由球员身份加盟别队。 */
+let RELOUT_C = null;
+function relOut(C) { C = C || mktCtx(SEASON); const A = isPending(SEASON) ? pendingArchive() : null; if (!A || !A.relegated) return new Map();
+  const k = SEASON + '|' + A.relegated.join(',') + '|' + MOD_VER_SEASON; if (RELOUT_C && RELOUT_C.k === k) return RELOUT_C.v; const M = new Map();
+  A.relegated.forEach(t => { if (!TD[t]) return; const bar = Math.max(75, (C.str[t] || 75) - 1);
+    (PDB[t] || []).filter(p => C.alive(p) && !p.loanFrom && C.ageN(p) <= 31 && !scrLockedUid(p.uid)).map(p => ({ p, r: C.ratN(p) })).filter(x => x.r >= bar).sort((a, b) => b.r - a.r).slice(0, 4)
+      .forEach(({ p }) => { const ps = persOf(p), pr = ps === '忠诚' ? 0.3 : ps === '野心' ? 0.95 : 0.8; if (ghash('relout|' + p.uid + '|' + SEASON) < pr) M.set(p.uid, t); }); });
+  RELOUT_C = { k, v: M }; return M; }
+function relOffers(MK, C, salt) { const M = relOut(C); M.forEach((t, uid) => { const p = (PDB[t] || []).find(q => q.uid === uid); if (!p || p.cEnd <= C.s) return; /* 合同到期的走续约 / 自由球员那条路 */
+  const rnd = seeded('relx|' + uid + '|' + C.s + salt), B = mktBuyers(p, t, C, true), dom = B.dom.filter(x => (C.str[x] || 0) > (C.str[t] || 0) + 1), pool = dom.length ? dom : B.dom.concat(B.ext.slice(0, 3)), used = new Set(MK.offers.filter(o => o.uid === uid).map(o => o.to));
+  for (let k = 0; k < 2; k++) { if (k && rnd() > 0.55) break; const to = mktPick(pool.filter(x => !used.has(x)), rnd, C) || (B.ext.length ? B.ext[Math.floor(rnd() * B.ext.length)] : null); if (!to || used.has(to)) break; used.add(to);
+    const o = mktOffer(MK, p, t, to, C, rnd, 0.55, 0.85); if (!MK.offers.includes(o)) continue; o.relx = 1; o.st = 'p'; o.nfs = 0; o.sys = false; o.fee = Math.max(1, Math.round(o.v * (0.55 + rnd() * 0.3))); o.max = Math.max(o.fee, Math.round(o.v * 0.92)); o.will = 0.95;
+    o.log = [`${t} 降级，${p.name} 要求离队：只能以低于身价的价格放人`]; if (TD[to] && !canAfford(to, o.fee)) { MK.offers.splice(MK.offers.indexOf(o), 1); used.delete(to); } } }); }
 // 留队意愿：年龄、是否主力、球队成绩、自己是不是比球队强太多
 function stayProb(p, t, C) {
   C = C || mktCtx(SEASON); const a = C.ageN(p), r = C.ratN(p);
@@ -7981,6 +7996,7 @@ function stayProb(p, t, C) {
   const A = isPending(SEASON) ? pendingArchive() : null; if (A) { const k = A.table.findIndex(x => x.team === t); if (k >= 0 && k < 4) pr += 0.08; else if (k >= A.table.length - 3) pr -= 0.12; }
   if (a <= 23 && r >= 85 && C.str[t] < r - 2) pr -= 0.08;
   { const ps = persOf(p); if (ps === '忠诚') pr += 0.12; else if (ps === '野心' && r >= C.str[t]) pr -= 0.08; } /* 性格 */
+  try { if (relOut(C).get(p.uid) === t) pr = Math.min(pr, persOf(p) === '忠诚' ? 0.45 : 0.12); } catch (e) { } /* 降级后想走的主力：续约意愿大降 */
   return Math.max(0.08, Math.min(0.95, pr));
 }
 function mktBuyers(p, t, C, relax) { MKP_NAT = p && p.nat; /* 记下正在找下家的球员国籍：沃特梅兹偏爱亚洲（尤其东亚）球员 */
@@ -8067,7 +8083,7 @@ function synthExt() { if (SYNTH_X) return SYNTH_X; SYNTH_X = []; const POS = ['G
   return SYNTH_X; }
 function extTeamAt(L, s) { let t; (L || []).forEach(([e, to]) => { if (e <= s) t = to; }); return t; }
 function mktGet(s = MS()) {
-  S.market = S.market || {}; if (S.market[s]) return S.market[s];
+  S.market = S.market || {}; if (S.market[s]) { const MK0 = S.market[s]; if (!MK0.relDone && s >= HIST_END - 1e9 && s === SEASON && isPending(SEASON)) { MK0.relDone = 1; try { relOffers(MK0, mktCtx(s), saltOf(s)); } catch (e) { console.error(e); } save(); } return MK0; } /* 市场比降级早生成：降级确定后补上降级出走的报价（只补一次） */
   const MK = S.market[s] = { offers: [], renew: {}, listed: {}, free: [], seq: 0 }, C = mktCtx(s), salt = saltOf(s);
   if (s < HIST_END) { mktGenHist(MK, s, C, salt); try { mktGenExtBuys(MK, s, C, salt); } catch (e) { console.error(e); } save(); return MK; }
   const cand = [];
@@ -8084,6 +8100,7 @@ function mktGet(s = MS()) {
   // 外赛区豪门也来抢人：顶级球员额外收到外赛区报价
   cand.forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false); if (B.ext.length && !MK.offers.some(o => o.uid === p.uid && !TD[o.to]) && rnd() < 0.3) mktOfferB(MK, p, t, B.ext[Math.floor(rnd() * B.ext.length)], C, rnd, 0.95, 1.3); });
   mktGenExtBuys(MK, s, C, salt);
+  if (s === SEASON && isPending(SEASON)) { MK.relDone = 1; try { relOffers(MK, C, salt); } catch (e) { console.error(e); } } /* 降级出走（降级已确定才生成） */
   mktGenEco(MK, s, C, salt, null);
   save(); return MK;
 }
@@ -8702,7 +8719,8 @@ function assistCalc(o, win) {
   else if (ratio >= thr) { verdict = '建议同意'; color = 'var(--win,#3c9)'; tip = `报价是身价的 ${ratio.toFixed(2)} 倍，高于这名球员的合理出售价（约 ${fee$(target)}）。`; }
   else if (headroom) { verdict = '建议要求加价'; color = 'var(--gold)'; tip = `报价偏低（合理价约 ${fee$(target)}）。对方看起来还有加价空间，拒绝一次，买方大概率会加价，球员意愿也会跟着上升。`; }
   else { verdict = '建议拒绝'; color = '#e66'; tip = `报价低于合理价（约 ${fee$(target)}），而且对方已经接近出价上限。`; }
-  const code = o.sched && isNfs && ratio < thr ? 'reject' : o.sched ? 'hist' : wl != null && wl < WILL_MIN ? (headroom ? 'raise' : 'reject') : ratio >= thr ? 'accept' : headroom ? 'raise' : 'reject';
+  if (o.relx && !o.sched) { verdict = '球员要求离队'; color = 'var(--gold)'; tip = `${o.from} 降级，${o.name} 不愿留下。报价低于身价（${ratio.toFixed(2)} 倍）也只能放人；硬留的话他下季会带着情绪踢球。`; }
+  const code = o.relx && !o.sched ? 'accept' : o.sched && isNfs && ratio < thr ? 'reject' : o.sched ? 'hist' : wl != null && wl < WILL_MIN ? (headroom ? 'raise' : 'reject') : ratio >= thr ? 'accept' : headroom ? 'raise' : 'reject';
   return { p, tb, rk, sf, st, ratio, wl, age, r, g, SR, BR, all, rank, isSt, lv, repl, pot, young, declining, yrsLeft, rival, wNow, wNew, thr, why, headroom, target, verdict, color, tip, code };
 }
 
