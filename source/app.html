@@ -5524,7 +5524,12 @@ function openScout(key) {
   if (!d.open) d.showModal();
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-scout]'); if (!b) return; e.preventDefault(); e.stopPropagation(); openScout(b.dataset.scout); }, true);
-const scoutBtn = k => { SCOUT_REG[k.key] = k; return `data-scout="${esc(k.key)}"`; };
+/* 青训原始资料（U21 名单、U21 榜单、奖项用的）转成资料卡要的格式；已经升上一线队、或是一线队下放 U21 的，直接打开一线队球员资料 */
+function kidScout(k) { const s = SEASON, a = kAge(k, s), st = kidWhere(k, s); return { key: k.id, kind: 'acad', kid: k, name: k.name, nat: k.nat, pos: k.pos, line: k.line || ENGINE.LINE(k.pos), age: a, rating: kidRating(k, s), pot: kidPot(k, s), attrs: kidAttrs(k, s), height: k.height, weight: k.weight, team: st.team || k.team }; }
+const scoutBtn = k => { if (!k) return '';
+  if (!k.key && k.id) { let hit = null; const uid = /^P\|/.test(k.id) ? k.id.slice(2) : null; for (const [t, L] of Object.entries(PDB)) { const p = L.find(q => (uid && q.uid === uid) || (!uid && q.acad === k.id)); if (p) { hit = [t, p.name]; break; } }
+    if (hit) return `data-player="${esc(hit[0])}|${esc(hit[1])}"`; if (uid) return ''; k = kidScout(k); }
+  SCOUT_REG[k.key] = k; return `data-scout="${esc(k.key)}"`; };
 function kidActCell(k, t) {
   const s = SEASON, a = kAge(k, s), win = mktActive() && !mktLate(), next = kidEvents(k.id).find(e => e.s === s + 1 && e.act !== 'extend');
   const b = (act, txt, extra, pri) => `<button class="btn ${pri ? 'primary' : 'ghost'}" data-act="kidAct" data-id="${esc(k.id)}" data-k="${act}" ${extra || ''} style="padding:3px 9px;font-size:12px">${txt}</button>`;
