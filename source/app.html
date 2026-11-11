@@ -5076,7 +5076,7 @@ function xiPanel(t, st) {
     ${(() => { const ef = sel || cur, ed = S.teams.includes(t) && TD[t] && ef, man = ed && S.xio && S.xio[t] && S.xio[t][ef], C0 = ed ? teamCtx(t, nextRound() >= 0 ? nextRound() : S.fx.length) : null, shown = xi || (ef && ef !== xiFormNow(t) && FORMS[ef] ? previewXI(t, ef) : null) || ENGINE.lineup(t).xi;
       if (!ed) return pitchSVG(t, null, null, xi); setTimeout(xiDragInit, 0);
       const AV = !sel && C0 && C0.out ? availXI(t, shown, C0.out) : { subs: [] };
-      return `<div class="xied" data-t="${esc(t)}" data-f="${esc(ef)}">${AV.subs.length ? `<div class="note" style="margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(230,85,85,.1);border:1px solid rgba(230,85,85,.3)">下一场伤停，比赛时自动换人：${AV.subs.map(x => `<b>${esc(x.off)}</b>（${esc(whyZh(x.why))}）→ <b>${esc(x.on)}</b>`).join('；')}</div>` : ''}${man ? `<div class="btns" style="justify-content:space-between;align-items:center;margin:0 0 6px"><span class="chip gold" style="font-size:11px">手动安排 · ${esc(ef)}</span><button class="lnk" data-act="xiReset" data-t="${esc(t)}" data-f="${esc(ef)}" style="font-size:12px">恢复主帅自动安排</button></div>` : ''}${pitchSVG(t, null, null, shown, true)}${xiBenchHtml(t, shown, C0 && C0.energy, C0 && C0.out)}</div>`; })()}
+      return `<div class="xied" data-t="${esc(t)}" data-f="${esc(ef)}">${(() => { const O = man || null, sq = PDB[t] || [], F = O ? (shown || []).map(x => { const k = O[x.slot || x.pos], p = k && sq.find(q => roleKey(q) === k); return p && p.name !== x.name && slotPen(x.slot || x.pos, p) >= XIO_FIX_PEN ? { autoFor: p.name, name: x.name, pos: x.slot || x.pos } : null; }).filter(Boolean) : []; return F.length ? `<div class="note" style="margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(216,180,95,.12)">位置不熟悉，已自动换人：${F.map(x => `${esc(x.autoFor)} → ${esc(x.name)}（${esc(x.pos)}）`).join('、')}</div>` : ''; })()}${AV.subs.length ? `<div class="note" style="margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(230,85,85,.1);border:1px solid rgba(230,85,85,.3)">下一场伤停，比赛时自动换人：${AV.subs.map(x => `<b>${esc(x.off)}</b>（${esc(whyZh(x.why))}）→ <b>${esc(x.on)}</b>`).join('；')}</div>` : ''}${man ? `<div class="btns" style="justify-content:space-between;align-items:center;margin:0 0 6px"><span class="chip gold" style="font-size:11px">手动安排 · ${esc(ef)}</span><button class="lnk" data-act="xiReset" data-t="${esc(t)}" data-f="${esc(ef)}" style="font-size:12px">恢复主帅自动安排</button></div>` : ''}${pitchSVG(t, null, null, shown, true)}${xiBenchHtml(t, shown, C0 && C0.energy, C0 && C0.out)}</div>`; })()}
     <p class="note" style="margin:8px 0 0">拖动场上球员互换位置，把下方轮换球员拖到场上的球员身上替换首发（手机上也可以先点一名、再点另一名互换）；红色数字是踢非本位的扣分。安排按阵型分别记住，伤停的球员比赛时会自动由替补顶上。${sel ? `预览 ${esc(sel)}：按这个阵型挑最强的 11 人。${moved.length ? `换上 ${esc(moved.join('、'))}，换下 ${esc(outN.join('、'))}。` : '首发 11 人不变，只调整站位。'}${off.length ? ` ${esc(off.map(x => x.name + '（' + x.slot + '，非本位 -' + x.pen + '）').join('、'))}。` : ''}比赛时主帅按对手强弱自动选用：对手强 3 分以上用「对强队」，弱 3 分以上用「对弱队」，其他用「主打」。` : '点上面的阵型预览站位和首发人选。比赛时主帅按对手强弱自动在三套阵型之间切换。'}</p></div>`;
 }
 // ── 手动首发：在首发阵容图上拖动球员换位置、把轮换球员拖上场替换首发；按阵型分别记住（S.xio[球队][阵型] = {位置: 球员}） ──
@@ -5094,8 +5094,19 @@ function applyXIO(t, form, r) {
   const O = ((S && S.xio) || {})[t] && S.xio[t][form]; if (!O || !r) return r; const sq = PDB[t] || [], byKey = {}; sq.forEach(p => byKey[roleKey(p)] = p);
   r.forEach((x, i) => { const key = O[x.pos], p = key && byKey[key]; if (!p || x.name === p.name) return; const j = r.findIndex(y => y.name === p.name);
     const cur = sq.find(q => q.name === x.name); if (j >= 0) { r[j] = cur ? xioMk(r[j].pos, cur) : r[j]; } r[i] = xioMk(x.pos, p); });
-  return r;
+  return xioFix(t, r);
 }
+/* 手动阵容里有人被放在不熟悉的位置（位置惩罚 ≥ 8）：自动换上位置合适的人——
+   从替补挑一个这个位置打得好的，或者跟场上另一名球员对调位置，取能力提升最多的做法（至少多 3 分才换）。门将不参与。 */
+const XIO_FIX_PEN = 8;
+function xioFix(t, r) { const sq = PDB[t] || [], by = n => sq.find(q => q.name === n);
+  for (let pass = 0; pass < 3; pass++) { let changed = false;
+    r.forEach((x, i) => { if (x.pos === 'GK' || (x.pen || 0) < XIO_FIX_PEN) return; const px = by(x.name); if (!px) return; const inXI = new Set(r.map(y => y.name)); let best = null, bg = 3;
+      sq.forEach(p => { if (inXI.has(p.name) || p.pos === 'GK') return; const pen = slotPen(x.pos, p); if (pen >= XIO_FIX_PEN) return; const g = (p.rating - pen) - x.rating; if (g > bg) { bg = g; best = { j: -1, p }; } });
+      r.forEach((y, j) => { if (j === i || y.pos === 'GK') return; const py = by(y.name); if (!py) return; const a = slotPen(x.pos, py), b = slotPen(y.pos, px); if (a >= XIO_FIX_PEN || b > (y.pen || 0) + 2) return; const g = (py.rating - a) + (px.rating - b) - x.rating - y.rating; if (g > bg) { bg = g; best = { j, p: py }; } });
+      if (!best) return; if (best.j >= 0) r[best.j] = { ...xioMk(r[best.j].pos, px), autoFix: 1 }; r[i] = { ...xioMk(x.pos, best.p), autoFix: 1, autoFor: x.name }; changed = true; });
+    if (!changed) break; }
+  return r; }
 function xiEdList(t, form) { return form === xiFormNow(t) ? ENGINE.lineup(t).xi.map(x => ({ slot: x.slot, name: x.name })) : (previewXI(t, form) || []).map(x => ({ slot: x.slot, name: x.name })); }
 function xiSwap(t, form, a, b) {
   const L = xiEdList(t, form); if (L.length < 11) return; const sq = PDB[t] || [], key = n => { const p = sq.find(q => q.name === n); return p ? roleKey(p) : null; };
