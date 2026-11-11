@@ -8279,6 +8279,9 @@ const CLOUD = { db: null, meta: null, busy: false, status: 'local', ready: false
 const WEB = { on: false, etag: null, timer: null, busy: false, pending: false, key: '', store: '', remote: new Set(), af: {}, at: {}, txt: {} };
 const GH_RAW = 'https://raw.githubusercontent.com/DSON3344/vsl.github.io/refs/heads/data/', GH_CDN = 'https://cdn.jsdelivr.net/gh/DSON3344/vsl.github.io@data/';
 try { const o = JSON.parse(localStorage.getItem('ves-af') || '{}'); WEB.af = o.af || {}; WEB.at = o.at || {}; } catch (e) {}
+/* 这台设备最后一次跟云端对齐的版本（云端写入时间），存在本机，重开网页时用来判断云端是不是被别的设备改过 */
+const baseSet = w => { WEB.base = w; try { if (w != null) localStorage.setItem('ves-base|' + KEY, String(w)); } catch (e) { } };
+const baseLoad = () => { try { const v = localStorage.getItem('ves-base|' + KEY); return v ? +v : null; } catch (e) { return null; } };
 const afSave = () => { try { localStorage.setItem('ves-af', JSON.stringify({ af: WEB.af, at: WEB.at })); } catch (e) {} };
 const fnv36 = str => { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); };
 const archTag = a => (a.cmp ? 'c' : '') + JSON.stringify(a).length;
@@ -8301,9 +8304,9 @@ async function ghPush() { const put = b => fetch('/api/progress', { method: 'PUT
     for (const f of names) { if (bs && bs + P.files[f].length > 3e6) { const e = await flush(); if (e) return e; } B[f] = P.files[f]; bs += P.files[f].length; } if (bs) { const e = await flush(); if (e) return e; } P.files = {}; }
   let r = await put(P);
   if (r.status === 409) { let o = {}; try { o = await r.clone().json(); } catch (e) { }
-    if (o.error === 'conflict') { /* 云端已经被另一台设备（或自动模拟）更新过：以云端为准，同步过来，不覆盖 */ try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { WEB.base = o.meta && o.meta.w; adopt(g.s, '另一台设备的进度比较新，已同步过来'); } } catch (e) { } return { ok: true, status: 200, json: async () => ({}) }; }
+    if (o.error === 'conflict') { /* 云端已经被另一台设备（或自动模拟）更新过：以云端为准，同步过来，不覆盖 */ try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, '另一台设备的进度比较新，已同步过来'); } } catch (e) { } return { ok: true, status: 200, json: async () => ({}) }; }
     (o.need || []).forEach(f => WEB.remote.delete(f)); P = ghPayload(); r = await put(P); }
-  if (r.ok) { P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) WEB.base = o.w; } catch (e) { } }
+  if (r.ok) { P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) baseSet(o.w); } catch (e) { } }
   return r; }
 try { WEB.key = localStorage.getItem('ves-sync-key') || ''; } catch (e) {}
 function setSync(st) {
@@ -8406,7 +8409,7 @@ async function webPull(quiet) {
     WEB.etag = o.etag;
     if (o.meta) { const m = o.meta; if (m.key !== KEY) return;
       /* 云端的版本比这台设备所依据的版本新（别的设备 / 自动模拟写过）：以云端为准 */
-      if (WEB.base == null ? (m.t || 0) > (S.updated || 0) : (m.w || 0) > WEB.base) { const g = await ghLoad(); if (validState(g.s)) { WEB.base = m.w; adopt(g.s, quiet ? null : '已同步其他设备的进度'); } } return; }
+      if (WEB.base == null ? (m.t || 0) > (S.updated || 0) : (m.w || 0) > WEB.base) { const g = await ghLoad(); if (validState(g.s)) { baseSet(m.w); adopt(g.s, quiet ? null : '已同步其他设备的进度'); } } return; }
     const st = o.state;
     if (st && st.key === KEY && validState(st.s) && (st.s.updated || 0) > (S.updated || 0)) adopt(st.s, quiet ? null : '已同步其他设备的进度');
   } catch (e) { /* 网络抖动时下次再试 */ }
@@ -8436,8 +8439,10 @@ async function webInit() {
   if (WEB.key) { try { WEB.store = (await (await fetch('/api/progress?mode=1', { cache: 'no-store' })).json()).store || ''; } catch (e) { WEB.store = ''; } }
   const lp = countPlayed(S);
   let st = o.state && o.state.key === KEY && validState(o.state.s) ? o.state.s : null;
-  if (o.meta && o.meta.key === KEY && ((o.meta.t || 0) > (S.updated || 0) || (lp === 0 && (o.meta.played || 0) > 0 && !(S.reset && S.reset >= (o.meta.t || 0))))) { try { const g = await ghLoad(); st = validState(g.s) ? g.s : null; } catch (e) { st = null; } }
-  if (o.meta) WEB.base = o.meta.w; /* 这台设备接下来的进度以这一版云端为基础 */
+  /* 重开网页时：这台设备上次对齐之后，云端被别的设备 / 自动模拟写过 → 以云端为准；云端没变过 → 本机较新就上传本机的 */
+  const lb = baseLoad(), cloudMoved = o.meta && lb != null && (o.meta.w || 0) > lb;
+  if (o.meta && o.meta.key === KEY && (cloudMoved || (o.meta.t || 0) > (S.updated || 0) || (lp === 0 && (o.meta.played || 0) > 0 && !(S.reset && S.reset >= (o.meta.t || 0))))) { try { const g = await ghLoad(); st = validState(g.s) ? g.s : null; if (st && cloudMoved) st.updated = Math.max(st.updated || 0, (S.updated || 0) + 1); } catch (e) { st = null; } }
+  if (o.meta) baseSet(o.meta.w); /* 这台设备接下来的进度以这一版云端为基础 */
   if (st && ((st.updated || 0) > (S.updated || 0) || (lp === 0 && countPlayed(st) > 0 && !(S.reset && S.reset >= (st.updated || 0))))) { adopt(st, countPlayed(st) ? '已载入云端进度' : null); setSync(WEB.key ? 'cloud' : 'view'); }
   else if (WEB.key && lp > 0) await webPush();
   else setSync(WEB.key ? 'cloud' : 'view');
