@@ -8148,6 +8148,8 @@ document.addEventListener('click', e => {
   if (act === 'doResetAll') { $('#dlg').close(); doResetAll(); return; }
   if (act === 'doReset') { if (S.market) { delete S.market[SEASON]; delete S.market['w' + SEASON]; } rollSalt(SEASON); S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
+  if (act === 'syncPull') { (async () => { try { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); const m = r.ok ? await r.json() : null; if (!m) return toast('云端还没有进度'); const g = await ghLoad(); if (!validState(g.s) || g.key !== KEY) return toast('云端进度读不了'); baseSet(m.w); g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, '已载入云端进度'); } catch (e) { toast('读取云端失败，稍后再试'); } })(); return; }
+  if (act === 'syncPush') { const b = $('#syncPushBtn'); if (b && !b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '确定覆盖云端？再按一次'; return; } WEB.forceOnce = true; save(); clearTimeout(WEB.timer); webPush().then(() => toast('已用这台设备的进度覆盖云端')); const dd = $('#dlg'); if (dd.open) dd.close(); return; }
   if (act === 'sync') { if (SANDBOX) return toast('试玩新档只存在这台设备上，不会同步'); openSync(); }
   if (act === 'search') openSearch();
   if (act === 'wlTab') { WLV.tab = el.dataset.v; return render(); }
@@ -8296,7 +8298,8 @@ function ghPayload() { const arch = [], files = {};
     if (!f || WEB.at[a.s] !== tag) { const txt = LZString.compressToEncodedURIComponent(JSON.stringify(a)); f = 's' + a.s + '-' + fnv36(txt) + '.lz'; WEB.af[a.s] = f; WEB.at[a.s] = tag; WEB.txt[f] = txt; }
     arch.push(f); if (!WEB.remote.has(f)) files[f] = WEB.txt[f] || LZString.compressToEncodedURIComponent(JSON.stringify(a)); });
   const o = {}; for (const k in S) if (k !== 'archive') o[k] = S[k];
-  return { v: 2, key: KEY, base: WEB.base ?? null, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, files, z: LZString.compressToEncodedURIComponent(JSON.stringify(o)) }; }
+  const force = !!WEB.forceOnce; WEB.forceOnce = false;
+  return { v: 2, key: KEY, base: WEB.base ?? null, force, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, files, z: LZString.compressToEncodedURIComponent(JSON.stringify(o)) }; }
 async function ghPush() { const put = b => fetch('/api/progress', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-ves-key': WEB.key }, body: JSON.stringify(b) });
   let P = ghPayload(); const names = Object.keys(P.files);
   if (P.z.length + names.reduce((a, f) => a + P.files[f].length, 0) > 3e6) { /* 第一次搬家、旧赛季很多时：旧赛季文件分批先传（每批 3MB 以内） */
@@ -8471,11 +8474,12 @@ function openSync() {
   const web = WEB.on;
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div><div class="eyebrow">Season ${SEASON} progress</div><h2 style="font-size:20px;font-weight:900;margin-top:4px">进度同步</h2></div>
-    ${web ? (WEB.key ? `<p class="muted" style="margin:0">已解锁。这台设备的模拟结果会自动存到云端，手机和电脑打开 ves.dson.site 都会看到同一份进度。</p><div class="btns"><button class="btn ghost" data-act="lockSync">在这台设备上锁定</button></div>` : `<p class="muted" style="margin:0">所有人都能看到云端的 S${SEASON} 进度。输入同步密码后，这台设备的模拟结果才会写入云端；不输入的话，模拟结果只留在这台设备。</p><div class="btns"><input id="syncKey" type="password" placeholder="同步密码" autocomplete="current-password" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:7px 10px;font-size:13px;color:var(--fg)"><button class="btn" data-act="unlockSync">解锁</button></div>`) : cloud ? `<p class="muted" style="margin:0">这个页面在 Claude 里打开，S${SEASON} 进度会自动存到你的账号，用同一个账号在手机或电脑打开这个页面，进度会自动同步。</p>`
+    ${web ? (WEB.key ? `<p class="muted" style="margin:0">已解锁。这台设备的模拟结果会自动存到云端，手机和电脑打开 ves.dson.site 都会看到同一份进度。</p>${WEB.store === 'github' ? `<div style="display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line-2);border-radius:10px"><div class="note" style="margin:0" id="cloudVer">云端进度：读取中…</div><div class="btns"><button class="btn" data-act="syncPull">以云端进度为准</button><button class="btn ghost" data-act="syncPush" id="syncPushBtn">用这台设备覆盖云端</button></div><p class="note" style="margin:0">两台设备的进度对不上时：在想保留的那台按「用这台设备覆盖云端」，另一台按「以云端进度为准」。</p></div>` : ''}<div class="btns"><button class="btn ghost" data-act="lockSync">在这台设备上锁定</button></div>` : `<p class="muted" style="margin:0">所有人都能看到云端的 S${SEASON} 进度。输入同步密码后，这台设备的模拟结果才会写入云端；不输入的话，模拟结果只留在这台设备。</p><div class="btns"><input id="syncKey" type="password" placeholder="同步密码" autocomplete="current-password" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:7px 10px;font-size:13px;color:var(--fg)"><button class="btn" data-act="unlockSync">解锁</button></div>`) : cloud ? `<p class="muted" style="margin:0">这个页面在 Claude 里打开，S${SEASON} 进度会自动存到你的账号，用同一个账号在手机或电脑打开这个页面，进度会自动同步。</p>`
       : `<p class="muted" style="margin:0">现在打开的网站只能把进度存在这台设备的浏览器里，换设备不会自动同步。可以在这里导出进度文件，到另一台设备上导入。</p>`}
     <div class="btns"><button class="btn" data-act="exportSave">导出进度文件</button><label class="btn" style="cursor:pointer">导入进度文件<input type="file" id="importSave" accept="application/json,.json" hidden></label></div>
     <p class="note" style="margin:0" id="syncMsg">已模拟 ${playedRounds()} 轮 · 上次保存 ${S.updated ? new Date(S.updated).toLocaleString('zh-CN') : '—'}</p></div>`;
   if (!d.open) d.showModal();
+  if (WEB.store === 'github') fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(m => { const el = $('#cloudVer'); if (!el) return; el.textContent = m ? `云端进度：${SN(m.season)} 已踢 ${m.played} 轮 · 保存于 ${new Date(m.t).toLocaleString('zh-CN')}　｜　这台设备：${SN(SEASON)} 已踢 ${countPlayed(S)} 轮` : '云端还没有进度'; }).catch(() => { const el = $('#cloudVer'); if (el) el.textContent = '读不到云端进度'; });
   const sk = $('#syncKey'); if (sk) sk.addEventListener('keydown', e => { if (e.key === 'Enter') unlockSync(); });
   $('#importSave').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
