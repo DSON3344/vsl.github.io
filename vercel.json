@@ -29,5 +29,10 @@
         }
       ]
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "data": false
+    }
+  }
 }
