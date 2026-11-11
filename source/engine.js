@@ -157,18 +157,21 @@ const ENGINE = (() => {
   let teamAdj = null; let homeBoost = null; const setHomeBoost = f => { homeBoost = f; }; let derbyFn = null; const setDerby = f => { derbyFn = f; }; const isDerby = (h, a) => !!(derbyFn && derbyFn(h, a));
   const setTeamAdj = f => { teamAdj = f; };
   const shiftS = (X, d) => d ? { ...X, atk: X.atk + d, def: X.def + d, ctl: X.ctl + d, xiAvg: X.xiAvg + d, ovr: X.ovr + d, adj: d } : X;
+  let GAP_SOFT = 15, LAM_MAX = 3.4, Y2_AVOID = 0.65, HOME_H = 1.15, HOME_A = 0.91; const tune = o => { if (o.hh) HOME_H = o.hh; if (o.ha) HOME_A = o.ha; if (o.gap) GAP_SOFT = o.gap; if (o.lam) LAM_MAX = o.lam; if (o.y2 != null) Y2_AVOID = o.y2; };
   function expected(home, away, opt = {}) {
     let H = opt.L ? strengthOf(opt.L.h) : strength(home), A = opt.L ? strengthOf(opt.L.a) : strength(away);
     if (teamAdj) { H = shiftS(H, (teamAdj(home) || 0) * 0.86); A = shiftS(A, (teamAdj(away) || 0) * 0.86); }
     /* 德比：强弱差距被拉近（弱的一方拼尽全力），主场优势也小一些——两边太熟了 */
     const derby = isDerby(home, away); if (derby) { const g = H.xiAvg - A.xiAvg, d = Math.min(2.5, Math.abs(g) * 0.35 + 0.6); if (g > 0) A = shiftS(A, d); else H = shiftS(H, d); }
     const ch = condition(home, opt.weather, opt.slot, away), ca = condition(away, opt.weather, opt.slot, home);
-    const homeAdv = opt.neutral ? 1 : (derby ? 1.07 : 1.12) * (1 + (homeBoost ? homeBoost(home) || 0 : 0)), awayPen = opt.neutral ? 1 : 0.94; /* 主场氛围特别强的球队（猛龙、狂蜂）主场加成更高 */
+    const homeAdv = opt.neutral ? 1 : (derby ? HOME_H - 0.06 : HOME_H) * (1 + (homeBoost ? homeBoost(home) || 0 : 0)), awayPen = opt.neutral ? 1 : HOME_A; /* 2026-11-11 主场优势加强一些（原 1.12 / 0.94） */ /* 主场氛围特别强的球队（猛龙、狂蜂）主场加成更高 */
     const k = 0.078 / 0.86; // 能力分 78 以上压缩了 0.86，系数同步放大，强弱差距的效果不变
     const sh = styleFx((TEAMS_DATA[home] || {}).style, (TEAMS_DATA[away] || {}).style), sa = styleFx((TEAMS_DATA[away] || {}).style, (TEAMS_DATA[home] || {}).style);
-    let lh = 1.2 * Math.exp(k * (H.atk - A.def)) * Math.exp(0.0465 * (H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
-    let la = 1.2 * Math.exp(k * (A.atk - H.def)) * Math.exp(0.0465 * (A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
-    return { lh: Math.min(lh, 5), la: Math.min(la, 5), ch, ca, H, A };
+    /* 强弱差距越大，增幅越收敛：大比分少一些，下半区球队也抢得到分（比现实夸张，但比原来保守） */
+    const cd = d => d / (1 + Math.abs(d) / GAP_SOFT);
+    let lh = 1.2 * Math.exp(k * cd(H.atk - A.def)) * Math.exp(0.0465 * cd(H.ctl - A.ctl)) * homeAdv * ch.m / Math.sqrt(ca.m) * (1 + sh.a) * (1 - sa.d);
+    let la = 1.2 * Math.exp(k * cd(A.atk - H.def)) * Math.exp(0.0465 * cd(A.ctl - H.ctl)) * awayPen * ca.m / Math.sqrt(ch.m) * (1 + sa.a) * (1 - sh.d);
+    return { lh: Math.min(lh, LAM_MAX), la: Math.min(la, LAM_MAX), ch, ca, H, A };
   }
 
   function quickScore(home, away, opt) {
@@ -373,7 +376,7 @@ const ENGINE = (() => {
       const used = {};
       ms.forEach(mm => {
         const m = Math.abs(mm), on = onAt(side, m); if (!on.length) return;
-        const p = carder(on, dby);
+        let p = carder(on, dby); if (mm > 0 && used[p.name] === 1 && rnd() < Y2_AVOID) { const q = carder(on, dby); if (!used[q.name]) p = q; } /* 吃过黄牌的球员会收着踢：第二张黄牌少一些 */
         if (mm < 0) { events.push({ m, type: 'red', side, team: t, player: p.name, straight: 1, txt: `${p.name} 背后铲抢，直接红牌！` }); p.sent = m; p.off = Math.min(p.off, m); return; }
         used[p.name] = (used[p.name] || 0) + 1;
         if (used[p.name] === 2) { events.push({ m, type: 'red', side, team: t, player: p.name, txt: `${p.name} 两黄变一红，被罚下场` }); p.sent = m; p.off = Math.min(p.off, m); }
@@ -492,6 +495,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { tune, withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
