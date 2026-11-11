@@ -8284,24 +8284,26 @@ const fnv36 = str => { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) 
 const archTag = a => (a.cmp ? 'c' : '') + JSON.stringify(a).length;
 /* 旧赛季文件：内容不变，先 raw，失败再走 jsDelivr */
 async function archFetch(f) { for (const b of [GH_RAW, GH_CDN]) { try { const r = await fetch(b + 'a/' + f); if (r.ok) return await r.text(); } catch (e) { } } throw new Error('arch ' + f); }
-async function ghLoad() { const r = await fetch(GH_RAW + 'live.json', { cache: 'no-cache' }); if (!r.ok) throw new Error('live ' + r.status); const L = await r.json();
+async function ghLoad() { const r = await fetch(GH_RAW + 'live.json?ts=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw new Error('live ' + r.status); const L = await r.json();
   const s = JSON.parse(LZString.decompressFromEncodedURIComponent(L.z)), loc = {}; ((S && S.archive) || []).forEach(a => { loc[a.s] = a; });
   s.archive = await Promise.all((L.arch || []).map(async f => { const sn = +f.slice(1, f.indexOf('-')); if (WEB.af[sn] === f && loc[sn] && WEB.at[sn] === archTag(loc[sn])) return loc[sn]; return JSON.parse(LZString.decompressFromEncodedURIComponent(await archFetch(f))); }));
-  s.archive.forEach((a, i) => { WEB.af[a.s] = L.arch[i]; WEB.at[a.s] = archTag(a); }); afSave(); WEB.remote = new Set(L.arch || []); return { key: L.key, s }; }
+  s.archive.forEach((a, i) => { WEB.af[a.s] = L.arch[i]; WEB.at[a.s] = archTag(a); }); afSave(); WEB.remote = new Set(L.arch || []); return { key: L.key, s, t: L.t }; }
 function ghPayload() { const arch = [], files = {};
   (S.archive || []).forEach(a => { const tag = archTag(a); let f = WEB.af[a.s];
     if (!f || WEB.at[a.s] !== tag) { const txt = LZString.compressToEncodedURIComponent(JSON.stringify(a)); f = 's' + a.s + '-' + fnv36(txt) + '.lz'; WEB.af[a.s] = f; WEB.at[a.s] = tag; WEB.txt[f] = txt; }
     arch.push(f); if (!WEB.remote.has(f)) files[f] = WEB.txt[f] || LZString.compressToEncodedURIComponent(JSON.stringify(a)); });
   const o = {}; for (const k in S) if (k !== 'archive') o[k] = S[k];
-  return { v: 2, key: KEY, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, files, z: LZString.compressToEncodedURIComponent(JSON.stringify(o)) }; }
+  return { v: 2, key: KEY, base: WEB.base ?? null, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, files, z: LZString.compressToEncodedURIComponent(JSON.stringify(o)) }; }
 async function ghPush() { const put = b => fetch('/api/progress', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-ves-key': WEB.key }, body: JSON.stringify(b) });
   let P = ghPayload(); const names = Object.keys(P.files);
   if (P.z.length + names.reduce((a, f) => a + P.files[f].length, 0) > 3e6) { /* 第一次搬家、旧赛季很多时：旧赛季文件分批先传（每批 3MB 以内） */
     let B = {}, bs = 0; const flush = async () => { const r = await put({ v: 2, filesOnly: true, files: B }); if (!r.ok) return r; Object.keys(B).forEach(f => WEB.remote.add(f)); B = {}; bs = 0; return null; };
     for (const f of names) { if (bs && bs + P.files[f].length > 3e6) { const e = await flush(); if (e) return e; } B[f] = P.files[f]; bs += P.files[f].length; } if (bs) { const e = await flush(); if (e) return e; } P.files = {}; }
   let r = await put(P);
-  if (r.status === 409) { try { const o = await r.clone().json(); (o.need || []).forEach(f => WEB.remote.delete(f)); } catch (e) { } P = ghPayload(); r = await put(P); }
-  if (r.ok) { P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); }
+  if (r.status === 409) { let o = {}; try { o = await r.clone().json(); } catch (e) { }
+    if (o.error === 'conflict') { /* 云端已经被另一台设备（或自动模拟）更新过：以云端为准，同步过来，不覆盖 */ try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { WEB.base = o.meta && o.meta.w; adopt(g.s, '另一台设备的进度比较新，已同步过来'); } } catch (e) { } return { ok: true, status: 200, json: async () => ({}) }; }
+    (o.need || []).forEach(f => WEB.remote.delete(f)); P = ghPayload(); r = await put(P); }
+  if (r.ok) { P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) WEB.base = o.w; } catch (e) { } }
   return r; }
 try { WEB.key = localStorage.getItem('ves-sync-key') || ''; } catch (e) {}
 function setSync(st) {
@@ -8378,7 +8380,7 @@ async function cloudInit() {
 const countPlayed = st => (st && Array.isArray(st.fx) ? st.fx.filter(r => r.every(m => m.r)).length : 0);
 function validState(st) { return st && Array.isArray(st.fx) && st.fx.length === 38 && Array.isArray(st.teams); }
 async function webFetch(headers) {
-  try { const r = await fetch(GH_RAW + 'meta.json', { cache: 'no-cache' }); if (r.ok) { const m = await r.json(); if (m && m.v === 2) { WEB.gh = true; if (WEB.meta && WEB.meta.w === m.w) return { same: true }; WEB.meta = m; WEB.remote = new Set(m.arch || []); return { etag: m.w, meta: m }; } } else if (WEB.gh) throw new Error('meta ' + r.status); } catch (e) { if (WEB.gh) throw e; }
+  try { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); /* 加时间戳绕过 GitHub 约 5 分钟的缓存，读到的才是最新进度 */ if (r.ok) { const m = await r.json(); if (m && m.v === 2) { WEB.gh = true; if (WEB.meta && WEB.meta.w === m.w) return { same: true }; WEB.meta = m; WEB.remote = new Set(m.arch || []); return { etag: m.w, meta: m }; } } else if (WEB.gh) throw new Error('meta ' + r.status); } catch (e) { if (WEB.gh) throw e; }
   const r = await fetch('/api/progress', { cache: 'no-store', headers: headers || {} });
   if (r.status === 304) return { same: true };
   if (!r.ok) throw new Error('http ' + r.status);
@@ -8402,7 +8404,9 @@ async function webPull(quiet) {
     const o = await webFetch(WEB.etag && !WEB.gh ? { 'If-None-Match': WEB.etag } : null);
     if (o.same) return;
     WEB.etag = o.etag;
-    if (o.meta) { if (o.meta.key === KEY && (o.meta.t || 0) > (S.updated || 0)) { const g = await ghLoad(); if (validState(g.s) && (g.s.updated || 0) > (S.updated || 0)) adopt(g.s, quiet ? null : '已同步其他设备的进度'); } return; }
+    if (o.meta) { const m = o.meta; if (m.key !== KEY) return;
+      /* 云端的版本比这台设备所依据的版本新（别的设备 / 自动模拟写过）：以云端为准 */
+      if (WEB.base == null ? (m.t || 0) > (S.updated || 0) : (m.w || 0) > WEB.base) { const g = await ghLoad(); if (validState(g.s)) { WEB.base = m.w; adopt(g.s, quiet ? null : '已同步其他设备的进度'); } } return; }
     const st = o.state;
     if (st && st.key === KEY && validState(st.s) && (st.s.updated || 0) > (S.updated || 0)) adopt(st.s, quiet ? null : '已同步其他设备的进度');
   } catch (e) { /* 网络抖动时下次再试 */ }
@@ -8433,6 +8437,7 @@ async function webInit() {
   const lp = countPlayed(S);
   let st = o.state && o.state.key === KEY && validState(o.state.s) ? o.state.s : null;
   if (o.meta && o.meta.key === KEY && ((o.meta.t || 0) > (S.updated || 0) || (lp === 0 && (o.meta.played || 0) > 0 && !(S.reset && S.reset >= (o.meta.t || 0))))) { try { const g = await ghLoad(); st = validState(g.s) ? g.s : null; } catch (e) { st = null; } }
+  if (o.meta) WEB.base = o.meta.w; /* 这台设备接下来的进度以这一版云端为基础 */
   if (st && ((st.updated || 0) > (S.updated || 0) || (lp === 0 && countPlayed(st) > 0 && !(S.reset && S.reset >= (st.updated || 0))))) { adopt(st, countPlayed(st) ? '已载入云端进度' : null); setSync(WEB.key ? 'cloud' : 'view'); }
   else if (WEB.key && lp > 0) await webPush();
   else setSync(WEB.key ? 'cloud' : 'view');

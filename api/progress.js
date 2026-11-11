@@ -42,7 +42,7 @@ async function gh(path, method = 'GET', body) {
 }
 const blobText = async sha => { const b = await gh('/git/blobs/' + sha); return Buffer.from(b.content, 'base64').toString('utf8'); };
 const okName = f => typeof f === 'string' && /^s\d{1,4}-[0-9a-z]{4,16}\.lz$/.test(f);
-async function ghPut(body) {
+async function ghPut(body) { let W_NOW = null;
   const ref = await gh('/git/ref/heads/' + GH_BR);
   let have = {}, meta = null, bak = [];
   if (ref) { const c = await gh('/git/commits/' + ref.object.sha); const t = await gh('/git/trees/' + c.tree.sha + '?recursive=1'); (t.tree || []).forEach(e => { if (e.type === 'blob') have[e.path] = e.sha; });
@@ -54,8 +54,10 @@ async function ghPut(body) {
   if (body.filesOnly) { tree = { ...have, ...add }; }
   else {
     const arch = Array.isArray(body.arch) ? body.arch : []; if (arch.some(f => !okName(f))) return { status: 400, body: { error: 'bad arch' } };
+    /* 版本检查：这台设备是基于云端哪个版本改的（base = 当时云端的写入时间）。云端在那之后已经被别的设备更新过，就不覆盖，让这台设备先同步 */
+    if (meta && meta.w && body.base != null && body.base !== meta.w && !body.force) return { status: 409, body: { error: 'conflict', meta: { ...meta, key: undefined } } };
     const need = arch.filter(f => !have['a/' + f] && !add['a/' + f]); if (need.length) return { status: 409, body: { error: 'need files', need } };
-    const now = Date.now(), m2 = { v: 2, key: body.key, t: body.t || now, season: body.season ?? null, played: body.played ?? null, arch, w: now };
+    const now = Date.now(); W_NOW = now; const m2 = { v: 2, key: body.key, t: body.t || now, season: body.season ?? null, played: body.played ?? null, arch, w: now };
     if (meta && have['live.json'] && now - ((bak[0] && bak[0].w) || 0) > 3 * 3600e3) { bak.unshift({ ...meta, w: now, sha: have['live.json'] }); bak = bak.slice(0, 12); }
     tree['live.json'] = await mk(JSON.stringify({ v: 2, key: body.key, t: m2.t, season: m2.season, played: m2.played, arch, z: body.z }));
     tree['meta.json'] = await mk(JSON.stringify(m2));
@@ -69,7 +71,7 @@ async function ghPut(body) {
   const t = await gh('/git/trees', 'POST', { tree: Object.entries(tree).map(([path, sha]) => ({ path, mode: '100644', type: 'blob', sha })) });
   const c = await gh('/git/commits', 'POST', { message: body.filesOnly ? 'archive files' : 'progress S' + (body.season ?? '?') + ' R' + (body.played ?? '?'), tree: t.sha, parents: [] });
   if (ref) await gh('/git/refs/heads/' + GH_BR, 'PATCH', { sha: c.sha, force: true }); else await gh('/git/refs', 'POST', { ref: 'refs/heads/' + GH_BR, sha: c.sha });
-  return { status: 200, body: { ok: true, etag: c.sha, store: 'github', added: Object.keys(add).length, w: body.filesOnly ? null : tree['meta.json'] && Date.now() } };
+  return { status: 200, body: { ok: true, etag: c.sha, store: 'github', added: Object.keys(add).length, w: body.filesOnly ? null : W_NOW } };
 }
 export async function GET(req) {
   if (new URL(req.url).searchParams.get('mode') != null) return json({ store: useGh ? 'github' : useRedis ? 'redis' : 'blob', repo: useGh ? GH_REPO : null, branch: useGh ? GH_BR : null });
