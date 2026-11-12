@@ -2204,8 +2204,10 @@ const RC_K = 0.86, RC = r => r <= 78 ? r : 78 + (r - 78) * RC_K, RX = r => r <= 
 Object.values(HIST.squads || {}).forEach(T => Object.values(T).forEach(L => L.forEach(x => { if (typeof x[2] === 'number') x[2] = Math.round(RC(x[2])); })))
 /* 全部重新自主模拟：资料里 S02 以后才第一次出现的球员（原本预设好哪季出道的新人、青训）一律拿掉，
    新人只从各队青训模拟产生；S01 就在的球员照资料的去向继续 */
-var KEEP_PID = new Set((HIST.players || []).map((p, i) => p && p[0] === '李奥纳' ? i : -1).filter(i => i >= 0)), CUT_PID = new Set(); { const F = {}; Object.keys(HIST.squads || {}).map(Number).sort((a, b) => a - b).forEach(s => Object.values(HIST.squads[s]).forEach(L => L.forEach(x => { if (F[x[0]] == null) F[x[0]] = s; })));
+var CUT_INFO = {}, KEEP_PID = new Set((HIST.players || []).map((p, i) => p && p[0] === '李奥纳' ? i : -1).filter(i => i >= 0)), CUT_PID = new Set(); { const F = {}; Object.keys(HIST.squads || {}).map(Number).sort((a, b) => a - b).forEach(s => Object.values(HIST.squads[s]).forEach(L => L.forEach(x => { if (F[x[0]] == null) F[x[0]] = s; })));
   Object.entries(F).forEach(([pid, s]) => { if (s >= 2 && !KEEP_PID.has(+pid)) CUT_PID.add(+pid); }); /* 例外：狂蜂青训出身的历史级前锋李奥纳 */
+  /* 拿掉之前先记下每人在旧资料里第一次出现的赛季、球队和最高能力：他们改成从原球队青训出道（见 SCR_OLD2） */
+  Object.keys(HIST.squads || {}).map(Number).sort((a, b) => a - b).forEach(s => Object.entries(HIST.squads[s]).forEach(([t, L]) => L.forEach(x => { if (!CUT_PID.has(x[0])) return; const c = CUT_INFO[x[0]] = CUT_INFO[x[0]] || { s, t, r: 0, ts: {} }; if (typeof x[2] === 'number') c.r = Math.max(c.r, x[2]); c.ts[t] = (c.ts[t] || 0) + 1; })));
   Object.values(HIST.squads || {}).forEach(T => Object.keys(T).forEach(t => { T[t] = T[t].filter(x => !CUT_PID.has(x[0])); })); };
 (HIST.players || []).forEach(x => { if (x && typeof x[7] === 'number') x[7] = Math.round(RC(x[7])); });
 /* 司职位置：统一用参考 FIFA 的 15 个标准代码（GK CB LB RB LWB RWB CDM CM CAM LM RM LW RW CF ST），中英文名称都从这里取 */
@@ -2912,12 +2914,26 @@ var SCR_OLD = [["乔丹","威龙","RB",86,""],["亚瑟","切狐","GK",84,""],["�
 var SCR_STORY = [{ name: '巴扎南德', team: '切狐', pos: 'ST', nat: '法国', born: -8, pot: 96, bt: 2, ba: 18, loss: 7, dec: 23, lock: 1,
   ev: [{ s: 7, act: 'promote' }, { s: 15, act: 'sell', to: '龙王宫殿' }, { s: 19, act: 'sell', to: '威廉斯' }, { s: 27, act: 'sell', to: '雷豹' }, { s: 31, act: 'sell', to: '赤鹰' }],
   note: '切狐青训出品的天才前锋，S07 以 15 岁之龄登上一线队，被视为潜力 96 的未来巨星。18 岁起伤病接连不断，天赋没能兑现（巅峰 89），之后辗转龙王宫殿、威廉斯，再到低级别联赛。' }];
-var SCR_NAMES = SCR_OLD.map(x => x[0]).concat(SCR_STORY.map(x => x.name));
+/* 旧文档里有、但资料里没有完整阵容记录的球员（S16–S18 名单）：[名字, 球队, 位置, 文档能力, 文档赛季] */
+var SCR_DOC = [["萨维奇","阿尔法骑士","CM",74,16],["门德斯","花豹","RB",81,16],["雷克斯塔","华尔兹","ST",81,16],["金","狂蜂","GK",87,16],["费尔南","岚","GK",79,16],["劳德","岚","ST",78,16],["保罗","罗联","CM",86,16],["萨克","猛虎","ST",80,16],["基德","威尔顿联","CAM",73,16],["道格拉斯","威尔顿联","LW",73,16],["布雷克","威尔福特","GK",86,16],["萨姆","沃特梅兹","RW",82,16],["范·德萨克","华尔兹","RB",85,17],["罗德里·戈萨","龙王宫殿","CDM",90,17],["卢卡·莫德","蜜蜂","CM",85,17],["埃梅里","蜜蜂","CB",78,17],["萨克雷","科摩多尊龙","GK",79,17],["托内利·卡鲁","威廉斯","CM",84,17],["阿利·布克","阿尔法骑士","GK",89,18],["卡尔·施密特","阿尔法骑士","CDM",88,18],["穆内","威龙","LW",86,16],["斯塔林","飞鹰","CM",65,17],["佩里","飞鹰","RW",66,17],["托马斯","雷克夏","GK",67,17],["班克斯","雷克夏","CM",66,17],["桑德","拉普兰德","CDM",69,17],["弗罗斯特","拉普兰德","CM",68,17]];
+/* 旧资料里 S02 以后才出道、全面自主模拟时被拿掉的球员（约 590 人）：改成在原球队青训长大，在原本出道的那季升上一线队，潜力按旧资料的最高能力。
+   [名字, 球队, 位置, 最高能力, 国籍, 出道赛季, 出道年龄]；球队要等 TD 载入后才核对，见 scrAcad */
+var SCR_OLD2 = (() => { const P = HIST.players || [], taken = new Set(SCR_OLD.map(x => x[0]).concat(SCR_STORY.map(x => x.name))), keep = new Set(); P.forEach((x, i) => { if (x && !CUT_PID.has(i)) keep.add(x[0]); });
+  const best = {}; Object.entries(CUT_INFO).forEach(([pid, c]) => { const x = P[pid]; if (!x || !x[0] || taken.has(x[0]) || keep.has(x[0])) return; const o = [x[0], c.t, x[1] || 'CM', c.r || x[7] || 70, x[2] || '', c.s, typeof x[9] === 'number' ? x[9] : 19, c.ts]; if (!best[x[0]] || o[3] > best[x[0]][3]) best[x[0]] = o; });
+  SCR_DOC.forEach(([n, t, pos, r, ds]) => { if (taken.has(n) || keep.has(n) || best[n] || keep.has(n.replace(/·/g, ''))) return; best[n] = [n, t, pos, r, '', Math.max(4, ds - 6), 18, { [t]: 1 }]; });
+  return Object.values(best).sort((a, b) => a[5] - b[5] || (a[0] < b[0] ? -1 : 1)); })();
+var SCR_CNT = null;
+var SCR_NAMES = SCR_OLD.map(x => x[0]).concat(SCR_STORY.map(x => x.name), SCR_OLD2.map(x => x[0]));
 function scrKid(o, i) { const line = ENGINE.LINE(o.pos) === 'GK' ? 'GK' : ENGINE.LINE(o.pos), rnd = seeded('scr|' + o.name), id = 'X|' + o.name, prof = {}; Object.keys(ATTR_TPL[line]).forEach(a => prof[a] = Math.round((rnd() - 0.5) * 14));
   return { id, fix: 1, lock: o.lock ? 1 : 0, team: o.team, name: o.name, nat: o.nat || YP.NATS[Math.floor(rnd() * YP.NATS.length)], pos: o.pos, line, born: o.born, pot: o.pot, bt: o.bt || 0, ba: o.ba || 0, loss: o.loss || 0, bg: 0, bga: 0, dec: o.dec || 0, prof, height: line === 'GK' ? 184 + Math.floor(rnd() * 10) : 170 + Math.floor(rnd() * 20), weight: 64 + Math.floor(rnd() * 18), status: 'academy', fixEv: o.ev, note: o.note || '' }; }
-function scrAcad() { const add = k => { if (!ACAD[k.team] || ACAD_ID[k.id]) return; ACAD[k.team].push(k); ACAD_ID[k.id] = k; };
-  SCR_OLD.forEach(([name, team, pos, r, nat], i) => { const sa = 4 + (i * 7) % 11, k = scrKid({ name, team, pos, nat, born: sa - 15, pot: Math.min(RMAX, r + 1) }, i), need = r >= 85 ? 17 : 18; while (kAge(k, sa) < need) k.born--; k.fixEv = [{ s: sa, act: 'promote' }]; add(k); /* 进梯队的那季就升上一线队 */ });
-  SCR_STORY.forEach(o => add(scrKid(o))); }
+function scrList() { const L = []; /* 每次都重新生成：孩子的状态会在模拟中改动 */
+  SCR_OLD.forEach(([name, team, pos, r, nat], i) => { const sa = 4 + (i * 7) % 11, k = scrKid({ name, team, pos, nat, born: sa - 15, pot: Math.min(RMAX, r + 1) }, i), need = r >= 85 ? 17 : 18; while (kAge(k, sa) < need) k.born--; k.fixEv = [{ s: sa, act: 'promote' }]; L.push(k); /* 进梯队的那季就升上一线队 */ });
+  SCR_OLD2.forEach(([name, team, pos, r, nat, sa, age, ts], i) => { let t = TD[team] ? team : Object.keys(ts || {}).filter(x => TD[x]).sort((a, b) => ts[b] - ts[a])[0]; if (!t) return;
+    const pos2 = typeof normPos === 'function' ? normPos(pos) : pos, need = Math.max(17, Math.min(20, age)), k = scrKid({ name, team: t, pos: pos2, nat, born: sa - 15, pot: Math.min(RMAX, r + 1) }, i); while (kAge(k, sa) < need) k.born--; k.fixEv = [{ s: Math.max(2, sa), act: 'promote' }]; k.old2 = 1; L.push(k); });
+  SCR_STORY.forEach(o => L.push(scrKid(o))); return L; }
+function scrAcad() { scrList().forEach(k => { if (!ACAD[k.team] || ACAD_ID[k.id]) return; ACAD[k.team].push(k); ACAD_ID[k.id] = k; }); }
+/* 旧资料球员顶替同一批随机生成的青训名额：每队每批至少还招 2 个 */
+function scrCnt() { if (SCR_CNT) return SCR_CNT; SCR_CNT = {}; scrList().forEach(k => { if (k.old2) SCR_CNT[k.team + '|' + k.born] = (SCR_CNT[k.team + '|' + k.born] || 0) + 1; }); return SCR_CNT; }
 /* 剧本球员去了没有完整名单的低级别球队：放进那支球队的名单（外赛区名单表里），球员页、搜索都找得到 */
 function scrLower(s) { Object.values(ACAD_ID).forEach(k => { if (!k.lock) return; Object.keys(FDB).forEach(c => { const L = FDB[c], i = L.findIndex(q => q.acad === k.id); if (i >= 0) { L.splice(i, 1); if (!L.length && !EXT_CLUB[c]) delete FDB[c]; } });
   if (kidRetired(k, s)) return; const st = kidWhere(k, s); if (st.at === 'gone' && st.team && !TD[st.team] && !EXT_CLUB[st.team]) (FDB[st.team] = FDB[st.team] || []).push(kidPlayer(k, st.team, s, st)); }); }
@@ -2954,7 +2970,7 @@ const kidPot = (k, s) => k.lock ? kidPot0(k, s) : kidPot0(k, s) + Math.max(0, Ma
 const kidPot0 = (k, s) => { const a = kAge(k, s); if (k.bg && a >= k.bga) return k.pot + k.bg * Math.min(1, (a - k.bga + 1) / 3); return !k.bt || a < k.ba ? k.pot : k.pot - (k.bt === 1 ? k.loss : k.loss * Math.min(1, (a - k.ba + 1) / 3)); };
 const kidRating = (k, s) => { const pt = kidPot(k, s), base = pt - Math.max(0, 22 - kAge(k, s)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2 - (k.dec && kAge(k, s) > k.dec ? (kAge(k, s) - k.dec) * 2 : 0), f = k.lock ? 0 : kpfOf(k.id, s); /* U21 表现带来的提升最多只到潜力值，不会越过天花板 */ return Math.round(Math.max(40, Math.min(RMAX, f > 0 ? Math.max(base, Math.min(pt + 1, base + f)) : base + f))); };
 function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR_TPL[k.line]).forEach(([a, d]) => o[a] = Math.max(20, Math.min(99, Math.round(r + d + (k.prof[a] || 0))))); return o; }
-function acadCohort(t, born) { const skip = false; /* 预设新人拿掉后，新血全靠青训：每季照常招一批 */ const n = 4 + (ghash('acn|' + t + '|' + born) < 0.4 ? 1 : 0), gold = ghash('gold|' + t + '|' + born) < (GOLD_P[acadQ(t)] || 0.02) ? 2 + (ghash('goldn|' + t + '|' + born) < 0.4 ? 1 : 0) : 0; for (let k = 0; k < n; k++) { const kid = acadKid(t, born, k, gold); if (skip) continue; ACAD[t].push(kid); ACAD_ID[kid.id] = kid; } }
+function acadCohort(t, born) { const skip = false; /* 预设新人拿掉后，新血全靠青训：每季照常招一批 */ const n0 = 4 + (ghash('acn|' + t + '|' + born) < 0.4 ? 1 : 0), n = Math.max(2, n0 - (scrCnt()[t + '|' + born] || 0)), gold = ghash('gold|' + t + '|' + born) < (GOLD_P[acadQ(t)] || 0.02) ? 2 + (ghash('goldn|' + t + '|' + born) < 0.4 ? 1 : 0) : 0; for (let k = 0; k < n; k++) { const kid = acadKid(t, born, k, gold); if (skip) continue; ACAD[t].push(kid); ACAD_ID[kid.id] = kid; } }
 function acadInit() { ACAD = {}; ACAD_ID = {}; SCR_NAMES.forEach(n => YOUTH_USED.add(n)); Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 1 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); try { genAcad(); } catch (e) { console.error(e); } try { scrAcad(); } catch (e) { console.error(e); } } /* 两季一岁：S02 起每两季（单数赛季）才招一批 15 岁的新梯队（双数赛季那批照样生成名字，但不进梯队，免得别的孩子名字跟着变） */ // 从 S01 起每季都有 15–20 岁的梯队（历史时期也有）
 function acadNext(s) { Object.keys(TD).forEach(t => { ACAD[t].forEach(k => { if (k.status === 'academy' && kAge(k, s) > 20) k.status = 'released'; }); acadCohort(t, s - 15); }); }
 let HIST_FIRST = null;
