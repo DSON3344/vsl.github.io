@@ -939,7 +939,13 @@ function mentorTick(s) {
     L.forEach(p => { const a = ag(p); if (a > 23) return; p.mb = Math.min(3, (p.mb || 0) + k * (a <= 21 ? 0.8 : 0.4)); (p.mbA = p.mbA || {})[a + 1] = p.mb; }); });
 }
 function mentorInfo(t) { const L = PDB[t] || []; const M = L.filter(p => (p.age || 0) >= 30 && p.rating >= 80), Y = L.filter(p => (p.age || 99) <= 23); return { M, Y, k: Math.min(1, 0.35 * M.length) }; }
-function growthOf(p) {
+/* 手动改过潜力的球员（S.edits[uid].pot，potA = 改的时候的年龄）：现在的能力不变，之后逐年朝新的潜力走（26 岁前后到位） */
+const potEdOf = p => { if (!p || !p.uid || typeof S === 'undefined' || !S || !S.edits || String(p.uid).startsWith('K|')) return null; const e = S.edits[p.uid]; return e && e.pot != null && e.pot !== '' ? e : null; };
+function growthOf(p) { if (p._g) return p._g; const g = growthOf0(p), E = potEdOf(p); if (!E) return g;
+  const d = E.pot - g.pot, aN = typeof E.potA === 'number' ? E.potA : (typeof p.age0 === 'number' ? p.age0 : 25), pk = Math.max(26, aN + 1);
+  const at = a => a <= aN ? g.at(a) : Math.max(40, Math.min(RMAX, Math.round(g.at(a) + d * Math.min(1, (a - aN) / (pk - aN)))));
+  return (p._g = { pot: E.pot, at, past: a => a <= aN ? g.past(a) : at(a) }); }
+function growthOf0(p) {
   if (p._g) return p._g;
   if (p.cv != null && rrOf(p.cv)) { const off = typeof p.cv === 'number' ? wlAgeOff(p.cv) : 0, at = a => Math.min(RMAX, rateAtR(p.cv, a - off) + Math.round(mbAt(p, a))); return (p._g = { pot: peakR(p.cv), at, past: at }); }
   const A0 = p.age0, R0 = p.rating0, h = ghash('pot|' + p.name);
@@ -1794,7 +1800,7 @@ function openEditor(uid) {
       ${fld('名字', inp('edName', o.name))}${fld('位置', `<select id="edPos">${POS_LIST.concat(POS_LIST.includes(normPos(o.pos)) ? [] : [o.pos]).map(x => `<option value="${x}" ${x === normPos(o.pos) ? 'selected' : ''}>${x} · ${posZh(x)}</option>`).join('')}</select>`)}
       ${fld('国籍', inp('edNat', o.nat))}${fld('球衣号码', inp('edNo', o.no, 'number', 'min="1" max="99"'))}
       ${fld('身高 (cm)', inp('edH', o.height, 'number'))}${fld('体重 (kg)', inp('edW', o.weight, 'number'))}
-      ${fld(cur ? '总评分' : '巅峰评分', inp('edR', o.rating, 'number', 'min="40" max="99"'))}${uid.startsWith('K|A|') && ACAD_ID[uid.slice(2)] ? fld(`潜力（40–${RMAX}，青训出身）`, inp('edPot', ACAD_ID[uid.slice(2)].pot, 'number', `min="40" max="${RMAX}"`)) : ''}<div class="note" style="align-self:end;font-size:11px">改属性会自动算总评；改总评或位置会按位置自动配属性（保留个人特点）。</div>
+      ${fld(cur ? '总评分' : '巅峰评分', inp('edR', o.rating, 'number', 'min="40" max="99"'))}${uid.startsWith('K|A|') && ACAD_ID[uid.slice(2)] ? fld(`潜力（40–${RMAX}，青训出身）`, inp('edPot', ACAD_ID[uid.slice(2)].pot, 'number', `min="40" max="${RMAX}"`)) : cur && !uid.startsWith('K|') ? fld(`潜力（40–${RMAX}）`, inp('edPot', potentialOf(cur), 'number', `min="40" max="${RMAX}"`)) : ''}<div class="note" style="align-self:end;font-size:11px">改属性会自动算总评；改总评或位置会按位置自动配属性（保留个人特点）。</div>
     </div>
     ${cur ? (() => { const alt = cur.alt || altDef(cur), ft = cur.foot || footDef(cur);
       return `<div style="display:grid;gap:10px"><div><div class="eyebrow" style="margin-bottom:6px">其他可踢位置 <span class="dim" style="letter-spacing:0;text-transform:none">（主位置之外，踢这些位置不扣分）</span></div><div class="btns" id="edAlt" style="gap:6px;flex-wrap:wrap">${POS_LIST.map(x => `<label class="chip" style="cursor:pointer;display:inline-flex;gap:4px;align-items:center;font-size:12px"><input type="checkbox" data-alt="${x}" ${alt.includes(x) ? 'checked' : ''} ${x === posMain(o.pos) ? 'disabled' : ''}>${x}</label>`).join('')}</div></div>
@@ -1846,6 +1852,7 @@ function saveEditor(uid, swap) {
   const nm = v('edName'); if (nm) e.name = nm; e.pos = v('edPos'); e.nat = v('edNat');
   if (cur && $('#edAlt')) { e.alt = [...document.querySelectorAll('#edAlt [data-alt]')].filter(i => i.checked && !i.disabled).map(i => i.dataset.alt).filter(x => x !== posMain(e.pos)); e.foot = v('edFoot'); const pv = v('edPers'); if (pv && PERS[pv]) { const base = (() => { const k0 = persKey(cur); return persOf0(k0); })(); if (pv !== base) e.pers = pv; } }
   if (uid.startsWith('K|A|')) { const pt = num('edPot'); if (pt != null) e.pot = Math.max(40, Math.min(RMAX, Math.round(pt))); else if (old.pot != null) e.pot = old.pot; }
+  else if (cur && !uid.startsWith('K|')) { const pt = num('edPot'), now = potentialOf(cur); if (pt != null && pt !== now) { e.pot = Math.max(40, Math.min(RMAX, Math.round(pt))); e.potA = typeof cur.age === 'number' ? cur.age : null; } else if (old.pot != null) { e.pot = old.pot; e.potA = old.potA; } } /* 潜力：改了才存，以后照新潜力成长 */
   e.no = num('edNo'); e.height = num('edH'); e.weight = num('edW'); { const dl = $('#dlg'), L = dl && dl._skGet ? dl._skGet() : (Array.isArray(old.sk) ? old.sk : null); if (L) e.sk = L; }
   const A = {}; document.querySelectorAll('#dlg [data-attr]').forEach(i => { if (i.value !== '') A[i.dataset.attr] = Math.max(20, Math.min(99, +i.value)); });
   if (cur) {
@@ -6662,7 +6669,7 @@ function teamDetail(t) {
 }
 
 /* ---------- Players ---------- */
-let PF = { mode: 'cur', q: '', team: '', line: '', sort: 'rating', limit: 60, pos: '', alt: false, rmin: '', rmax: '', amin: '', amax: '', potmin: '', appmin: '' };
+let PF = { mode: 'cur', src: '', q: '', team: '', line: '', sort: 'rating', limit: 60, pos: '', alt: false, rmin: '', rmax: '', amin: '', amax: '', potmin: '', appmin: '' };
 /* 球员页的进阶筛选：司职位置（可含副位置）、评分区间、年龄区间、最低潜力、本季最少出场 */
 const PF_POS = ['GK', 'CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST'];
 const pfNum = v => v === '' || v == null || isNaN(+v) ? null : +v;
@@ -6674,9 +6681,10 @@ function pfPass(p, opt = {}) { const r = opt.rating != null ? opt.rating : p.rat
   if (opt.pot !== undefined && pfNum(PF.potmin) != null && !(opt.pot >= pfNum(PF.potmin))) return false;
   if (opt.apps !== undefined && pfNum(PF.appmin) != null && !(opt.apps >= pfNum(PF.appmin))) return false;
   return true; }
-const pfActive = () => !!(PF.pos || PF.rmin !== '' || PF.rmax !== '' || PF.amin !== '' || PF.amax !== '' || PF.potmin !== '' || PF.appmin !== '');
+const pfActive = () => !!(PF.src || PF.pos || PF.rmin !== '' || PF.rmax !== '' || PF.amin !== '' || PF.amax !== '' || PF.potmin !== '' || PF.appmin !== '');
 function pfAdv(hist) { const ni = (id, v, ph, w = 64) => `<input type="number" id="${id}" value="${esc(v)}" placeholder="${ph}" inputmode="numeric" style="width:${w}px" aria-label="${ph}">`;
   return `<div class="filters pfadv" style="margin-top:10px">
+    ${hist ? '' : `<label class="pff"><span class="eyebrow">来源</span><select id="psrc" aria-label="球员来源"><option value="">全部球员</option><option value="youth" ${PF.src === 'youth' ? 'selected' : ''}>青训球员（含已升一线队）</option></select></label>`}
     <label class="pff"><span class="eyebrow">司职</span><select id="ppos" aria-label="司职位置"><option value="">全部位置</option>${PF_POS.map(k => `<option ${PF.pos === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
     <label class="pff" style="gap:6px"><input type="checkbox" id="palt" ${PF.alt ? 'checked' : ''}><span class="note" style="margin:0">含副位置</span></label>
     <label class="pff"><span class="eyebrow">${hist ? '巅峰评分' : '评分'}</span>${ni('prmin', PF.rmin, '最低')}<span class="dim">–</span>${ni('prmax', PF.rmax, '最高')}</label>
@@ -6714,7 +6722,11 @@ function vPlayers() {
     </tbody></table></div>
     ${total > PF.limit ? `<div style="text-align:center;margin-top:14px"><button class="btn" data-act="more">再显示 60 名</button></div>` : ''}</div></section>`;
   }
-  let list = ALL_PLAYERS.filter(p => (!PF.q || p.name.includes(PF.q) || p.nat.includes(PF.q)) && (!PF.team || p.team === PF.team) && (!PF.line || p.line === PF.line) && pfPass(p, { pot: pfNum(PF.potmin) != null ? potentialOf(p) : undefined, apps: pfNum(PF.appmin) != null ? ((pm[p.team + '|' + p.name] || {}).apps || 0) : undefined }));
+  const youthRows = () => { const out = []; Object.keys(TD).forEach(t => academyOf(t).forEach(k => { if (k.kind !== 'acad' || !k.kid) return; out.push({ kidRow: 1, kid: k.kid, name: k.name, team: t, pos: k.pos, line: k.line || ENGINE.LINE(k.pos), nat: k.nat || '—', age: k.age, rating: k.rating, potS: k.pot, value: 'ⰵ' + valueM(k.rating, k.age) + 'M', cGP: 0, cG: 0, cA: 0 }); }));
+    Object.entries(S.demoted || {}).forEach(([key]) => { const k = key.startsWith('K|') && ACAD_ID[key.slice(2)]; if (!k || out.some(x => x.kid === k) || ALL_PLAYERS.some(p => p.acad === k.id)) return; const a = kAge(k, SEASON), r = kidRating(k, SEASON); if (a > 21 || kidRetired && kidRetired(k, SEASON)) return; out.push({ kidRow: 1, dem: 1, kid: k, name: k.name, team: k.team, pos: k.pos, line: k.line || ENGINE.LINE(k.pos), nat: k.nat || '—', age: a, rating: r, potS: kidPot(k, SEASON), value: 'ⰵ' + valueM(r, a) + 'M', cGP: 0, cG: 0, cA: 0 }); });
+    return out; };
+  const BASE = PF.src === 'youth' ? ALL_PLAYERS.filter(p => p.youth || p.acad || String(p.uid || '').startsWith('K|')).concat(youthRows()) : ALL_PLAYERS; /* 青训球员：已升一线队的 + 还在梯队 / U21 的 */
+  let list = BASE.filter(p => (!PF.q || p.name.includes(PF.q) || p.nat.includes(PF.q)) && (!PF.team || p.team === PF.team) && (!PF.line || p.line === PF.line) && pfPass(p, { pot: pfNum(PF.potmin) != null ? potentialOf(p) : undefined, apps: pfNum(PF.appmin) != null ? ((pm[p.team + '|' + p.name] || {}).apps || 0) : undefined }));
   const A = p => at[pidOf(p.team, p.name)] || {};
   const key = { rating: p => -p.rating, pot: p => -potentialOf(p) - p.rating / 1000, value: p => -valNum(p.value), age: p => typeof p.age === 'number' ? p.age : 99, goals: p => -((pm[p.team + '|' + p.name] || {}).g || 0) - p.rating / 1000, assists: p => -((pm[p.team + '|' + p.name] || {}).a || 0) - p.rating / 1000, avg: p => -((pm[p.team + '|' + p.name] || {}).avg || 0) - p.rating / 10000, vg: p => -(A(p).g || 0), vapps: p => -(A(p).apps || 0) }[PF.sort] || (p => -p.rating);
   list.sort((a, b) => key(a) - key(b));
@@ -6727,7 +6739,7 @@ function vPlayers() {
   </div>${pfAdv(false)}
   <p class="note" style="margin:12px 0 4px">${pfActive() || PF.q || PF.team || PF.line ? '符合条件的' : '共 '}${total} 名现役球员${pfActive() ? ' · 已套用筛选' : ''}</p>
   <div class="tw"><table><thead><tr><th class="l">球员</th><th class="l">球队</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>潜力</th><th>身价</th><th>威超出场</th><th>威超进球</th><th>威超助攻</th><th>S${SEASON} 出场</th><th>S${SEASON} 进球</th><th>S${SEASON} 助攻</th><th>S${SEASON} 评分</th></tr></thead><tbody>
-  ${list.map(p => { const s = pm[p.team + '|' + p.name], a = A(p); return `<tr><td class="l"><button class="lnk" ${plink(p.team, p.name)}><span>${esc(p.name)}</span></button>${FATHER_OF[pidOf(p.team, p.name)] ? ' <span class="chip" style="font-size:10px;padding:0 5px">二代</span>' : ''}</td><td class="l"><span class="tname">${crest(p.team, 18)}<span class="muted">${esc(p.team)}</span></span></td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${typeof p.age0 === 'number' && potentialOf(p) > p.rating ? `<span class="mono" style="color:var(--gold)">${potentialOf(p)}</span>` : '<span class="dim">–</span>'}</td><td class="muted">${esc(p.value)}</td><td class="muted">${a.apps ? a.apps : '<span class="dim">–</span>'}</td><td class="muted">${a.apps ? a.g : '<span class="dim">–</span>'}</td><td class="muted">${a.apps ? a.a : '<span class="dim">–</span>'}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
+  ${list.map(p => { const s = p.kidRow ? null : pm[p.team + '|' + p.name], a = p.kidRow ? {} : A(p); return `<tr><td class="l"><button class="lnk" ${p.kidRow ? scoutBtn(p.kid) : plink(p.team, p.name)}><span>${esc(p.name)}</span></button>${!p.kidRow && FATHER_OF[pidOf(p.team, p.name)] ? ' <span class="chip" style="font-size:10px;padding:0 5px">二代</span>' : ''}${PF.src === 'youth' ? (p.kidRow ? ` <span class="chip" style="font-size:10px;padding:0 5px">${p.dem ? 'U21' : '梯队'}</span>` : ' <span class="chip good" style="font-size:10px;padding:0 5px">一线队</span>') : ''}</td><td class="l"><span class="tname">${crest(p.team, 18)}<span class="muted">${esc(p.team)}</span></span></td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${(p.kidRow || typeof p.age0 === 'number') && potentialOf(p) > p.rating ? `<span class="mono" style="color:var(--gold)">${potentialOf(p)}</span>` : '<span class="dim">–</span>'}</td><td class="muted">${esc(p.value)}</td><td class="muted">${a.apps ? a.apps : '<span class="dim">–</span>'}</td><td class="muted">${a.apps ? a.g : '<span class="dim">–</span>'}</td><td class="muted">${a.apps ? a.a : '<span class="dim">–</span>'}</td><td>${s ? s.apps : '<span class="dim">–</span>'}</td><td>${s ? s.g : '<span class="dim">–</span>'}</td><td>${s ? s.a : '<span class="dim">–</span>'}</td><td>${s ? s.avg.toFixed(2) : '<span class="dim">–</span>'}</td></tr>`; }).join('')}
   </tbody></table></div>
   ${total > PF.limit ? `<div style="text-align:center;margin-top:14px"><button class="btn" data-act="more">再显示 60 名</button></div>` : ''}</div></section>`;
 }
@@ -6737,7 +6749,7 @@ after.players = () => {
   $('#pt').addEventListener('change', e => { PF.team = e.target.value; PF.limit = 60; render(); });
   $('#ps').addEventListener('change', e => { PF.sort = e.target.value; render(); });
   let rq = 0; const on = (id, k, f = e => e.target.value.trim()) => { const el = $('#' + id); if (el) el.addEventListener('change', e => { const v = f(e); if (PF[k] === v) return; PF[k] = v; PF.limit = 60; clearTimeout(rq); rq = setTimeout(() => { const fid = document.activeElement && document.activeElement.id; render(); if (fid) { const n = document.getElementById(fid); if (n) n.focus(); } }, 0); }); }; /* 延后重绘，避免跟切换输入框时的失焦撞在一起 */
-  on('ppos', 'pos'); on('palt', 'alt', e => e.target.checked); on('prmin', 'rmin'); on('prmax', 'rmax'); on('pamin', 'amin'); on('pamax', 'amax'); on('ppot', 'potmin'); on('papp', 'appmin');
+  on('psrc', 'src'); on('ppos', 'pos'); on('palt', 'alt', e => e.target.checked); on('prmin', 'rmin'); on('prmax', 'rmax'); on('pamin', 'amin'); on('pamax', 'amax'); on('ppot', 'potmin'); on('papp', 'appmin');
 };
 const ATTR = { spd: '速度', sho: '射门', pas: '传球', dri: '盘带', def: '防守', phy: '身体', men: '心理', sta: '体能', div: '扑救', han: '手型', kic: '开球', ref: '反应', pos_s: '站位' };
 // 一组数据的格子：出场、进球、传球、点球、防守等
@@ -7092,6 +7104,7 @@ function contractEnd(p, team) { const o = BY_TN[(team || p.team) + '|' + p.name]
   return o.cEnd != null ? o.cEnd : SEASON + 1; }
 const ageNow = p => typeof p.age === 'number' ? p.age : null;
 function potentialOf(p) { // 球探眼中的潜力：伤病 / 个人问题还没发生之前看不出来
+  { const E = potEdOf(p); if (E) return Math.max(p.rating, E.pot); } /* 手动改过潜力 */
   if (p.potS != null) return p.potS;
   if (typeof p.age0 !== 'number') return p.rating;
   if (p.cv != null && rrOf(p.cv)) { const X = rrOf(p.cv), hit = X[3] && p.age >= X[4], bl = X[6] && p.age >= X[7]; return Math.max(p.rating, hit ? Math.round(X[0] - X[5]) : bl ? X[0] + X[6] : X[0]); }
@@ -9025,7 +9038,7 @@ document.addEventListener('click', e => {
   if (act === 'loanExt') return loanExtend(el.dataset.id);
   if (act === 'recOpen') return recDlg(el.dataset.t);
   if (act === 'recPrev') { XI_PREV = { t: el.dataset.t, f: el.dataset.f }; $('#dlg').close(); render(); const x = document.querySelector('.xied'); if (x) x.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
-  if (act === 'pfReset') { Object.assign(PF, { pos: '', alt: false, rmin: '', rmax: '', amin: '', amax: '', potmin: '', appmin: '', limit: 60 }); return render(); }
+  if (act === 'pfReset') { Object.assign(PF, { src: '', pos: '', alt: false, rmin: '', rmax: '', amin: '', amax: '', potmin: '', appmin: '', limit: 60 }); return render(); }
   if (act === 'recUse') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; S.formSet[t] = f; if (S.xio && S.xio[t]) delete S.xio[t][f]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; save(); $('#dlg').close(); toast(`${t} 采用推荐阵型 ${f}`); return render(); }
   if (act === 'formSet') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; if (f) S.formSet[t] = f; else delete S.formSet[t]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; toast(f ? `${t} 改用 ${f} 作为主打阵型（对强队 / 对弱队仍按主帅安排）` : `${t} 恢复主帅的主打阵型`); save(); return render(); }
   if (act === 'rpOpen') return replayOpen(+el.dataset.ri, +el.dataset.mi);
