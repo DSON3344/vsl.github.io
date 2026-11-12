@@ -8814,7 +8814,7 @@ function autoMarket(win) { const T = { acc: 0, ren: 0, renF: 0, list: 0, bought:
       MK.renew[id] = { ok: false, pr: 0, yrs: 0, letgo: 1 }; MK.free.push({ uid: id, pid, name: x.p.name, pos: x.p.pos, a: x.a, r: x.r, from: x.t, to: to || null }); T.free = (T.free || 0) + 1; }); } catch (e) { console.error(e); } }
   const bits = []; if (T.acc) bits.push(`卖出 ${T.acc} 笔`); if (T.free) bits.push(`合同到期放走 ${T.free} 人`); if (T.bought) bits.push(`发出买人报价 ${T.bought} 份`); if (T.ren || T.renF) bits.push(`续约成功 ${T.ren} 人、谈崩 ${T.renF} 人`); if (T.list) bits.push(`挂牌 ${T.list} 人`); if (T.promo) bits.push(`提拔青训 ${T.promo} 人`);
   AUTO_DEC = 0; if (bits.length) mkNote(`全自动 · ${win ? '冬窗' : '夏窗'}：` + bits.join('；'), true); S.mktLog = S.mktLog || {}; S.mktLog[SEASON + (win ? 'w' : 's')] = T; return T; }
-function autoStep(now) { const C = AUTO_C(); if (!C.on) return false; if (!C.an || C.an.s !== SEASON) C.an = { s: SEASON, base: Math.max(0, nextRound() < 0 ? 38 : nextRound()), t: now };
+function autoStep(now) { const C = AUTO_C(); if (!C.on || WEB.ro) return false; if (!C.an || C.an.s !== SEASON) C.an = { s: SEASON, base: Math.max(0, nextRound() < 0 ? 38 : nextRound()), t: now };
   const c = mktCfg(); if (!c.auto) { C.prevMkt = { auto: !!c.auto, pilot: !!c.pilot }; c.auto = true; } /* 转会、续约全部交给系统 */
   const nr = nextRound();
   if (nr >= 0) { const T = autoT(nr); if (T > now) { if (nr === WIN_A) { try { winGen(); } catch (e) { } } return false; }
@@ -8929,6 +8929,7 @@ document.addEventListener('click', e => {
   if (el.dataset.scat != null) { SM.cat = el.dataset.scat || null; SM.limit = 50; if (!SM.cat) { SM.team = ''; SM.line = ''; } render(); return window.scrollTo(0, 0); }
   if (el.dataset.sline != null) { SM.line = el.dataset.sline; SM.limit = 50; return render(); }
   const act = el.dataset.act;
+  if (WEB.ro && RO_ACTS.has(act)) { toast(`这台是跟随设备，进度由「${WEB.ownerName || '主控设备'}」负责；要在这台玩，请先接管`); return openSync(); }
   if (act === 'round') { const nr = nextRound(); if (nr < 0) return; playRound(nr); S.demo = false; save(); ovRound = null; render(); toast(nextRound() < 0 ? `${SN(SEASON)} 全部踢完，看完满意后点「进入 ${SN(SEASON + 1)}」` : `第 ${nr + 1} 轮已模拟`); }
   if (act === 'rest') { const n0 = playedRounds(); autoFastSeason(); const n = playedRounds() - n0; S.demo = false; save(); ovRound = null; render(); toast(`已模拟剩余 ${n} 轮，冬窗与夏窗的转会、续约、解约、名单整理都已由系统处理 · 看完满意后点「进入 ${SN(SEASON + 1)}」`); } /* 跟快速推演一样：不管转会窗设成哪种处理方式，都全部自动 */
   if (act === 'watch') { M = null; initMatch(); go('match'); }
@@ -9046,6 +9047,8 @@ document.addEventListener('click', e => {
   if (act === 'doResetAll') { $('#dlg').close(); doResetAll(); return; }
   if (act === 'doReset') { if (S.market) { delete S.market[SEASON]; delete S.market['w' + SEASON]; } rollSalt(SEASON); S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
+  if (act === 'takeOwn') return takeOwn(false);
+  if (act === 'takeOwnForce') { const b = $('#takeForceBtn'); if (b && !b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '确定用这台覆盖？再按一次'; return; } return takeOwn(true); }
   if (act === 'syncPull') { (async () => { try { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); const m = r.ok ? await r.json() : null; if (!m) return toast('云端还没有进度'); const g = await ghLoad(); if (!validState(g.s) || g.key !== KEY) return toast('云端进度读不了'); baseSet(m.w); g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, '已载入云端进度'); } catch (e) { toast('读取云端失败，稍后再试'); } })(); return; }
   if (act === 'syncPush') { const b = $('#syncPushBtn'); if (b && !b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '确定覆盖云端？再按一次'; return; } WEB.forceOnce = true; save(); clearTimeout(WEB.timer); webPush().then(() => toast('已用这台设备的进度覆盖云端')); const dd = $('#dlg'); if (dd.open) dd.close(); return; }
   if (act === 'sync') { if (SANDBOX) return toast('试玩新档只存在这台设备上，不会同步'); openSync(); }
@@ -9176,6 +9179,11 @@ window.addEventListener('hashchange', () => { const h = (location.hash || '').sl
    输入密码的设备通过 /api/progress 写入。已结束的赛季每季一个文件、只传一次，平时只传当季那一小份。服务器还没设 GitHub 写入权限时照旧用 Redis。
    在其他地方（GitHub Pages / 本地文件）打开时：只能存在本机浏览器，可以用「导出 / 导入进度」手动搬。 */
 const CLOUD = { db: null, meta: null, busy: false, status: 'local', ready: false };
+/* 主控设备：一份进度只由一台设备写入。其他输入了同步码的设备是「跟随设备」：只读、自动跟上主控的进度，不上传，所以不会互相覆盖 */
+const DEV = (() => { try { let d = localStorage.getItem('ves-dev'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); localStorage.setItem('ves-dev', d); } return d; } catch (e) { return 'd-anon'; } })();
+const devLabel = () => { const u = navigator.userAgent || ''; const kind = /iPad|Tablet/i.test(u) ? '平板' : /Mobi|Android|iPhone/i.test(u) ? '手机' : '电脑'; const os = /iPhone|iPad/.test(u) ? 'iOS' : /Android/i.test(u) ? 'Android' : /Mac OS/i.test(u) ? 'Mac' : /Windows/i.test(u) ? 'Windows' : ''; const br = /Edg\//.test(u) ? 'Edge' : /Chrome\//.test(u) ? 'Chrome' : /Safari\//.test(u) ? 'Safari' : /Firefox\//.test(u) ? 'Firefox' : ''; return [kind, os, br].filter(Boolean).join(' · '); };
+const DEV_NAME = (() => { try { return localStorage.getItem('ves-dev-name') || (devLabel() + ' #' + DEV.slice(-4).toUpperCase()); } catch (e) { return devLabel(); } })();
+const devOwnerSet = m => { if (!m) return; WEB.owner = m.dev || null; WEB.ownerName = m.devName || ''; WEB.ro = !!(WEB.key && WEB.owner && WEB.owner !== DEV); };
 const WEB = { on: false, etag: null, timer: null, busy: false, pending: false, key: '', store: '', remote: new Set(), af: {}, at: {}, txt: {} };
 const GH_RAW = 'https://raw.githubusercontent.com/DSON3344/vsl.github.io/refs/heads/data/', GH_CDN = 'https://cdn.jsdelivr.net/gh/DSON3344/vsl.github.io@data/';
 try { const o = JSON.parse(localStorage.getItem('ves-af') || '{}'); WEB.af = o.af || {}; WEB.at = o.at || {}; } catch (e) {}
@@ -9204,7 +9212,8 @@ async function ghPayload() { const arch = [], files = {};
   const o = {}; for (const k in S) if (k !== 'archive') o[k] = S[k];
   const force = !!WEB.forceOnce; WEB.forceOnce = false;
   const js = JSON.stringify(o); let z = null, zg = null; if (GZ_OK) { try { zg = await gzB64(js); } catch (e) { zg = null; } } if (!zg) z = LZString.compressToEncodedURIComponent(js);
-  return { v: 2, key: KEY, base: WEB.base ?? null, force, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, files, z, zg }; }
+  const takeover = !!WEB.takeOnce;
+  return { v: 2, key: KEY, base: WEB.base ?? null, force, takeover, dev: DEV, devName: DEV_NAME, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, files, z, zg }; }
 async function ghPush() { const put = b => fetch('/api/progress', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-ves-key': WEB.key }, body: JSON.stringify(b) });
   let P = await ghPayload(); const names = Object.keys(P.files);
   if ((P.zg || P.z).length + names.reduce((a, f) => a + P.files[f].length, 0) > 3e6) { /* 第一次搬家、旧赛季很多时：旧赛季文件分批先传（每批 3MB 以内） */
@@ -9212,15 +9221,16 @@ async function ghPush() { const put = b => fetch('/api/progress', { method: 'PUT
     for (const f of names) { if (bs && bs + P.files[f].length > 3e6) { const e = await flush(); if (e) return e; } B[f] = P.files[f]; bs += P.files[f].length; } if (bs) { const e = await flush(); if (e) return e; } P.files = {}; }
   let r = await put(P);
   if (r.status === 409) { let o = {}; try { o = await r.clone().json(); } catch (e) { }
+    if (o.error === 'notowner') { devOwnerSet(o.meta); try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, null); } } catch (e) { } setSync('follow'); toast(`主控设备是「${o.meta && o.meta.devName || '另一台设备'}」，这台改为跟随（只读）；要在这台继续玩，到同步设定按「改由这台设备主控」`); return { ok: true, status: 200, json: async () => ({}) }; }
     if (o.error === 'conflict') { /* 云端已经被另一台设备（或自动模拟）更新过：以云端为准，同步过来，不覆盖 */ try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, '另一台设备的进度比较新，已同步过来'); } } catch (e) { } return { ok: true, status: 200, json: async () => ({}) }; }
     (o.need || []).forEach(f => WEB.remote.delete(f)); P = await ghPayload(); r = await put(P); }
-  if (r.ok) { P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) baseSet(o.w); } catch (e) { } }
+  if (r.ok) { WEB.takeOnce = false; WEB.owner = DEV; WEB.ownerName = DEV_NAME; WEB.ro = false; P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) baseSet(o.w); } catch (e) { } }
   return r; }
 try { WEB.key = localStorage.getItem('ves-sync-key') || ''; } catch (e) {}
 function setSync(st) {
   CLOUD.status = st;
   const el = $('#syncChip'); if (!el) return;
-  el.innerHTML = { local: ic('cloud') + '<span class="tl">仅本机</span>', cloud: ic('cloud') + '<span class="tl">已同步</span>', saving: ic('cloud') + '<span class="tl">同步中…</span>', error: ic('cloud') + '<span class="tl">同步失败</span>', connecting: ic('cloud') + '<span class="tl">连接中…</span>', view: ic('cloud') + '<span class="tl">只读 · 点此解锁</span>', sandbox: ic('flask') + '<span class="tl">试玩新档 · 不同步</span>' }[st] || st; el.title = '进度同步：' + el.textContent;
+  el.innerHTML = { local: ic('cloud') + '<span class="tl">仅本机</span>', cloud: ic('cloud') + '<span class="tl">已同步</span>', saving: ic('cloud') + '<span class="tl">同步中…</span>', error: ic('cloud') + '<span class="tl">同步失败</span>', connecting: ic('cloud') + '<span class="tl">连接中…</span>', view: ic('cloud') + '<span class="tl">只读 · 点此解锁</span>', follow: ic('cloud') + '<span class="tl">跟随主控设备</span>', sandbox: ic('flask') + '<span class="tl">试玩新档 · 不同步</span>' }[st] || st; el.title = '进度同步：' + el.textContent;
   el.style.color = st === 'cloud' ? 'var(--win)' : st === 'error' ? 'var(--loss)' : '';
 }
 function cloudQueue() {
@@ -9315,7 +9325,7 @@ async function webPull(quiet) {
     const o = await webFetch(WEB.etag && !WEB.gh ? { 'If-None-Match': WEB.etag } : null);
     if (o.same) return;
     WEB.etag = o.etag;
-    if (o.meta) { const m = o.meta; if (m.key !== KEY) return;
+    if (o.meta) { const m = o.meta; if (m.key !== KEY) return; devOwnerSet(m); if (WEB.ro) setSync('follow');
       /* 云端的版本比这台设备所依据的版本新（别的设备 / 自动模拟写过）：以云端为准 */
       if (WEB.base == null ? (m.t || 0) > (S.updated || 0) : (m.w || 0) > WEB.base) { const g = await ghLoad(); if (validState(g.s)) { baseSet(m.w); adopt(g.s, quiet ? null : '已同步其他设备的进度'); } } return; }
     const st = o.state;
@@ -9325,6 +9335,7 @@ async function webPull(quiet) {
 async function webPush() {
   if (!WEB.on) return;
   if (!WEB.key) { setSync('view'); return; }
+  if (WEB.ro && !WEB.takeOnce) { setSync('follow'); return; } /* 跟随设备不上传 */
   if (WEB.busy) { WEB.pending = true; return; }
   WEB.busy = true; WEB.pending = false; setSync('saving'); WEB.lastPush = Date.now();
   try {
@@ -9350,14 +9361,17 @@ async function webInit() {
   /* 重开网页时：这台设备上次对齐之后，云端被别的设备 / 自动模拟写过 → 以云端为准；云端没变过 → 本机较新就上传本机的 */
   const lb = baseLoad(), cloudMoved = o.meta && lb != null && (o.meta.w || 0) > lb;
   if (o.meta && o.meta.key === KEY && (cloudMoved || (o.meta.t || 0) > (S.updated || 0) || (lp === 0 && (o.meta.played || 0) > 0 && !(S.reset && S.reset >= (o.meta.t || 0))))) { try { const g = await ghLoad(); st = validState(g.s) ? g.s : null; if (st && cloudMoved) st.updated = Math.max(st.updated || 0, (S.updated || 0) + 1); } catch (e) { st = null; } }
-  if (o.meta) baseSet(o.meta.w); /* 这台设备接下来的进度以这一版云端为基础 */
-  if (st && ((st.updated || 0) > (S.updated || 0) || (lp === 0 && countPlayed(st) > 0 && !(S.reset && S.reset >= (st.updated || 0))))) { adopt(st, countPlayed(st) ? '已载入云端进度' : null); setSync(WEB.key ? 'cloud' : 'view'); }
+  if (o.meta) { baseSet(o.meta.w); devOwnerSet(o.meta); } /* 这台设备接下来的进度以这一版云端为基础 */
+  if (WEB.ro && o.meta && o.meta.key === KEY) { try { const g = await ghLoad(); if (validState(g.s)) { g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, null); } } catch (e) { } setSync('follow'); } /* 跟随设备：一律以主控的云端进度为准 */
+  if (st && ((st.updated || 0) > (S.updated || 0) || (lp === 0 && countPlayed(st) > 0 && !(S.reset && S.reset >= (st.updated || 0))))) { adopt(st, countPlayed(st) ? '已载入云端进度' : null); setSync(WEB.ro ? 'follow' : WEB.key ? 'cloud' : 'view'); }
+  else if (WEB.ro) setSync('follow');
   else if (WEB.key && lp > 0) await webPush();
   else setSync(WEB.key ? 'cloud' : 'view');
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') webPull(); });
   window.addEventListener('focus', () => webPull());
   // 两台设备同时开着时，每 30 秒看一下云端有没有更新
-  setInterval(() => { if (document.visibilityState === 'visible' && !live) webPull(); }, 180000); // 每 3 分钟看一次（省云端读取次数）
+  setInterval(() => { if (document.visibilityState === 'visible' && !live) webPull(true); }, 180000);
+  setInterval(() => { if (WEB.ro && document.visibilityState === 'visible') webPull(true); }, 60000); /* 跟随设备每分钟看一次主控有没有新进度 */ // 每 3 分钟看一次（省云端读取次数）
 }
 async function unlockSync() {
   const inp = $('#syncKey'); const k = inp ? inp.value.trim() : '';
@@ -9369,17 +9383,28 @@ async function unlockSync() {
   } catch (e) { if (m) m.textContent = '连不上云端，稍后再试。'; return; }
   WEB.key = k; try { localStorage.setItem('ves-sync-key', k); } catch (e) {}
   if (m) m.textContent = '已解锁，这台设备的模拟结果会自动同步。';
+  devOwnerSet(WEB.meta);
+  if (WEB.ro) { try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(WEB.meta.w); g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, null); } } catch (e) { } setSync('follow'); openSync(); return; } /* 已有主控设备：这台直接跟随，载入主控的进度 */
   await webPull(true);
   if (countPlayed(S) > 0) await webPush(); else setSync('cloud');
   openSync();
 }
+function devBox() { if (WEB.store !== 'github') return ''; const mine = !WEB.owner || WEB.owner === DEV;
+  return `<div style="display:grid;gap:8px;padding:12px;border:2px solid ${mine ? 'var(--win,#3c9)' : 'var(--gold)'};border-radius:10px">
+    <div style="font-weight:800">${mine ? `这台是主控设备` : `这台是跟随设备（只读）`} <span class="dim" style="font-weight:400;font-size:12px">${esc(DEV_NAME)}</span></div>
+    <p class="note" style="margin:0">${mine ? `进度只由这台设备写进云端。其他设备输入同步码后会自动变成跟随设备：只看、每分钟自动跟上这台的进度，不会互相覆盖。${WEB.owner ? '' : '（这台第一次上传后就成为主控）'}` : `主控设备是「${esc(WEB.ownerName || '另一台设备')}」。这台不会上传，每分钟自动载入主控的最新进度；模拟、全自动等按钮在这台暂时不能用。`}</p>
+    ${mine ? '' : `<div class="btns"><button class="btn primary" data-act="takeOwn">改由这台设备主控（先载入云端最新进度）</button><button class="btn ghost" data-act="takeOwnForce" id="takeForceBtn">用这台的进度覆盖并接管</button></div><p class="note" style="margin:0">接管后，原来那台会自动变成跟随设备。</p>`}</div>`; }
+async function takeOwn(force) { try { if (!force) { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); const m = r.ok ? await r.json() : null; if (m) { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(m.w); g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, null); } } } else WEB.forceOnce = true;
+    WEB.ro = false; WEB.takeOnce = true; save(); clearTimeout(WEB.timer); await webPush(); if (!WEB.ro && WEB.owner === DEV) toast('这台已经是主控设备'); else toast('接管失败，稍后再试'); } catch (e) { toast('接管失败，稍后再试'); } const d = $('#dlg'); if (d.open) openSync(); }
+const RO_ACTS = new Set(['round', 'rest', 'autoN', 'autoCfg', 'autoOn', 'autoGo', 'kick', 'instant', 'nextSeason', 'reset', 'resetAll', 'doReset', 'doResetAll', 'rewind', 'doRewind', 'undo', 'syncPush', 'mkBid', 'bidGo', 'sell', 'release', 'extend', 'loan', 'loanExt', 'promote', 'mkRenew', 'mkRel', 'mkLoan', 'undemote', 'edSave', 'teSave', 'kitSave', 'oeSave']);
+
 function openSync() {
   const d = $('#dlg');
   const cloud = !!CLOUD.db;
   const web = WEB.on;
   d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div><div class="eyebrow">Season ${SEASON} progress</div><h2 style="font-size:20px;font-weight:900;margin-top:4px">进度同步</h2></div>
-    ${web ? (WEB.key ? `<p class="muted" style="margin:0">已解锁。这台设备的模拟结果会自动存到云端，手机和电脑打开 ves.dson.site 都会看到同一份进度。</p>${WEB.store === 'github' ? `<div style="display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line-2);border-radius:10px"><div class="note" style="margin:0" id="cloudVer">云端进度：读取中…</div><div class="btns"><button class="btn" data-act="syncPull">以云端进度为准</button><button class="btn ghost" data-act="syncPush" id="syncPushBtn">用这台设备覆盖云端</button></div><p class="note" style="margin:0">两台设备的进度对不上时：在想保留的那台按「用这台设备覆盖云端」，另一台按「以云端进度为准」。</p></div>` : ''}<div class="btns"><button class="btn ghost" data-act="lockSync">在这台设备上锁定</button></div>` : `<p class="muted" style="margin:0">所有人都能看到云端的 S${SEASON} 进度。输入同步密码后，这台设备的模拟结果才会写入云端；不输入的话，模拟结果只留在这台设备。</p><div class="btns"><input id="syncKey" type="password" placeholder="同步密码" autocomplete="current-password" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:7px 10px;font-size:13px;color:var(--fg)"><button class="btn" data-act="unlockSync">解锁</button></div>`) : cloud ? `<p class="muted" style="margin:0">这个页面在 Claude 里打开，S${SEASON} 进度会自动存到你的账号，用同一个账号在手机或电脑打开这个页面，进度会自动同步。</p>`
+    ${web ? (WEB.key ? `${devBox()}${WEB.ro ? '' : `<p class="muted" style="margin:0">已解锁。这台设备的模拟结果会自动存到云端，手机和电脑打开 ves.dson.site 都会看到同一份进度。</p>`}${WEB.store === 'github' && !WEB.ro ? `<div style="display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line-2);border-radius:10px"><div class="note" style="margin:0" id="cloudVer">云端进度：读取中…</div><div class="btns"><button class="btn" data-act="syncPull">以云端进度为准</button><button class="btn ghost" data-act="syncPush" id="syncPushBtn">用这台设备覆盖云端</button></div><p class="note" style="margin:0">两台设备的进度对不上时：在想保留的那台按「用这台设备覆盖云端」，另一台按「以云端进度为准」。</p></div>` : ''}<div class="btns"><button class="btn ghost" data-act="lockSync">这台设备退出同步（只看不存）</button></div>` : `<p class="muted" style="margin:0">所有人都能看到云端的 S${SEASON} 进度。输入同步密码后，这台设备的模拟结果才会写入云端；不输入的话，模拟结果只留在这台设备。</p><div class="btns"><input id="syncKey" type="password" placeholder="同步密码" autocomplete="current-password" style="flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:7px 10px;font-size:13px;color:var(--fg)"><button class="btn" data-act="unlockSync">解锁</button></div>`) : cloud ? `<p class="muted" style="margin:0">这个页面在 Claude 里打开，S${SEASON} 进度会自动存到你的账号，用同一个账号在手机或电脑打开这个页面，进度会自动同步。</p>`
       : `<p class="muted" style="margin:0">现在打开的网站只能把进度存在这台设备的浏览器里，换设备不会自动同步。可以在这里导出进度文件，到另一台设备上导入。</p>`}
     <div class="btns"><button class="btn" data-act="exportSave">导出进度文件</button><label class="btn" style="cursor:pointer">导入进度文件<input type="file" id="importSave" accept="application/json,.json" hidden></label></div>
     <p class="note" style="margin:0" id="syncMsg">已模拟 ${playedRounds()} 轮 · 上次保存 ${S.updated ? new Date(S.updated).toLocaleString('zh-CN') : '—'}</p></div>`;
