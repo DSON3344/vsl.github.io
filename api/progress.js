@@ -59,7 +59,7 @@ async function ghPut(body) { let W_NOW = null;
     const need = arch.filter(f => !have['a/' + f] && !add['a/' + f]); if (need.length) return { status: 409, body: { error: 'need files', need } };
     const now = Date.now(); W_NOW = now; const m2 = { v: 2, key: body.key, t: body.t || now, season: body.season ?? null, played: body.played ?? null, arch, w: now };
     if (meta && have['live.json'] && now - ((bak[0] && bak[0].w) || 0) > 3 * 3600e3) { bak.unshift({ ...meta, w: now, sha: have['live.json'] }); bak = bak.slice(0, 12); }
-    tree['live.json'] = await mk(JSON.stringify({ v: 2, key: body.key, t: m2.t, season: m2.season, played: m2.played, arch, z: body.z }));
+    tree['live.json'] = await mk(JSON.stringify({ v: 2, key: body.key, t: m2.t, season: m2.season, played: m2.played, arch, ...(typeof body.zg === 'string' ? { zg: body.zg } : { z: body.z }) })); /* zg = 浏览器原生 gzip（较新版本），z = LZ（旧版本） */
     tree['meta.json'] = await mk(JSON.stringify(m2));
     if (bak.length) { tree['bak/index.json'] = await mk(JSON.stringify(bak)); bak.forEach(b => { tree['bak/live-' + b.w + '.json'] = b.sha; }); }
     const keep = new Set(arch); bak.forEach(b => (b.arch || []).forEach(f => keep.add(f)));
@@ -125,7 +125,7 @@ async function putImpl(req) {
   if (!authed(req)) return json({ error: 'unauthorized' }, 401);
   let body;
   try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
-  if (useGh && body && body.v === 2) { if (!body.filesOnly && (!body.key || typeof body.z !== 'string' || body.z.length < 200)) return json({ error: 'bad state' }, 400); const r = await ghPut(body); return json(r.body, r.status); }
+  if (useGh && body && body.v === 2) { const zz = typeof body.zg === 'string' ? body.zg : body.z; if (!body.filesOnly && (!body.key || typeof zz !== 'string' || zz.length < 200)) return json({ error: 'bad state' }, 400); const r = await ghPut(body); return json(r.body, r.status); }
   // 新版网页上传压缩后的进度（z）；旧版上传原样的 s，两种都收
   const s = body && body.s, z = body && body.z;
   const okS = s && Array.isArray(s.fx) && s.fx.length === 38 && Array.isArray(s.teams), okZ = typeof z === 'string' && z.length > 200;
