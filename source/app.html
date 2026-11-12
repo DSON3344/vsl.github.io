@@ -1387,7 +1387,7 @@ function acadKid(t, born, k, gold) { const mk = t + '|' + born + '|' + k + '|' +
   const o = acadKid0(t, born, k, gold); KID_MEMO.set(mk, { name: o.name, j: JSON.stringify(o) }); return o; }
 function acadKid0(t, born, k, gold) {
   const rnd = seeded('acad|' + t + '|' + born + '|' + k);
-  let { name, nat } = youthName(t, rnd); if (nm2()) { const o = oldSlots()[t + '|' + born + '|' + k]; if (o) { name = o.name; if (o.nat && (YP.NATS.includes(o.nat) || (YP.NAT_GROUP || {})[o.nat] || ['韩国', '日本', '中国'].includes(o.nat))) nat = o.nat; } }
+  let { name, nat } = youthName(t, rnd); if (nm2()) { const o = oldSlots()[t + '|' + born + '|' + k], cl = o && claimedNames().get(nmNorm(o.name)); if (o && (!cl || cl === 'K|A|' + t + '|' + born + '|' + k)) { name = o.name; if (o.nat && (YP.NATS.includes(o.nat) || (YP.NAT_GROUP || {})[o.nat] || ['韩国', '日本', '中国'].includes(o.nat))) nat = o.nat; } }
   let x = rnd(), line = 'FW'; for (const [l, w] of (tid(t).defAcad ? [['GK', 0.14], ['DF', 0.42], ['MF', 0.27], ['FW', 0.17]] : [['GK', 0.11], ['DF', 0.33], ['MF', 0.33], ['FW', 0.23]])) { if ((x -= w) <= 0) { line = l; break; } }
   let pos = ACAD_POS[line][Math.floor(rnd() * ACAD_POS[line].length)]; if (nm3()) { const o = oldSlots()[t + '|' + born + '|' + k]; if (o && o.pos && ENGINE.LINE(o.pos)) { pos = o.pos; line = ENGINE.LINE(o.pos) === 'GK' ? 'GK' : ENGINE.LINE(o.pos); } } /* 旧资料名字：位置照旧资料 */
   const pr = seeded('pa|' + t + '|' + born + '|' + k), isGold = gold && k < gold; let pot = isGold ? sampleGoldPA(pr) : samplePA(pr, acadQ(t)); if (tid(t).defAcad) pot = Math.min(99, pot + (line === 'DF' || line === 'GK' ? 4 : line === 'FW' ? -2 : -1)); /* 狂蜂：后防和门将出世界级，锋线中场一般 */
@@ -1402,11 +1402,14 @@ const kidPot0 = (k, s) => { const a = kAge(k, s); if (k.bg && a >= k.bga) return
 const kidRating = (k, s) => { const pt = kidPot(k, s), base = pt - Math.max(0, 22 - kAge(k, s)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2 - (k.dec && kAge(k, s) > k.dec ? (kAge(k, s) - k.dec) * 2 : 0), f = k.lock ? 0 : kpfOf(k.id, s); /* U21 表现带来的提升最多只到潜力值，不会越过天花板 */ return Math.round(Math.max(40, Math.min(RMAX, f > 0 ? Math.max(base, Math.min(pt + 1, base + f)) : base + f))); };
 function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR_TPL[k.line]).forEach(([a, d]) => o[a] = Math.max(20, Math.min(99, Math.round(r + d + (k.prof[a] || 0))))); return o; }
 /* 青训球员的自定义资料（存在 S.edits['K|' + 青训编号]，升上一线队后同一份资料继续沿用）：名字、位置、国籍、身高体重、惯用脚、潜力 */
+/* 你手动改名用掉的旧资料名字（「德 / 得」视为同一个字）：系统就不再把这个名字发给别的青训孩子，免得出现两位 */
+const nmNorm = n => String(n || '').replace(/德/g, '得').trim();
+function claimedNames() { const out = new Map(); if (typeof S === 'undefined' || !S || !S.edits) return out; Object.entries(S.edits).forEach(([u, e]) => { if (e && e.name && e.name !== e.orig) out.set(nmNorm(e.name), u); }); return out; }
 function kidEd(k) { if (!k || typeof S === 'undefined' || !S || !S.edits) return k; const e = S.edits['K|' + k.id]; if (!e) return k;
   if (nm3() && e.orig && e.orig !== k.name && e.name !== k.name) return k; /* 旧规则下改的，同一个名额已经换了人 */
   if (e.name) k.name = e.name; if (e.nat) k.nat = e.nat; if (e.height) k.height = +e.height; if (e.weight) k.weight = +e.weight; if (e.foot) k.foot = e.foot;
   if (e.pos && normPos(e.pos) !== k.pos) { const np = normPos(e.pos), nl = ENGINE.LINE(np); if (nl) { if (nl !== k.line) k.prof = Object.fromEntries(Object.keys(ATTR_TPL[nl]).map(a => [a, (k.prof || {})[a] || 0])); k.pos = np; k.line = nl; } }
-  if (e.pot != null && e.pot !== '') k.pot = Math.max(40, Math.min(RMAX, Math.round(+e.pot))); if (e.dAge) k.born -= +e.dAge; /* 改年龄：出生往前或往后挪 */ return k; }
+  if (e.pot != null && e.pot !== '') k.pot = Math.max(40, Math.min(RMAX, Math.round(+e.pot))); if (e.dAge) { if (typeof e.ageA === 'number' && e.ageS) { const b0 = k.born; let best = null; for (let d = 0; d <= 40 && best == null; d++) for (const b of [b0 - d, b0 + d]) if (best == null && kAge({ ...k, born: b }, e.ageS) === e.ageA) best = b; k.born = best != null ? best : b0 - +e.dAge; } else k.born -= +e.dAge; } /* 改年龄：把出生挪到「那季正好是你填的岁数」 */ return k; }
 function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 'K|' + id, e = (S.edits || {})[uid] || {}, d = $('#dlg'), a = kAge(k, SEASON);
   const inp = (i, v, type = 'text', extra = '') => `<input id="${i}" type="${type}" value="${esc(v ?? '')}" ${extra} style="width:100%;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg-2,transparent);color:inherit">`;
   const fld = (lab, html) => `<label style="display:grid;gap:4px;font-size:12px;min-width:0"><span class="muted">${lab}</span>${html}</label>`;
@@ -1416,7 +1419,7 @@ function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 
       ${fld('名字', inp('kdName', k.name))}${fld('位置', `<select id="kdPos" style="width:100%">${POS_LIST.map(x => `<option value="${x}" ${x === k.pos ? 'selected' : ''}>${x} · ${posZh(x)}</option>`).join('')}</select>`)}
       ${fld('国籍', inp('kdNat', k.nat))}${fld('惯用脚', `<select id="kdFoot" style="width:100%">${['', '右脚', '左脚', '双脚'].map(x => `<option value="${x}" ${x === (e.foot || '') ? 'selected' : ''}>${x || '自动'}</option>`).join('')}</select>`)}
       ${fld('身高 (cm)', inp('kdH', k.height, 'number'))}${fld('体重 (kg)', inp('kdW', k.weight, 'number'))}
-      ${fld(a >= 15 ? '年龄（15–20）' : '年龄（8–14）', inp('kdAge', a, 'number', a >= 15 ? 'min="15" max="20"' : 'min="8" max="14"'))}${fld(`潜力（40–${RMAX}）`, inp('kdPot', k.pot, 'number', `min="40" max="${RMAX}"`))}<div class="note" style="align-self:end;font-size:11px">目前能力 <b id="kdNow">${kidRating(k, SEASON)}</b>${a <= 14 ? '（14 岁以下，球探报告不显示）' : ''}。早期能力衰退或大器晚成的随机变化照旧会发生。</div>
+      ${fld('年龄（8–20）', inp('kdAge', a, 'number', 'min="8" max="20"'))}${fld(`潜力（40–${RMAX}）`, inp('kdPot', k.pot, 'number', `min="40" max="${RMAX}"`))}<div class="note" style="align-self:end;font-size:11px">目前能力 <b id="kdNow">${kidRating(k, SEASON)}</b>${a <= 14 ? '（14 岁以下，球探报告不显示）' : ''}。早期能力衰退或大器晚成的随机变化照旧会发生。</div>
     </div>
     <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="kdReset" data-id="${esc(id)}" ${S.edits && S.edits[uid] ? '' : 'disabled'}>恢复原始资料</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="kdSave" data-id="${esc(id)}">保存</button></span></div></div>`;
   if (!d.open) d.showModal();
@@ -1424,7 +1427,7 @@ function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 
 function saveKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 'K|' + id, old = (S.edits || {})[uid] || {}, v = i => { const el = $('#' + i); return el ? el.value.trim() : ''; };
   const e = { ...old, orig: old.orig || k.name, origPos: old.origPos || k.pos, origNat: old.origNat || k.nat };
   if (v('kdName')) e.name = v('kdName'); e.pos = v('kdPos') || k.pos; if (v('kdNat')) e.nat = v('kdNat'); if (v('kdFoot')) e.foot = v('kdFoot'); else delete e.foot;
-  if (v('kdH')) e.height = +v('kdH'); if (v('kdW')) e.weight = +v('kdW'); if (v('kdPot')) e.pot = Math.max(40, Math.min(RMAX, Math.round(+v('kdPot')))); { const ca = kAge(k, SEASON), na = v('kdAge') ? (ca >= 15 ? Math.max(15, Math.min(20, +v('kdAge'))) : Math.max(8, Math.min(14, +v('kdAge')))) : 0; if (na && na !== ca) { e.dAge = (e.dAge || 0) + (na - ca); if (!e.dAge) delete e.dAge; } }
+  if (v('kdH')) e.height = +v('kdH'); if (v('kdW')) e.weight = +v('kdW'); if (v('kdPot')) e.pot = Math.max(40, Math.min(RMAX, Math.round(+v('kdPot')))); { const ca = kAge(k, SEASON), na = v('kdAge') ? Math.max(8, Math.min(20, +v('kdAge'))) : 0; /* 改到 14 岁以下：回到少年梯队，满 15 岁再进梯队 */ if (na && na !== ca) { e.dAge = (e.dAge || 0) + (na - ca); e.ageA = na; e.ageS = SEASON; if (!e.dAge) { delete e.dAge; delete e.ageA; delete e.ageS; } } }
   S.edits = S.edits || {}; S.edits[uid] = e; KID_MEMO.clear(); refreshAfterEdit(); toast('已保存青训球员资料'); }
 function acadCohort(t, born) { const skip = false; /* 预设新人拿掉后，新血全靠青训：每季照常招一批 */ const n0 = 4 + (ghash('acn|' + t + '|' + born) < 0.4 ? 1 : 0), n = Math.max(2, n0 - (scrCnt()[t + '|' + born] || 0), oldCnt(t, born)), gold = ghash('gold|' + t + '|' + born) < (GOLD_P[acadQ(t)] || 0.02) ? 2 + (ghash('goldn|' + t + '|' + born) < 0.4 ? 1 : 0) : 0; for (let k = 0; k < n; k++) { const kid = kidEd(acadKid(t, born, k, gold)); if (skip) continue; ACAD[t].push(kid); ACAD_ID[kid.id] = kid; } }
 function acadInit() { ACAD = {}; ACAD_ID = {}; SCR_NAMES.forEach(n => YOUTH_USED.add(n)); Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 1 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); try { genAcad(); } catch (e) { console.error(e); } try { scrAcad(); } catch (e) { console.error(e); } } /* 两季一岁：S02 起每两季（单数赛季）才招一批 15 岁的新梯队（双数赛季那批照样生成名字，但不进梯队，免得别的孩子名字跟着变） */ // 从 S01 起每季都有 15–20 岁的梯队（历史时期也有）
@@ -1804,7 +1807,7 @@ function openEditor(uid) {
     <div class="grid g-2" style="gap:10px">
       ${fld('名字', inp('edName', o.name))}${fld('位置', `<select id="edPos">${POS_LIST.concat(POS_LIST.includes(normPos(o.pos)) ? [] : [o.pos]).map(x => `<option value="${x}" ${x === normPos(o.pos) ? 'selected' : ''}>${x} · ${posZh(x)}</option>`).join('')}</select>`)}
       ${fld('国籍', inp('edNat', o.nat))}${fld('球衣号码', inp('edNo', o.no, 'number', 'min="1" max="99"'))}
-      ${fld('身高 (cm)', inp('edH', o.height, 'number'))}${fld('体重 (kg)', inp('edW', o.weight, 'number'))}${cur && typeof cur.age === 'number' ? fld('年龄', inp('edAge', cur.age, 'number', 'min="15" max="45"')) : ''}
+      ${fld('身高 (cm)', inp('edH', o.height, 'number'))}${fld('体重 (kg)', inp('edW', o.weight, 'number'))}${cur && typeof cur.age === 'number' ? fld('年龄（15 岁以上）', inp('edAge', cur.age, 'number', 'min="15" max="45"')) : ''}
       ${fld(cur ? `总评分（40–${RMAX}）` : '巅峰评分', inp('edR', o.rating, 'number', cur ? `min="40" max="${RMAX}"` : 'min="40" max="99"'))}${uid.startsWith('K|A|') && ACAD_ID[uid.slice(2)] ? fld(`潜力（40–${RMAX}，青训出身）`, inp('edPot', ACAD_ID[uid.slice(2)].pot, 'number', `min="40" max="${RMAX}"`)) : cur && !uid.startsWith('K|') ? fld(`潜力（40–${RMAX}）`, inp('edPot', potentialOf(cur), 'number', `min="40" max="${RMAX}"`)) : ''}<div class="note" style="align-self:end;font-size:11px">改属性会自动算总评；改总评或位置会按位置自动配属性（保留个人特点）。</div>
     </div>
     ${cur ? (() => { const alt = cur.alt || altDef(cur), ft = cur.foot || footDef(cur);
@@ -1858,7 +1861,7 @@ function saveEditor(uid, swap) {
   if (cur && $('#edAlt')) { e.alt = [...document.querySelectorAll('#edAlt [data-alt]')].filter(i => i.checked && !i.disabled).map(i => i.dataset.alt).filter(x => x !== posMain(e.pos)); e.foot = v('edFoot'); const pv = v('edPers'); if (pv && PERS[pv]) { const base = (() => { const k0 = persKey(cur); return persOf0(k0); })(); if (pv !== base) e.pers = pv; } }
   if (uid.startsWith('K|A|')) { const pt = num('edPot'); if (pt != null) e.pot = Math.max(40, Math.min(RMAX, Math.round(pt))); else if (old.pot != null) e.pot = old.pot; }
   else if (cur && !uid.startsWith('K|')) { const pt = num('edPot'), now = potentialOf(cur); if (pt != null && pt !== now) { e.pot = Math.max(40, Math.min(RMAX, Math.round(pt))); e.potA = typeof cur.age === 'number' ? cur.age : null; } else if (old.pot != null) { e.pot = old.pot; e.potA = old.potA; } } /* 潜力：改了才存，以后照新潜力成长 */
-  { const na = num('edAge'); if (old.dAge) { e.dAge = old.dAge; e.ageA = old.ageA; } if (cur && na != null && typeof cur.age === 'number' && na !== cur.age) { e.dAge = (old.dAge || 0) + (na - cur.age); e.ageA = na; e.ageS = SEASON; if (!e.dAge) { delete e.dAge; delete e.ageA; delete e.ageS; } HSQ0 = null; HSQ_RR = 0; } if (old.ageS && e.dAge && e.ageS == null) e.ageS = old.ageS; } /* 年龄：存「比原本大/小几岁」 */
+  { const na0 = num('edAge'), na = na0 == null ? null : Math.max(15, Math.min(45, na0)); if (old.dAge) { e.dAge = old.dAge; e.ageA = old.ageA; } if (cur && na != null && typeof cur.age === 'number' && na !== cur.age) { e.dAge = (old.dAge || 0) + (na - cur.age); e.ageA = na; e.ageS = SEASON; if (!e.dAge) { delete e.dAge; delete e.ageA; delete e.ageS; } HSQ0 = null; HSQ_RR = 0; } if (old.ageS && e.dAge && e.ageS == null) e.ageS = old.ageS; } /* 年龄：存「比原本大/小几岁」 */
   e.no = num('edNo'); e.height = num('edH'); e.weight = num('edW'); { const dl = $('#dlg'), L = dl && dl._skGet ? dl._skGet() : (Array.isArray(old.sk) ? old.sk : null); if (L) e.sk = L; }
   const A = {}; document.querySelectorAll('#dlg [data-attr]').forEach(i => { if (i.value !== '') A[i.dataset.attr] = Math.max(20, Math.min(99, +i.value)); });
   if (cur) {
@@ -1874,6 +1877,7 @@ function saveEditor(uid, swap) {
   toast('已保存球员资料');
 }
 function refreshAfterEdit() {
+  try { KID_MEMO.clear(); } catch (e) { }
   save(); applyPLNames(); GROWN = 0; applyGrowth(); TAC_KEY = null; ensureTactics(); syncAllPlayers(); Object.keys(AWARD_CACHE).forEach(k => delete AWARD_CACHE[k]);
   $('#dlg').close(); render();
 }
@@ -6500,7 +6504,7 @@ function fillRun() {
 function fillBtn(t) { const n = t ? Math.max(0, SQUAD_MIN - squadNow(t)) : S.teams.filter(x => TD[x] && squadNow(x) < SQUAD_MIN).length; if (!n) return '';
   return `<button class="btn primary" data-act="fillOpen" data-t="${esc(t || '')}" style="padding:4px 12px;font-size:12px">${ic('kid')} ${t ? `从青训补 ${n} 人到 ${SQUAD_MIN} 人` : `${n} 支球队不到 ${SQUAD_MIN} 人 · 从青训一键补满`}</button>`; }
 /* 少年梯队：旧资料名字里还没到 15 岁的，先放进青训营（不能上场，15 岁进梯队、16 岁起踢 U21） */
-const youngOld = (t, s = SEASON) => !nm2() ? [] : (ACAD[t] || []).filter(k => k.born + 15 > s && !k.fixEv && OLD_NAME_SET().has(k.name)).sort((a, b) => kAge(b, s) - kAge(a, s) || (a.name < b.name ? -1 : 1));
+const youngOld = (t, s = SEASON) => !nm2() ? [] : (ACAD[t] || []).filter(k => k.born + 15 > s && !k.fixEv && ((S.edits || {})['K|' + k.id] || OLD_NAME_SET().has(k.name))).sort((a, b) => kAge(b, s) - kAge(a, s) || (a.name < b.name ? -1 : 1));
 let OLD_NS = null; const OLD_NAME_SET = () => OLD_NS || (OLD_NS = new Set(SCR_OLD.map(x => x[0]).concat(SCR_OLD2.map(x => x[0]))));
 /* 被青训营放走的孩子：去低级别联赛的球队继续踢 */
 function relDest(k) { const L = (typeof PYR_NAMES !== 'undefined' ? PYR_NAMES : []).filter(n => !TD[n]); return L.length ? L[Math.floor(ghash('rd|' + k.id) * L.length)] : null; }
@@ -9181,7 +9185,7 @@ function searchData(q) {
   ALL_PLAYERS.forEach(p => { const v = sc(p.name); if (!v) return; const pid = pidOf(p.team, p.name); if (pid != null) seen.add(pid); out.push({ v: v + 0.3 + p.rating / 1000, html: `<button ${plink(p.team, p.name)}>${crest(p.team, 22)}<span><b>${esc(p.name)}</b> <small>${esc(p.team)} · ${esc(p.pos)} · ${esc(p.nat || '')}</small></span><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></button>` }); });
   Object.entries(FDB).forEach(([c, l]) => l.forEach(p => { const v = sc(p.name); if (!v) return; out.push({ v: v + 0.2 + p.rating / 1000, html: `<button data-player="${esc(c)}|${esc(p.name)}">${ecrest(c, 22)}<span><b>${esc(p.name)}</b> <small>${esc(c)} · ${esc(extTag(c))} · ${esc(p.pos)}</small></span><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></button>` }); }));
   { const nmSeen = new Set(ALL_PLAYERS.map(p => p.name)); /* 青训营、U21（含降回 U21 的）、被放走的青训球员也搜得到 */
-    Object.values(typeof ACAD_ID !== 'undefined' ? ACAD_ID : {}).forEach(k => { if (!k || nmSeen.has(k.name)) return; const v = sc(k.name); if (!v) return; const a = kAge(k, SEASON); const young = k.born + 15 > SEASON; if (young && !(nm2() && OLD_NAME_SET().has(k.name))) return; /* 还没进青训营的：只有旧资料名字的少年会先出现在少年梯队 */ const w = kidWhere(k, SEASON), dem = (S.demoted || {})['K|' + k.id];
+    Object.values(typeof ACAD_ID !== 'undefined' ? ACAD_ID : {}).forEach(k => { if (!k || nmSeen.has(k.name)) return; const v = sc(k.name); if (!v) return; const a = kAge(k, SEASON); const young = k.born + 15 > SEASON; if (young && !(nm2() && (OLD_NAME_SET().has(k.name) || (S.edits || {})['K|' + k.id]))) return; /* 还没进青训营的：只有旧资料名字的少年会先出现在少年梯队 */ const w = kidWhere(k, SEASON), dem = (S.demoted || {})['K|' + k.id];
       let tag; if (young) tag = '少年梯队（' + SN(Math.max(1, k.born + 15)) + ' 进梯队）'; else if (dem) tag = 'U21（从一线队调回）'; else if (w.at === 'acad') tag = a >= 16 ? 'U21 / 青训营' : '青训营'; else if (w.at === 'loan') tag = '租借至 ' + w.team; else if (w.rel) { const ev = kidEvents(k.id).find(e => e.act === 'release'); const dst = relDest(k); tag = '已被青训营放走' + (ev ? '（' + SN(ev.s) + '）' : '') + (dst ? ' → 加盟 ' + dst : ''); } else if (w.at === 'gone') { const dst = relDest(k); tag = '21 岁未获提拔，离开青训营' + (dst ? ' → 加盟 ' + dst : ''); } else return;
       out.push({ v: v + 0.1 + kidRating(k, SEASON) / 1000, html: `<button ${scoutBtn(k)}>${crest(k.team, 22)}<span><b>${esc(k.name)}</b> <small>${esc(k.team)} · ${young ? '' : esc(k.pos) + ' · '}${a}岁 · ${esc(tag)}</small></span>${young ? '<span></span>' : `<span class="rt-pill" style="background:${rtColor(kidRating(k, SEASON))}">${kidRating(k, SEASON)}</span>`}</button>` }); }); }
   Object.entries(EXT_CLUB).forEach(([c, x]) => { const v = sc(c); if (v) out.push({ v: v + 0.4, html: `<button data-ext="${esc(c)}">${ecrest(c, 24)}<span><b>${esc(c)}</b> <small>${esc(x.league)}</small></span><small>外赛区球队</small></button>` }); });
