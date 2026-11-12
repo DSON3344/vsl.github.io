@@ -119,6 +119,7 @@ const ENGINE = (() => {
   const SLOTS = ['早上', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '凌晨'];
   let teamMod = null;
   const setTeamMod = f => { teamMod = f; };
+  let injHook = null; const setInjHook = f => { injHook = f; };
   function condition(team, weather, slot, opp) {
     const P = HISTORY.profiles[team] || {};
     const parse = s => (s || '').split(/[；;]/).map(x => x.trim());
@@ -338,9 +339,9 @@ const ENGINE = (() => {
       let left = rnd() < 0.1 ? 2 : rnd() < 0.45 ? 3 : rnd() < 0.7 ? 4 : 5;
       // 伤病（小概率）：连续首发越多越容易受伤
       roster.slice().forEach(x => {
-        const E = energy ? energy[x.name] : null, pr = E != null ? 0.0105 * (E >= 70 ? 0.85 : 1 + (70 - E) * 0.045) : 0.0105 + Math.max(0, (streak[x.name] || 0) - 5) * 0.0015;
+        const E = energy ? energy[x.name] : null, im = injHook ? injHook(T[side]) : null, pr = (E != null ? 0.0105 * (E >= 70 ? 0.85 : 1 + (70 - E) * 0.045) : 0.0105 + Math.max(0, (streak[x.name] || 0) - 5) * 0.0015) * (im ? im[0] : 1); /* 体能教练、队医、训练基地 */
         if (rnd() < pr && left > 0) {
-          const m = 3 + Math.floor(rnd() * 85), d = injuryRounds();
+          const m = 3 + Math.floor(rnd() * 85), d = Math.max(1, Math.round(injuryRounds() * (im ? im[1] : 1)));
           const inP = takeSub(x.slot);
           events.push({ m, type: 'inj', side, team: T[side], player: x.name, dur: d, txt: INJ_TXT(x.name, d) });
           x.off = m;
@@ -495,6 +496,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { tune, withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { tune, withSeed, setTeamMod, setInjHook, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

@@ -1753,6 +1753,7 @@ const ENGINE = (() => {
   const SLOTS = ['早上', '上午', '中午', '下午', '傍晚', '晚上', '深夜', '凌晨'];
   let teamMod = null;
   const setTeamMod = f => { teamMod = f; };
+  let injHook = null; const setInjHook = f => { injHook = f; };
   function condition(team, weather, slot, opp) {
     const P = HISTORY.profiles[team] || {};
     const parse = s => (s || '').split(/[；;]/).map(x => x.trim());
@@ -1972,9 +1973,9 @@ const ENGINE = (() => {
       let left = rnd() < 0.1 ? 2 : rnd() < 0.45 ? 3 : rnd() < 0.7 ? 4 : 5;
       // 伤病（小概率）：连续首发越多越容易受伤
       roster.slice().forEach(x => {
-        const E = energy ? energy[x.name] : null, pr = E != null ? 0.0105 * (E >= 70 ? 0.85 : 1 + (70 - E) * 0.045) : 0.0105 + Math.max(0, (streak[x.name] || 0) - 5) * 0.0015;
+        const E = energy ? energy[x.name] : null, im = injHook ? injHook(T[side]) : null, pr = (E != null ? 0.0105 * (E >= 70 ? 0.85 : 1 + (70 - E) * 0.045) : 0.0105 + Math.max(0, (streak[x.name] || 0) - 5) * 0.0015) * (im ? im[0] : 1); /* 体能教练、队医、训练基地 */
         if (rnd() < pr && left > 0) {
-          const m = 3 + Math.floor(rnd() * 85), d = injuryRounds();
+          const m = 3 + Math.floor(rnd() * 85), d = Math.max(1, Math.round(injuryRounds() * (im ? im[1] : 1)));
           const inP = takeSub(x.slot);
           events.push({ m, type: 'inj', side, team: T[side], player: x.name, dur: d, txt: INJ_TXT(x.name, d) });
           x.off = m;
@@ -2129,7 +2130,7 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { tune, withSeed, setTeamMod, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { tune, withSeed, setTeamMod, setInjHook, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
 </script>
@@ -2333,7 +2334,7 @@ function rollSalt(s) { S.salt = S.salt || {}; S.salt[s] = newSalt(); OFF_CACHE =
 function newSeason() {
   const teams = HIST.s1.slice();
   const fx = ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null })));
-  return { season: 1, teams, promoted: [], fx, demo: false, archive: [], salt: { 1: newSalt() }, ...JSON.parse(JSON.stringify(DEF_SET)) };
+  return { season: 1, teams, promoted: [], fx, demo: false, archive: [], salt: { 1: newSalt() }, ownFrom: 1, ...JSON.parse(JSON.stringify(DEF_SET)) };
 }
 const DIRTY = new Set();
 // 本机存档：先按原样存；空间不够时改存压缩版（约原大小的 1/5），读档时自动解压
@@ -2451,7 +2452,7 @@ function teamCtx(team, ri, fx = S.fx) {
 }
 const ctxPair = (m, ri) => ({ h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) });
 function simFx(m, i) { if (m.r) return; if (m.pr) { m.r = m.pr; delete m.pr; delete m.ko; delete m.du; return; } m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }
-function postRound(i) { try { u21Sync(); } catch (e) { console.error(e); } try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
+function postRound(i) { try { u21Sync(); } catch (e) { console.error(e); } try { monthAwardsTick(i); } catch (e) { console.error(e); } try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
 /* 没开全自动时也要维持一线队人数：每季开踢前、冬窗后第一场前各整理一次（不到 28 人从青训提拔，超过 32 人清理冗员） */
 function sqKeep(i) { if (!S || (S.auto && S.auto.on) || CLOUD.status === 'view' || (WEB.on && !WEB.key)) return; if (i == null || i < 0) return; const ph = i >= WIN_A ? 'win' : 'start'; if (ph === 'win' && !(typeof winActive === 'function' && winActive()) && i !== WIN_A) return; const k = ph + SEASON; if (S.sqK0 === k) return; S.sqK0 = k; try { autoSquad(ph); } catch (e) { console.error(e); } }
 function playRound(i) { sqKeep(i); try { tierCal(false, i); } catch (e) { console.error(e); } try { cupFreeze(); } catch (e) { } ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => simFx(m, i)); postRound(i); }
@@ -2493,7 +2494,7 @@ function migrateState() {
 }
 // 存档只能留比当前赛季早的、每季一份（防止旧进度的赛季被同步合并回来）
 function cleanArchive() { if (!S || !S.archive) return; const seen = new Set(); S.archive = S.archive.filter(A => A && A.s < (S.season || 1) && !seen.has(A.s) && seen.add(A.s)).sort((a, b) => a.s - b.s); if (S.market) Object.keys(S.market).forEach(k => { if (+k > (S.season || 1)) delete S.market[k]; }); }
-function applyState() { if (migrateState()) { localSave(); setTimeout(() => cloudQueue(), 0); } if (!S.archive) S.archive = []; cleanArchive(); SEASON = S.season || 1; if (GROWN !== SEASON) applyGrowth(); S.archive.forEach(A => { if (!HS[A.s] || HS[A.s].sim) registerArchive(A); }); { let ch = false; S.archive.map(A => A.s).sort((a, b) => a - b).forEach(s => { try { if (pfSeason(s)) ch = true; } catch (e) { console.error(e); } }); if (ch) { applyGrowth(); GROWN = SEASON; setTimeout(() => { try { save(); } catch (e) { } }, 0); } } }
+function applyState() { if (migrateState()) { localSave(); setTimeout(() => cloudQueue(), 0); } if (S && S.ownFrom == null) { const pl0 = (S.season || 1) > 1 || (S.fx || []).some(r => r.some(m => m.r)); S.ownFrom = pl0 ? (S.season || 1) + 1 : (S.season || 1); } /* 老板、董事会、教练团队：旧进度从下季起生效 */ if (!S.archive) S.archive = []; cleanArchive(); SEASON = S.season || 1; if (GROWN !== SEASON) applyGrowth(); S.archive.forEach(A => { if (!HS[A.s] || HS[A.s].sim) registerArchive(A); }); { let ch = false; S.archive.map(A => A.s).sort((a, b) => a - b).forEach(s => { try { if (pfSeason(s)) ch = true; } catch (e) { console.error(e); } }); if (ch) { applyGrowth(); GROWN = SEASON; setTimeout(() => { try { save(); } catch (e) { } }, 0); } } }
 /* ---------- 能力成长、退役与青训 ----------
    每名球员有一条固定的成长曲线；每个赛季结束时，到了年纪或能力掉得太多的球员退役，由青训新人补上。
    这些全由赛季数推算出来（同一个赛季结果永远一样），不需要额外存档。 */
@@ -3520,6 +3521,7 @@ function table(upto = 38, fx = S.fx, teams = S.teams) {
     });
     teams.forEach(t => T[t].race.push(T[t].pts));
   });
+  { const DD = fx === S.fx && S.ded && S.ded[SEASON]; if (DD) Object.entries(DD).forEach(([t, d]) => { if (T[t]) { T[t].pts -= d; T[t].ded = d; } }); } /* 违反财务规则被扣分 */
   const base = (a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf;
   const L = Object.values(T).sort((a, b) => base(a, b) || a.team.localeCompare(b.team));
   /* 积分、净胜球、进球都相同：比相关球队之间的交手成绩（交手积分 → 交手净胜球 → 交手进球），再相同才按队名 */
@@ -3955,6 +3957,7 @@ function maybeEndSeason(force) {
   const A = pendingArchive(); PEND = null;
   const tb = A.table, stay = tb.slice(0, -3).map(r => r.team), promoted = A.next;
   S.archive.push(A); registerArchive(A);
+  try { scrCheck(SEASON); } catch (e) { console.error(e); }
   try { pyrAdvance(A, S.teams.filter(t => !stay.includes(t))); } catch (e) { console.error(e); }
   try { promoted.forEach(t => { if (!TD[t]) { S.gen = S.gen || {}; S.gen[t] = { s0: SEASON + 1, str: pyrStr(t) ?? 76 }; } }); genEnsure(); } catch (e) { console.error(e); }
   const teams = stay.concat(promoted);
@@ -4116,7 +4119,7 @@ function offField() {
   const list = [], sqOf = t => (PDB[t] || []).slice().sort((a, b) => b.rating - a.rating).slice(0, 16);
   for (let i = 0; i < 38; i++) {
     const rnd = seeded('off|' + key + '|' + i), team = () => S.teams[Math.floor(rnd() * S.teams.length)];
-    if (rnd() < 0.5) { const t = team(), sq = sqOf(t), p = sq[Math.floor(rnd() * sq.length)]; if (p) { const long = rnd() < 0.12; list.push({ ri: i, kind: 'train', team: t, name: p.name, dur: long ? 5 + Math.floor(rnd() * 5) : 1 + Math.floor(rnd() * 3), what: INJ_KINDS[Math.floor(rnd() * INJ_KINDS.length)] }); } }
+    if (rnd() < 0.5) { const t = team(), sq = sqOf(t), p = sq[Math.floor(rnd() * sq.length)]; if (p) { const long = rnd() < 0.12; let im = 1, dm = 1; try { im = injMul(t); dm = injDurMul(t); } catch (e) { } const d0 = long ? 5 + Math.floor(rnd() * 5) : 1 + Math.floor(rnd() * 3), w0 = INJ_KINDS[Math.floor(rnd() * INJ_KINDS.length)]; if (ghash('offi|' + key + '|' + i) < im) list.push({ ri: i, kind: 'train', team: t, name: p.name, dur: Math.max(1, Math.round(d0 * dm)), what: w0 }); } } /* 体能教练、队医、训练基地：伤病少一些、伤停短一些 */
     if (i >= 3 && rnd() < 0.07) { const t = team(), st = sqOf(t).filter(p => p.rating >= 84 && ENGINE.LINE(p.pos) !== 'GK').slice(0, 6); if (st.length) list.push({ ri: i, kind: 'strike', team: t, name: st[Math.floor(rnd() * st.length)].name, dur: 1 + Math.floor(rnd() * 3), why: STRIKE_WHY[Math.floor(rnd() * STRIKE_WHY.length)] }); }
     if (rnd() < 0.3) { const t = team(), sq = sqOf(t).slice(0, 8), p = sq[Math.floor(rnd() * sq.length)]; if (p) list.push({ ri: i, kind: 'flavor', team: t, name: p.name, tpl: FLAVOR[Math.floor(rnd() * FLAVOR.length)] }); }
   }
@@ -4143,6 +4146,10 @@ function newsItems() {
     ((RET_LOG[SEASON - 1] || {}).youth || []).slice().sort((a, b) => b.pot - a.pot).slice(0, 2).forEach(x => add(-1, '新星', 'good', `${tm(x.team)} 青训提拔 ${esc(x.name)}（${x.age} 岁，潜力 ${x.pot}）`, 1));
   }
   capitalHistory().ev.filter(e => e.s === SEASON).forEach(e => add(-1, e.kind === 'in' ? '资本入主' : '撤资', e.kind === 'in' ? 'gold' : 'bad', e.kind === 'in' ? `${esc(e.inv)}完成对 ${tm(e.team)} 的收购，承诺大手笔投入引援和青训` : `${esc(e.inv)}因${esc(e.why)}宣布从 ${tm(e.team)} 撤资（${SN(e.since)} 入主），球队陷入动荡`, 4));
+  try { Object.keys(TD).forEach(t => { if (!S.teams.includes(t) || !ownOn(SEASON)) return; boardPlan(t).log.filter(x => x.s === SEASON && !/入主/.test(x.txt)).forEach(x => add(-1, '董事会', /完工/.test(x.txt) ? 'good' : '', `${tm(t)} ${esc(x.txt)}`, 1));
+      if (playedRounds() >= 8) { const m = fanMood(t); if (m.v < 30) add(Math.min(cur, 37) - 1, '球迷', 'bad', `${tm(t)} 球迷在主场外抗议（${esc(m.why.slice(0, 2).join('、') || '对球队现状不满')}），矛头指向老板${esc(ownerAt(t).name)}`, 2); } }); } catch (e) { console.error(e); }
+  try { const M = (S.potm || {})[SEASON] || {}; Object.keys(M).forEach(k => { const x = M[k]; if (x.p) add(MONTHS[k][2], '月度最佳', 'gold', `${esc(x.lab)}最佳球员：${pl(x.p.team, x.p.name)}（${tm(x.p.team)}，场均 ${x.p.avg.toFixed(2)}，${x.p.g} 球 ${x.p.a} 助攻）；最佳主帅：${esc(x.c.name)}（${tm(x.c.team)}，${x.c.w}胜${x.c.d}平${x.c.l}负）`, 2); });
+    Object.entries((S.ded || {})[SEASON] || {}).forEach(([t, d]) => add(-1, '扣分', 'bad', `${tm(t)} 上季阵容成本超过联赛财务红线，本季被扣 ${d} 分`, 4)); } catch (e) { console.error(e); }
   // 场外事件
   offField().filter(e => e.ri <= Math.min(cur, 37) && (nr < 0 || e.ri <= nr)).forEach(e => {
     if (e.kind === 'train') add(e.ri, '伤病', 'bad', `${pl(e.team, e.name)}（${tm(e.team)}）训练中${esc(e.what)}，预计缺席 ${e.dur} 场`, 1);
@@ -4272,7 +4279,7 @@ function vTable() {
   if (live) {
     const rows = table();
     body = `<div class="panel"><div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>净胜</th><th>积分</th><th class="l">近 5 场</th></tr></thead><tbody>
-      ${rows.map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="pts">${r.pts}</td><td class="l"><span class="form">${r.form.slice(-5).map(f => `<i class="${f}">${{ W: '胜', D: '平', L: '负' }[f]}</i>`).join('')}</span></td></tr>`).join('')}
+      ${rows.map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 22)}</td><td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td class="pts">${r.pts}${r.ded ? `<sup style="color:#e55" title="违反联赛财务规则，扣 ${r.ded} 分">−${r.ded}</sup>` : ''}</td><td class="l"><span class="form">${r.form.slice(-5).map(f => `<i class="${f}">${{ W: '胜', D: '平', L: '负' }[f]}</i>`).join('')}</span></td></tr>`).join('')}
       </tbody></table></div>${ZONE_LEGEND}</div>`;
     const ps = liveStats();
     body += `<div class="grid g-2">${scorerBlock(top10(ps, 'g'), ['射手榜', 'Top scorers'], ' 球')}${scorerBlock(top10(ps, 'a'), ['助攻榜', 'Top assists'], ' 次')}</div>
@@ -6246,6 +6253,7 @@ function vAwards() {
   return `<section class="view"><div><div class="eyebrow">Awards</div><h1>奖项</h1><p class="muted" style="margin:6px 0 0;font-size:13px">每个赛季结束时评出个人奖项，连同各项赛事冠军一起存进历史。</p></div>
   ${all.length ? `<div class="split"><h2 style="font-size:20px;font-weight:900">${SN(awSeason)} 赛季个人奖项${isPending(awSeason) ? ' <span class="chip gold" style="vertical-align:middle">已结算 · 待进入下一季</span>' : ''}</h2><select id="awSel" aria-label="赛季">${all.map(x => `<option value="${x}" ${x === awSeason ? 'selected' : ''}>${SN(x)} 赛季</option>`).join('')}</select></div>
   <div class="panel">${awardsHTML(awSeason)}</div>
+  ${monthAwardsHTML(awSeason)}
   <div class="panel"><div class="ph"><div><div class="eyebrow">Roll of honour</div><h2>历届冠军</h2></div></div><div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">威超</th>${KS.map(k => `<th class="l">${k}</th>`).join('')}</tr></thead><tbody>
     ${all.map(x => { const B = cupsOf(x) || {}; return `<tr><td class="l mono">${SN(x)}</td><td class="l">${tlink(ranking(x)[0], 18)}</td>${KS.map(k => `<td class="l">${B[k] ? cupClub(B[k].winner) : '–'}</td>`).join('')}</tr>`; }).join('')}
     </tbody></table></div></div>
@@ -6377,14 +6385,16 @@ function coachHistory() {
         const pts = gf > ga ? 3 : gf === ga ? 1 : 0, ep = Math.max(0.35, Math.min(2.5, 1.4 + ((ER[o] ?? 10) - (ER[t] ?? 10)) * 0.07)); lstk[t] = pts ? 0 : (lstk[t] || 0) + 1;
         trust[t] = Math.max(0, Math.min(100, trust[t] + (pts - ep) * 4.2 - (lstk[t] >= 3 ? 2 : 0) + (gf - ga >= 3 ? 1.5 : ga - gf >= 3 ? -2 : 0) + (isRival(t, o) ? (pts === 3 ? 4 : pts === 0 ? -6 : 0) : 0))); /* 德比赢了更衣室和球迷都买账，输给死敌最伤 */ trust[t] += (58 - trust[t]) * 0.03; (tlog[t] = tlog[t] || []).push([s, ri, Math.round(trust[t])]); }));
       if (ri >= 35) continue;
-      Object.keys(cur).forEach(t => { const c = cur[t]; if (!c || !T.includes(t)) return; const inCh = (c.s0 === s ? ri + 1 - c.r0 : ri + 1), C = COACH_REG[c.id] || {}, floor = C.kind === '名宿' && C.clubs && C.clubs.has(t) ? 16 : 22;
+      Object.keys(cur).forEach(t => { const c = cur[t]; if (!c || !T.includes(t)) return; const inCh = (c.s0 === s ? ri + 1 - c.r0 : ri + 1), C = COACH_REG[c.id] || {}, floor = (C.kind === '名宿' && C.clubs && C.clubs.has(t) ? 16 : 22) + ownFloorAdj(t, s);
         if (inCh >= 6 && trust[t] < floor) { const tv = Math.round(trust[t]); leave(t, s, ri + 1, `战绩不佳，更衣室信任跌到 ${tv}%，第 ${ri + 1} 轮后下课`); hire(t, s, ri + 1, 'sack'); log.push({ s, r: ri + 1, team: t, inn: cur[t].id, sack: 1 }); } }); }
     if (!HS[s]) break;
     const fin = leagueTableAt(s, 38), next = teamsInSeason(s + 1) || [];
     Object.keys(TD).forEach(t => { const c = cur[t]; if (!c) return; const rk = fin.indexOf(t), e = exp.indexOf(t), ten = s - c.s0 + 1, rnd = seeded('end|' + t + '|' + s + saltOf(s)), C = COACH_REG[c.id];
-      let why = null;
-      if (rk >= 17 && rnd() < 0.75) why = '球队降级，下课';
-      else if (rk >= 0 && rk - e >= 6 && rnd() < 0.45) why = `排第 ${rk + 1}，低于预期，下课`;
+      let why = null; const sm = ownSackMul(t, s), o1 = ownOn(s + 1) ? ownerAt(t, s + 1) : null, o0 = ownerAt(t, s);
+      if (rk >= 17 && rnd() < Math.min(0.95, 0.75 * sm)) why = '球队降级，下课';
+      else if (rk >= 0 && rk - e >= 6 && rnd() < Math.min(0.9, 0.45 * sm)) why = `排第 ${rk + 1}，低于预期，下课`;
+      else if (o1 && o0 && o1.key !== o0.key && rnd() < 0.5) why = `新老板${o1.name}入主，换上自己信任的主帅`;
+      else if (rk >= 0 && rk - e >= 3 && o0 && ownOn(s) && o0.p < 35 && rnd() < 0.3) why = `排第 ${rk + 1}，没能达到老板的期望，下课`;
       else if (rk < 0 && !next.includes(t) && ten >= 2 && rnd() < 0.3) why = '没能带队升级，离任';
       else if (rk !== 0 && ten >= 6 && rnd() < (ten >= 10 ? 0.4 : 0.22)) why = '合约到期，离任';
       else if (rk === 0 && ten >= 8 && rnd() < 0.2) why = '功成身退';
@@ -6850,6 +6860,207 @@ function capitalEffect(t, s = SEASON) {
   else { const k = s - last.s; if (k <= 1) d = -3; else if (k === 2) d = -1.5; else return null; txt = '撤资动荡'; }
   return { d, txt, ev: last };
 }
+/* ---------- 老板与董事会、教练团队（2026-11 加入） ----------
+   每支球队都有一位老板（虚构的家族、财团、主权基金、球迷持股会等）。老板决定：转会预算的松紧、每季注资（私募反而抽分红）、
+   票价、主帅能不能坐稳（耐心）、球场 / 训练基地 / 青训学院这些基建投资。资本入主 / 撤资（capitalHistory）会换老板。
+   教练团队：助理教练、门将教练、体能教练、数据分析师跟着主帅来去；体育总监、首席球探、青训总监、队医主管是俱乐部的人，
+   几季一换，换老板时新老板会带自己的体育总监。他们会真的影响比赛、伤病、转会预算和青训提拔。
+   旧进度从「功能加入的那季」才开始生效（S.ownFrom），之前已经踢完的不会被改写。 */
+function ownFromSet() { if (!S || S.ownFrom != null) return; const used = (S.season || 1) > 1 || (S.archive || []).length || (S.fx || []).some(r => r.some(m => m.r)); S.ownFrom = used ? (S.season || 1) + 1 : (S.season || 1); }
+const ownOn = s => { if (!S) return false; if (S.ownFrom == null) ownFromSet(); return s >= S.ownFrom; };
+const OWN_T = {
+  family: { lab: '家族持股', w: [40, 70], a: [40, 65], p: [65, 90], tick: 1, desc: '几代人经营，重视传统和球迷，量入为出' },
+  tycoon: { lab: '本地富商', w: [35, 65], a: [55, 85], p: [28, 52], tick: 2, desc: '出钱爽快，但成绩一差就想换帅' },
+  sovereign: { lab: '主权财富基金', w: [92, 100], a: [85, 100], p: [20, 40], tick: 1, desc: '国家资本，钱几乎花不完，要的是冠军和国家形象' },
+  pe: { lab: '私募基金', w: [45, 70], a: [35, 60], p: [40, 60], tick: 3, desc: '杠杆收购、追求回报：涨票价、控制工资、每季抽分红' },
+  group: { lab: '多球会集团', w: [60, 85], a: [55, 80], p: [45, 70], tick: 2, desc: '旗下有多家球会，重数据选材，体育总监说了算' },
+  corp: { lab: '企业集团', w: [55, 80], a: [50, 75], p: [45, 70], tick: 2, desc: '母公司把球队当品牌经营，商业开发做得好' },
+  tech: { lab: '科技新贵', w: [65, 90], a: [75, 95], p: [20, 45], tick: 2, desc: '年轻富豪，野心大、出手快，也容易失去耐心' },
+  fans: { lab: '球迷持股会', w: [15, 35], a: [30, 55], p: [80, 98], tick: 0, desc: '会员一人一票：票价便宜、重视青训，没有大金主' }
+};
+const TICK_LV = [['平价', 0.82, 6], ['适中', 1, 0], ['偏贵', 1.12, -4], ['昂贵', 1.25, -9]]; /* [名称, 票价倍数, 球迷情绪] */
+const OWN_FAM = ['霍尔布鲁克', '范德维尔', '卡瓦列里', '阿什福德', '温特伯恩', '德拉克鲁瓦', '莫雷蒂', '斯特林顿', '布莱克莫尔', '奥斯特曼', '罗西尼', '哈维沙姆', '费尔法克斯', '冯·艾森', '马尔多纳', '肯辛顿', '贝尔蒙特', '索伦森'];
+const OWN_NM = {
+  sovereign: ['新月主权投资局', '金沙国家投资基金', '绿洲主权基金', '海湾明珠投资局', '沙丘国家体育投资'],
+  pe: ['橡树岭资本', '灰岩私募', '蓝湾资本合伙', '铁锚私募', '北岬资本', '黑曜石投资', '银桦资本'],
+  group: ['棱镜足球集团', '极光体育控股', '七海足球集团', '经纬体育集团', '远星球会联盟'],
+  corp: ['恒远汽车集团', '北辰能源', '银河饮料', '海川电子', '鼎盛重工', '远航航空', '金穗食品集团'],
+  tech: ['云帆科技', '量子社交', '星火游戏', '极客支付', '零点智能', '流光视频']
+};
+const OWN_IND = ['地产', '航运', '矿业', '零售', '建筑', '物流', '酒店', '电信'];
+/* 旧的资本事件里的投资方 → 老板类型 */
+const INV_TYPE = { '海湾主权投资基金': 'sovereign', '北美私募 Apex 资本': 'pe', '东方科技集团': 'tech', '本地地产大亨': 'tycoon', '欧洲能源巨头': 'corp', '亚洲电商集团': 'corp', '美国体育娱乐集团': 'group', '中东王室财团': 'sovereign', '北欧航运家族': 'family', '新加坡投资财团': 'pe' };
+function mkOwner(t, type, key, s, name) {
+  const T = OWN_T[type], h = k => ghash('own|' + key + '|' + k), rg = ([a, b], k) => Math.round(a + (b - a) * h(k));
+  let nm = name;
+  if (!nm) { if (type === 'family') nm = OWN_FAM[Math.floor(h('n') * OWN_FAM.length)] + '家族';
+    else if (type === 'fans') nm = t + '球迷信托';
+    else if (type === 'tycoon') nm = coachName('ownp|' + key, '英格兰') + `（${OWN_IND[Math.floor(h('i') * OWN_IND.length)]}商人）`;
+    else { const L = OWN_NM[type]; nm = L[Math.floor(h('n') * L.length)]; if (type === 'tech') nm = coachName('ownp|' + key, '美国') + `（${nm}创始人）`; } }
+  const chair = type === 'fans' ? coachName('ownc|' + key, '英格兰') + '（会员选出的主席）' : coachName('ownc|' + key, '英格兰');
+  return { key, type, lab: T.lab, name: nm, chair, s0: s, w: rg(T.w, 'w'), a: rg(T.a, 'a'), p: rg(T.p, 'p'), tick: Math.max(0, Math.min(3, T.tick + (h('t') < 0.25 ? 1 : h('t') > 0.85 ? -1 : 0))) };
+}
+let OWN_C = null;
+/* 每支球队的老板时间线：S01 的老板 + 资本入主 / 撤资带来的换手 */
+function ownerHist(t) {
+  const H = capitalHistory(), k = H.key + '|' + Object.keys(TD).length; if (!OWN_C || OWN_C.k !== k) OWN_C = { k, m: {} }; if (OWN_C.m[t]) return OWN_C.m[t];
+  const base = clubBaseApprox(t), x = ghash('own0|' + t), big = base >= 84, mid = base >= 79;
+  const pick = W => { let y = x * W.reduce((a, b) => a + b[1], 0); for (const [k, w] of W) { if ((y -= w) <= 0) return k; } return W[0][0]; };
+  const type = big ? pick([['corp', 26], ['group', 18], ['family', 20], ['tycoon', 14], ['pe', 12], ['tech', 10]]) : mid ? pick([['family', 28], ['tycoon', 26], ['corp', 16], ['pe', 10], ['fans', 10], ['group', 10]]) : pick([['family', 34], ['tycoon', 28], ['fans', 22], ['pe', 10], ['corp', 6]]);
+  const L = [mkOwner(t, type, t + '|0', 1)];
+  H.ev.filter(e => e.team === t).forEach((e, i) => {
+    if (e.kind === 'in') L.push({ ...mkOwner(t, INV_TYPE[e.inv] || 'corp', t + '|' + (i + 1), e.s, e.inv), via: '收购' });
+    else { const y = ghash('ownx|' + t + '|' + e.s), ty = y < 0.3 ? 'tycoon' : y < 0.5 ? 'family' : y < 0.7 ? 'pe' : y < 0.85 ? 'group' : 'fans'; L.push({ ...mkOwner(t, ty, t + '|' + (i + 1), e.s), via: `前老板撤资（${e.why || '出售球队'}）后接手` }); }
+  });
+  return (OWN_C.m[t] = L);
+}
+const ownerAt = (t, s = SEASON) => { if (!TD[t]) return null; const L = ownerHist(t); let o = L[0]; L.forEach(x => { if (x.s0 <= s) o = x; }); return o; };
+const ownerIdx = (t, s) => { const L = ownerHist(t); let i = 0; L.forEach((x, k) => { if (x.s0 <= s) i = k; }); return i; };
+/* 球场：基本容量按球队规模；扩建 / 新球场由董事会决定 */
+const stadCap0 = t => Math.round((22 + Math.max(0, Math.min(1, (clubBaseApprox(t) - 72) / 16)) * 48 + ghash('cap|' + t) * 10)) * 1000;
+const PROJ = [
+  { k: 'expand', lab: '扩建球场', c: [200, 380], n: 2, need: o => o.w >= 40, eff: '球场容量 +10000 左右，球场收入增加' },
+  { k: 'newstad', lab: '兴建新球场', c: [700, 1100], n: 3, need: o => o.w >= 85, eff: '容量大增（约 +25000），球场收入大幅增加' },
+  { k: 'train', lab: '新训练基地', c: [120, 220], n: 1, need: o => o.w >= 30, eff: '伤病率降低约 10%' },
+  { k: 'acad', lab: '青训学院升级', c: [80, 150], n: 1, need: () => true, eff: '青训总监更愿意、也更敢提拔年轻人' },
+  { k: 'comm', lab: '商业部门扩编', c: [50, 100], n: 1, need: o => o.type !== 'fans', eff: '周边与广告收入 +10%' }
+];
+let BRD_C = null;
+/* 董事会每季的决策（从 ownFrom 那季起逐季推算）：基建项目、票价调整、注资 / 分红 */
+function boardPlan(t) {
+  ownFromSet(); const k = (S.ownFrom ?? 1) + '|' + SEASON + '|' + (OWN_C && OWN_C.k) + '|' + JSON.stringify((S && S.salt) || {}).length; if (!BRD_C || BRD_C.k !== k) BRD_C = { k, m: {} }; if (BRD_C.m[t]) return BRD_C.m[t];
+  const P = { proj: [], done: {}, tick: {}, cap: {}, log: [] }; let cap = stadCap0(t), active = null, tick = null, prevOwn = null;
+  for (let s = 1; s <= SEASON + 1; s++) {
+    const o = ownerAt(t, s), on = ownOn(s), rnd = seeded('brd|' + t + '|' + s + '|' + saltOf(Math.min(s, SEASON)));
+    if (prevOwn && prevOwn.key !== o.key) { tick = null; P.log.push({ s, txt: `${o.name}（${o.lab}）${o.via || '入主'}，${o.chair} 出任主席` }); }
+    if (tick == null) tick = o.tick;
+    if (on && s > 1 && rnd() < 0.18) { const nt = Math.max(0, Math.min(3, tick + (o.type === 'pe' || o.type === 'tycoon' ? 1 : o.type === 'fans' ? -1 : rnd() < 0.5 ? 1 : -1))); if (nt !== tick) { P.log.push({ s, txt: `票价调整：${TICK_LV[tick][0]} → ${TICK_LV[nt][0]}` }); tick = nt; } }
+    P.tick[s] = tick;
+    if (active && s >= active.s1) { P.done[active.k] = (P.done[active.k] || 0) + 1; if (active.k === 'expand') cap += 9000 + Math.round(ghash('ex|' + t + s) * 5) * 1000; if (active.k === 'newstad') cap = Math.max(cap + 22000, 60000); P.log.push({ s, txt: `${active.lab}完工：${active.eff}` }); active = null; }
+    if (on && !active && s <= SEASON) { const pr = (o.a / 100) * 0.32 * (o.w / 100 + 0.35); if (rnd() < pr) { const C = PROJ.filter(x => x.need(o) && !(x.k === 'newstad' && P.done.newstad) && !(x.k === 'acad' && (P.done.acad || 0) >= 2) && !(x.k === 'train' && (P.done.train || 0) >= 2) && !(x.k === 'comm' && (P.done.comm || 0) >= 2)); const x = C[Math.floor(rnd() * C.length)];
+      if (x) { const cost = Math.round(x.c[0] + (x.c[1] - x.c[0]) * rnd()); active = { ...x, s0: s, s1: s + x.n, cost }; P.proj.push(active); P.log.push({ s, txt: `董事会批准${x.lab}（ⰵ${cost}M，${x.n} 季完工）` }); } } }
+    P.cap[s] = cap; prevOwn = o;
+  }
+  return (BRD_C.m[t] = P);
+}
+const projBuilt = (t, k, s = SEASON) => boardPlan(t).proj.filter(p => p.k === k && p.s1 <= s).length;
+/* 老板每季注资（私募是负数：抽分红），按财力和野心 */
+function ownerCash(t, s) { if (!ownOn(s)) return 0; const o = ownerAt(t, s); if (!o) return 0; const b = { sovereign: 420, tech: 230, group: 160, corp: 120, tycoon: 90, family: 35, pe: -70, fans: 0 }[o.type] || 0; return Math.round(b * (b > 0 ? 0.5 + o.a / 100 : 0.6 + o.w / 200)); }
+function boardCost(t, s) { if (!ownOn(s)) return 0; return boardPlan(t).proj.filter(p => s >= p.s0 && s < p.s1).reduce((a, p) => a + p.cost / p.n, 0); }
+/* 球迷情绪（0–100）：成绩比预期好坏、票价、老板口碑、刚易主的蜜月期 */
+function fanMood(t, s = SEASON) {
+  if (!TD[t]) return null; const o = ownerAt(t, s), B = boardPlan(t), tk = B.tick[s] ?? o.tick; let v = 58, why = [];
+  try { if (s === SEASON && playedRounds() >= 3 && S.teams.includes(t)) { const tb = table(), rk = tb.findIndex(r => r.team === t) + 1, exp = S.teams.slice().sort((a, b) => ENGINE.strength(b).ovr - ENGINE.strength(a).ovr).indexOf(t) + 1, d = Math.max(-8, Math.min(8, exp - rk)); v += d * 2.6; if (Math.abs(d) >= 2) why.push(d > 0 ? `成绩好过预期（第 ${rk}，预期第 ${exp}）` : `成绩低于预期（第 ${rk}，预期第 ${exp}）`); } } catch (e) { }
+  const A = (S.archive || []).find(x => x.s === s - 1); if (A) { const k = A.table.findIndex(r => r.team === t); if (k === 0) { v += 9; why.push('上季夺冠'); } else if (k >= 17) { v -= 10; why.push('上季降级'); } }
+  v += TICK_LV[tk][2]; if (TICK_LV[tk][2]) why.push('票价' + TICK_LV[tk][0]);
+  const ob = { fans: 8, family: 4, sovereign: 2, pe: -9, tycoon: -1, tech: 0, group: -2, corp: 0 }[o.type] || 0; v += ob; if (ob) why.push(ob > 0 ? `${o.lab}受球迷欢迎` : `球迷对${o.lab}不满`);
+  if (s - o.s0 <= 1 && o.s0 > 1) { v += 6; why.push('新老板入主的蜜月期'); }
+  v = Math.round(Math.max(5, Math.min(97, v))); return { v, why, lv: v >= 75 ? '狂热' : v >= 60 ? '满意' : v >= 45 ? '一般' : v >= 30 ? '不满' : '抗议' };
+}
+/* 上座：需求 = 球场规模 × 情绪 × 票价，满了就是满座 */
+function attendance(t, s = SEASON) { const B = boardPlan(t), cap = B.cap[s] || stadCap0(t), tk = B.tick[s] ?? 1, m = fanMood(t, s); const dem = cap * (0.55 + (m ? m.v : 55) / 250) * (1.1 - (TICK_LV[tk][1] - 1) * 1.2) * (0.85 + Math.max(0, Math.min(1, (clubBaseApprox(t) - 72) / 16)) * 0.2); const att = Math.round(Math.min(cap, dem) / 100) * 100; return { cap, att, occ: att / cap, tk }; }
+/* ---------- 教练团队 ---------- */
+const STAFF_R = [
+  ['ast', '助理教练', 'coach', '比赛临场：配合主帅，表现 ±'], ['gk', '门将教练', 'coach', '门将发挥'], ['fit', '体能教练', 'coach', '伤病率'], ['ana', '数据分析师', 'coach', '针对对手的布置，表现 ±'],
+  ['dof', '体育总监', 'club', '转会预算用得值不值'], ['sct', '首席球探', 'club', '转会预算用得值不值'], ['yth', '青训总监', 'club', '青训提拔'], ['med', '队医主管', 'club', '伤病率和伤停时间']
+];
+function staffOf(t, s = SEASON) {
+  if (!TD[t]) return []; const o = ownerAt(t, s), c = coachOf(t), oi = ownerIdx(t, s), out = [];
+  STAFF_R.forEach(([k, lab, kind, eff]) => {
+    let id, q, since;
+    if (kind === 'coach') { const C = c || {}; id = 'SF|' + t + '|' + (C.id || 'x') + '|' + (C.s0 || 0) + '|' + k; q = (C.rep || 74) - 6 + ghash(id) * 13 + (o.w - 60) * 0.06; since = C.s0 || 1; }
+    else { const ten = 3 + Math.floor(ghash('tn|' + t + k) * 4), s0o = o.s0 || 1, era = Math.floor((s - s0o) / ten); id = 'SC|' + t + '|' + k + '|' + oi + '|' + era; q = 56 + o.w * 0.2 + ghash(id) * 20 + (o.type === 'group' && k === 'dof' ? 6 : 0) + (o.type === 'fans' && k === 'yth' ? 6 : 0); since = s0o + era * ten; }
+    const hn = ghash(id + 'n'), nat = c && c.nat && kind === 'coach' && hn < 0.55 ? c.nat : hn < 0.75 || !(typeof YP !== 'undefined' && YP.NATS) ? TEAM_NAT(t) : YP.NATS[Math.floor(ghash(id + 'nn') * YP.NATS.length)];
+    if (!STAFF_NM[id]) STAFF_NM[id] = coachName(id, nat); /* 职员名字另外存，不占用主帅的名字池 */
+    out.push({ k, lab, id, name: STAFF_NM[id], nat, q: Math.round(Math.max(48, Math.min(95, q))), since, eff, kind });
+  });
+  return out;
+}
+const STAFF_NM = {};
+const staffQ = (t, k, s = SEASON) => { const x = staffOf(t, s).find(y => y.k === k); return x ? x.q : 70; };
+let SFM_C = {};
+/* 伤病倍数：体能教练、队医主管、训练基地 */
+function injMul(t) { if (!TD[t] || !ownOn(SEASON)) return 1; const k = t + '|' + SEASON + '|' + MOD_VER_SEASON; if (SFM_C[k]) return SFM_C[k]; if (Object.keys(SFM_C).length > 400) SFM_C = {};
+  const v = Math.max(0.72, Math.min(1.25, 1.12 - (staffQ(t, 'fit') - 60) * 0.006 - (staffQ(t, 'med') - 60) * 0.003 - Math.min(2, projBuilt(t, 'train')) * 0.08)); return (SFM_C[k] = v); }
+const injDurMul = t => (!TD[t] || !ownOn(SEASON)) ? 1 : Math.max(0.75, Math.min(1.2, 1.1 - (staffQ(t, 'med') - 60) * 0.006));
+/* 比赛：助理教练 + 数据分析师 + 门将教练，最多约 ±2% */
+function staffMatchMod(t) { if (!ownOn(SEASON)) return 0; const k = 'm|' + t + '|' + SEASON + '|' + MOD_VER_SEASON; if (SFM_C[k] != null) return SFM_C[k]; return (SFM_C[k] = Math.max(-2, Math.min(2, (staffQ(t, 'ast') - 76) * 0.045 + (staffQ(t, 'ana') - 76) * 0.035 + (staffQ(t, 'gk') - 76) * 0.02))); }
+/* 转会预算：老板财力、野心（私募、球迷持股偏紧），体育总监和首席球探用得好等于多出一截 */
+function budgetMul(t, s = SEASON) { if (!ownOn(s)) return 1; const o = ownerAt(t, s); if (!o) return 1; let m = 0.6 + o.w * 0.006 + o.a * 0.003; if (o.type === 'pe') m *= 0.8; if (o.type === 'fans') m *= 0.85; m *= 1 + ((staffQ(t, 'dof', s) - 70) * 0.6 + (staffQ(t, 'sct', s) - 70) * 0.4) * 0.006; return Math.max(0.5, Math.min(1.7, m)); }
+/* 主帅的位子：老板越没耐心，信任底线越高、季末越容易换帅 */
+const ownFloorAdj = (t, s) => { if (!ownOn(s)) return 0; const o = ownerAt(t, s); return o ? (55 - o.p) * 0.18 : 0; };
+const ownSackMul = (t, s) => { if (!ownOn(s)) return 1; const o = ownerAt(t, s); return o ? Math.max(0.55, Math.min(1.5, 1.45 - o.p / 100 * 0.9)) : 1; };
+const youthBoost = t => ownOn(SEASON) ? Math.round((staffQ(t, 'yth') - 70) / 8) + Math.min(2, projBuilt(t, 'acad')) : 0;
+/* 商业收入倍数（商业部门扩编），球场收入倍数（容量 × 上座 × 票价） */
+const commMul = (t, s) => ownOn(s) ? 1 + Math.min(2, projBuilt(t, 'comm', s)) * 0.1 + (ownerAt(t, s).type === 'corp' ? 0.06 : 0) : 1;
+function stadMul(t, s) { if (!ownOn(s)) return 1; const A = attendance(t, s), c0 = stadCap0(t); return Math.max(0.6, Math.min(2.4, (A.att / (c0 * 0.9)) * TICK_LV[A.tk][1])); }
+function ownBar(lab, v, col) { return `<div style="display:grid;grid-template-columns:64px minmax(0,1fr) 30px;gap:8px;align-items:center;font-size:12px"><span class="muted">${lab}</span><span style="height:6px;border-radius:3px;background:var(--line);overflow:hidden"><span style="display:block;height:100%;width:${v}%;background:${col || 'var(--gold)'}"></span></span><span class="mono">${v}</span></div>`; }
+function boardPanel(t) {
+  if (!TD[t]) return ''; const o = ownerAt(t), L = ownerHist(t), B = boardPlan(t), A = attendance(t), m = fanMood(t), F = (() => { try { return finState()[t]; } catch (e) { return null; } })(), cash = ownerCash(t, SEASON), on = ownOn(SEASON);
+  const T = OWN_T[o.type], prj = B.proj.filter(p => p.s1 > SEASON);
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Ownership</div><h2>老板与董事会</h2></div><span class="note">${on ? '老板的财力、野心和耐心会影响转会预算、注资、票价、基建和主帅去留' : `这份进度从 ${SN(S.ownFrom)} 起由老板接手经营决策`}</span></div>
+    <div class="grid g-2" style="gap:14px;align-items:start">
+      <div><div style="font-size:17px;font-weight:900">${esc(o.name)}</div><div class="muted" style="font-size:12px;margin:2px 0 8px">${esc(o.lab)} · ${SN(o.s0)} 起${o.via ? ' · ' + esc(o.via) : ''} · 主席 ${esc(o.chair)}</div>
+        <p class="note" style="margin:0 0 10px">${esc(T.desc)}</p>
+        <div style="display:grid;gap:6px">${ownBar('财力', o.w, '#c9a3ff')}${ownBar('野心', o.a, '#ff5b1f')}${ownBar('耐心', o.p, '#7fd6b4')}</div></div>
+      <div class="rank-list">
+        <div class="rk" style="grid-template-columns:96px minmax(0,1fr)"><span class="muted">每季注资</span><span class="mono">${cash > 0 ? money(cash) : cash < 0 ? `抽分红 ${money(-cash)}` : '没有'}</span></div>
+        <div class="rk" style="grid-template-columns:96px minmax(0,1fr)"><span class="muted">转会预算</span><span>${F ? money(F.budget) : '—'} <span class="dim" style="font-size:11px">老板与球探部门系数 ×${budgetMul(t).toFixed(2)}</span></span></div>
+        <div class="rk" style="grid-template-columns:96px minmax(0,1fr)"><span class="muted">票价</span><span>${TICK_LV[A.tk][0]}</span></div>
+        <div class="rk" style="grid-template-columns:96px minmax(0,1fr)"><span class="muted">主场</span><span class="mono">${(A.cap / 1000).toFixed(0)}k 座 · 场均约 ${(A.att / 1000).toFixed(1)}k（${Math.round(A.occ * 100)}%）</span></div>
+        <div class="rk" style="grid-template-columns:96px minmax(0,1fr)"><span class="muted">球迷情绪</span><span><b>${m.v}</b> ${m.lv}${m.why.length ? ` <span class="dim" style="font-size:11px">${esc(m.why.join('、'))}</span>` : ''}</span></div>
+        <div class="rk" style="grid-template-columns:96px minmax(0,1fr)"><span class="muted">在建项目</span><span>${prj.length ? prj.map(p => `${esc(p.lab)}（${SN(p.s1)} 完工）`).join('、') : '没有'}</span></div>
+      </div></div>
+    ${B.log.length ? `<div class="eyebrow" style="margin:14px 0 6px">董事会大事记</div><div class="rank-list">${B.log.slice().reverse().slice(0, 12).map(x => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr)"><span class="mono dim">${SN(x.s)}</span><span>${esc(x.txt)}</span></div>`).join('')}</div>` : ''}
+    ${sponsorPanel(t)}${scrPanel(t)}
+    ${L.length > 1 ? `<div class="eyebrow" style="margin:14px 0 6px">历任老板</div><div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">老板</th><th class="l">类型</th><th>财力</th><th>野心</th><th>耐心</th></tr></thead><tbody>${L.map((x, i) => `<tr><td class="l mono">${SN(x.s0)}${L[i + 1] ? '–' + SN(L[i + 1].s0 - 1) : ' 起'}</td><td class="l">${esc(x.name)}</td><td class="l">${esc(x.lab)}</td><td>${x.w}</td><td>${x.a}</td><td>${x.p}</td></tr>`).join('')}</tbody></table></div>` : ''}
+  </div>`;
+}
+function staffPanel(t) {
+  if (!TD[t]) return ''; const L = staffOf(t), on = ownOn(SEASON), im = injMul(t), mm = staffMatchMod(t);
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Backroom staff</div><h2>教练团队与职能部门</h2></div><span class="note">上面四位跟着主帅来去；下面四位属于俱乐部，几季一换，换老板时也会换人</span></div>
+    <div class="tw"><table><thead><tr><th class="l">职务</th><th class="l">姓名</th><th class="l">国籍</th><th>能力</th><th class="l">在任</th><th class="l">影响</th></tr></thead><tbody>
+    ${L.map(x => `<tr><td class="l">${esc(x.lab)}</td><td class="l"><b>${esc(x.name)}</b></td><td class="l">${esc(x.nat || '—')}</td><td class="mono" style="color:${x.q >= 80 ? 'var(--win,#3c9)' : x.q < 62 ? '#e93' : 'inherit'}">${x.q}</td><td class="l mono">${SN(x.since)} 起</td><td class="l dim" style="font-size:12px">${esc(x.eff)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="note" style="margin:10px 0 0">${on ? `目前效果：比赛表现 ${mm >= 0 ? '+' : ''}${mm.toFixed(1)}% · 伤病率 ×${im.toFixed(2)} · 伤停时间 ×${injDurMul(t).toFixed(2)} · 青训提拔门槛${youthBoost(t) ? (youthBoost(t) > 0 ? ' 放宽 ' : ' 收紧 ') + Math.abs(youthBoost(t)) + ' 分' : '不变'}` : `这份进度从 ${SN(S.ownFrom)} 起计入效果`}</p></div>`;
+}
+
+/* ---------- 联赛财务规则（参考英超 2026/27 起的「阵容成本比」）----------
+   阵容成本 = 球员工资 + 买人支出 ÷ 3（摊销）+ 解约赔偿；收入 = 俱乐部自己赚的（不算老板注资）。
+   超过 85%：按超出部分交罚款（下季入账）；超过 115%：下季开季扣 6 分，每再超 ⰵ65M 多扣 1 分。 */
+function scrRatio(t, s) { const L = finLedger(t, s); if (!L.closed) return null; const rev = L.ti - (L.inc['老板注资'] || 0), cost = L.exp['球员工资'] + L.exp['买人支出'] / 3 + L.exp['解约赔偿']; return rev > 0 ? { r: cost / rev, rev, cost } : null; }
+function scrCheck(s) { if (!ownOn(s)) return; S.scr = S.scr || {}; if (S.scr[s]) return; const O = S.scr[s] = {}, D = {};
+  S.teams.forEach(t => { if (!TD[t]) return; const x = scrRatio(t, s); if (!x) return; const o = { r: +x.r.toFixed(3) };
+    if (x.r > 0.85) o.fine = Math.round((x.cost - 0.85 * x.rev) * Math.min(1, x.r - 0.85) * 1.5);
+    if (x.r > 1.15) { o.ded = 6 + Math.floor((x.cost - 1.15 * x.rev) / 65); D[t] = o.ded; }
+    O[t] = o; });
+  if (Object.keys(D).length) { S.ded = S.ded || {}; S.ded[s + 1] = D; } }
+function scrPanel(t) { const L = []; Object.entries(S.scr || {}).forEach(([s, O]) => { if (O[t]) L.push([+s, O[t]]); }); const cur = (() => { try { return scrRatio(t, SEASON - 1); } catch (e) { return null; } })();
+  if (!L.length) return ''; return `<div class="eyebrow" style="margin:14px 0 6px">联赛财务规则（阵容成本 ÷ 收入，85% 以上罚款，115% 以上扣分）</div><div class="rank-list">${L.slice(-6).reverse().map(([s, o]) => `<div class="rk" style="grid-template-columns:44px 70px minmax(0,1fr)"><span class="mono dim">${SN(s)}</span><span class="mono" style="color:${o.r > 1.15 ? '#e55' : o.r > 0.85 ? '#e93' : 'inherit'}">${Math.round(o.r * 100)}%</span><span>${o.ded ? `超过红线：${SN(s + 1)} 扣 ${o.ded} 分，罚款 ${money(o.fine)}` : o.fine ? `超过 85%：罚款 ${money(o.fine)}` : '合规'}</span></div>`).join('')}</div>`; }
+/* ---------- 赞助商：球衣胸前、袖口、球衣供应商、训练服、球场冠名（老板愿意卖的话）----------
+   合同 3–5 季，签约时按球队规模和近况定价，到期才重谈；广告收入 = 生效中的赞助合同总和 */
+const SP_BR = { chest: ['海川电子', '银河饮料', '远航航空', '金穗食品', '星火游戏', '量子社交', '恒远汽车', '极客支付', '北辰能源', '云帆科技', '蓝鲸保险', '鼎新银行', '橙果手机', '风行出行', '晨曦啤酒'],
+  sleeve: ['捷达快递', '青柠能量饮料', '白帆旅游', '安途轮胎', '星点外卖', '朗峰手表', '速递物流', '暖阳家居'], kit: ['锋迅运动', '赤狐体育', '北极熊运动', '飞羽', '迅豹', '凌云运动'], train: ['海岸咖啡', '铁甲健身', '晨光乳业', '野牛能量', '极光耳机'], stad: ['恒远汽车', '北辰能源', '鼎新银行', '云帆科技', '远航航空', '蓝鲸保险'] };
+const SP_SLOT = [['chest', '球衣胸前', 0.5], ['kit', '球衣供应商', 0.28], ['sleeve', '球衣袖口', 0.14], ['train', '训练服', 0.08], ['stad', '球场冠名', 0.3]];
+let SPON_C = null;
+function sponsorsOf(t, s = SEASON) { if (!TD[t] || !ownOn(s)) return null; const k = SEASON + '|' + (S.archive || []).length; if (!SPON_C || SPON_C.k !== k) SPON_C = { k, m: {} }; const ck = t + '|' + s; if (SPON_C.m[ck]) return SPON_C.m[ck];
+  const out = []; SP_SLOT.forEach(([slot, lab, w]) => { if (slot === 'stad') { const o = ownerAt(t, s); if (!['corp', 'pe', 'group', 'tech', 'sovereign'].includes(o.type) || ghash('stn|' + t + o.key) < 0.35) return; }
+    ownFromSet(); let s0 = S.ownFrom ?? 1, n = 0; for (;;) { const len = 3 + Math.floor(ghash('spl|' + t + slot + n) * 3); if (s < s0 + len) break; s0 += len; n++; }
+    const len = 3 + Math.floor(ghash('spl|' + t + slot + n) * 3), L = SP_BR[slot], br = L[Math.floor(ghash('spb|' + t + slot + n) * L.length)];
+    const A = (S.archive || []).find(x => x.s === s0 - 1), rk = A ? A.table.findIndex(r => r.team === t) : -1, size = Math.max(0, Math.min(20, clubBaseApprox(t) - 74)), form = rk < 0 ? 1 : rk <= 3 ? 1.25 : rk <= 9 ? 1.08 : rk >= 17 ? 0.75 : 0.95;
+    const v = Math.round((15 + size * 5 + 8) * w * 1.6 * form * (0.9 + ghash('spv|' + t + slot + n) * 0.2));
+    out.push({ slot, lab, brand: br, s0, s1: s0 + len - 1, v }); });
+  return (SPON_C.m[ck] = out); }
+const sponsorSum = (t, s) => { const L = sponsorsOf(t, s); return L ? L.reduce((a, x) => a + x.v, 0) : null; };
+function sponsorPanel(t) { const L = sponsorsOf(t); if (!L) return ''; return `<div class="eyebrow" style="margin:14px 0 6px">赞助合同（合计 ${money(L.reduce((a, x) => a + x.v, 0))}/季，计入广告营收）</div><div class="rank-list">${L.map(x => `<div class="rk" style="grid-template-columns:76px minmax(0,1fr) auto"><span class="muted">${esc(x.lab)}</span><span><b>${esc(x.brand)}</b> <span class="dim" style="font-size:11px">${SN(x.s0)}–${SN(x.s1)}</span></span><span class="mono">${money(x.v)}/季</span></div>`).join('')}</div>`; }
+/* ---------- 月度最佳：每 4 轮评一次（月度最佳球员按场均评分、进球助攻，月度最佳主帅按积分）---------- */
+const MONTHS = [['8 月', 0, 3], ['9 月', 4, 7], ['10 月', 8, 11], ['11 月', 12, 15], ['12 月', 16, 19], ['1 月', 20, 23], ['2 月', 24, 27], ['3 月', 28, 31], ['4 月', 32, 35], ['5 月', 36, 37]];
+function monthAwardsTick(i) { const mi = MONTHS.findIndex(m => m[2] === i); if (mi < 0) return; S.potm = S.potm || {}; const M = S.potm[SEASON] = S.potm[SEASON] || {}; if (M[mi]) return; const [lab, a, b] = MONTHS[mi];
+  const fx = S.fx.map((r, k) => k >= a && k <= b ? r : []), ps = playerStats(fx).filter(q => q.apps >= Math.max(2, b - a)).map(q => ({ q, sc: q.rs / q.apps + q.g * 0.18 + q.a * 0.1 })).sort((x, y) => y.sc - x.sc)[0];
+  const tb = table(b + 1, fx), best = tb[0]; let cn = null; try { cn = coachOf(best.team); } catch (e) { }
+  M[mi] = { lab, p: ps ? { name: ps.q.name, team: ps.q.team, avg: +(ps.q.rs / ps.q.apps).toFixed(2), g: ps.q.g, a: ps.q.a, apps: ps.q.apps } : null, c: { team: best.team, name: cn ? cn.name : '', w: best.w, d: best.d, l: best.l, pts: best.pts } }; }
+function monthAwardsHTML(s) { const M = (S.potm || {})[s]; if (!M || !Object.keys(M).length) return ''; return `<div class="panel"><div class="ph"><div><div class="eyebrow">Monthly awards</div><h2>${SN(s)} 月度最佳</h2></div><span class="note">每 4 轮评一次</span></div><div class="tw"><table><thead><tr><th class="l">月份</th><th class="l">最佳球员</th><th>场均评分</th><th>进球</th><th>助攻</th><th class="l">最佳主帅</th><th class="l">战绩</th></tr></thead><tbody>${Object.keys(M).sort((a, b) => a - b).map(k => { const x = M[k]; return `<tr><td class="l">${esc(x.lab)}</td><td class="l">${x.p ? `<button class="lnk" ${plink(x.p.team, x.p.name)}>${esc(x.p.name)}</button> <span class="dim">（${esc(x.p.team)}）</span>` : '—'}</td><td class="mono">${x.p ? x.p.avg.toFixed(2) : ''}</td><td>${x.p ? x.p.g : ''}</td><td>${x.p ? x.p.a : ''}</td><td class="l">${esc(x.c.name || '—')} <span class="dim">（${esc(x.c.team)}）</span></td><td class="l mono">${x.c.w}胜${x.c.d}平${x.c.l}负</td></tr>`; }).join('')}</tbody></table></div></div>`; }
+
 /* ---------- 主帅与士气对比赛的影响 ----------
    执教能力：每高于 78 一点，进攻和防守表现约 +0.22%（最多约 ±4%）
    影响力：带来额外的士气加成，也能在连败时稳住更衣室
@@ -6926,6 +7137,7 @@ ENGINE.setTeamAdj(tierAdj);
 ENGINE.setHomeBoost(t => tid(t).home || 0);
 ENGINE.setDerby((h, a) => isRival(h, a));
 ENGINE.setHot(p => persOf(p) === '暴躁');
+ENGINE.setInjHook(t => { try { if (!TD[t] || !ownOn(SEASON)) return null; return [injMul(t), injDurMul(t)]; } catch (e) { return null; } });
 ENGINE.setTeamMod((t, opp) => {
   if (!TD[t] || !S || !S.fx) return [];
   const M = teamMorale(t), out = [];
@@ -6940,6 +7152,7 @@ ENGINE.setTeamMod((t, opp) => {
   if (M.bounce) out.push({ txt: '新帅效应', d: M.bounce });
   if (M.room) out.push({ txt: M.room.txt, d: +M.room.d.toFixed(1) });
   const cap = capitalEffect(t); if (cap) out.push({ txt: cap.txt, d: +cap.d.toFixed(1) });
+  try { const sm = staffMatchMod(t); if (Math.abs(sm) >= 0.3) out.push({ txt: sm > 0 ? '教练团队布置到位' : '教练团队水平有限', d: +sm.toFixed(1) }); } catch (e) { }
   return out;
 });
 // 球员士气（0–100%）：伤病、场上表现、首发次数、转会（想走被拒 / 被强行卖掉 / 被挂牌 / 被解约）、薪资合同、球队近况
@@ -7376,6 +7589,7 @@ function teamDetail(t) {
   ${clubLeaders(t)}
   ${wlTeamPanel(t)}` : ''}
   ${TEAM_TAB === 'fin' ? teamFinPanel(t) : ''}
+  ${TEAM_TAB === 'board' ? boardPanel(t) + staffPanel(t) : ''}
   ${TEAM_TAB === 'legend' ? `${clubLegendsPanel(t)}${clubCoachesPanel(t)}${coachPanel(t)}` : ''}
   ${TEAM_TAB === 'acad' ? u21Panel(t) + (academyPanel(t) || '') || '<div class="panel"><p class="note" style="margin:0">这支球队暂时没有青训资料。</p></div>' : ''}
   </div></section>`;
@@ -7914,7 +8128,8 @@ function commOf(t, s) {
   const A = (S.archive || []).find(x => x.s === s) || (s === SEASON && isPending(s) ? pendingArchive() : null), k = A ? A.table.findIndex(r => r.team === t) : -1, rank = k >= 0 ? k + 1 : 24;
   const size = Math.max(0, Math.min(20, RX(xr) - 74)), top = rank <= 4 ? 1 : 0, mid = rank <= 10 ? 1 : 0;
   let own = null; try { own = capitalHistory().own[t]; } catch (e) {}
-  const merch = Math.round(20 + size * 7 + top * 40 + mid * 15), invest = Math.round((30 + size * 9) * (tid(t).budget || 1) + (own && own.since <= s ? (tid(t).takeover ? 160 : 80) : 0)), ads = Math.round(15 + size * 5 + top * 15), stadium = Math.round(25 + size * 6 + top * 20 + mid * 8);
+  let merch = Math.round(20 + size * 7 + top * 40 + mid * 15), invest = Math.round((30 + size * 9) * (tid(t).budget || 1) + (own && own.since <= s ? (tid(t).takeover ? 160 : 80) : 0)), ads = Math.round(15 + size * 5 + top * 15), stadium = Math.round(25 + size * 6 + top * 20 + mid * 8);
+  try { if (ownOn(s) && TD[t]) { const cm = commMul(t, s), ss = sponsorSum(t, s); merch = Math.round(merch * cm); ads = Math.round((ss != null ? ss : ads) * cm); stadium = Math.round(stadium * stadMul(t, s)); } } catch (e) { } /* 老板时代：商业部门、球场容量、上座和票价 */
   return { merch, invest, ads, stadium, maint: Math.round(15 + size * 2.5) };
 }
 function wageScale(s) { let P = prizeOf(s); for (let k = s - 1; !P && k >= 1; k--) P = prizeOf(k); if (!P) return 3; const pool = (Object.values(P).reduce((a, x) => a + x.total, 0) + Object.keys(TD).reduce((a, t) => { const c = commOf(t, s); return a + c.merch + c.invest + c.ads + c.stadium; }, 0)) * WAGE_P; const R = squadRatings(s); const w = Object.values(R).reduce((a, L) => a + L.reduce((b, r) => b + wageW(r), 0), 0); return w ? pool / w : 3; }
@@ -7938,14 +8153,16 @@ const finStart = t => { const v = (PDB0[t] || []).map(p => p.rating).sort((a, b)
 let FIN_C = null;
 // 每季账本：收入（卖人、周边商品、投资方赞助、广告、球场、比赛奖金）和支出（周边生产、税务、球场维护、买人、工资）。
 // 一季的商业收入、奖金、工资和税在 38 轮 + 杯赛踢完时结算；买卖球员记在球员加盟的那一季。
-const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿'];
+const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款'];
 function finLedger(t, s) {
   const inc = {}, exp = {}; FIN_INC.forEach(k => inc[k] = 0); FIN_EXP.forEach(k => exp[k] = 0);
   TRANSFERS.forEach(x => { if (x.s !== s || !x.fee) return; if (x.to === t) exp['买人支出'] += x.fee; if (x.from === t) inc['卖人收入'] += x.fee; });
   ((S && S.relFee) || []).forEach(r => { if (r.t === t && r.s === s) exp['解约赔偿'] += r.fee; });
   const P = prizeOf(s), closed = !!P;
   if (closed) { const c = commOf(t, s); inc['周边商品营收'] = c.merch; inc['投资方赞助'] = c.invest; inc['广告营收'] = c.ads; inc['球场营收'] = c.stadium; inc['比赛奖金'] = P[t] ? P[t].total : 0;
-    exp['周边商品生产'] = Math.round(c.merch * 0.4); exp['球场维护'] = c.maint; exp['球员工资'] = wagesOf(s)[t] || 0; exp['税务'] = Math.round((c.merch + c.invest + c.ads + c.stadium + inc['比赛奖金']) * 0.12); }
+    exp['周边商品生产'] = Math.round(c.merch * 0.4); exp['球场维护'] = c.maint; exp['球员工资'] = wagesOf(s)[t] || 0; exp['税务'] = Math.round((c.merch + c.invest + c.ads + c.stadium + inc['比赛奖金']) * 0.12);
+    try { const oc = ownerCash(t, s); if (oc > 0) inc['老板注资'] = oc; else if (oc < 0) exp['股东分红'] = -oc; exp['基建投资'] = Math.round(boardCost(t, s)); } catch (e) { } }
+  { const R = S.scr && S.scr[s - 1] && S.scr[s - 1][t]; if (R && R.fine) exp['财务违规罚款'] = R.fine; } /* 上季超标的罚款在本季缴 */
   const ti = Object.values(inc).reduce((a, b) => a + b, 0), te = Object.values(exp).reduce((a, b) => a + b, 0);
   return { s, inc, exp, ti, te, net: ti - te, closed };
 }
@@ -7955,7 +8172,7 @@ function finState() {
   if (FIN_C && FIN_C.k === ck) return FIN_C.v;
   const F = {}; Object.keys(TD).forEach(t => F[t] = { start: finStart(t), prize: 0, sell: 0, buy: 0, wage: 0, seasonPrize: 0, seasonWage: 0, hist: [], led: [] });
   Object.entries(F).forEach(([t, f]) => { let bal = f.start; for (let s = 1; s <= SEASON; s++) { const L = finLedger(t, s); if (!L.closed && !L.ti && !L.te) continue; f.led.push(L); bal += L.net; f.prize += L.inc['比赛奖金']; f.wage += L.exp['球员工资']; f.sell += L.inc['卖人收入']; f.buy += L.exp['买人支出']; if (L.closed) f.hist.push([s, L.inc['比赛奖金'], L.exp['球员工资'], L.net]); if (s === SEASON) { f.seasonPrize = L.inc['比赛奖金']; f.seasonWage = L.exp['球员工资']; f.seasonNet = L.net; } }
-    f.bal0 = bal; f.frac = 0.35 + ghash('bud|' + t + '|' + SEASON) * 0.35; f.budget = Math.max(0, Math.round(bal * f.frac)); f.wBuy = 0; f.wSell = 0; });
+    f.bal0 = bal; f.frac = (0.35 + ghash('bud|' + t + '|' + SEASON) * 0.35) * (() => { try { return budgetMul(t); } catch (e) { return 1; } })(); f.budget = Math.max(0, Math.round(bal * f.frac)); f.wBuy = 0; f.wSell = 0; });
   if (MK) MK.offers.filter(o => o.st === 'a').forEach(o => { if (F[o.to]) F[o.to].wBuy += o.fee; if (F[o.from]) F[o.from].wSell += o.fee; });
   Object.values(F).forEach(f => { f.bal = f.bal0 - f.wBuy + f.wSell; f.rem = Math.round(f.budget + f.wSell * 0.5 - f.wBuy); });
   FIN_C = { k: ck, v: F }; return F;
@@ -8338,7 +8555,7 @@ function finPanel() {
     </tbody></table></div>
     <details style="margin-top:10px"><summary class="note" style="cursor:pointer">各项赛事奖金标准</summary><div class="rank-list" style="margin-top:8px">${PRIZE_RULES.map(([k, lv, txt]) => `<div class="rk" style="grid-template-columns:90px minmax(0,1fr)"><b>${k}</b><span><span class="chip" style="font-size:10px;padding:0 5px">${lv}</span> <span class="muted" style="font-size:12.5px">${txt}</span></span></div>`).join('')}</div><p class="note" style="margin:8px 0 0">奖金在每季 38 轮和所有杯赛踢完时结算，下一个转会窗就能用。开局资金按 S01 前的球队实力给 ⰵ100M–ⰵ600M 不等。工资：能力每高 1 分年薪贵约 28%（96 分球星约是 80 分球员的 55 倍）；全联赛工资总额定为当季国内俱乐部奖金总额的 85%，每季踢完时扣除。余额为负时管理层不批转会预算，只能卖人。</p></details></div>`;
 }
-const FIN_COL = { 卖人收入: '#7fd6b4', 周边商品营收: '#ff5b1f', 投资方赞助: '#c9a3ff', 广告营收: '#ffb38a', 球场营收: '#f0d27a', 比赛奖金: '#d8b45f', 周边商品生产: '#8a95a8', 税务: '#e08a8a', 球场维护: '#b98a6a', 买人支出: '#e66b6b', 球员工资: '#ff9f5a' };
+const FIN_COL = { 卖人收入: '#7fd6b4', 周边商品营收: '#ff5b1f', 投资方赞助: '#c9a3ff', 广告营收: '#ffb38a', 球场营收: '#f0d27a', 比赛奖金: '#d8b45f', 周边商品生产: '#8a95a8', 税务: '#e08a8a', 球场维护: '#b98a6a', 买人支出: '#e66b6b', 球员工资: '#ff9f5a', 解约赔偿: '#c47a9a', 老板注资: '#9fb7ff', 基建投资: '#6a9fb9', 股东分红: '#a06ad0', 财务违规罚款: '#ff4d4d' };
 function finBars(led) {
   if (!led.length) return '';
   const max = Math.max(1, ...led.map(L => Math.max(L.ti, L.te)));
@@ -8782,7 +8999,7 @@ function teamTransferCount(t) {
 }
 function teamTabs(t) {
   const n = teamTransferCount(t), open = mktActive() || winActive();
-  const T = [['squad', '阵容'], ['trans', `转会${open ? (n ? ` <b style="color:var(--gold)">· ${n}</b>` : ' · 开放中') : ''}`], ['record', '战绩与荣誉'], ['fin', '财务'], ['legend', '名宿与主帅'], ['acad', '青训']];
+  const T = [['squad', '阵容'], ['trans', `转会${open ? (n ? ` <b style="color:var(--gold)">· ${n}</b>` : ' · 开放中') : ''}`], ['record', '战绩与荣誉'], ['fin', '财务'], ['board', '老板与团队'], ['legend', '名宿与主帅'], ['acad', '青训']];
   return `<div class="seg" role="tablist" aria-label="球队资料" style="flex-wrap:wrap;position:sticky;top:0;z-index:5">${T.map(([k, l]) => `<button data-act="tTab" data-tab="${k}" aria-pressed="${TEAM_TAB === k}">${l}</button>`).join('')}</div>`;
 }
 // 一名球员对所在球队的地位（卖方开价用）
@@ -9526,7 +9743,7 @@ function autoSquad(phase) {
   try {
     Object.keys(TD).forEach(t => { /* 包括不在威超、踢威冠联赛的球队 */
       /* 开季：青训里已经够得上一线队轮换水平的（≥ 一线队第 14 好的能力），不管人数够不够都提拔上来（每队每季最多 2 人），多出来的人下面会清掉 */
-      if (phase === 'start') { const top = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a), bar = top[Math.min(13, top.length - 1)] || 0; const yc = (() => { try { return (coachOf(t) || {}).kind === 'U21 提拔' ? 3 : 0; } catch (e) { return 0; } })(); /* 梯队出身的主帅更敢用年轻人 */ const up = academyOf(t).filter(k => k.kind === 'acad' && k.kid && k.age >= 17 && k.rating >= bar - yc && !kidEvents(k.kid.id).some(e => e.s >= SEASON)).sort((a, b) => b.rating - a.rating).slice(0, 2);
+      if (phase === 'start') { const top = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a), bar = top[Math.min(13, top.length - 1)] || 0; const yc = (() => { try { return ((coachOf(t) || {}).kind === 'U21 提拔' ? 3 : 0) + youthBoost(t); } catch (e) { return 0; } })(); /* 梯队出身的主帅更敢用年轻人 */ const up = academyOf(t).filter(k => k.kind === 'acad' && k.kid && k.age >= 17 && k.rating >= bar - yc && !kidEvents(k.kid.id).some(e => e.s >= SEASON)).sort((a, b) => b.rating - a.rating).slice(0, 2);
         up.forEach(k => kidDecide(k.kid.id, 'promote')); if (up.length) { GROWN = 0; applyGrowth(); log.push(`${t} 从青训提拔 ${up.map(k => k.name + '（' + k.pos + ' ' + k.rating + '/' + k.pot + '，已达一线队轮换水平）').join('、')}`); } }
       const size = phase === 'sum' ? projSize(t) : (PDB[t] || []).length;
       if (size > SQUAD_MAX) { const cut = sqCutList(t, size - SQUAD_MAX), sold = [], rel = [];
@@ -9594,6 +9811,14 @@ function autoDlg() { const C = AUTO_C(), d = $('#dlg'), h = x => +(x / H_MS).toF
   if (!d.open) d.showModal();
   const sum = () => { const R = +$('#auR').value || 2.4, W = +$('#auW').value || 0, Sm = +$('#auS').value || 0, tot = R * 38 + W + Sm; $('#auSum').textContent = `一个赛季约 ${tot.toFixed(1)} 小时（${(tot / 24).toFixed(1)} 天）：38 轮 × ${R} 小时 + 冬窗 ${W} 小时 + 夏窗 ${Sm} 小时。`; };
   ['auR', 'auW', 'auS'].forEach(id => $('#' + id).addEventListener('input', sum)); sum(); }
+/* 快进推演一整季：跟全自动模式一样，开季、冬窗、夏窗的名单整理、转会、续约、解约全部由系统处理，不留给你手动决定 */
+function autoFastSeason() { const c = mktCfg(), prev = { auto: c.auto, pilot: c.pilot }; c.auto = true; c.pilot = false; let sq = null;
+  try { S.fx.forEach((r, i) => { if (!r.some(m => !m.r)) return;
+      const ph = i >= WIN_A && winActive() ? 'win' : i < WIN_A ? 'start' : null;
+      if (ph && sq !== ph) { sq = ph; try { if (ph === 'win') winGen(); autoSquad(ph); if (ph === 'win') autoMarket(true); } catch (e) { console.error(e); } }
+      playRound(i); });
+    if (mktActive() && !mktLate()) { try { autoSquad('sum'); autoMarket(false); } catch (e) { console.error(e); } }
+  } finally { c.auto = prev.auto; c.pilot = prev.pilot; } }
 function autoSimTo(target) {
   if (AUTO) return; AUTO = { target };
   const chip = $('#roundChip');
@@ -9601,7 +9826,7 @@ function autoSimTo(target) {
     if (!AUTO) return;
     if (SEASON >= AUTO.target) { AUTO = null; S.target = null; save(); render(); toast(`已推演到 ${SN(SEASON)}`); return; }
     if (chip) chip.innerHTML = `自动推演中 · ${SN(SEASON)} → ${SN(AUTO.target)}`;
-    S.fx.forEach((r, i) => { if (r.some(m => !m.r)) playRound(i); });
+    autoFastSeason();
     QUIET_END = true; maybeEndSeason(true); QUIET_END = false;
     setTimeout(step, 20);
   };
