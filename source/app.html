@@ -5029,7 +5029,8 @@ function movesOf(t, s) {
   return { ins, outs, ret };
 }
 let tmvSeason = null;
-function movesPanel(t) {
+function movesPanel(t) { return transHistPanel(t); }
+function movesPanel_old(t) {
   const seasons = [...Array(SEASON)].map((_, i) => i + 1).filter(x => x >= 2 && (x <= 18 || x <= SEASON)).reverse();
   if (!seasons.length) return `<div class="panel"><div class="ph"><div><div class="eyebrow">Ins & outs</div><h2>人员变动</h2></div></div><div class="empty">S01 是威超第一季，下一季开始前会出现转入、转出和退役的球员。</div></div>`;
   if (tmvSeason == null || !seasons.includes(tmvSeason)) tmvSeason = seasons[0];
@@ -5995,17 +5996,30 @@ function autoOfferDec(x) { const o = x.o, w = willNow(o); if (w == null || x.A.c
   return val >= 2 ? (o.fee >= o.v * 1.15 ? 'accept' : 'raise') : (o.fee >= o.v * 0.8 ? 'accept' : 'raise'); }
 
 /* ---------- 球队历年转会记录（转入、转出、租借、自由身、青训出售） ---------- */
-function transHistPanel(t) { const seen = new Set(), L = TRANSFERS.filter(x => (x.from === t || x.to === t) && x.from !== x.to).filter(x => { const k = x.s + '|' + (x.pid ?? x.name) + '|' + x.from + '|' + x.to + '|' + (x.win ? 1 : 0); if (seen.has(k)) return false; seen.add(k); return true; }), by = {}; L.forEach(x => (by[x.s] = by[x.s] || []).push(x)); const ss = Object.keys(by).map(Number).sort((a, b) => b - a);
-  const nm = x => x.pid != null ? `<button class="lnk" data-pid="${x.pid}">${esc(x.name || (HIST.players[x.pid] || [])[0] || '?')}</button>` : esc(x.name || '?');
+function transHistPanel(t) { const seen = new Set(), L = TRANSFERS.filter(x => (x.from === t || x.to === t) && x.from !== x.to).filter(x => { const k = x.s + '|' + (x.pid ?? x.name) + '|' + x.from + '|' + x.to + '|' + (x.win ? 1 : 0); if (seen.has(k)) return false; seen.add(k); return true; }), by = {};
+  const B = s0 => by[s0] = by[s0] || { tr: [], yth: [], ret: [], dn: [], up: [] };
+  L.forEach(x => B(x.s).tr.push(x));
+  /* 青训提拔：梯队球员在哪一季升上一线队 */
+  try { (ACAD[t] || []).forEach(k => { const e = kidEvents(k.id).filter(e => e.act === 'promote' && e.s <= SEASON).sort((a, b) => a.s - b.s)[0]; if (!e || e.s < 1) return; const w = kidWhere(k, e.s); if (w.at !== 'first' || w.team !== t) return; B(e.s).yth.push({ name: k.name, pos: k.pos, age: kAge(k, e.s), r: kidRating(k, e.s) }); }); } catch (e) { }
+  /* 退役：上季结束后挂靴的 */
+  Object.entries(RET_LOG).forEach(([s1, R]) => (R.retired || []).filter(x => x.team === t).forEach(x => B(+s1 + 1).ret.push(x)));
+  for (let s1 = 2; s1 <= SEASON; s1++) { if (RET_LOG[s1 - 1]) continue; try { movesOf(t, s1).ret.forEach(x => B(s1).ret.push({ name: x.name, age: x.age ?? '?' })); } catch (e) { } } /* 全面自主模拟时，从前后两季名单推算谁挂靴 */
+  /* U21 调动 */
+  Object.entries(S.yrev || {}).forEach(([s1, Lr]) => Lr.filter(x => x.t === t && x.kind !== 'up').forEach(x => B(+s1).dn.push(x)));
+  const ss = Object.keys(by).map(Number).filter(x => x <= SEASON).sort((a, b) => b - a);
+  const nm = x => x.pid != null ? `<button class="lnk" data-pid="${x.pid}">${esc(x.name || (HIST.players[x.pid] || [])[0] || '?')}</button>` : TD[t] && BY_TN[t + '|' + x.name] ? `<button class="lnk" ${plink(t, x.name)}>${esc(x.name)}</button>` : esc(x.name || '?');
+  const nmTxt = x => esc(x.name || (HIST.players[x.pid] || [])[0] || '?');
   const ty = x => x.rel ? '解约' : x.free ? '自由转会' : x.loan ? '租借' : x.kid ? '青训出售' : '';
   const other = (x, inn) => { if (!inn && x.rel) return '解约离队'; const o = x[inn ? 'from' : 'to']; return o && o !== '解约' ? (TD[o] ? tlink(o, 14) : esc(o)) : inn ? '（自由身）' : '自由身离队'; };
   const row = (x, inn) => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${nm(x)}</b> <span class="dim">${inn ? '来自' : (x.rel || !x.to || x.to === '解约' ? '' : '转往')}</span> ${other(x, inn)}${x.win ? ' <span class="chip" style="font-size:10px">冬窗</span>' : ''}</span><span class="mono" style="font-size:12px">${ty(x) || (x.fee ? money(x.fee) : '—')}</span></div>`;
-  if (!ss.length) return `<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer history</div><h2>${esc(t)} · 历年转会</h2></div></div><p class="note" style="margin:0">还没有转会纪录。</p></div>`;
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer history</div><h2>${esc(t)} · 历年转会</h2></div><span class="note">每一季的转入和转出（夏窗记在新赛季，冬窗另外标示）</span></div>
-    ${ss.map((s0, i) => { const X = by[s0], IN = X.filter(x => x.to === t), OUT = X.filter(x => x.from === t), sp = IN.reduce((a, x) => a + (x.free || x.loan ? 0 : x.fee || 0), 0), rc = OUT.reduce((a, x) => a + (x.free || x.loan ? 0 : x.fee || 0), 0);
-      return `<details ${i < 2 ? 'open' : ''} style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:800">${SN(s0)} <span class="dim" style="font-weight:400;font-size:12px">转入 ${IN.length} 人（${money(sp)}）· 转出 ${OUT.length} 人（${money(rc)}）</span></summary>
-        <p style="margin:6px 0 0;font-size:13px;line-height:1.7"><span style="color:var(--win,#3c9);font-weight:700">转入：</span>${IN.length ? IN.map(x => `<b>${esc(x.name || (HIST.players[x.pid] || [])[0] || '?')}</b>`).join('、') : '没有'}<br><span style="color:#e66;font-weight:700">转出：</span>${OUT.length ? OUT.map(x => `<b>${esc(x.name || (HIST.players[x.pid] || [])[0] || '?')}</b>`).join('、') : '没有'}</p>
-        <div class="grid g-2" style="gap:12px;margin-top:8px"><div><div class="eyebrow" style="margin-bottom:4px;color:var(--win,#3c9)">转入（谁、从哪里来、多少钱）</div><div class="rank-list">${IN.map(x => row(x, true)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div><div><div class="eyebrow" style="margin-bottom:4px;color:#e66">转出（谁、去了哪里、多少钱）</div><div class="rank-list">${OUT.map(x => row(x, false)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div></div></details>`; }).join('')}</div>`; }
+  const head = `<div class="ph"><div><div class="eyebrow">Ins & outs</div><h2>${esc(t)} · 人员变动与历年转会</h2></div><span class="note">每一季的转入、转出、青训提拔、退役和下放 U21（夏窗记在新赛季，冬窗另外标示）</span></div>`;
+  if (!ss.length) return `<div class="panel">${head}<p class="note" style="margin:0">还没有人员变动。</p></div>`;
+  return `<div class="panel">${head}
+    ${ss.map((s0, i) => { const X = by[s0], IN = X.tr.filter(x => x.to === t), OUT = X.tr.filter(x => x.from === t), sp = IN.reduce((a, x) => a + (x.free || x.loan ? 0 : x.fee || 0), 0), rc = OUT.reduce((a, x) => a + (x.free || x.loan ? 0 : x.fee || 0), 0);
+      const line = (lab, col, arr, f) => `<span style="color:${col};font-weight:700">${lab}：</span>${arr.length ? arr.map(f).join('、') : '没有'}`;
+      return `<details ${i < 2 ? 'open' : ''} style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:800">${SN(s0)} <span class="dim" style="font-weight:400;font-size:12px">转入 ${IN.length} 人（${money(sp)}）· 转出 ${OUT.length} 人（${money(rc)}）${X.yth.length ? ` · 青训提拔 ${X.yth.length}` : ''}${X.ret.length ? ` · 退役 ${X.ret.length}` : ''}</span></summary>
+        <p style="margin:6px 0 0;font-size:13px;line-height:1.7">${line('转入', 'var(--win,#3c9)', IN, x => `<b>${nmTxt(x)}</b>`)}<br>${line('转出', '#e66', OUT, x => `<b>${nmTxt(x)}</b>`)}${X.yth.length ? '<br>' + line('青训提拔', 'var(--gold)', X.yth, x => `<b>${esc(x.name)}</b>（${x.age} 岁 ${esc(x.pos)}）`) : ''}${X.ret.length ? '<br>' + line('退役', 'var(--fg-3,#999)', X.ret, x => `<b>${esc(x.name)}</b>（${x.age} 岁）`) : ''}${X.dn.length ? '<br>' + line('下放 U21', 'var(--fg-3,#999)', X.dn, x => `<b>${esc(x.name)}</b>`) : ''}</p>
+        ${IN.length || OUT.length ? `<div class="grid g-2" style="gap:12px;margin-top:8px"><div><div class="eyebrow" style="margin-bottom:4px;color:var(--win,#3c9)">转入（谁、从哪里来、多少钱）</div><div class="rank-list">${IN.map(x => row(x, true)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div><div><div class="eyebrow" style="margin-bottom:4px;color:#e66">转出（谁、去了哪里、多少钱）</div><div class="rank-list">${OUT.map(x => row(x, false)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div></div>` : ''}</details>`; }).join('')}</div>`; }
 
 /* ---------- 编辑老板与团队 ---------- */
 function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) || {}, L = staffOf(t), B = boardPlan(t), tk = B.tick[SEASON] ?? o.tick;
@@ -6551,7 +6565,7 @@ function teamDetail(t) {
     ${xiPanel(t, st)}
     ${squadReportPanel(t) || '<div></div>'}
   </div>` : ''}
-  ${TEAM_TAB === 'trans' ? teamTransferPanel(t) + transHistPanel(t) : ''}
+  ${TEAM_TAB === 'trans' ? teamTransferPanel(t) : ''}
   ${TEAM_TAB === 'record' ? `${teamCupPanel(t)}
   <div class="panel"><div class="ph"><div><div class="eyebrow">Honours</div><h2>荣誉</h2></div></div>
     ${(() => { const W = wlHonOf(t), keys = ['威超冠军', '威联赛冠军', '世联赛冠军', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯', '威冠联赛冠军']; const tot = k => (hon[k] || 0) + (W[k] || 0);
