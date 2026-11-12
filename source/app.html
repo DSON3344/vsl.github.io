@@ -748,7 +748,7 @@ function localSave() {
 }
 /* 初始设定：球员资料、阵型、首发安排、队内职务（队长、主罚等）、球衣颜色、非卖品、转会设置。
    第一次存档时自动记下一份；「全部重来」会套回这份，不用再调一遍。可以在重来的确认框里改成「现在的设定」。 */
-const INIT_KEYS = ['edits', 'formSet', 'xio', 'roles', 'kits', 'nfs', 'mktCfg', 'tedit', 'acadDec'];
+const INIT_KEYS = ['edits', 'formSet', 'xio', 'roles', 'kits', 'nfs', 'mktCfg', 'tedit', 'acadDec', 'oedit'];
 function initSnap() { const o = {}; INIT_KEYS.forEach(k => { if (S[k] != null) o[k] = JSON.parse(JSON.stringify(S[k])); }); o.at = { s: SEASON, r: playedRounds(), t: Date.now() }; return o; }
 function teamEditDlg(t) { const d = $('#dlg'), e = tEd(t) || {}, cur = tImg(t), base = TD[t] ? `<img class="crest" src="${LOGO[t] || ''}" width="72" height="72" alt="">` : ecrest.call(null, t, 72);
   d.innerHTML = `<div class="dlg" data-noalias style="position:relative;max-width:520px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="eyebrow">编辑球队信息</div><h2 style="margin:4px 0 12px">${esc(t)}${e.zh ? ` <span class="note">（现在显示为「${esc(e.zh)}」）</span>` : ''}</h2>
@@ -5315,7 +5315,11 @@ function ownerHist(t) {
   });
   return (OWN_C.m[t] = L);
 }
-const ownerAt = (t, s = SEASON) => { if (!TD[t]) return null; const L = ownerHist(t); let o = L[0]; L.forEach(x => { if (x.s0 <= s) o = x; }); return o; };
+const oEd = (t, key) => { const E = S && S.oedit && S.oedit[t]; return E && E.own && E.own[key] || null; };
+/* 你手动改过的老板资料：名字随时生效；类型、财力、野心、耐心、票价从改的那季起生效（之前的赛季照原样） */
+function ownApply(t, o, s) { const e = oEd(t, o.key); if (!e) return o; const x = { ...o }; if (e.name) x.name = e.name; if (e.chair) x.chair = e.chair;
+  if (s >= (e.from || 1)) { if (e.type && OWN_T[e.type]) { x.type = e.type; x.lab = OWN_T[e.type].lab; } ['w', 'a', 'p'].forEach(k => { if (typeof e[k] === 'number') x[k] = e[k]; }); if (typeof e.tick === 'number') x.tick = e.tick; } x.ed = 1; return x; }
+const ownerAt = (t, s = SEASON) => { if (!TD[t]) return null; const L = ownerHist(t); let o = L[0]; L.forEach(x => { if (x.s0 <= s) o = x; }); return ownApply(t, o, s); };
 const ownerIdx = (t, s) => { const L = ownerHist(t); let i = 0; L.forEach((x, k) => { if (x.s0 <= s) i = k; }); return i; };
 /* 球场：基本容量按球队规模；扩建 / 新球场由董事会决定 */
 const stadCap0 = t => Math.round((22 + Math.max(0, Math.min(1, (clubBaseApprox(t) - 72) / 16)) * 48 + ghash('cap|' + t) * 10)) * 1000;
@@ -5334,8 +5338,8 @@ function boardPlan(t) {
   for (let s = 1; s <= SEASON + 1; s++) {
     const o = ownerAt(t, s), on = ownOn(s), rnd = seeded('brd|' + t + '|' + s + '|' + saltOf(Math.min(s, SEASON)));
     if (prevOwn && prevOwn.key !== o.key) { tick = null; P.log.push({ s, txt: `${o.name}（${o.lab}）${o.via || '入主'}，${o.chair} 出任主席` }); }
-    if (tick == null) tick = o.tick;
-    if (on && s > 1 && rnd() < 0.18) { const nt = Math.max(0, Math.min(3, tick + (o.type === 'pe' || o.type === 'tycoon' ? 1 : o.type === 'fans' ? -1 : rnd() < 0.5 ? 1 : -1))); if (nt !== tick) { P.log.push({ s, txt: `票价调整：${TICK_LV[tick][0]} → ${TICK_LV[nt][0]}` }); tick = nt; } }
+    if (tick == null) tick = o.tick; const eT = (() => { const e = oEd(t, o.key); return e && typeof e.tick === 'number' && s >= (e.from || 1) ? e.tick : null; })(); if (eT != null) tick = eT;
+    if (on && s > 1 && rnd() < 0.18 && eT == null) { const nt = Math.max(0, Math.min(3, tick + (o.type === 'pe' || o.type === 'tycoon' ? 1 : o.type === 'fans' ? -1 : rnd() < 0.5 ? 1 : -1))); if (nt !== tick) { P.log.push({ s, txt: `票价调整：${TICK_LV[tick][0]} → ${TICK_LV[nt][0]}` }); tick = nt; } }
     P.tick[s] = tick;
     if (active && s >= active.s1) { P.done[active.k] = (P.done[active.k] || 0) + 1; if (active.k === 'expand') cap += 9000 + Math.round(ghash('ex|' + t + s) * 5) * 1000; if (active.k === 'newstad') cap = Math.max(cap + 22000, 60000); P.log.push({ s, txt: `${active.lab}完工：${active.eff}` }); active = null; }
     if (on && !active && s <= SEASON) { const pr = (o.a / 100) * 0.32 * (o.w / 100 + 0.35); if (rnd() < pr) { const C = PROJ.filter(x => x.need(o) && !(x.k === 'newstad' && P.done.newstad) && !(x.k === 'acad' && (P.done.acad || 0) >= 2) && !(x.k === 'train' && (P.done.train || 0) >= 2) && !(x.k === 'comm' && (P.done.comm || 0) >= 2)); const x = C[Math.floor(rnd() * C.length)];
@@ -5373,7 +5377,8 @@ function staffOf(t, s = SEASON) {
     else { const ten = 3 + Math.floor(ghash('tn|' + t + k) * 4), s0o = o.s0 || 1, era = Math.floor((s - s0o) / ten); id = 'SC|' + t + '|' + k + '|' + oi + '|' + era; q = 56 + o.w * 0.2 + ghash(id) * 20 + (o.type === 'group' && k === 'dof' ? 6 : 0) + (o.type === 'fans' && k === 'yth' ? 6 : 0); since = s0o + era * ten; }
     const hn = ghash(id + 'n'), nat = c && c.nat && kind === 'coach' && hn < 0.55 ? c.nat : hn < 0.75 || !(typeof YP !== 'undefined' && YP.NATS) ? TEAM_NAT(t) : YP.NATS[Math.floor(ghash(id + 'nn') * YP.NATS.length)];
     if (!STAFF_NM[id]) STAFF_NM[id] = coachName(id, nat); /* 职员名字另外存，不占用主帅的名字池 */
-    out.push({ k, lab, id, name: STAFF_NM[id], nat, q: Math.round(Math.max(48, Math.min(95, q))), since, eff, kind });
+    const se = S && S.oedit && S.oedit[t] && S.oedit[t].st && S.oedit[t].st[id]; if (se) { if (se.q != null) q = se.q; }
+    out.push({ k, lab, id, name: se && se.name || STAFF_NM[id], nat: se && se.nat || nat, q: Math.round(se && se.q != null ? q : Math.max(48, Math.min(95, q))), since, eff, kind, ed: !!se });
   });
   return out;
 }
@@ -5399,7 +5404,7 @@ function ownBar(lab, v, col) { return `<div style="display:grid;grid-template-co
 function boardPanel(t) {
   if (!TD[t]) return ''; const o = ownerAt(t), L = ownerHist(t), B = boardPlan(t), A = attendance(t), m = fanMood(t), F = (() => { try { return finState()[t]; } catch (e) { return null; } })(), cash = ownerCash(t, SEASON), on = ownOn(SEASON);
   const T = OWN_T[o.type], prj = B.proj.filter(p => p.s1 > SEASON);
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Ownership</div><h2>老板与董事会</h2></div><span class="note">${on ? '老板的财力、野心和耐心会影响转会预算、注资、票价、基建和主帅去留' : `这份进度从 ${SN(S.ownFrom)} 起由老板接手经营决策`}</span></div>
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Ownership</div><h2>老板与董事会 <button class="btn ghost" data-act="oEdit" data-t="${esc(t)}" style="font-size:12px;padding:4px 10px;vertical-align:middle">✎ 编辑老板与团队</button></h2></div><span class="note">${on ? '老板的财力、野心和耐心会影响转会预算、注资、票价、基建和主帅去留' : `这份进度从 ${SN(S.ownFrom)} 起由老板接手经营决策`}</span></div>
     <div class="grid g-2" style="gap:14px;align-items:start">
       <div><div style="font-size:17px;font-weight:900">${esc(o.name)}</div><div class="muted" style="font-size:12px;margin:2px 0 8px">${esc(o.lab)} · ${SN(o.s0)} 起${o.via ? ' · ' + esc(o.via) : ''} · 主席 ${esc(o.chair)}</div>
         <p class="note" style="margin:0 0 10px">${esc(T.desc)}</p>
@@ -5414,14 +5419,14 @@ function boardPanel(t) {
       </div></div>
     ${B.log.length ? `<div class="eyebrow" style="margin:14px 0 6px">董事会大事记</div><div class="rank-list">${B.log.slice().reverse().slice(0, 12).map(x => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr)"><span class="mono dim">${SN(x.s)}</span><span>${esc(x.txt)}</span></div>`).join('')}</div>` : ''}
     ${sponsorPanel(t)}${scrPanel(t)}
-    ${L.length > 1 ? `<div class="eyebrow" style="margin:14px 0 6px">历任老板</div><div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">老板</th><th class="l">类型</th><th>财力</th><th>野心</th><th>耐心</th></tr></thead><tbody>${L.map((x, i) => `<tr><td class="l mono">${SN(x.s0)}${L[i + 1] ? '–' + SN(L[i + 1].s0 - 1) : ' 起'}</td><td class="l">${esc(x.name)}</td><td class="l">${esc(x.lab)}</td><td>${x.w}</td><td>${x.a}</td><td>${x.p}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    ${L.length > 1 ? `<div class="eyebrow" style="margin:14px 0 6px">历任老板</div><div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">老板</th><th class="l">类型</th><th>财力</th><th>野心</th><th>耐心</th></tr></thead><tbody>${L.map((x0, i) => { const x = ownApply(t, x0, L[i + 1] ? L[i + 1].s0 - 1 : SEASON); return `<tr><td class="l mono">${SN(x.s0)}${L[i + 1] ? '–' + SN(L[i + 1].s0 - 1) : ' 起'}</td><td class="l">${esc(x.name)}</td><td class="l">${esc(x.lab)}</td><td>${x.w}</td><td>${x.a}</td><td>${x.p}</td></tr>`; }).join('')}</tbody></table></div>` : ''}
   </div>`;
 }
 function staffPanel(t) {
   if (!TD[t]) return ''; const L = staffOf(t), on = ownOn(SEASON), im = injMul(t), mm = staffMatchMod(t);
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Backroom staff</div><h2>教练团队与职能部门</h2></div><span class="note">上面四位跟着主帅来去；下面四位属于俱乐部，几季一换，换老板时也会换人</span></div>
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Backroom staff</div><h2>教练团队与职能部门 <button class="btn ghost" data-act="oEdit" data-t="${esc(t)}" style="font-size:12px;padding:4px 10px;vertical-align:middle">✎ 编辑</button></h2></div><span class="note">上面四位跟着主帅来去；下面四位属于俱乐部，几季一换，换老板时也会换人</span></div>
     <div class="tw"><table><thead><tr><th class="l">职务</th><th class="l">姓名</th><th class="l">国籍</th><th>能力</th><th class="l">在任</th><th class="l">影响</th></tr></thead><tbody>
-    ${L.map(x => `<tr><td class="l">${esc(x.lab)}</td><td class="l"><b>${esc(x.name)}</b></td><td class="l">${esc(x.nat || '—')}</td><td class="mono" style="color:${x.q >= 80 ? 'var(--win,#3c9)' : x.q < 62 ? '#e93' : 'inherit'}">${x.q}</td><td class="l mono">${SN(x.since)} 起</td><td class="l dim" style="font-size:12px">${esc(x.eff)}</td></tr>`).join('')}
+    ${L.map(x => `<tr><td class="l">${esc(x.lab)}</td><td class="l"><b>${esc(x.name)}</b>${x.ed ? ' <span class="chip">已改</span>' : ''}</td><td class="l">${esc(x.nat || '—')}</td><td class="mono" style="color:${x.q >= 80 ? 'var(--win,#3c9)' : x.q < 62 ? '#e93' : 'inherit'}">${x.q}</td><td class="l mono">${SN(x.since)} 起</td><td class="l dim" style="font-size:12px">${esc(x.eff)}</td></tr>`).join('')}
     </tbody></table></div>
     <p class="note" style="margin:10px 0 0">${on ? `目前效果：比赛表现 ${mm >= 0 ? '+' : ''}${mm.toFixed(1)}% · 伤病率 ×${im.toFixed(2)} · 伤停时间 ×${injDurMul(t).toFixed(2)} · 青训提拔门槛${youthBoost(t) ? (youthBoost(t) > 0 ? ' 放宽 ' : ' 收紧 ') + Math.abs(youthBoost(t)) + ' 分' : '不变'}` : `这份进度从 ${SN(S.ownFrom)} 起计入效果`}</p></div>`;
 }
@@ -5679,6 +5684,35 @@ function clauseTrigger(L, s) { if (!ownOn(s)) return; L.forEach(o => { if (o.rc 
 /* 转会截止日：窗口关闭前还没谈拢、但买方很想要的，加价 12% 抢下 */
 function deadlineDay(MK, by, s) { if (!ownOn(s)) return; Object.values(by).forEach(L => { if (L.some(o => o.st === 'a')) return; const o = L.filter(x => x.st === 'r' && !x.user && !x.sched && !x.loan && TD[x.to] && TD[x.from] !== undefined && !isRival(x.from, x.to) && x.fee >= x.v * 0.8).sort((a, b) => b.fee - a.fee)[0]; if (!o || ghash('dl|' + o.uid + '|' + s) > 0.3) return; if (TD[o.from] && nfsUid(o.from, o.uid)) return; const fee = Math.round(Math.max(o.fee, o.v) * 1.12); if (!canAfford(o.to, fee)) return; o.fee = fee; o.st = 'a'; o.dl = 1; o.log.push('转会截止日加价成交 ' + fee$(fee)); }); }
 function agentClauseHTML(p, club) { if (!p || !p.uid || !ownOn(SEASON)) return ''; const a = agentOf(p.uid, p.rating), cl = clauseOf(p, club); return `<div class="rank-list" style="margin-top:8px"><div class="rk" style="grid-template-columns:80px minmax(0,1fr)"><span class="muted">经纪公司</span><span>${esc(a.name)}${a.sup ? ' <span class="chip gold">超级经纪人</span>' : ''} <span class="dim" style="font-size:11px">转会时向买方收 ${a.pct}% 佣金</span></span></div><div class="rk" style="grid-template-columns:80px minmax(0,1fr)"><span class="muted">解约金</span><span>${cl ? `${money(cl)} <span class="dim" style="font-size:11px">有人付这个价，球队不能拒绝</span>` : '<span class="dim">合同没有解约金条款</span>'}</span></div></div>`; }
+
+/* ---------- 编辑老板与团队 ---------- */
+function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) || {}, L = staffOf(t), B = boardPlan(t), tk = B.tick[SEASON] ?? o.tick;
+  const num = (id, v, lab) => `<label style="display:grid;gap:4px"><span class="note">${lab}（0–100）</span><input id="${id}" type="number" min="0" max="100" value="${v}" style="width:100%;min-width:0;box-sizing:border-box"></label>`;
+  d.innerHTML = `<div class="dlg" data-noalias style="position:relative;max-width:640px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="eyebrow">编辑老板与团队</div><h2 style="margin:4px 0 12px">${esc(t)}</h2>
+    <div class="eyebrow" style="margin-bottom:6px">老板</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+      <label style="display:grid;gap:4px;min-width:0"><span class="note">老板名字</span><input id="oeName" style="width:100%;min-width:0;box-sizing:border-box" value="${esc(e.name || '')}" placeholder="${esc(o.name)}" maxlength="24"></label>
+      <label style="display:grid;gap:4px;min-width:0"><span class="note">主席</span><input id="oeChair" style="width:100%;min-width:0;box-sizing:border-box" value="${esc(e.chair || '')}" placeholder="${esc(o.chair)}" maxlength="24"></label>
+      <label style="display:grid;gap:4px"><span class="note">老板类型</span><select id="oeType" style="width:100%;min-width:0;box-sizing:border-box">${Object.entries(OWN_T).map(([k, v]) => `<option value="${k}" ${o.type === k ? 'selected' : ''}>${v.lab}</option>`).join('')}</select></label>
+      <label style="display:grid;gap:4px"><span class="note">票价</span><select id="oeTick" style="width:100%;min-width:0;box-sizing:border-box">${TICK_LV.map((x, i) => `<option value="${i}" ${tk === i ? 'selected' : ''}>${x[0]}</option>`).join('')}</select></label>
+      ${num('oeW', o.w, '财力')}${num('oeA', o.a, '野心')}${num('oeP', o.p, '耐心')}</div>
+    <p class="note" style="margin:8px 0 0">名字马上生效；类型、财力、野心、耐心、票价从${ownOn(SEASON) ? ` ${SN(SEASON)} 起` : '老板功能生效那季起'}影响预算、注资、换帅和上座，之前踢完的赛季不会改写。如果之后球队易主，新老板不套用这些设定。</p>
+    <div class="eyebrow" style="margin:14px 0 6px">教练团队与职能部门</div>
+    <div class="tw"><table><thead><tr><th class="l">职务</th><th class="l">姓名</th><th class="l">国籍</th><th>能力（30–99）</th></tr></thead><tbody>${L.map(x => `<tr><td class="l">${esc(x.lab)}</td><td class="l"><input data-sn="${esc(x.id)}" value="${esc(x.ed && S.oedit[t].st[x.id].name || '')}" placeholder="${esc(x.name)}" maxlength="16" style="width:100%;min-width:110px"></td><td class="l"><input data-snat="${esc(x.id)}" value="${esc(x.ed && S.oedit[t].st[x.id].nat || '')}" placeholder="${esc(x.nat)}" maxlength="10" style="width:100%;min-width:70px"></td><td><input data-sq="${esc(x.id)}" type="number" min="30" max="99" value="${x.q}" data-q0="${x.ed && S.oedit[t].st[x.id].q != null ? '' : x.q}" style="width:72px"></td></tr>`).join('')}</tbody></table></div>
+    <p class="note" style="margin:8px 0 0">团队成员换人（主帅离任、几季一换）后，新来的人不套用这里的修改。</p><p class="note" id="oeErr" style="color:#e66;margin:4px 0 0"></p>
+    <div class="btns" style="justify-content:space-between;margin-top:12px"><button class="btn ghost" data-act="oeReset" data-t="${esc(t)}">全部恢复默认</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="oeSave" data-t="${esc(t)}">保存</button></span></div></div>`;
+  if (!d.open) d.showModal(); }
+function oEditSave(t, reset) { S.oedit = S.oedit || {}; const o0 = ownerHist(t).filter(x => x.s0 <= SEASON).pop();
+  if (reset) delete S.oedit[t];
+  else { const E = S.oedit[t] = S.oedit[t] || { own: {}, st: {} }, cl = (v, a, b) => Math.max(a, Math.min(b, Math.round(+v))), raw = ownApply(t, o0, -1), base = { ...o0 }, prev = E.own[o0.key] || {};
+    const e = { from: prev.from && prev.from <= SEASON ? prev.from : (ownOn(SEASON) ? SEASON : (S.ownFrom || SEASON)) }, nm = $('#oeName').value.trim(), ch = $('#oeChair').value.trim(); if (nm) e.name = nm; if (ch) e.chair = ch;
+    const ty = $('#oeType').value; if (ty !== base.type) e.type = ty; [['w', '#oeW'], ['a', '#oeA'], ['p', '#oeP']].forEach(([k, id]) => { const v = $(id).value; if (v !== '' && !isNaN(+v) && cl(v, 0, 100) !== base[k]) e[k] = cl(v, 0, 100); });
+    const tk = +$('#oeTick').value; const B = boardPlan(t), curTk = B.tick[SEASON] ?? base.tick; if (tk !== curTk || prev.tick != null) e.tick = tk;
+    if (Object.keys(e).length > 1) E.own[o0.key] = e; else delete E.own[o0.key]; void raw;
+    document.querySelectorAll('#dlg [data-sq]').forEach(inp => { const id = inp.dataset.sq, nmI = document.querySelector(`#dlg [data-sn="${CSS.escape(id)}"]`), naI = document.querySelector(`#dlg [data-snat="${CSS.escape(id)}"]`), x = {}; const nm2 = nmI.value.trim(), na2 = naI.value.trim(); if (nm2) x.name = nm2; if (na2) x.nat = na2; const q = inp.value; const was = E.st[id] && E.st[id].q != null; if (q !== '' && !isNaN(+q) && (was || String(cl(q, 30, 99)) !== inp.dataset.q0)) x.q = cl(q, 30, 99); if (Object.keys(x).length) E.st[id] = x; else delete E.st[id]; });
+    if (!Object.keys(E.own).length && !Object.keys(E.st).length) delete S.oedit[t]; }
+  BRD_C = null; SFM_C = {}; FIN_C = null; SPON_C = null; COACH_CACHE = null; CH_BASE = null; MOD_VER++; try { ENGINE.clearCache(); } catch (e) { }
+  save(); $('#dlg').close(); render(); toast(reset ? `${t} 的老板与团队已恢复默认` : '老板与团队已更新'); }
 
 /* ---------- 主帅与士气对比赛的影响 ----------
    执教能力：每高于 78 一点，进攻和防守表现约 +0.22%（最多约 ±4%）
@@ -8457,8 +8491,8 @@ function autoSimTo(target) {
 }
 async function doResetAll() {
   const I = (S && S.init) || (S ? initSnap() : null); /* 套回初始设定（球员资料、阵型、首发、职务、球衣、非卖品、转会设置） */
-  const LIVE = S ? { edits: S.edits, tedit: S.tedit } : {}; /* 球员资料和球队信息是你手动改的，一律保留最新版本 */
-  S = newSeason(); if (I) { INIT_KEYS.forEach(k => { const v = LIVE[k] != null ? LIVE[k] : I[k]; if (v != null) S[k] = JSON.parse(JSON.stringify(v)); }); S.init = I; }
+  const LIVE = S ? { edits: S.edits, tedit: S.tedit, oedit: S.oedit } : {}; /* 球员资料和球队信息是你手动改的，一律保留最新版本 */
+  S = newSeason(); if (I) { INIT_KEYS.forEach(k => { const v = LIVE[k] != null ? LIVE[k] : I[k]; if (v != null) S[k] = JSON.parse(JSON.stringify(v)); }); S.init = I; } if (S.oedit) Object.values(S.oedit).forEach(E => Object.values(E.own || {}).forEach(e => { e.from = 1; })); /* 重来后老板设定从 S01 起生效 */
   if (S.acadDec) { Object.keys(S.acadDec).forEach(id => { S.acadDec[id] = S.acadDec[id].filter(e => e.s <= 1); if (!S.acadDec[id].length) delete S.acadDec[id]; }); } /* 青训只保留 S01 开季前的提拔 */ S.updated = Date.now(); S.reset = S.updated;
   localSave();
   for (let i = 0; i < 38; i++) DIRTY.add(i);
@@ -8607,6 +8641,9 @@ document.addEventListener('click', e => {
   if (act === 'pfAll') return pfAllDlg();
   if (act === 'u21t') return u21TeamDlg(el.dataset.t);
   if (act === 'teamEdit') return teamEditDlg(el.dataset.t);
+  if (act === 'oEdit') return oEditDlg(el.dataset.t);
+  if (act === 'oeSave') return oEditSave(el.dataset.t, false);
+  if (act === 'oeReset') return oEditSave(el.dataset.t, true);
   if (act === 'teSave') return teamEditSave(el.dataset.t, false);
   if (act === 'teReset') return teamEditSave(el.dataset.t, true);
   if (act === 'teImgReset') { $('#dlg').dataset.teImg = ''; $('#teImgBox').innerHTML = '<span class="note">原队徽</span>'; return; }
