@@ -928,7 +928,8 @@ JP[1].push('大和', '海斗', '莲', '阳翔', '湊', '凉', '颯太', '优斗'
 /* 年龄规则：两个赛季长一岁（S01–S02 同岁，S03 起每逢单数赛季 +1）。成长、巅峰、退役都跟着年龄走。
    S01 时的年龄维持原样：资料里的球员以第一次登场的赛季为准（当时多大就是多大），之后按两季一岁推。 */
 const YR = s => Math.floor((s + 1) / 2), dAge = (s, s0) => YR(s) - YR(s0);
-const pAge = (p, s) => p.sa != null ? p.aa + dAge(s, p.sa) : p.age0 + dAge(s, p.s0);
+const ageEdD = p => { if (!p || !p.uid || typeof S === 'undefined' || !S || !S.edits || String(p.uid).startsWith('K|')) return 0; const e = S.edits[p.uid]; return e && e.dAge ? +e.dAge : 0; }; /* 手动改过年龄的球员 */
+const pAge = (p, s) => (p.sa != null ? p.aa + dAge(s, p.sa) : p.age0 + dAge(s, p.s0)) + ageEdD(p);
 const kAge = (k, s) => { const sa = Math.max(1, k.born + 15); return s < sa ? Math.max(6, Math.min(14, 15 - (YR(sa) - YR(s)))) : sa - k.born + dAge(s, sa); }; /* 还没进 U21 梯队的少年：也是两季一岁，最多 14 岁 */
 // 年龄 age0 是第 s0 季（默认 S18）的年龄；25 岁前朝潜力成长，26–30 岁巅峰，31 岁起逐年下滑
 // 老带新：和有经验的老将同队的年轻球员，每季额外成长（累计最多 +3）
@@ -941,7 +942,11 @@ function mentorTick(s) {
 function mentorInfo(t) { const L = PDB[t] || []; const M = L.filter(p => (p.age || 0) >= 30 && p.rating >= 80), Y = L.filter(p => (p.age || 99) <= 23); return { M, Y, k: Math.min(1, 0.35 * M.length) }; }
 /* 手动改过潜力的球员（S.edits[uid].pot，potA = 改的时候的年龄）：现在的能力不变，之后逐年朝新的潜力走（26 岁前后到位） */
 const potEdOf = p => { if (!p || !p.uid || typeof S === 'undefined' || !S || !S.edits || String(p.uid).startsWith('K|')) return null; const e = S.edits[p.uid]; return e && e.pot != null && e.pot !== '' ? e : null; };
-function growthOf(p) { if (p._g) return p._g; const g = growthOf0(p), E = potEdOf(p); if (!E) return g;
+function growthOf(p) { if (p._g) return p._g; let g = growthOf0(p); const AD = ageEdD(p);
+  if (AD) { const e = S.edits[p.uid], aN = typeof e.ageA === 'number' ? e.ageA : (pAge(p, SEASON)), g0 = g; /* 改年龄：现在的能力不变，以后按新年龄的成长 / 衰退走 */
+    const at = a => a <= aN ? g0.at(a - AD) : Math.max(40, Math.min(RMAX, Math.round(g0.at(aN - AD) + g0.at(a) - g0.at(aN))));
+    g = p._g = { pot: Math.max(g0.pot, at(aN)), at, past: a => a <= aN ? g0.past(a - AD) : at(a) }; }
+  const E = potEdOf(p); if (!E) return g;
   const d = E.pot - g.pot, aN = typeof E.potA === 'number' ? E.potA : (typeof p.age0 === 'number' ? p.age0 : 25), pk = Math.max(26, aN + 1);
   const at = a => a <= aN ? g.at(a) : Math.max(40, Math.min(RMAX, Math.round(g.at(a) + d * Math.min(1, (a - aN) / (pk - aN)))));
   return (p._g = { pot: E.pot, at, past: a => a <= aN ? g.past(a) : at(a) }); }
@@ -1401,7 +1406,7 @@ function kidEd(k) { if (!k || typeof S === 'undefined' || !S || !S.edits) return
   if (nm3() && e.orig && e.orig !== k.name && e.name !== k.name) return k; /* 旧规则下改的，同一个名额已经换了人 */
   if (e.name) k.name = e.name; if (e.nat) k.nat = e.nat; if (e.height) k.height = +e.height; if (e.weight) k.weight = +e.weight; if (e.foot) k.foot = e.foot;
   if (e.pos && normPos(e.pos) !== k.pos) { const np = normPos(e.pos), nl = ENGINE.LINE(np); if (nl) { if (nl !== k.line) k.prof = Object.fromEntries(Object.keys(ATTR_TPL[nl]).map(a => [a, (k.prof || {})[a] || 0])); k.pos = np; k.line = nl; } }
-  if (e.pot != null && e.pot !== '') k.pot = Math.max(40, Math.min(RMAX, Math.round(+e.pot))); return k; }
+  if (e.pot != null && e.pot !== '') k.pot = Math.max(40, Math.min(RMAX, Math.round(+e.pot))); if (e.dAge) k.born -= +e.dAge; /* 改年龄：出生往前或往后挪 */ return k; }
 function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 'K|' + id, e = (S.edits || {})[uid] || {}, d = $('#dlg'), a = kAge(k, SEASON);
   const inp = (i, v, type = 'text', extra = '') => `<input id="${i}" type="${type}" value="${esc(v ?? '')}" ${extra} style="width:100%;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg-2,transparent);color:inherit">`;
   const fld = (lab, html) => `<label style="display:grid;gap:4px;font-size:12px;min-width:0"><span class="muted">${lab}</span>${html}</label>`;
@@ -1411,7 +1416,7 @@ function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 
       ${fld('名字', inp('kdName', k.name))}${fld('位置', `<select id="kdPos" style="width:100%">${POS_LIST.map(x => `<option value="${x}" ${x === k.pos ? 'selected' : ''}>${x} · ${posZh(x)}</option>`).join('')}</select>`)}
       ${fld('国籍', inp('kdNat', k.nat))}${fld('惯用脚', `<select id="kdFoot" style="width:100%">${['', '右脚', '左脚', '双脚'].map(x => `<option value="${x}" ${x === (e.foot || '') ? 'selected' : ''}>${x || '自动'}</option>`).join('')}</select>`)}
       ${fld('身高 (cm)', inp('kdH', k.height, 'number'))}${fld('体重 (kg)', inp('kdW', k.weight, 'number'))}
-      ${fld(`潜力（40–${RMAX}）`, inp('kdPot', k.pot, 'number', `min="40" max="${RMAX}"`))}<div class="note" style="align-self:end;font-size:11px">目前能力 <b id="kdNow">${kidRating(k, SEASON)}</b>${a <= 14 ? '（14 岁以下，球探报告不显示）' : ''}。早期能力衰退或大器晚成的随机变化照旧会发生。</div>
+      ${fld(a >= 15 ? '年龄（15–20）' : '年龄（8–14）', inp('kdAge', a, 'number', a >= 15 ? 'min="15" max="20"' : 'min="8" max="14"'))}${fld(`潜力（40–${RMAX}）`, inp('kdPot', k.pot, 'number', `min="40" max="${RMAX}"`))}<div class="note" style="align-self:end;font-size:11px">目前能力 <b id="kdNow">${kidRating(k, SEASON)}</b>${a <= 14 ? '（14 岁以下，球探报告不显示）' : ''}。早期能力衰退或大器晚成的随机变化照旧会发生。</div>
     </div>
     <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="kdReset" data-id="${esc(id)}" ${S.edits && S.edits[uid] ? '' : 'disabled'}>恢复原始资料</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="kdSave" data-id="${esc(id)}">保存</button></span></div></div>`;
   if (!d.open) d.showModal();
@@ -1419,7 +1424,7 @@ function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 
 function saveKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 'K|' + id, old = (S.edits || {})[uid] || {}, v = i => { const el = $('#' + i); return el ? el.value.trim() : ''; };
   const e = { ...old, orig: old.orig || k.name, origPos: old.origPos || k.pos, origNat: old.origNat || k.nat };
   if (v('kdName')) e.name = v('kdName'); e.pos = v('kdPos') || k.pos; if (v('kdNat')) e.nat = v('kdNat'); if (v('kdFoot')) e.foot = v('kdFoot'); else delete e.foot;
-  if (v('kdH')) e.height = +v('kdH'); if (v('kdW')) e.weight = +v('kdW'); if (v('kdPot')) e.pot = Math.max(40, Math.min(RMAX, Math.round(+v('kdPot'))));
+  if (v('kdH')) e.height = +v('kdH'); if (v('kdW')) e.weight = +v('kdW'); if (v('kdPot')) e.pot = Math.max(40, Math.min(RMAX, Math.round(+v('kdPot')))); { const ca = kAge(k, SEASON), na = v('kdAge') ? (ca >= 15 ? Math.max(15, Math.min(20, +v('kdAge'))) : Math.max(8, Math.min(14, +v('kdAge')))) : 0; if (na && na !== ca) { e.dAge = (e.dAge || 0) + (na - ca); if (!e.dAge) delete e.dAge; } }
   S.edits = S.edits || {}; S.edits[uid] = e; KID_MEMO.clear(); refreshAfterEdit(); toast('已保存青训球员资料'); }
 function acadCohort(t, born) { const skip = false; /* 预设新人拿掉后，新血全靠青训：每季照常招一批 */ const n0 = 4 + (ghash('acn|' + t + '|' + born) < 0.4 ? 1 : 0), n = Math.max(2, n0 - (scrCnt()[t + '|' + born] || 0), oldCnt(t, born)), gold = ghash('gold|' + t + '|' + born) < (GOLD_P[acadQ(t)] || 0.02) ? 2 + (ghash('goldn|' + t + '|' + born) < 0.4 ? 1 : 0) : 0; for (let k = 0; k < n; k++) { const kid = kidEd(acadKid(t, born, k, gold)); if (skip) continue; ACAD[t].push(kid); ACAD_ID[kid.id] = kid; } }
 function acadInit() { ACAD = {}; ACAD_ID = {}; SCR_NAMES.forEach(n => YOUTH_USED.add(n)); Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 1 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); try { genAcad(); } catch (e) { console.error(e); } try { scrAcad(); } catch (e) { console.error(e); } } /* 两季一岁：S02 起每两季（单数赛季）才招一批 15 岁的新梯队（双数赛季那批照样生成名字，但不进梯队，免得别的孩子名字跟着变） */ // 从 S01 起每季都有 15–20 岁的梯队（历史时期也有）
@@ -1649,10 +1654,10 @@ function histOvList() { const o = []; Object.entries((S && S.market) || {}).forE
 function applyHistOverrides() {
   if (!HSQ0) { HSQ0 = JSON.parse(JSON.stringify(HIST.squads || {})); FS0 = null; }
   /* 历史阵容里的能力值原本按「一季一岁」算好；S02 起改按新的年龄重新算（S01 保持原样）。资料还没载入完时下次再算 */
-  if (!HSQ_RR) { try { const NQ = JSON.parse(JSON.stringify(HSQ0)); Object.entries(NQ).forEach(([s, T]) => { if (+s < 2) return; Object.values(T).forEach(L => L.forEach(x => { const a = curveAge(x[0], +s); if (a == null) return; const r = rateAtR(x[0], a, true); if (r != null) x[2] = r; })); }); HSQ0 = NQ; HSQ_RR = 1; } catch (e) { } }
+  if (!HSQ_RR) { try { const NQ = JSON.parse(JSON.stringify(HSQ0)); Object.entries(NQ).forEach(([s, T]) => { if (+s < 2) return; Object.values(T).forEach(L => L.forEach(x => { const a = curveAge(x[0], +s); if (a == null) return; const r = rateEd(x[0], a, +s, true); if (r != null) x[2] = r; })); }); HSQ0 = NQ; HSQ_RR = 1; } catch (e) { } }
   /* S18 以后没有资料：每季由上一季的名单延续（按新年龄重算能力，到 33–37 岁陆续退役），新人只从青训和转会来 */
   if (HSQ_RR) { try { const need = Math.max(18, (typeof SEASON === 'number' ? SEASON : 1) + 2); let mx = Math.max(...Object.keys(HSQ0).map(Number));
-    while (mx < need) { const P = HSQ0[mx] || {}, N = {}, ns = mx + 1; Object.entries(P).forEach(([t, L]) => { N[t] = L.filter(x => { const a = histAge(x[0], ns); return a == null || a < 33 + Math.floor(ghash('ret|' + x[0]) * 5); }).map(x => { const y = x.slice(), a = curveAge(y[0], ns); if (a != null) { const r = rateAtR(y[0], a, true); if (r != null) y[2] = r; } return y; }); }); HSQ0[ns] = N; mx = ns; }
+    while (mx < need) { const P = HSQ0[mx] || {}, N = {}, ns = mx + 1; Object.entries(P).forEach(([t, L]) => { N[t] = L.filter(x => { const a = histAge(x[0], ns); return a == null || a < 33 + Math.floor(ghash('ret|' + x[0]) * 5); }).map(x => { const y = x.slice(), a = curveAge(y[0], ns); if (a != null) { const r = rateEd(y[0], a, ns, true); if (r != null) y[2] = r; } return y; }); }); HSQ0[ns] = N; mx = ns; }
     HSQ_MAX = mx; } catch (e) { console.error(e); } }
   const Q = JSON.parse(JSON.stringify(HSQ0)); OV18 = [];
   histOvList().forEach(o => {
@@ -1799,7 +1804,7 @@ function openEditor(uid) {
     <div class="grid g-2" style="gap:10px">
       ${fld('名字', inp('edName', o.name))}${fld('位置', `<select id="edPos">${POS_LIST.concat(POS_LIST.includes(normPos(o.pos)) ? [] : [o.pos]).map(x => `<option value="${x}" ${x === normPos(o.pos) ? 'selected' : ''}>${x} · ${posZh(x)}</option>`).join('')}</select>`)}
       ${fld('国籍', inp('edNat', o.nat))}${fld('球衣号码', inp('edNo', o.no, 'number', 'min="1" max="99"'))}
-      ${fld('身高 (cm)', inp('edH', o.height, 'number'))}${fld('体重 (kg)', inp('edW', o.weight, 'number'))}
+      ${fld('身高 (cm)', inp('edH', o.height, 'number'))}${fld('体重 (kg)', inp('edW', o.weight, 'number'))}${cur && typeof cur.age === 'number' ? fld('年龄', inp('edAge', cur.age, 'number', 'min="15" max="45"')) : ''}
       ${fld(cur ? '总评分' : '巅峰评分', inp('edR', o.rating, 'number', 'min="40" max="99"'))}${uid.startsWith('K|A|') && ACAD_ID[uid.slice(2)] ? fld(`潜力（40–${RMAX}，青训出身）`, inp('edPot', ACAD_ID[uid.slice(2)].pot, 'number', `min="40" max="${RMAX}"`)) : cur && !uid.startsWith('K|') ? fld(`潜力（40–${RMAX}）`, inp('edPot', potentialOf(cur), 'number', `min="40" max="${RMAX}"`)) : ''}<div class="note" style="align-self:end;font-size:11px">改属性会自动算总评；改总评或位置会按位置自动配属性（保留个人特点）。</div>
     </div>
     ${cur ? (() => { const alt = cur.alt || altDef(cur), ft = cur.foot || footDef(cur);
@@ -1853,6 +1858,7 @@ function saveEditor(uid, swap) {
   if (cur && $('#edAlt')) { e.alt = [...document.querySelectorAll('#edAlt [data-alt]')].filter(i => i.checked && !i.disabled).map(i => i.dataset.alt).filter(x => x !== posMain(e.pos)); e.foot = v('edFoot'); const pv = v('edPers'); if (pv && PERS[pv]) { const base = (() => { const k0 = persKey(cur); return persOf0(k0); })(); if (pv !== base) e.pers = pv; } }
   if (uid.startsWith('K|A|')) { const pt = num('edPot'); if (pt != null) e.pot = Math.max(40, Math.min(RMAX, Math.round(pt))); else if (old.pot != null) e.pot = old.pot; }
   else if (cur && !uid.startsWith('K|')) { const pt = num('edPot'), now = potentialOf(cur); if (pt != null && pt !== now) { e.pot = Math.max(40, Math.min(RMAX, Math.round(pt))); e.potA = typeof cur.age === 'number' ? cur.age : null; } else if (old.pot != null) { e.pot = old.pot; e.potA = old.potA; } } /* 潜力：改了才存，以后照新潜力成长 */
+  { const na = num('edAge'); if (old.dAge) { e.dAge = old.dAge; e.ageA = old.ageA; } if (cur && na != null && typeof cur.age === 'number' && na !== cur.age) { e.dAge = (old.dAge || 0) + (na - cur.age); e.ageA = na; e.ageS = SEASON; if (!e.dAge) { delete e.dAge; delete e.ageA; delete e.ageS; } HSQ0 = null; HSQ_RR = 0; } if (old.ageS && e.dAge && e.ageS == null) e.ageS = old.ageS; } /* 年龄：存「比原本大/小几岁」 */
   e.no = num('edNo'); e.height = num('edH'); e.weight = num('edW'); { const dl = $('#dlg'), L = dl && dl._skGet ? dl._skGet() : (Array.isArray(old.sk) ? old.sk : null); if (L) e.sk = L; }
   const A = {}; document.querySelectorAll('#dlg [data-attr]').forEach(i => { if (i.value !== '') A[i.dataset.attr] = Math.max(20, Math.min(99, +i.value)); });
   if (cur) {
@@ -4187,7 +4193,11 @@ function ageOld(pid, s) { const uid = PID_UID[pid], b = uid && pbu()[uid]; if (b
    所以 W37 出道的老将到 S01 已经 33–38 岁。只会往大调，不会让人变年轻；能力仍按资料，不会因此突然暴跌。 */
 function curveAge(pid, s) { const f = fs0(pid), sa = f != null ? f : 18, o = ageOld(pid, sa); return o == null ? null : o + dAge(s, sa); }
 function wlAgeOff(pid) { if (typeof WL_W0 === 'undefined' || !WL_W0) return 0; const w0 = WL_W0[pid]; if (w0 == null || w0 > 44) return 0; const c1 = curveAge(pid, 1); if (c1 == null) return 0; const a1 = Math.min(38, 20 + Math.floor(ghash('wlage|' + pid) * 6) + (51 - w0)); /* W44 以前出道的才调；之后出道的本来就年轻 */ return Math.max(0, a1 - c1); }
-function histAge(pid, s) { const c = curveAge(pid, s); return c == null ? null : c + wlAgeOff(pid); }
+function histAgeE(pid) { if (typeof S === 'undefined' || !S || !S.edits || typeof PID_UID === 'undefined') return null; const e = S.edits[PID_UID[pid] || 'H|' + pid]; return e && e.dAge ? e : null; } /* 手动改过年龄的历史球员 */
+function histAge(pid, s) { const c = curveAge(pid, s); return c == null ? null : c + wlAgeOff(pid) + (+((histAgeE(pid) || {}).dAge) || 0); }
+/* 改过年龄的球员：改的那季以前的能力照旧；之后每季的升降按新年龄的能力曲线走（现在的能力不变） */
+function rateEd(pid, a, s, raw) { const r = rateAtR(pid, a, raw), e = histAgeE(pid); if (!e || r == null) return r; const sE = e.ageS || 1; if (s <= sE) return r; const aE = curveAge(pid, sE); if (aE == null) return r;
+  const d = +e.dAge, x = rateAtR(pid, aE, raw), y1 = rateAtR(pid, a + d, raw), y0 = rateAtR(pid, aE + d, raw); return x == null || y1 == null || y0 == null ? r : Math.max(40, Math.min(RMAX, Math.round(x + y1 - y0))); }
 function ageAtSeason(pid, s) {
   const uid = PID_UID[pid];
   { const v = histAge(pid, s); if (v != null) return v; }
