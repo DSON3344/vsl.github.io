@@ -851,7 +851,7 @@ function simFx(m, i) { if (m.r) return; if (m.pr) { m.r = m.pr; delete m.pr; del
 function postRound(i) { try { u21Sync(); } catch (e) { console.error(e); } try { monthAwardsTick(i); } catch (e) { console.error(e); } try { youthAutoUp(i + 1); } catch (e) { console.error(e); } try { medCheck(i); } catch (e) { console.error(e); } try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
 /* 没开全自动时也要维持一线队人数：每季开踢前、冬窗后第一场前各整理一次（不到 28 人从青训提拔，超过 32 人清理冗员） */
 function sqKeep(i) { if (!S || (S.auto && S.auto.on) || CLOUD.status === 'view' || (WEB.on && !WEB.key)) return; if (i == null || i < 0) return; const ph = i >= WIN_A ? 'win' : 'start'; if (ph === 'win' && !(typeof winActive === 'function' && winActive()) && i !== WIN_A) return; const k = ph + SEASON; if (S.sqK0 === k) return; S.sqK0 = k; try { autoSquad(ph); } catch (e) { console.error(e); } }
-function playRound(i) { if (i === 0) { try { youthReview(); } catch (e) { console.error(e); } } sqKeep(i); if (i === 0) { try { youthAutoUp(0); } catch (e) { console.error(e); } } try { tierCal(false, i); } catch (e) { console.error(e); } try { cupFreeze(); } catch (e) { } ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => simFx(m, i)); postRound(i); }
+function playRound(i) { if (i === 0) { try { if (preseasonGen()) { GROWN = 0; applyGrowth(); rebuildTransfers(); } } catch (e) { console.error(e); } try { youthReview(); } catch (e) { console.error(e); } } sqKeep(i); if (i === 0) { try { youthAutoUp(0); } catch (e) { console.error(e); } } try { tierCal(false, i); } catch (e) { console.error(e); } try { cupFreeze(); } catch (e) { } ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => simFx(m, i)); postRound(i); }
 /* 全自动模式：一轮的比赛不再同时出结果，而是按开球时间一场接一场踢。到点时先把整轮的赛果算好放在 m.pr（不计入积分榜），
    每场按自己的开球时间直播，终场后才写进 m.r。赛果用固定种子算，同一份进度在哪台设备上算都一样。 */
 const LIVE_DU = 5.5 * 60e3; /* 直播一场约 5.5 分钟：画面速度跟回放的默认速度差不多 */
@@ -1872,6 +1872,7 @@ function applyGrowth() {
     fillSquads(s + 1, log.youth);
     applyLateDeals(s, TR_LOG[s]);
   }
+  try { applyPreseason(); } catch (e) { console.error(e); } /* S01 季前转会 */
   applyWinterDeals(SEASON);
   Object.values(FDB).forEach(l => l.forEach(p => { if (typeof p.age0 !== 'number') return; p.age = pAge(p, SEASON); p.rating = growthOf(p).at(p.age); if (SEASON > 18) p.value = 'ⰵ' + valueM(p.rating, p.age) + 'M'; }));
   BY_TN = {}; TEAM_OF_UID = {};
@@ -2565,6 +2566,7 @@ function newsItems() {
   try { Object.entries(S.sfire || {}).forEach(([t, L]) => L.filter(x => x.s === SEASON).forEach(x => { const nw = staffOf(t).find(y => y.k === x.k); add(x.ri, '董事会', 'bad', `${tm(t)} 本季已有 ${x.n} 人次伤病，董事会解雇${x.k === 'med' ? '队医主管' : '体能教练'}${x.old ? ' ' + esc(x.old) : ''}，${nw ? `改聘 ${esc(nw.name)}（能力 ${nw.q}）接任` : '另聘他人接任'}`, 3); })); } catch (e) { console.error(e); }
   try { (S.yup || []).filter(x => x.s === SEASON).forEach(x => add(Math.max(-1, x.ri - 1), '青训', 'gold', `${tm(x.t)} 青训球员 ${pl(x.t, x.name)}（${x.age} 岁 ${esc(x.pos)}，能力 ${x.r}）实力已达首发水平，直接提拔至一线队`, 2)); } catch (e) { console.error(e); }
   try { ((S.yrev || {})[SEASON] || []).forEach(x => add(-1, 'U21', x.kind === 'up' ? 'good' : '', `${tm(x.t)} ${x.kind === 'up' ? '提拔' : '下放'} ${esc(x.name)}${x.kind === 'up' ? ' 至一线队' : ' 回 U21 多踢比赛'}（${esc(x.why)}）`, 1)); } catch (e) { console.error(e); }
+  try { if (SEASON === 1 && S.pre1 && S.pre1.length) S.pre1.slice().sort((a, b) => b.fee - a.fee).slice(0, 6).forEach(d => add(-1, '季前', '', `季前转会：${tm(d.to)} 以 ${money(d.fee)} 从 ${TD[d.from] ? tm(d.from) : esc(d.from)} 签下 ${esc(d.name)}（${esc(d.pos)} ${d.r}，${d.why}）`, 2)); } catch (e) { console.error(e); }
   // 场外事件
   offField().filter(e => e.ri <= Math.min(cur, 37) && (nr < 0 || e.ri <= nr)).forEach(e => {
     if (e.kind === 'train') add(e.ri, '伤病', 'bad', `${pl(e.team, e.name)}（${tm(e.team)}）训练中${esc(e.what)}，预计缺席 ${e.dur} 场`, 1);
@@ -5971,7 +5973,7 @@ function youthAutoUp(ri) { if (!S || !S.fx) return; let n = 0; const win = mktAc
 
 /* ---------- 年轻球员每季检讨（季初一次，所有模式）----------
    上季在一线队几乎没上场、表现也一般、能力又排不进前 16 的 21 岁以下球员 → 下放 U21 多踢比赛；
-   上季 U21 表现好（场均评分 7.0 以上、至少 8 场）、能力接近一线队轮换水平的青训球员 → 提拔上来补位。不限人数，只保证一线队不少于 25 人。 */
+   上季 U21 表现好（场均评分 6.8 以上、至少 6 场）、能力离一线队轮换水平不超过 3 分的青训球员 → 提拔上来补位。不限人数，只保证一线队不少于 25 人。 */
 function youthReview() { if (!S || SEASON < 2) return; S.yrev = S.yrev || {}; if (S.yrev[SEASON]) return; const A = (S.archive || []).find(x => x.s === SEASON - 1); if (!A || !A.ps) return; S.yrev[SEASON] = []; const LOG = S.yrev[SEASON];
   const st = {}; A.ps.forEach(q => { if (q[22]) st[q[22] + '|' + q[1]] = { apps: q[2], min: q[3], avg: q[2] ? q[14] / 10 / q[2] : 0, g: q[4], a: q[5] }; });
   const U = S.u21 && S.u21.s === SEASON - 1 ? S.u21.p : null; let ch = 0;
@@ -5982,8 +5984,8 @@ function youthReview() { if (!S || SEASON < 2) return; S.yrev = S.yrev || {}; if
     /* 先前自动下放、现在能力已经够轮换的，拉回一线队 */
     Object.entries(S.demoted || {}).forEach(([k, d]) => { if (d.t !== t || !d.auto || d.s >= SEASON) return; const p = (DEMOTED[t] || []).find(x => roleKey(x) === k); if (p && p.rating >= rot - 1) { delete S.demoted[k]; ch++; LOG.push({ t, name: d.name, kind: 'up', why: `在 U21 历练后能力升到 ${p.rating}，回到一线队` }); } });
     if (!U) return; let K = []; try { K = academyOf(t); } catch (e) { return; }
-    K.filter(k => k.kind === 'acad' && k.kid && !k.kid.lock && k.age >= 17 && U[k.kid.id] && U[k.kid.id][0] >= 8 && kidEvents(k.kid.id).every(e => e.s < SEASON)).map(k => { const q = U[k.kid.id]; return { k, apps: q[0], g: q[1], avg: q[3] / 10 / q[0] }; })
-      .filter(x => x.avg >= 7.0 && x.k.rating >= rot - 2).sort((a, b) => b.avg - a.avg).forEach(x => {
+    K.filter(k => k.kind === 'acad' && k.kid && !k.kid.lock && k.age >= 17 && U[k.kid.id] && U[k.kid.id][0] >= 6 && kidEvents(k.kid.id).every(e => e.s < SEASON)).map(k => { const q = U[k.kid.id]; return { k, apps: q[0], g: q[1], avg: q[3] / 10 / q[0] }; })
+      .filter(x => x.avg >= 6.8 && x.k.rating >= rot - 3).sort((a, b) => b.avg - a.avg).forEach(x => {
         (S.acadDec = S.acadDec || {})[x.k.kid.id] = (S.acadDec[x.k.kid.id] || []).concat([{ s: SEASON, act: 'promote', to: null, fee: 0, auto: 1 }]); ch++; LOG.push({ t, name: x.k.name, kind: 'up', why: `上季 U21 ${x.apps} 场 ${x.g} 球、场均 ${x.avg.toFixed(1)}，能力 ${x.k.rating}` }); }); });
   if (ch) { GROWN = 0; applyGrowth(); try { ENGINE.clearCache(); } catch (e) { } TAC_KEY = null; } }
 /* ---------- 全自动 / 快速推演的合同与报价决策：看球员的留队意愿 ----------
@@ -6020,6 +6022,27 @@ function transHistPanel(t) { const seen = new Set(), L = TRANSFERS.filter(x => (
       return `<details ${i < 2 ? 'open' : ''} style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:800">${SN(s0)} <span class="dim" style="font-weight:400;font-size:12px">转入 ${IN.length} 人（${money(sp)}）· 转出 ${OUT.length} 人（${money(rc)}）${X.yth.length ? ` · 青训提拔 ${X.yth.length}` : ''}${X.ret.length ? ` · 退役 ${X.ret.length}` : ''}</span></summary>
         <p style="margin:6px 0 0;font-size:13px;line-height:1.7">${line('转入', 'var(--win,#3c9)', IN, x => `<b>${nmTxt(x)}</b>`)}<br>${line('转出', '#e66', OUT, x => `<b>${nmTxt(x)}</b>`)}${X.yth.length ? '<br>' + line('青训提拔', 'var(--gold)', X.yth, x => `<b>${esc(x.name)}</b>（${x.age} 岁 ${esc(x.pos)}）`) : ''}${X.ret.length ? '<br>' + line('退役', 'var(--fg-3,#999)', X.ret, x => `<b>${esc(x.name)}</b>（${x.age} 岁）`) : ''}${X.dn.length ? '<br>' + line('下放 U21', 'var(--fg-3,#999)', X.dn, x => `<b>${esc(x.name)}</b>`) : ''}</p>
         ${IN.length || OUT.length ? `<div class="grid g-2" style="gap:12px;margin-top:8px"><div><div class="eyebrow" style="margin-bottom:4px;color:var(--win,#3c9)">转入（谁、从哪里来、多少钱）</div><div class="rank-list">${IN.map(x => row(x, true)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div><div><div class="eyebrow" style="margin-bottom:4px;color:#e66">转出（谁、去了哪里、多少钱）</div><div class="rank-list">${OUT.map(x => row(x, false)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div></div>` : ''}</details>`; }).join('')}</div>`; }
+
+/* ---------- 争冠平衡：卫冕冠军的压力、长年无冠强队的渴望（威超；从老板功能生效那季起） ----------
+   上季冠军 −1%（连冠两季以上 −1.6%）：对手更针对、更衣室满足；近三季前四但没夺冠的 +0.6%。只是轻微倾斜，冠军还是靠实力。 */
+function titleMood(t) { if (!ownOn(SEASON) || SEASON < 2) return 0; const champ = s => { const A = (S.archive || []).find(x => x.s === s); return A ? A.table[0].team : null; };
+  if (champ(SEASON - 1) === t) return champ(SEASON - 2) === t ? -1.6 : -1;
+  let top4 = 0, won = false; for (let s = SEASON - 3; s < SEASON; s++) { const A = (S.archive || []).find(x => x.s === s); if (!A) continue; const k = A.table.findIndex(r => r.team === t); if (k === 0) won = true; if (k >= 0 && k <= 3) top4++; } return !won && top4 >= 2 ? 0.6 : 0; }
+/* ---------- S01 季前转会：S01 之前没有夏窗，开季前让各队按需要和预算补强一次（只做一次，结果存进进度） ---------- */
+function preseasonGen() { if (!S || SEASON !== 1 || S.pre1 || playedRounds() > 0 || !nm2()) return false; const F = finState(), taken = new Set(), deals = [];
+  const pool = []; Object.entries(FDB).forEach(([c, L]) => L.forEach(p => { if (typeof p.age0 !== 'number') return; const a = pAge(p, 1); if (a < 18 || a > 31) return; let r = p.rating; try { r = growthOf(p).at(a); } catch (e) { } pool.push({ p, from: c, r, a, ext: 1 }); }));
+  S.teams.forEach(t => { let xi = new Set(); try { xi = new Set(ENGINE.lineup(t).xi.map(x => x.name)); } catch (e) { } (PDB[t] || []).forEach(p => { if (xi.has(p.name) || (p.age || 25) > 31) return; pool.push({ p, from: t, r: p.rating, a: p.age || 25 }); }); });
+  S.teams.slice().sort((a, b) => (F[b] ? F[b].budget : 0) - (F[a] ? F[a].budget : 0)).forEach(t => { if (!F[t]) return; let rem = F[t].budget, n = 0; const R2 = squadReport(t);
+    R2.filter(g => g.pri === '高' || g.pri === '中').sort((a, b) => b.score - a.score).forEach((g, gi0) => { if (n >= 3) return; const gi = POS_GROUPS.findIndex(x => x[0] === g.name), bar = g.st.length ? g.st[g.st.length - 1].rating : 72;
+      const C = pool.filter(x => !taken.has(x.p.uid) && x.from !== t && posGroup(x.p.pos) === gi && x.r >= bar + 1 && x.r <= bar + 9).map(x => ({ ...x, fee: Math.max(1, Math.round(valueM(x.r, x.a) * (1 + ghash('pre|' + x.p.uid) * 0.25))) })).filter(x => x.fee <= rem).sort((a, b) => (b.r - a.r) || (a.fee - b.fee));
+      const x = C[Math.floor(ghash('prep|' + t + gi) * Math.min(3, C.length))]; if (!x) return; taken.add(x.p.uid); rem -= x.fee; n++;
+      deals.push({ uid: x.p.uid, name: x.p.name, pos: x.p.pos, age: x.a, r: x.r, from: x.from, to: t, fee: x.fee, why: `补${g.name}` }); }); });
+  S.pre1 = deals; return true; }
+function applyPreseason() { if (!S || !S.pre1 || !S.pre1.length) return; const log = TR_LOG[0] = [];
+  S.pre1.forEach(d => { let src = null, from = null; for (const [t, L] of Object.entries(PDB)) { const p = L.find(q => q.uid === d.uid); if (p) { src = L; from = t; break; } } if (!src) for (const [c, L] of Object.entries(FDB)) { const p = L.find(q => q.uid === d.uid); if (p) { src = L; from = c; break; } }
+    if (!src || from === d.to || !PDB[d.to]) return; const p = src.find(q => q.uid === d.uid); src.splice(src.indexOf(p), 1); const i = EXTP.indexOf(p); if (i >= 0) EXTP.splice(i, 1);
+    p.team = d.to; p.cEnd = 2 + Math.floor(ghash('prec|' + d.uid) * 4); (p.stints = p.stints || [[from, 1]]).push([d.to, 1]); PDB[d.to].push(p);
+    log.push({ uid: p.uid, name: p.name, pos: p.pos, age: d.age, rating: d.r, from, to: d.to, fee: d.fee, free: false, mk: 1, pre: 1 }); }); }
 
 /* ---------- 编辑老板与团队 ---------- */
 function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) || {}, L = staffOf(t), B = boardPlan(t), tk = B.tick[SEASON] ?? o.tick;
@@ -6143,6 +6166,7 @@ ENGINE.setTeamMod((t, opp) => {
   if (M.room) out.push({ txt: M.room.txt, d: +M.room.d.toFixed(1) });
   const cap = capitalEffect(t); if (cap) out.push({ txt: cap.txt, d: +cap.d.toFixed(1) });
   try { const sm = staffMatchMod(t); if (Math.abs(sm) >= 0.3) out.push({ txt: sm > 0 ? '教练团队布置到位' : '教练团队水平有限', d: +sm.toFixed(1) }); } catch (e) { }
+  try { const tmd = titleMood(t); if (tmd) out.push({ txt: tmd < 0 ? (tmd < -1.2 ? '连冠之后人人针对、更衣室满足' : '卫冕冠军的压力') : '多年无冠，全队求胜心切', d: tmd }); } catch (e) { }
   return out;
 });
 // 球员士气（0–100%）：伤病、场上表现、首发次数、转会（想走被拒 / 被强行卖掉 / 被挂牌 / 被解约）、薪资合同、球队近况
@@ -7145,7 +7169,7 @@ const finStart = t => { const v = (PDB0[t] || []).map(p => p.rating).sort((a, b)
 let FIN_C = null;
 // 每季账本：收入（卖人、周边商品、投资方赞助、广告、球场、比赛奖金）和支出（周边生产、税务、球场维护、买人、工资）。
 // 一季的商业收入、奖金、工资和税在 38 轮 + 杯赛踢完时结算；买卖球员记在球员加盟的那一季。
-const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资', '季前巡回'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款', '经纪人佣金'];
+const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资', '季前巡回'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款', '经纪人佣金', '职员薪水', '青训营运', '日常营运', '球员奖金', '盈余再投资'];
 function finLedger(t, s) {
   const inc = {}, exp = {}; FIN_INC.forEach(k => inc[k] = 0); FIN_EXP.forEach(k => exp[k] = 0);
   TRANSFERS.forEach(x => { if (x.s !== s || !x.fee) return; if (x.to === t) exp['买人支出'] += x.fee; if (x.from === t) inc['卖人收入'] += x.fee; });
@@ -7156,15 +7180,23 @@ function finLedger(t, s) {
     try { const oc = ownerCash(t, s); if (oc > 0) inc['老板注资'] = oc; else if (oc < 0) exp['股东分红'] = -oc; exp['基建投资'] = Math.round(boardCost(t, s)); } catch (e) { } }
   { const R = S.scr && S.scr[s - 1] && S.scr[s - 1][t]; if (R && R.fine) exp['财务违规罚款'] = R.fine; } /* 上季超标的罚款在本季缴 */
   try { const tr = tourOf(t, s); if (tr) inc['季前巡回'] = tr.rev; exp['经纪人佣金'] = agentFees(t, s); } catch (e) { }
+  if (closed && ownOn(s) && TD[t]) { try { const st = staffOf(t, s), size = Math.max(0, Math.min(20, clubBaseApprox(t) - 74)); exp['职员薪水'] = Math.round(st.reduce((a, x) => a + Math.max(2, (x.q - 50) * 0.28), 0) + 10); exp['青训营运'] = Math.round(14 + size * 1.2 + Math.min(2, projBuilt(t, 'acad', s)) * 8); exp['日常营运'] = Math.round(22 + size * 2.5); exp['球员奖金'] = Math.round((inc['比赛奖金'] || 0) * 0.08); } catch (e) { } } /* 职员薪水、青训、日常营运、球员奖金 */
   const ti = Object.values(inc).reduce((a, b) => a + b, 0), te = Object.values(exp).reduce((a, b) => a + b, 0);
   return { s, inc, exp, ti, te, net: ti - te, closed };
 }
+
+/* 余额调节（从老板功能生效那季起）：存款超过 ⰵ1500M 的，董事会把超出部分的 30% 拿去再投资（设施、薪资结构）；
+   赤字的球队，财力 45 以上的老板会注资补洞（最多补掉赤字的 40%）。避免有钱的越滚越多、穷的一直负债。 */
+function finBalAdj(t, s, L0, bal) { if (!ownOn(s)) return L0; const L = { ...L0, inc: { ...L0.inc }, exp: { ...L0.exp } }; const o = ownerAt(t, s);
+  if (bal > 1500) { const re = Math.round((bal - 1500) * 0.3); L.exp['盈余再投资'] = re; L.te += re; L.net -= re; }
+  else if (bal < 0 && o && o.w >= 45) { const bail = Math.round(Math.min(-bal * 0.4, o.w * 5)); L.inc['老板注资'] = (L.inc['老板注资'] || 0) + bail; L.ti += bail; L.net += bail; }
+  return L; }
 function finState() {
   const MK = isPending(SEASON) && S.market ? S.market[SEASON] : null;
   const ck = [SEASON, S.archive.length, isPending(SEASON), TRANSFERS.length, MOD_VER_SEASON, (S.relFee || []).length, MK ? MK.offers.filter(o => o.st === 'a').length + '|' + (MK.free || []).length + '|' + MK.seq : 0].join('/');
   if (FIN_C && FIN_C.k === ck) return FIN_C.v;
   const F = {}; Object.keys(TD).forEach(t => F[t] = { start: finStart(t), prize: 0, sell: 0, buy: 0, wage: 0, seasonPrize: 0, seasonWage: 0, hist: [], led: [] });
-  Object.entries(F).forEach(([t, f]) => { let bal = f.start; for (let s = 1; s <= SEASON; s++) { const L = finLedger(t, s); if (!L.closed && !L.ti && !L.te) continue; f.led.push(L); bal += L.net; f.prize += L.inc['比赛奖金']; f.wage += L.exp['球员工资']; f.sell += L.inc['卖人收入']; f.buy += L.exp['买人支出']; if (L.closed) f.hist.push([s, L.inc['比赛奖金'], L.exp['球员工资'], L.net]); if (s === SEASON) { f.seasonPrize = L.inc['比赛奖金']; f.seasonWage = L.exp['球员工资']; f.seasonNet = L.net; } }
+  Object.entries(F).forEach(([t, f]) => { let bal = f.start; for (let s = 1; s <= SEASON; s++) { let L = finLedger(t, s); if (!L.closed && !L.ti && !L.te) continue; if (L.closed) { try { L = finBalAdj(t, s, L, bal); } catch (e) { } } f.led.push(L); bal += L.net; f.prize += L.inc['比赛奖金']; f.wage += L.exp['球员工资']; f.sell += L.inc['卖人收入']; f.buy += L.exp['买人支出']; if (L.closed) f.hist.push([s, L.inc['比赛奖金'], L.exp['球员工资'], L.net]); if (s === SEASON) { f.seasonPrize = L.inc['比赛奖金']; f.seasonWage = L.exp['球员工资']; f.seasonNet = L.net; } }
     f.bal0 = bal; f.frac = (0.35 + ghash('bud|' + t + '|' + SEASON) * 0.35) * (() => { try { return budgetMul(t); } catch (e) { return 1; } })(); f.budget = Math.max(0, Math.round(bal * f.frac)); f.wBuy = 0; f.wSell = 0; });
   if (MK) MK.offers.filter(o => o.st === 'a').forEach(o => { if (F[o.to]) F[o.to].wBuy += o.fee; if (F[o.from]) F[o.from].wSell += o.fee; });
   Object.values(F).forEach(f => { f.bal = f.bal0 - f.wBuy + f.wSell; f.rem = Math.round(f.budget + f.wSell * 0.5 - f.wBuy); });
@@ -7549,7 +7581,7 @@ function finPanel() {
     </tbody></table></div>
     <details style="margin-top:10px"><summary class="note" style="cursor:pointer">各项赛事奖金标准</summary><div class="rank-list" style="margin-top:8px">${PRIZE_RULES.map(([k, lv, txt]) => `<div class="rk" style="grid-template-columns:90px minmax(0,1fr)"><b>${k}</b><span><span class="chip" style="font-size:10px;padding:0 5px">${lv}</span> <span class="muted" style="font-size:12.5px">${txt}</span></span></div>`).join('')}</div><p class="note" style="margin:8px 0 0">奖金在每季 38 轮和所有杯赛踢完时结算，下一个转会窗就能用。开局资金按 S01 前的球队实力给 ⰵ100M–ⰵ600M 不等。工资：能力每高 1 分年薪贵约 28%（96 分球星约是 80 分球员的 55 倍）；全联赛工资总额定为当季国内俱乐部奖金总额的 85%，每季踢完时扣除。余额为负时管理层不批转会预算，只能卖人。</p></details></div>`;
 }
-const FIN_COL = { 卖人收入: '#7fd6b4', 周边商品营收: '#ff5b1f', 投资方赞助: '#c9a3ff', 广告营收: '#ffb38a', 球场营收: '#f0d27a', 比赛奖金: '#d8b45f', 周边商品生产: '#8a95a8', 税务: '#e08a8a', 球场维护: '#b98a6a', 买人支出: '#e66b6b', 球员工资: '#ff9f5a', 解约赔偿: '#c47a9a', 老板注资: '#9fb7ff', 基建投资: '#6a9fb9', 股东分红: '#a06ad0', 财务违规罚款: '#ff4d4d', 季前巡回: '#7fc8f8', 经纪人佣金: '#d08a5a' };
+const FIN_COL = { 卖人收入: '#7fd6b4', 周边商品营收: '#ff5b1f', 投资方赞助: '#c9a3ff', 广告营收: '#ffb38a', 球场营收: '#f0d27a', 比赛奖金: '#d8b45f', 周边商品生产: '#8a95a8', 税务: '#e08a8a', 球场维护: '#b98a6a', 买人支出: '#e66b6b', 球员工资: '#ff9f5a', 解约赔偿: '#c47a9a', 老板注资: '#9fb7ff', 基建投资: '#6a9fb9', 股东分红: '#a06ad0', 财务违规罚款: '#ff4d4d', 季前巡回: '#7fc8f8', 经纪人佣金: '#d08a5a', 职员薪水: '#9a7fd1', 青训营运: '#5fb3a1', 日常营运: '#7d8590', 球员奖金: '#e0b25a', 盈余再投资: '#6fa8dc' };
 function finBars(led) {
   if (!led.length) return '';
   const max = Math.max(1, ...led.map(L => Math.max(L.ti, L.te)));
@@ -8738,7 +8770,7 @@ function autoSquad(phase) {
   try {
     Object.keys(TD).forEach(t => { /* 包括不在威超、踢威冠联赛的球队 */
       /* 开季：青训里已经够得上一线队轮换水平的（≥ 一线队第 14 好的能力），不管人数够不够都提拔上来（每队每季最多 2 人），多出来的人下面会清掉 */
-      if (phase === 'start' && t === Object.keys(TD)[0]) { try { youthReview(); } catch (e) { console.error(e); } }
+      if (phase === 'start' && t === Object.keys(TD)[0]) { try { if (preseasonGen()) { GROWN = 0; applyGrowth(); rebuildTransfers(); } } catch (e) { console.error(e); } try { youthReview(); } catch (e) { console.error(e); } }
       if (phase === 'start') { const top = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a), bar = top[Math.min(13, top.length - 1)] || 0; const yc = (() => { try { return ((coachOf(t) || {}).kind === 'U21 提拔' ? 3 : 0) + youthBoost(t); } catch (e) { return 0; } })(); /* 梯队出身的主帅更敢用年轻人 */ const up = academyOf(t).filter(k => k.kind === 'acad' && k.kid && k.age >= 17 && k.rating >= bar - yc && !kidEvents(k.kid.id).some(e => e.s >= SEASON)).sort((a, b) => b.rating - a.rating);
         up.forEach(k => kidDecide(k.kid.id, 'promote')); if (up.length) { GROWN = 0; applyGrowth(); log.push(`${t} 从青训提拔 ${up.map(k => k.name + '（' + k.pos + ' ' + k.rating + '/' + k.pot + '，已达一线队轮换水平）').join('、')}`); } }
       const size = phase === 'sum' ? projSize(t) : (PDB[t] || []).length;
