@@ -80,7 +80,7 @@ const ENGINE = (() => {
   function pickXI(team, ctx) {
     const base = lineup(team);
     if (!ctx) return { xi: base.xi.map(x => ({ ...x, start: 1 })), bench: base.bench.slice(), out: [], rested: [] };
-    const out = ctx.out || {}, streak = ctx.streak || {};
+    const must = new Set(ctx.must || []), out = { ...(ctx.out || {}) }; must.forEach(n => delete out[n]); const streak = ctx.streak || {}; /* must：一定要首发的人（内定金靴 / 助攻王） */
     const pool = base.bench.filter(p => !out[p.name]);
     const usedB = new Set();
     const best = base.xi.reduce((m, x) => Math.max(m, x.rating), 0);
@@ -93,7 +93,7 @@ const ENGINE = (() => {
     const missing = [], rested = [];
     const xi = base.xi.map(x => {
       let why = out[x.name];
-      if (!why) {
+      if (!why && !must.has(x.name)) {
         const st = streak[x.name] || 0, EN = ctx.energy ? ctx.energy[x.name] : null;
         let pr = EN != null ? (EN < 62 ? 0.5 : EN < 68 ? 0.18 : EN < 74 ? 0.04 : 0.005) : st >= 4 ? 0.04 + 0.035 * (st - 4) : 0.012;
         if (x.line === 'GK') pr *= 0.12;
@@ -108,6 +108,9 @@ const ENGINE = (() => {
       const cost = fitCost(x.slot, p);
       return { slot: x.slot, name: p.name, rating: Math.max(60, p.rating - cost), p, x: x.x, y: x.y, line: x.line, start: 1, sub4: x.name };
     });
+    must.forEach(n => { if (xi.some(x => x.name === n)) return; const p = base.bench.find(b => b.name === n) || (PLAYER_DATABASE[team] || []).find(b => b.name === n); if (!p) return;
+      const ln = LINE(p.pos), cand = xi.map((x, i) => ({ x, i })).filter(o => o.x.line !== 'GK' && !must.has(o.x.name) && (ln === 'GK' ? o.x.line === 'GK' : true)).sort((a, b) => (a.x.line === ln ? 0 : 1) - (b.x.line === ln ? 0 : 1) || a.x.rating - b.x.rating)[0]; if (!cand) return;
+      const x = cand.x; xi[cand.i] = { slot: x.slot, name: p.name, rating: Math.max(60, p.rating - fitCost(x.slot, p)), p, x: x.x, y: x.y, line: x.line, start: 1, sub4: x.name }; });
     if (ctx.energy) xi.forEach(x => { const E = ctx.energy[x.name]; if (E == null) return; x.en = Math.round(E); const d = fatPen(E); if (d) { x.rating = Math.max(50, Math.round(x.rating - d)); x.fat = +d.toFixed(1); } });
     const onXI = new Set(xi.map(x => x.name));
     const bench = base.bench.filter(p => !onXI.has(p.name) && !out[p.name]).concat(base.xi.filter(x => !onXI.has(x.name) && !out[x.name]).map(x => x.p)).sort((a, b) => b.rating - a.rating);
@@ -121,6 +124,7 @@ const ENGINE = (() => {
   const setTeamMod = f => { teamMod = f; };
   let injHook = null; const setInjHook = f => { injHook = f; };
   let refHook = null; const setRefHook = f => { refHook = f; };
+  let scoreHook = null, pickHook = null; const setScoreHook = f => { scoreHook = f; }, setPickHook = f => { pickHook = f; }; /* 内定：比分、进球 / 助攻人选的调整（由网页那边决定） */
   function condition(team, weather, slot, opp) {
     const P = HISTORY.profiles[team] || {};
     const parse = s => (s || '').split(/[；;]/).map(x => x.trim());
@@ -191,14 +195,14 @@ const ENGINE = (() => {
   // ---------- 完整比赛 ----------
   const shoOf = s => (s.p && s.p.attributes && s.p.attributes.sho) || s.rating;
   const pasOf = s => (s.p && s.p.attributes && s.p.attributes.pas) || s.rating;
-  function goalScorer(on) {
-    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 1.6) * Math.pow(s.rating / 85, 1.6)); /* 指数调小：球星依然进得多，但不会把全队的进球都包了 */
+  function goalScorer(on, team) {
+    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 1.6) * Math.pow(s.rating / 85, 1.6) * (pickHook && team ? (pickHook('g', team, s.name) || 1) : 1)); /* 指数调小：球星依然进得多，但不会把全队的进球都包了 */
     return pick(on, w);
   }
-  function assister(on, scorer) {
-    if (rnd() < 0.22) return null;
-    const pool = on.filter(s => s !== scorer); if (!pool.length) return null;
-    const w = pool.map(s => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 2) * Math.pow(s.rating / 85, 2.5));
+  function assister(on, scorer, team) {
+    const pool = on.filter(s => s !== scorer); const hm = pickHook && team ? pool.map(s => pickHook('a', team, s.name) || 1) : null, big = hm && hm.some(x => x >= 50);
+    if (rnd() < 0.22 && !big) return null; if (!pool.length) return null;
+    const w = pool.map((s, i) => POS_AST(s.slot) * Math.pow(pasOf(s) / 80, 2) * Math.pow(s.rating / 85, 2.5) * (hm ? hm[i] : 1));
     return pick(pool, w);
   }
   let hotFn = null; const setHot = f => { hotFn = f; }; /* 性格暴躁的球员更容易吃牌（德比里更明显） */
@@ -319,6 +323,7 @@ const ENGINE = (() => {
     const e = expected(home, away, { ...opt, L });
     const fh = Math.max(0.6, 1 + gauss() * 0.13), fa = Math.max(0.6, 1 + gauss() * 0.13);
     let hg = poisson(e.lh * fh), ag = poisson(e.la * fa);
+    if (scoreHook && !opt.fixed) { const r = scoreHook(home, away, hg, ag, opt); if (r) { hg = r[0]; ag = r[1]; } }
     const events = [];
     const minute = () => 1 + Math.floor(rnd() * 90);
     const T = { h: home, a: away };
@@ -399,7 +404,7 @@ const ENGINE = (() => {
         let m = minute(); if (m === 45 && rnd() < 0.4) m = 45.1; if (m === 90 && rnd() < 0.6) m = 90 + 1 + Math.floor(rnd() * 5);
         const on = onPitch(side, Math.min(m, 89.9)); if (!on.length) continue;
         const pen = rnd() < 0.07 * (refHook ? ((refHook(T.h, T.a) || {}).p || 1) : 1);
-        const sc = pen ? penTaker(on) : goalScorer(on), as = pen ? null : assister(on, sc);
+        const sc = pen ? penTaker(on) : goalScorer(on, T[side]), as = pen ? null : assister(on, sc, T[side]);
         events.push({ m, type: 'goal', side, team: T[side], player: sc.name, assist: as ? as.name : null, pen: pen ? 1 : 0, txt: pen ? PEN_TXT[Math.floor(rnd() * PEN_TXT.length)](sc.name) : GOAL_TXT[Math.floor(rnd() * GOAL_TXT.length)](sc.name, as && as.name) });
         // 精力太低的后防球员容易失误丢球
         const cs = side === 'h' ? 'a' : 'h', ce = opt.ctx && opt.ctx[cs] && opt.ctx[cs].energy;
@@ -498,6 +503,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { tune, withSeed, setTeamMod, setInjHook, setRefHook, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { tune, withSeed, setTeamMod, setInjHook, setRefHook, setScoreHook, setPickHook, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

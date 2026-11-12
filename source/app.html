@@ -846,7 +846,7 @@ function teamCtx(team, ri, fx = S.fx) {
   if (fx === S.fx) { const RS = ((S.restOne || {})[team]) || {}; Object.entries(RS).forEach(([n, r]) => { if (r === ri && !out[n]) out[n] = { why: 'rest', left: 1 }; }); }
   return { out, streak, energy };
 }
-const ctxPair = (m, ri) => ({ h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) });
+const ctxPair = (m, ri) => { const c = { h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) }; try { const F = ri != null && fixOf(SEASON); if (F && (F.boot || F.assist)) { [['h', m.h], ['a', m.a]].forEach(([sd, t]) => { const L = (PDB[t] || []).filter(p => p.name === F.boot || p.name === F.assist).map(p => p.name); if (L.length) c[sd] = { ...c[sd], must: L }; }); } } catch (e) { } return c; }; /* 内定金靴 / 助攻王：每场首发 */
 function simFx(m, i) { if (m.r) return; if (m.pr) { m.r = m.pr; delete m.pr; delete m.ko; delete m.du; return; } m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }
 function postRound(i) { try { u21Sync(); } catch (e) { console.error(e); } try { monthAwardsTick(i); } catch (e) { console.error(e); } try { youthAutoUp(i + 1); } catch (e) { console.error(e); } try { medCheck(i); } catch (e) { console.error(e); } try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
 /* 没开全自动时也要维持一线队人数：每季开踢前、冬窗后第一场前各整理一次（不到 28 人从青训提拔，超过 32 人清理冗员） */
@@ -1410,6 +1410,69 @@ function kidEd(k) { if (!k || typeof S === 'undefined' || !S || !S.edits) return
   if (e.name) k.name = e.name; if (e.nat) k.nat = e.nat; if (e.height) k.height = +e.height; if (e.weight) k.weight = +e.weight; if (e.foot) k.foot = e.foot;
   if (e.pos && normPos(e.pos) !== k.pos) { const np = normPos(e.pos), nl = ENGINE.LINE(np); if (nl) { if (nl !== k.line) k.prof = Object.fromEntries(Object.keys(ATTR_TPL[nl]).map(a => [a, (k.prof || {})[a] || 0])); k.pos = np; k.line = nl; } }
   if (e.pot != null && e.pot !== '') k.pot = Math.max(40, Math.min(RMAX, Math.round(+e.pot))); if (e.dAge) { if (typeof e.ageA === 'number' && e.ageS) { const b0 = k.born; let best = null; for (let d = 0; d <= 40 && best == null; d++) for (const b of [b0 - d, b0 + d]) if (best == null && kAge({ ...k, born: b }, e.ageS) === e.ageA) best = b; k.born = best != null ? best : b0 - +e.dAge; } else k.born -= +e.dAge; } /* 改年龄：把出生挪到「那季正好是你填的岁数」 */ return k; }
+/* ---------- 内定结果：每季可以指定威超冠军、各杯赛 / 国家队赛事冠军、金靴、助攻王和个人奖项，其他名次照常由模拟决定 ----------
+   存在 S.fix[赛季]：{ lg: 球队, cups: { 赛事: 球队 }, intl: { 赛事: 国家 }, boot: 球员, assist: 球员, aw: { ballon, world, mvp, def, glove, young } }
+   做法：内定冠军落后时全队气势加成；赛季最后 12 轮还没稳拿时，内定球队必胜、紧追的对手拿不到 3 分；杯赛和国家队赛事内定队伍每场都赢；
+   金靴 / 助攻王：比赛里进球和助攻更常落在他身上，最后几轮还落后时多给他的球队进球；个人奖项直接颁给内定的人。只看「逐场观看」以外的比赛。 */
+const fixOf = s => (S && S.fix && S.fix[s]) || null;
+let FIXC = null;
+function fixLg() { const F = fixOf(SEASON); if (!F || !S || !S.fx || !S.fx.length) return null; const nPl = S.fx.reduce((a, r) => a + r.filter(m => m.r).length, 0), key = SEASON + '|' + nPl + '|' + JSON.stringify(F);
+  if (FIXC && FIXC.key === key) return FIXC; const rem = S.fx.length - S.fx.filter(r => r.every(m => m.r)).length; let pts = {}, gap = null, rivals = new Set();
+  if (F.lg && S.teams.includes(F.lg)) { try { table().forEach(r => pts[r.team] = r.pts); } catch (e) { } const my = pts[F.lg] || 0, lead = Math.max(-1, ...S.teams.filter(t => t !== F.lg).map(t => pts[t] || 0)); gap = my - lead; S.teams.forEach(t => { if (t !== F.lg && (pts[t] || 0) >= my - 1) rivals.add(t); }); }
+  const tally = {}; if (F.boot || F.assist) { try { liveStats().forEach(p => { tally[p.name] = tally[p.name] || { g: 0, a: 0, team: p.team }; tally[p.name].g = Math.max(tally[p.name].g, p.g || 0); tally[p.name].a = Math.max(tally[p.name].a, p.a || 0); tally[p.name].team = p.team; }); } catch (e) { } }
+  const diff = (nm, k) => { if (!nm) return null; const me = tally[nm] ? tally[nm][k] : 0; let best = 0; Object.entries(tally).forEach(([n, o]) => { if (n !== nm && o[k] > best) best = o[k]; }); return me - best; };
+  return (FIXC = { key, F, rem, pts, gap, rivals, tally, myG: F.boot && tally[F.boot] ? tally[F.boot].g : 0, myA: F.assist && tally[F.assist] ? tally[F.assist].a : 0, dg: diff(F.boot, 'g'), da: diff(F.assist, 'a'), bootTeam: F.boot && tally[F.boot] ? tally[F.boot].team : null, astTeam: F.assist && tally[F.assist] ? tally[F.assist].team : null }); }
+ENGINE.setScoreHook((h, a, hg, ag, opt) => { if (!opt || !opt.ctx || !S || !S.teams || !S.teams.includes(h) || !S.teams.includes(a)) return null; const X = fixLg(); if (!X) return null; const F = X.F; let x = hg, y = ag;
+  /* 先帮内定金靴 / 助攻王的球队多进球，再套联赛冠军的规则（冠军优先） */
+  const push = (team, d) => { if (d == null || d > 1 || (X.rem > 8 && d > -X.rem * 0.4)) return; const add = Math.max(1, Math.ceil((2 - d) / Math.max(1, X.rem))); if (team === h) x += add; else if (team === a) y += add; };
+  push(X.bootTeam, X.dg); if (X.astTeam !== X.bootTeam) push(X.astTeam, X.da);
+  if (F.lg && X.gap != null) { const late = X.rem <= 12, safe = X.gap > 3 * Math.min(X.rem, 6);
+    if (h === F.lg || a === F.lg) { const mine = h === F.lg; let m = mine ? x : y, o = mine ? y : x; if ((late && !safe) || X.gap <= -6) { if (m <= o) m = o + 1; } else if (X.gap < 0 && m < o) m = o; /* 落后 6 分以上：先追近 */ if (mine) { x = m; y = o; } else { y = m; x = o; } }
+    else if ((late && X.gap <= 6) || X.gap <= -6) { const rh = X.rivals.has(h), ra = X.rivals.has(a); if (rh && x > y) x = y; if (ra && y > x) y = x; } }
+  return x !== hg || y !== ag ? [x, y] : null; });
+ENGINE.setPickHook((k, team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); if (!X) return 1; const nm = k === 'g' ? X.F.boot : X.F.assist; if (!nm) return 1; const d = k === 'g' ? X.dg : X.da; if (d == null) return 1;
+  if (name !== nm) { const o = X.tally[name], me = k === 'g' ? X.myG : X.myA; return o && (o[k] || 0) >= me - 1 && (X.rem <= 14 || d < 0) ? 0.2 : 1; } /* 紧追的人：进球 / 助攻机会少一点 */
+  if (X.rem <= 8 && d <= 2) return 400; if (d < 0) return Math.min(30, 4 + -d * 2); if (d < 3) return 3; return 1.5; });
+const fixTeamBoost = t => { const X = fixLg(); if (!X || X.F.lg !== t || X.gap == null) return 0; return X.gap < 0 ? Math.min(5, 1.5 + -X.gap * 0.3) : X.gap < 4 ? 1 : 0; };
+const cupFixOf = k => { const F = fixOf(CUP_S != null ? CUP_S : SEASON); return F && F.cups && F.cups[k] || null; };
+let INTL_FIX = null;
+function fixVotes(list, nm, s, pool) { if (!nm || !list) return list; let i = list.findIndex(p => p.name === nm); if (i === 0) return list; let L = list.slice();
+  if (i < 0) { const r = (pool || []).find(p => p.name === nm) || (HPS[s] || []).find(p => p.name === nm); if (!r) return list; L.unshift({ ...r }); } else L.unshift(L.splice(i, 1)[0]);
+  const pc = L.map(p => p.pct).filter(v => v != null).sort((a, b) => b - a); if (pc.length === L.length) L = L.map((p, j) => ({ ...p, pct: pc[j] })); return L; }
+const fixRow = (nm, s, pool) => nm ? ((pool || []).find(p => p.name === nm) || (HPS[s] || []).find(p => p.name === nm) || null) : null;
+function openFixDlg(s0) { const s = s0 || (isPending(SEASON) ? SEASON + 1 : SEASON), d = $('#dlg'), F = (S.fix && S.fix[s]) || {}, cur = s === SEASON, started = cur && playedRounds() > 0, ended = s < SEASON || (cur && isPending(SEASON));
+  const clubs = Object.keys(TD).concat(Object.keys(typeof EXT_CLUB !== 'undefined' ? EXT_CLUB : {})).filter((x, i, A) => A.indexOf(x) === i);
+  const ppl = cur || s === SEASON + 1 ? Object.values(PDB).flat().map(p => p.name).concat(Object.values(FDB).flat().map(p => p.name)) : Object.values(PDB).flat().map(p => p.name);
+  let E = {}; if (cur && !started) { try { E = cupEntrants(s); } catch (e) { } }
+  const inp = (id, v, dl, dis) => `<input id="${id}" list="${dl}" value="${esc(v || '')}" ${dis ? 'disabled' : ''} placeholder="不内定" style="width:100%;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg-2,transparent);color:inherit">`;
+  const fld = (lab, html, note) => `<label style="display:grid;gap:4px;font-size:12px;min-width:0"><span class="muted">${lab}</span>${html}${note ? `<span class="dim" style="font-size:11px">${note}</span>` : ''}</label>`;
+  const cupKs = CUPS.filter(c => c.fmt !== 'domestic' && c.fmt !== 'history').map(c => c.k), intlKs = (() => { try { return intlKindsAll(s); } catch (e) { return []; } })();
+  const seasons = []; for (let x = SEASON; x <= SEASON + 12; x++) seasons.push(x);
+  const AW = [['ballon', '金球奖'], ['world', '世界足球先生'], ['mvp', '威超最佳球员'], ['def', '铁卫奖'], ['glove', '威超金手套'], ['young', '金童奖']];
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:640px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
+    <div><div class="eyebrow">内定结果</div><h2 style="font-size:20px;font-weight:900">指定冠军和奖项</h2><p class="note" style="margin:4px 0 0">只定第一名；第二名以下照常由模拟决定。空着就不内定。只在这台主控设备设定，会跟着进度同步。</p></div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px"><span class="muted">赛季</span><select id="fxS">${seasons.map(x => `<option value="${x}" ${x === s ? 'selected' : ''}>${SN(x)}${x === SEASON ? '（本季）' : ''}</option>`).join('')}</select>${ended ? '<span class="chip">本季已结束，只能看</span>' : started ? '<span class="chip">本季已开踢</span>' : ''}</label>
+    <datalist id="fxClubs">${clubs.map(x => `<option value="${esc(x)}">`).join('')}</datalist><datalist id="fxNats">${Object.keys(NAT_INFO).map(x => `<option value="${esc(x)}">`).join('')}</datalist><datalist id="fxPpl">${[...new Set(ppl)].slice(0, 3000).map(x => `<option value="${esc(x)}">`).join('')}</datalist>
+    <div><div class="eyebrow" style="margin-bottom:6px">联赛</div><div class="grid g-2" style="gap:10px">${fld('威超冠军', inp('fx_lg', F.lg, 'fxClubs', ended), started ? '从现在起生效：落后时会追上来' : '')}</div></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">杯赛${started ? '（本季杯赛已排好赛果，不能再改）' : ''}</div><div class="grid g-2" style="gap:10px">${cupKs.map(k => fld(k, inp('fx_c_' + k, (F.cups || {})[k], 'fxClubs', ended || started), E[k] ? `参赛 ${E[k].length} 队` : '')).join('')}</div></div>
+    ${intlKs.length ? `<div><div class="eyebrow" style="margin-bottom:6px">国家队赛事</div><div class="grid g-2" style="gap:10px">${intlKs.map(k => fld(INTL_CUPS[k][0], inp('fx_i_' + k, (F.intl || {})[k], 'fxNats', ended))).join('')}</div></div>` : `<p class="note" style="margin:0">${SN(s)} 没有国家队大赛。</p>`}
+    <div><div class="eyebrow" style="margin-bottom:6px">威超个人数据</div><div class="grid g-2" style="gap:10px">${fld('金靴', inp('fx_boot', F.boot, 'fxPpl', ended))}${fld('助攻王', inp('fx_assist', F.assist, 'fxPpl', ended))}</div></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">个人奖项</div><div class="grid g-2" style="gap:10px">${AW.map(([k, lab]) => fld(lab, inp('fx_a_' + k, (F.aw || {})[k], 'fxPpl', ended))).join('')}</div></div>
+    <p class="note" style="margin:0">球员按名字认；内定的人那一季要在威超踢球（金球奖、世界足球先生也可以是外赛区球员）。杯赛冠军要有参赛资格才会生效。「逐场观看」那几场照常踢，不受内定影响。</p>
+    <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="fxClear" data-s="${s}" ${ended || !S.fix || !S.fix[s] ? 'disabled' : ''}>清除这季的内定</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="fxSave" data-s="${s}" ${ended ? 'disabled' : ''}>保存</button></span></div></div>`;
+  if (!d.open) d.showModal(); $('#fxS').addEventListener('change', ev => openFixDlg(+ev.target.value)); }
+function saveFix(s) { const v = id => { const el = $('#' + id); return el && !el.disabled ? el.value.trim() : null; }, old = (S.fix && S.fix[s]) || {}, F = {};
+  const keep = (id, prev) => { const x = v(id); return x == null ? prev : x || undefined; };
+  F.lg = keep('fx_lg', old.lg); F.cups = {}; CUPS.forEach(c => { const x = keep('fx_c_' + c.k, (old.cups || {})[c.k]); if (x) F.cups[c.k] = x; });
+  F.intl = {}; Object.keys(INTL_CUPS).forEach(k => { const x = keep('fx_i_' + k, (old.intl || {})[k]); if (x) F.intl[k] = x; });
+  F.boot = keep('fx_boot', old.boot); F.assist = keep('fx_assist', old.assist); F.aw = {}; ['ballon', 'world', 'mvp', 'def', 'glove', 'young'].forEach(k => { const x = keep('fx_a_' + k, (old.aw || {})[k]); if (x) F.aw[k] = x; });
+  Object.keys(F).forEach(k => { if (F[k] == null || (typeof F[k] === 'object' && !Object.keys(F[k]).length)) delete F[k]; });
+  S.fix = S.fix || {}; if (Object.keys(F).length) S.fix[s] = F; else delete S.fix[s]; FIXC = null; CUPL = null; Object.keys(AWARD_CACHE).forEach(k => delete AWARD_CACHE[k]);
+  const warn = []; if (F.lg && s === SEASON && !S.teams.includes(F.lg)) warn.push(F.lg + ' 本季不在威超'); if (F.lg && !TD[F.lg]) warn.push('找不到球队「' + F.lg + '」');
+  { const known = new Set(Object.values(PDB).flat().concat(Object.values(FDB).flat()).map(p => p.name)); try { Object.values(ACAD_ID).forEach(k => known.add(k.name)); } catch (e) { } [F.boot, F.assist, ...Object.values(F.aw || {})].filter(Boolean).forEach(n => { if (!known.has(n)) warn.push('现在找不到球员「' + n + '」'); }); }
+  { const clubs = new Set(Object.keys(TD).concat(Object.keys(typeof EXT_CLUB !== 'undefined' ? EXT_CLUB : {}))); Object.values(F.cups || {}).forEach(t => { if (!clubs.has(t)) warn.push('找不到球队「' + t + '」'); }); Object.values(F.intl || {}).forEach(n => { if (!NAT_INFO[n]) warn.push('找不到国家「' + n + '」'); }); } if (s === SEASON && playedRounds() === 0) { try { const E = cupEntrants(s); Object.entries(F.cups || {}).forEach(([k, t]) => { if (E[k] && !E[k].includes(t)) warn.push(t + ' 没有' + k + '参赛资格'); }); } catch (e) { } }
+  save(); MOD_VER++; render(); $('#dlg').close(); toast(warn.length ? '已保存，但：' + warn.join('、') : '已保存 ' + SN(s) + ' 的内定结果'); }
+
 function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 'K|' + id, e = (S.edits || {})[uid] || {}, d = $('#dlg'), a = kAge(k, SEASON);
   const inp = (i, v, type = 'text', extra = '') => `<input id="${i}" type="${type}" value="${esc(v ?? '')}" ${extra} style="width:100%;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg-2,transparent);color:inherit">`;
   const fld = (lab, html) => `<label style="display:grid;gap:4px;font-size:12px;min-width:0"><span class="muted">${lab}</span>${html}</label>`;
@@ -2684,6 +2747,7 @@ function vOverview() {
       <button class="btn" data-act="watch" ${nr < 0 ? 'disabled' : ''}>逐场观看</button>
       <button class="btn" data-act="rest" ${nr < 0 ? 'disabled' : ''}>模拟剩余赛季</button>
       <button class="btn" data-act="autoN">快速推演多个赛季</button>
+      <button class="btn" data-act="fixDlg" title="指定本季或之后赛季的冠军、金靴、助攻王和个人奖项">${ic('trophy')} 内定结果${fixOf(SEASON) ? ' ·' : ''}</button>
       <button class="btn ${S.auto && S.auto.on ? 'primary' : ''}" data-act="autoCfg">${S.auto && S.auto.on ? ic('timer') + ' 全自动模拟中' : ic('timer') + ' 全自动模拟'}</button>
     </div>
     ${S.auto && S.auto.on ? `<div style="grid-column:1/-1" class="autoln" id="autoLn">${esc(autoStatus())}</div>` : ''}
@@ -3906,7 +3970,8 @@ let CUP_REC = null, CUPD = null;
 /* 每场杯赛记下属于哪项赛事、哪个阶段、在威超第几周踢（赛程、直播比分、赛后数据都靠它） */
 let CUP_TAG = null, CUP_LEG = 0; const cupTag = () => CUP_TAG ? { ...CUP_TAG, leg: CUP_LEG } : null;
 function cupMatch(a, b, rnd, neutral) { const r = cupMatch0(a, b, rnd, neutral); if (CUP_REC) CUP_REC.push([a, b, r[0], r[1], 0, cupTag(), neutral ? 1 : 0]); return r; }
-function cupMatch0(a, b, rnd, neutral) { const d = clubStr(a) - clubStr(b), adv = neutral ? 1 : 1.1; return [pois(1.35 * Math.exp(0.075 * d) * adv, rnd), pois(1.35 * Math.exp(-0.075 * d) / adv, rnd)]; }
+function cupMatch0(a, b, rnd, neutral) { const d = clubStr(a) - clubStr(b), adv = neutral ? 1 : 1.1, r = [pois(1.35 * Math.exp(0.075 * d) * adv, rnd), pois(1.35 * Math.exp(-0.075 * d) / adv, rnd)];
+  const F = CUP_TAG ? cupFixOf(CUP_TAG.k) : null; if (F && a === F && r[0] <= r[1]) r[0] = r[1] + 1; else if (F && b === F && r[1] <= r[0]) r[1] = r[0] + 1; /* 内定冠军：这项赛事每场都赢 */ return r; }
 // 外赛区联赛每季的名次（按实力和随机性快速推演）
 /* ---------- 海外联赛：真的踢一整季（按球队实力，球员按位置和能力分进球、助攻），有积分榜、射手榜、助攻榜和每季的金靴、助攻王、联赛 MVP ----------
    星煌联赛、其他赛区：单循环 + 前 8 名季后赛；其余双循环。赛果跟威超同一周揭晓（季后赛在第 35、36、38 周）。
@@ -4352,7 +4417,16 @@ function awardsOf(s) {
   const used = new Set(), xi = [];
   const take = (f, n) => pick(rows.filter(p => !used.has(p.pid) && f(p)), base).slice(0, n).forEach(p => { used.add(p.pid); xi.push(p); });
   take(p => p.line === 'GK', 1); take(p => /CB/.test(p.pos), 2); take(p => /LB|RB|WB/.test(p.pos), 2); take(p => p.line === 'MF', 3); take(p => p.line === 'FW', 3);
-  return (AWARD_CACHE[s] = { ballon, ballonVotes, mvp, mvpVotes, goal, def, defVotes, world, worldVotes, boot, assist, glove, young, xi });
+  let R = { ballon, ballonVotes, mvp, mvpVotes, goal, def, defVotes, world, worldVotes, boot, assist, glove, young, xi };
+  { const FX = fixOf(s); if (FX) { const aw = FX.aw || {}, pool = rows.concat(ballonVotes, worldVotes); /* 内定的个人奖项 */
+      if (aw.ballon) { R.ballonVotes = fixVotes(ballonVotes, aw.ballon, s, pool); R.ballon = fixVotes(ballon, aw.ballon, s, pool).slice(0, 3); }
+      if (aw.mvp) { R.mvpVotes = fixVotes(mvpVotes, aw.mvp, s, rows); R.mvp = R.mvpVotes[0]; }
+      if (aw.def) { R.defVotes = fixVotes(defVotes, aw.def, s, rows); R.def = R.defVotes[0]; }
+      if (aw.world) { R.worldVotes = fixVotes(worldVotes, aw.world, s, pool); R.world = R.worldVotes[0]; }
+      if (aw.glove) R.glove = fixRow(aw.glove, s, rows) || glove; if (aw.young) R.young = fixRow(aw.young, s, rows) || young;
+      [R.ballonVotes, R.mvpVotes, R.defVotes, R.worldVotes].forEach(L => (L || []).forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
+      const tie = (nm, k, cur) => { const r = fixRow(nm, s, HPS[s]); return r && cur && r[k] >= cur[k] ? r : cur; }; if (FX.boot) R.boot = tie(FX.boot, 'g', boot); if (FX.assist) R.assist = tie(FX.assist, 'a', assist); } }
+  return (AWARD_CACHE[s] = R);
 }
 const AWARD_NAMES = { ballon: '金球奖', world: '世界足球先生', def: '铁卫奖', goal: '最佳进球', mvp: '威超最佳球员', boot: '威超金靴', assist: '威超助攻王', glove: '威超金手套', young: '金童奖', xi: '年度最佳阵容' };
 function awardsOfPid(pid, uid) {
@@ -4473,9 +4547,9 @@ let cupSeason = null;
    世联赛第 k 轮和威超第 k 轮同周；全联冠 / 全联杯 / 全协联的联赛阶段每 3 轮踢一轮，第 27 轮起打附加赛和两回合淘汰赛，决赛在赛季结束时；
    威联赛杯第 4、11、18、25 轮所在的那周踢一轮，第 32 轮踢决赛；社区杯是揭幕战 */
 let CUPL = null;
-function cupLive() { if (!S || !S.fx || !S.fx.length || isPending(SEASON)) return null; const key = SEASON + '|' + saltOf(SEASON) + '|' + (S.reset || '') + '|' + S.teams.join(',') + '|' + (S.cstr && S.cstr.s === SEASON ? 'f' : '');
+function cupLive() { if (!S || !S.fx || !S.fx.length || isPending(SEASON)) return null; const key = SEASON + '|' + saltOf(SEASON) + '|' + (S.reset || '') + '|' + S.teams.join(',') + '|' + (S.cstr && S.cstr.s === SEASON ? 'f' : '') + '|' + JSON.stringify((fixOf(SEASON) || {}).cups || {});
   if (CUPL && CUPL.key === key) return CUPL; CUPD = {}; let C = null; try { C = simulateCups(SEASON); } catch (e) { console.error(e); } const D = CUPD; CUPD = null; if (!C) return null;
-  CUPL = { key: SEASON + '|' + saltOf(SEASON) + '|' + (S.reset || '') + '|' + S.teams.join(',') + '|' + (S.cstr && S.cstr.s === SEASON ? 'f' : ''), C, D }; return CUPL; }
+  CUPL = { key, C, D }; return CUPL; }
 const CUP_SW_KO = [['附加赛', 27], ['16 强', 30], ['8 强', 33], ['半决赛', 36]], CUP_DOM_KO = [4, 11, 18, 25, 32];
 /* 杯赛日历：本季每场有威超系球队参加的杯赛，按「在威超第几轮那周」排好，用于首页赛程和球队页。还没揭晓的只给对阵，不给比分 */
 /* ---------- 杯赛赛程、直播比分、赛后数据 ----------
@@ -5611,15 +5685,19 @@ function natMatch(A, B, sqA, sqB, rnd, ko) { const sa = natStr(sqA), sb = natStr
   const pois = l => { let k = 0, p = Math.exp(-l), c = p, u = rnd(); while (u > c && k < 9) { k++; p *= l / k; c += p; } return k; };
   let ga = pois(lam(sa - sb)), gb = pois(lam(sb - sa)), et = 0, pen = null;
   if (ko && ga === gb) { et = 1; ga += pois(lam(sa - sb) * 0.3); gb += pois(lam(sb - sa) * 0.3); if (ga === gb) { const pa = 0.5 + Math.max(-0.08, Math.min(0.08, (sa - sb) * 0.01)); let x = 0, y = 0; for (let i = 0; i < 5; i++) { if (rnd() < 0.76 + (pa - 0.5)) x++; if (rnd() < 0.76 - (pa - 0.5)) y++; } while (x === y) { if (rnd() < 0.75) x++; if (rnd() < 0.75) y++; } pen = [x, y]; } }
+  if (INTL_FIX && (A === INTL_FIX || B === INTL_FIX)) { const mine = A === INTL_FIX; if (mine && ga <= gb) ga = gb + 1; else if (!mine && gb <= ga) gb = ga + 1; et = 0; pen = null; } /* 内定冠军：每场都赢 */
   const ev = []; const scorers = (sq, n, side) => { const xi = natXI(sq), bench = sq.filter(p => !xi.includes(p)), subs = bench.sort(() => rnd() - 0.5).slice(0, 3), on = xi.concat(subs); on.forEach(p => ev.push(['app', side, p.uid])); const W = { FW: 6, MF: 2.5, DF: 0.7, GK: 0 }, A = { FW: 2, MF: 4, DF: 1.2, GK: 0.1 };
     const pick = (wf, ex) => { const ws = on.map(p => p === ex ? 0 : wf[ENGINE.LINE(p.pos)] * Math.exp((p.r - 80) * 0.08)), tot = ws.reduce((a, b) => a + b, 0); let x = rnd() * tot; for (let i = 0; i < on.length; i++) { x -= ws[i]; if (x <= 0) return on[i]; } return on[0]; };
     for (let g = 0; g < n; g++) { const sc = pick(W), as = rnd() < 0.72 ? pick(A, sc) : null; ev.push(['g', side, sc.uid, as ? as.uid : null, 2 + Math.floor(rnd() * (et ? 118 : 88))]); } };
   scorers(sqA, ga, 0); scorers(sqB, gb, 1);
   const w = ga > gb ? A : gb > ga ? B : pen ? (pen[0] > pen[1] ? A : B) : null;
   return { h: A, a: B, hg: ga, ag: gb, et, pen, w, ev }; }
-function intlRun(kind, s) { const [lab, cf, n] = INTL_CUPS[kind], u21 = kind === 'u21', pool = natPool(s, u21), rnd = seeded('intl|' + kind + '|' + s + '|' + saltOf(s));
+function intlRun(kind, s) { const prev = INTL_FIX; INTL_FIX = ((fixOf(s) || {}).intl || {})[kind] || null; try { return intlRun0(kind, s); } finally { INTL_FIX = prev; } }
+function intlRun0(kind, s) { const [lab, cf, n] = INTL_CUPS[kind], u21 = kind === 'u21', pool = natPool(s, u21), rnd = seeded('intl|' + kind + '|' + s + '|' + saltOf(s));
   const cands = Object.keys(NAT_INFO).filter(x => !cf || NAT_INFO[x].cf === cf).map(x => { const sq = natSquad(x, s, pool, u21); return { n: x, sq, st: natStr(sq) }; }).sort((a, b) => b.st - a.st);
+  if (INTL_FIX && !cands.some(x => x.n === INTL_FIX)) INTL_FIX = null; /* 内定的国家不在这项赛事的范围 */
   let field; if (cf) field = cands.slice(0, n); else { const Q = u21 ? { 欧洲: 6, 美洲: 4, 亚洲: 3, 非洲: 3 } : { 欧洲: 13, 美洲: 7, 亚洲: 5, 非洲: 6 }; field = []; Object.entries(Q).forEach(([c, k]) => field.push(...cands.filter(x => NAT_INFO[x.n].cf === c).slice(0, k))); const rest = cands.filter(x => !field.includes(x)); while (field.length < n && rest.length) field.push(rest.shift()); field.sort((a, b) => b.st - a.st); }
+  if (INTL_FIX && !field.some(x => x.n === INTL_FIX)) { field[field.length - 1] = cands.find(x => x.n === INTL_FIX); field.sort((a, b) => b.st - a.st); } /* 内定的国家一定参赛 */
   const SQ = {}; field.forEach(x => SQ[x.n] = x.sq); const st = {}; field.forEach(x => st[x.n] = +x.st.toFixed(1));
   /* 分组：按实力分档抽签 */
   const G = n / 4, pots = [0, 1, 2, 3].map(k => field.slice(k * G, (k + 1) * G).map(x => x.n).sort(() => rnd() - 0.5)), groups = []; for (let g = 0; g < G; g++) groups.push({ n: String.fromCharCode(65 + g), t: pots.map(P => P[g]), m: [] });
@@ -5717,6 +5795,7 @@ function vHome() {
       <button class="btn primary" data-act="round" ${nr < 0 ? 'disabled' : ''}>模拟本轮</button>
       <button class="btn" data-go="league">威超中心</button>
       <button class="btn" data-act="autoN">快速推演多个赛季</button>
+      <button class="btn" data-act="fixDlg" title="指定本季或之后赛季的冠军、金靴、助攻王和个人奖项">${ic('trophy')} 内定结果${fixOf(SEASON) ? ' ·' : ''}</button>
       <button class="btn ${S.auto && S.auto.on ? 'primary' : ''}" data-act="autoCfg">${ic('timer')} ${S.auto && S.auto.on ? '全自动模拟中' : '全自动模拟'}</button>
     </div>
     ${S.auto && S.auto.on ? `<div style="grid-column:1/-1" class="autoln" id="autoLn">${esc(autoStatus())}</div>` : ''}
@@ -6228,6 +6307,7 @@ ENGINE.setTeamMod((t, opp) => {
   if (M.room) out.push({ txt: M.room.txt, d: +M.room.d.toFixed(1) });
   const cap = capitalEffect(t); if (cap) out.push({ txt: cap.txt, d: +cap.d.toFixed(1) });
   try { const sm = staffMatchMod(t); if (Math.abs(sm) >= 0.3) out.push({ txt: sm > 0 ? '教练团队布置到位' : '教练团队水平有限', d: +sm.toFixed(1) }); } catch (e) { }
+  try { const fb = fixTeamBoost(t); if (fb) out.push({ txt: '争冠气势如虹', d: +fb.toFixed(1) }); } catch (e) { }
   try { const tmd = titleMood(t); if (tmd) out.push({ txt: tmd < 0 ? (tmd < -1.2 ? '连冠之后人人针对、更衣室满足' : '卫冕冠军的压力') : '多年无冠，全队求胜心切', d: tmd }); } catch (e) { }
   return out;
 });
@@ -8947,9 +9027,9 @@ function autoSimTo(target) {
 }
 async function doResetAll() {
   const I = (S && S.init) || (S ? initSnap() : null); /* 套回初始设定（球员资料、阵型、首发、职务、球衣、非卖品、转会设置） */
-  const LIVE = S ? { edits: S.edits, tedit: S.tedit, oedit: S.oedit } : {}; /* 球员资料和球队信息是你手动改的，一律保留最新版本 */
+  const LIVE = S ? { edits: S.edits, tedit: S.tedit, oedit: S.oedit } : {}, FIX0 = S && S.fix ? JSON.parse(JSON.stringify(S.fix)) : null; /* 球员资料和球队信息是你手动改的，一律保留最新版本 */
   S = newSeason(); if (I) { INIT_KEYS.forEach(k => { const v = LIVE[k] != null ? LIVE[k] : I[k]; if (v != null) S[k] = JSON.parse(JSON.stringify(v)); }); S.init = I; } if (S.oedit) Object.values(S.oedit).forEach(E => Object.values(E.own || {}).forEach(e => { e.from = 1; })); /* 重来后老板设定从 S01 起生效 */
-  if (S.acadDec) { Object.keys(S.acadDec).forEach(id => { S.acadDec[id] = S.acadDec[id].filter(e => e.s <= 1); if (!S.acadDec[id].length) delete S.acadDec[id]; }); } /* 青训只保留 S01 开季前的提拔 */ S.updated = Date.now(); S.reset = S.updated;
+  if (S.acadDec) { Object.keys(S.acadDec).forEach(id => { S.acadDec[id] = S.acadDec[id].filter(e => e.s <= 1); if (!S.acadDec[id].length) delete S.acadDec[id]; }); } /* 青训只保留 S01 开季前的提拔 */ S.updated = Date.now(); S.reset = S.updated; if (FIX0) S.fix = FIX0; /* 内定结果是你的推演计划，重来也保留 */
   localSave();
   for (let i = 0; i < 38; i++) DIRTY.add(i);
   toast('正在重置…');
@@ -9022,6 +9102,9 @@ document.addEventListener('click', e => {
   if (act === 'rewind') return confirmRewind(+el.dataset.s);
   if (act === 'editP') return openEditor(el.dataset.uid);
   if (act === 'editKid') return openKidEditor(el.dataset.id);
+  if (act === 'fixDlg') return openFixDlg();
+  if (act === 'fxSave') return saveFix(+el.dataset.s);
+  if (act === 'fxClear') { if (S.fix) delete S.fix[+el.dataset.s]; FIXC = null; CUPL = null; Object.keys(AWARD_CACHE).forEach(k => delete AWARD_CACHE[k]); save(); render(); $('#dlg').close(); toast('已清除内定'); return; }
   if (act === 'kdSave') return saveKidEditor(el.dataset.id);
   if (act === 'kdReset') { if (S.edits) delete S.edits['K|' + el.dataset.id]; KID_MEMO.clear(); refreshAfterEdit(); toast('已恢复原始资料'); return; }
   if (act === 'edSave') return saveEditor(el.dataset.uid);
@@ -9488,7 +9571,7 @@ function devBox() { if (WEB.store !== 'github') return ''; const mine = !WEB.own
     ${mine ? '' : `<div class="btns"><button class="btn primary" data-act="takeOwn">改由这台设备主控（先载入云端最新进度）</button><button class="btn ghost" data-act="takeOwnForce" id="takeForceBtn">用这台的进度覆盖并接管</button></div><p class="note" style="margin:0">接管后，原来那台会自动变成跟随设备。</p>`}</div>`; }
 async function takeOwn(force) { try { if (!force) { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); const m = r.ok ? await r.json() : null; if (m) { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(m.w); g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, null); } } } else WEB.forceOnce = true;
     WEB.ro = false; WEB.takeOnce = true; save(); clearTimeout(WEB.timer); await webPush(); if (!WEB.ro && WEB.owner === DEV) toast('这台已经是主控设备'); else toast('接管失败，稍后再试'); } catch (e) { toast('接管失败，稍后再试'); } const d = $('#dlg'); if (d.open) openSync(); }
-const RO_ACTS = new Set(['round', 'rest', 'autoN', 'autoCfg', 'autoOn', 'autoGo', 'kick', 'instant', 'nextSeason', 'reset', 'resetAll', 'doReset', 'doResetAll', 'rewind', 'doRewind', 'undo', 'syncPush', 'mkBid', 'bidGo', 'sell', 'release', 'extend', 'loan', 'loanExt', 'promote', 'mkRenew', 'mkRel', 'mkLoan', 'undemote', 'edSave', 'kdSave', 'kdReset', 'teSave', 'kitSave', 'oeSave']);
+const RO_ACTS = new Set(['round', 'rest', 'autoN', 'autoCfg', 'autoOn', 'autoGo', 'kick', 'instant', 'nextSeason', 'reset', 'resetAll', 'doReset', 'doResetAll', 'rewind', 'doRewind', 'undo', 'syncPush', 'mkBid', 'bidGo', 'sell', 'release', 'extend', 'loan', 'loanExt', 'promote', 'mkRenew', 'mkRel', 'mkLoan', 'undemote', 'edSave', 'kdSave', 'kdReset', 'fxSave', 'fxClear', 'teSave', 'kitSave', 'oeSave']);
 
 function openSync() {
   const d = $('#dlg');
