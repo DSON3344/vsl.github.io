@@ -494,6 +494,7 @@ th.sorted{color:var(--accent-2)}
 .ico{display:inline-block;vertical-align:-.18em;flex:none}.btn .ico,.roundchip .ico,.chip .ico{margin-right:4px}.derbytag .ico{margin-right:2px}
 .u21tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;padding:0 5px;border-radius:4px;background:rgba(var(--acc-rgb),.16);color:var(--acc-hi,#fff);vertical-align:1px}
 .u21dg{grid-template-columns:minmax(260px,.9fr) minmax(0,1.3fr)}@media (max-width:760px){.u21dg{grid-template-columns:1fr}}
+.campus3d{position:relative;border-radius:12px;overflow:hidden;background:#16241b;min-height:260px;margin:0 -4px}.campus3d canvas{cursor:grab}.campus3d canvas:active{cursor:grabbing}.c3lab{position:absolute;inset:0;pointer-events:none;overflow:hidden}.c3tag{position:absolute;left:0;top:0;pointer-events:auto;background:rgba(12,14,18,.84);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:6px;font:700 12px/1.2 inherit;padding:4px 8px;white-space:nowrap;display:flex;gap:5px;align-items:center;cursor:pointer}.c3tag i{font-style:normal;background:#d8b45f;color:#111;border-radius:3px;padding:1px 4px;font-size:10px}.c3tag.warn{border-color:#f2b632}.c3tag:hover,.c3tag:focus-visible{border-color:#fff}.c3msg{padding:60px 20px;text-align:center;color:var(--muted)}@media (max-width:600px){.c3tag{font-size:10.5px;padding:3px 6px}}
 .campus{border-radius:12px;overflow:hidden;background:linear-gradient(#1d3b24,#152b1a);margin:0 -4px}.campus svg{display:block;width:100%;height:auto}.campus .cmp{cursor:pointer;outline:none}.campus .cmp:hover>*,.campus .cmp:focus-visible>*{filter:brightness(1.18)}.campus .cmp:focus-visible .cmp-tag rect:first-child{stroke:#fff;stroke-width:2}.campus text{font-family:inherit}
 </style>
 <div id="gate" hidden><div class="gl gsky"></div><div class="gl gbeam"></div><div class="gl gfield"></div><div class="gl ghaze"></div><div class="gl gvig"></div><div class="gl ggrain"></div>
@@ -2441,6 +2442,7 @@ function render() {
   $('#roundChip').innerHTML = nr < 0 ? `S${SEASON} · <b>已完赛</b>` : `S${SEASON} · 第 <b>${String(nr + 1).padStart(2, '0')}</b> / 38 轮`;
   app.innerHTML = ({ overview: vHome, league: vOverview, table: vTable, stats: vStats, match: vMatch, teams: vTeams, players: vPlayers, transfers: vTransfers, cups: vCups, awards: vAwards, ext: vExt, xi: vXI, history: vHistory, wl: vWL, u21: vU21, pyr: vPyr, intl: vIntl })[view]();
   after[view] && after[view]();
+  try { campus3dSync(); } catch (e) { console.error(e); }
   lazyFlush();
 }
 const after = {};
@@ -5766,7 +5768,7 @@ function campusSVG(t) {
   /* 媒体中心（右下小楼，纯装饰 + 显示赞助/新闻入口） */
   g += bld('media', cpBox(17.2, 16.6, 19.8, 19.2, 1.4, '#455a64', 0, '#607d8b') + `<circle cx="${cpP(18.5, 17.9, 1.4)[0]}" cy="${cpP(18.5, 17.9, 1.4)[1] - 8}" r="6" fill="none" stroke="#cfd8dc" stroke-width="2"/>` + cpTag(18.5, 17.9, 2.3, '媒体中心', '新闻与转播', null), '媒体中心');
   return `<div class="campus"><svg viewBox="60 -30 880 590" role="img" aria-label="${esc(t)} 球会园区">${g}</svg></div>`; }
-function campusPanel(t) { if (!TD[t]) return ''; return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club campus</div><h2>球会园区</h2></div><span class="note">点任一建筑看详细内容；董事会的扩建、新建项目会让建筑变大，施工中的有吊车</span></div>${campusSVG(t)}</div>`; }
+function campusPanel(t) { if (!TD[t]) return ''; return campus3dHTML(t); return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club campus</div><h2>球会园区</h2></div><span class="note">点任一建筑看详细内容；董事会的扩建、新建项目会让建筑变大，施工中的有吊车</span></div>${campusSVG(t)}</div>`; }
 function openCampus(t, key) { const d = $('#dlg'), D = campusData(t), on = D.on, row = (a, b) => `<div class="rk" style="grid-template-columns:96px minmax(0,1fr)"><span class="muted">${a}</span><span>${b}</span></div>`;
   const stf = ks => `<div class="rank-list">${D.st.filter(x => ks.includes(x.k)).map(x => row(esc(x.lab), `<b>${esc(x.name)}</b> <span class="dim">${esc(x.nat || '')}</span> · 能力 <b>${x.q}</b> <span class="dim" style="font-size:11px">${esc(x.eff)}</span>`)).join('')}</div>`;
   const prj = ks => { const L = D.B.proj.filter(p => ks.includes(p.k)); return L.length ? `<div class="eyebrow" style="margin:12px 0 6px">基建项目</div><div class="rank-list">${L.map(p => row(SN(p.s0), `${esc(p.lab)} · ${money(p.cost)} · ${p.s1 > SEASON ? `<span style="color:#f2b632">施工中，${SN(p.s1)} 完工</span>` : '已完工'}`)).join('')}</div>` : ''; };
@@ -5786,6 +5788,162 @@ function openCampus(t, key) { const d = $('#dlg'), D = campusData(t), on = D.on,
   else if (key === 'media') { title = '媒体中心'; body = `<p class="note" style="margin:0 0 8px">球队的新闻、转播与赞助曝光。</p><div class="rank-list">${row('直播场次', (() => { try { const x = tvSplit(table()).find(y => y.t === t); return x ? `本季约 ${x.tv} 场电视直播` : '—'; } catch (e) { return '—'; } })())}${row('主帅', esc((coachOf(t) || {}).name || '—'))}</div><div class="btns" style="margin-top:10px"><button class="btn" data-go="league">看头条新闻 →</button></div>`; }
   d.innerHTML = `<div class="dlg" style="position:relative;max-width:620px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="eyebrow">${esc(t)} · 球会园区</div><h2 style="margin:4px 0 12px">${esc(title || '设施')}</h2>${body}</div>`;
   if (!d.open) d.showModal(); }
+
+/* ---------- 3D 球会园区（three.js，只在打开「园区」分页时才从 CDN 载入，之后浏览器会缓存）----------
+   建筑有棱有角、用程序画的材质（玻璃幕墙、砖、混凝土、金属屋顶、草皮）；镜头绕园区缓慢 360° 旋转，可以拖动换角度；
+   电脑上有阴影，手机和较弱的设备自动关掉阴影、降低解析度。看不见画面时（滑走、切到别的分页、开着弹窗）就停下来不画，省电。
+   球场按球队体量分四种风格：社区球场、传统四面看台、现代方形一体看台、椭圆碗形大球场；扩建、兴建新球场会升级。 */
+const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+let THREE_P = null, C3 = null;
+function loadThree() { if (window.THREE) return Promise.resolve(window.THREE); if (THREE_P) return THREE_P;
+  THREE_P = new Promise((res, rej) => { const s = document.createElement('script'); s.src = THREE_URL; s.async = true; s.crossOrigin = 'anonymous'; s.onload = () => window.THREE ? res(window.THREE) : rej(new Error('three')); s.onerror = () => { THREE_P = null; rej(new Error('three')); }; document.head.appendChild(s); }); return THREE_P; }
+const c3Pref = () => { try { return localStorage.getItem('ves-campus-mode') || '3d'; } catch (e) { return '3d'; } };
+const c3Low = () => (window.matchMedia && matchMedia('(max-width:760px)').matches) || (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 8) <= 4;
+const c3Reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* 球场风格按球队体量分档（所有俱乐部按基本容量排名：前 15% 碗形、再 25% 现代、再 35% 传统、其余社区球场），扩建两次或兴建新球场再升一档 */
+const STY = [['community', '社区球场'], ['classic', '传统四面看台'], ['modern', '现代一体式看台'], ['bowl', '椭圆碗形大球场']];
+let STY_RK = null;
+function stadStyleOf(t) { if (!STY_RK) { const L = Object.keys(TD).map(x => [x, stadCap0(x) + clubBaseApprox(x) * 10]).sort((a, b) => b[1] - a[1]); STY_RK = {}; L.forEach(([x], i) => { const q = i / L.length; STY_RK[x] = q < 0.15 ? 3 : q < 0.4 ? 2 : q < 0.75 ? 1 : 0; }); }
+  let k = STY_RK[t] ?? 1; try { if (ownOn(SEASON)) { if (projBuilt(t, 'newstad')) k = Math.max(k + 1, 2); if (projBuilt(t, 'expand') >= 2) k++; } } catch (e) { } return STY[Math.min(3, k)]; }
+function campus3dHTML(t) { const mode = c3Pref(), D = campusData(t), st = stadStyleOf(t);
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club campus</div><h2>球会园区</h2></div><div class="seg" role="group" aria-label="园区显示方式"><button data-act="c3Mode" data-v="3d" aria-pressed="${mode === '3d'}">3D</button><button data-act="c3Mode" data-v="2d" aria-pressed="${mode !== '3d'}">平面图</button></div></div>
+    <p class="note" style="margin:-4px 0 10px">${esc(st[1])} · 点建筑或上面的名牌看详细内容${mode === '3d' ? ' · 可以拖动转换角度' : ''}；董事会的扩建、新建项目会让建筑升级，施工中的有吊车</p>
+    ${mode === '3d' ? `<div class="campus3d" id="cmp3d" data-t="${esc(t)}"><div class="c3lab"></div><div class="c3msg">正在载入 3D 园区…</div></div>` : campusSVG(t)}</div>`; }
+function campus3dSync() { const el = document.getElementById('cmp3d'); if (!el) { if (C3) C3.pause(); return; } const t = el.dataset.t;
+  if (C3 && C3.t === t && C3.ver === MOD_VER_SEASON + '|' + JSON.stringify((S.oedit || {})[t] || 0).length) { C3.attach(el); return; }
+  if (C3) { C3.dispose(); C3 = null; }
+  loadThree().then(T => { if (!document.body.contains(el)) return; try { C3 = buildCampus3D(T, t, el); } catch (e) { console.error(e); c3Fail(el, t); } }).catch(() => c3Fail(el, t)); }
+function c3Fail(el, t) { if (!document.body.contains(el)) return; el.outerHTML = `<p class="note" style="margin:0 0 8px">3D 园区载入不了（网络或浏览器不支持 WebGL），先显示平面图。</p>${campusSVG(t)}`; }
+/* ---- 程序材质：画在小画布上，全场共用 ---- */
+function c3Tex(T, w, h, draw, rx = 1, ry = 1) { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); draw(g, w, h); const tx = new T.CanvasTexture(c); tx.wrapS = tx.wrapT = T.RepeatWrapping; tx.repeat.set(rx, ry); tx.encoding = T.sRGBEncoding; tx.anisotropy = 4; return tx; }
+function c3Mats(T, kc) { const M = {}, std = (o) => new T.MeshStandardMaterial(o);
+  const win = (base, glass, lit) => (g, w, h) => { g.fillStyle = base; g.fillRect(0, 0, w, h); for (let y = 6; y < h; y += 16) for (let x = 4; x < w; x += 12) { const r = Math.random(); g.fillStyle = r < lit ? '#ffe7a8' : glass; g.fillRect(x, y, 8, 10); } };
+  M.glass = std({ map: c3Tex(T, 128, 256, win('#2a3a4c', '#5d86a8', 0.12), 2, 2), metalness: 0.55, roughness: 0.25 });
+  M.office = std({ map: c3Tex(T, 128, 128, win('#d9dcdf', '#4c6f8c', 0.06), 2, 1), roughness: 0.7 });
+  M.white = std({ color: 0xeef1f4, roughness: 0.6 });
+  M.brick = std({ map: c3Tex(T, 128, 128, (g, w, h) => { g.fillStyle = '#8c4a32'; g.fillRect(0, 0, w, h); g.fillStyle = '#d8cbbb'; for (let y = 0; y < h; y += 8) { g.fillRect(0, y, w, 1); for (let x = (y / 8) % 2 ? 0 : 8; x < w; x += 16) g.fillRect(x, y, 1, 8); } for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * .15})`; g.fillRect(Math.random() * w, Math.random() * h, 8, 4); } }, 2, 1), roughness: 0.9 });
+  M.concrete = std({ map: c3Tex(T, 64, 64, (g, w, h) => { g.fillStyle = '#9da3aa'; g.fillRect(0, 0, w, h); for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(${Math.random() < .5 ? 0 : 255},${Math.random() < .5 ? 0 : 255},${Math.random() < .5 ? 0 : 255},.05)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); } g.fillStyle = 'rgba(0,0,0,.12)'; for (let y = 0; y < h; y += 16) g.fillRect(0, y, w, 1); }, 2, 2), roughness: 0.95 });
+  M.metal = std({ color: 0xc9ced4, metalness: 0.7, roughness: 0.35 });
+  M.roofDark = std({ color: 0x3b4048, metalness: 0.4, roughness: 0.6 });
+  M.tile = std({ color: 0x6e3b2c, roughness: 0.85 });
+  M.seat = std({ map: c3Tex(T, 64, 64, (g, w, h) => { g.fillStyle = kc; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,.28)'; for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1); }, 6, 2), roughness: 0.75 });
+  M.team = std({ color: kc, roughness: 0.5, metalness: 0.1 });
+  M.teamGlow = std({ color: kc, emissive: new T.Color(kc).multiplyScalar(0.25), roughness: 0.45, metalness: 0.2 });
+  M.poly = std({ color: 0xe8f1f7, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.55, side: T.DoubleSide });
+  M.road = std({ color: 0x3d4148, roughness: 1 }); M.asph = std({ color: 0x2f3237, roughness: 1 });
+  M.grass = std({ map: c3Tex(T, 128, 128, (g, w, h) => { g.fillStyle = '#2f5a2f'; g.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { g.fillStyle = Math.random() < .5 ? 'rgba(20,50,20,.25)' : 'rgba(120,170,90,.18)'; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); } }, 30, 30), roughness: 1 });
+  M.pitch = std({ map: c3Tex(T, 512, 330, (g, w, h) => { for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#3f9a46' : '#46a64e'; g.fillRect(i * w / 12, 0, w / 12 + 1, h); } g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 3; const m = 14; g.strokeRect(m, m, w - 2 * m, h - 2 * m); g.beginPath(); g.moveTo(w / 2, m); g.lineTo(w / 2, h - m); g.stroke(); g.beginPath(); g.arc(w / 2, h / 2, 42, 0, Math.PI * 2); g.stroke(); [m, w - m - 80].forEach(x => g.strokeRect(x, h / 2 - 85, 80, 170)); [m, w - m - 28].forEach(x => g.strokeRect(x, h / 2 - 38, 28, 76)); }), roughness: 0.9 });
+  M.yellow = std({ color: 0xf2b632, metalness: 0.3, roughness: 0.5 }); M.red = std({ color: 0xd8332a, roughness: 0.5, emissive: 0x330000 });
+  M.trunk = std({ color: 0x5a3d2b, roughness: 1 }); M.leaf = std({ color: 0x2f6b39, roughness: 0.9 }); M.leaf2 = std({ color: 0x3f8a46, roughness: 0.9 });
+  M.light = std({ color: 0xffffff, emissive: 0xfff4c8, emissiveIntensity: 0.9 });
+  return M; }
+function buildCampus3D(T, t, host) {
+  const D = campusData(t), k = TD[t] ? kitsOf(t).home : { body: tcol(t) }, kc = /^#[0-9a-f]{6}$/i.test(k.body) ? k.body : '#c0392b', low = c3Low(), shadows = !low;
+  const renderer = new T.WebGLRenderer({ antialias: !low, powerPreference: 'low-power' }); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.25 : 1.75)); renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
+  if (shadows) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap; }
+  const scene = new T.Scene(); scene.background = new T.Color(0x16241b); scene.fog = new T.Fog(0x16241b, 320, 620);
+  const cam = new T.PerspectiveCamera(32, 16 / 9, 5, 1200);
+  scene.add(new T.HemisphereLight(0xcfe4ff, 0x3a4a30, 0.75));
+  const sun = new T.DirectionalLight(0xfff1d6, 1.15); sun.position.set(-150, 130, 110); scene.add(sun);
+  if (shadows) { sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = -170; sc.right = 170; sc.top = 170; sc.bottom = -170; sc.near = 50; sc.far = 500; sun.shadow.bias = -0.0008; }
+  const M = c3Mats(T, kc), root = new T.Group(); scene.add(root);
+  const mesh = (geo, mat, x = 0, y = 0, z = 0, par = root) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); if (shadows) { m.castShadow = true; m.receiveShadow = true; } par.add(m); return m; };
+  const box = (w, h, d, mat, x, y, z, par) => mesh(new T.BoxGeometry(w, h, d), mat, x, y + h / 2, z, par);
+  const prism = (w, h, d, mat, x, y, z, par) => { const sh = new T.Shape(); sh.moveTo(-d / 2, 0); sh.lineTo(d / 2, 0); sh.lineTo(0, h); sh.lineTo(-d / 2, 0); const m = mesh(new T.ExtrudeGeometry(sh, { depth: w, bevelEnabled: false }), mat, x - w / 2, y, z, par); m.rotation.y = Math.PI / 2; return m; };
+  const grp = (key, x, z, ry = 0) => { const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = ry; g.userData.key = key; root.add(g); return g; };
+  /* 地面与道路 */
+  const ground = mesh(new T.PlaneGeometry(420, 420), M.grass); ground.rotation.x = -Math.PI / 2; ground.castShadow = false;
+  [[0, -62, 380, 9], [0, 72, 380, 9]].forEach(([x, z, w, d]) => { const r = mesh(new T.PlaneGeometry(w, d), M.road, x, 0.05, z); r.rotation.x = -Math.PI / 2; r.castShadow = false; });
+  [[-78, 0, 9, 380], [86, 0, 9, 380]].forEach(([x, z, w, d]) => { const r = mesh(new T.PlaneGeometry(w, d), M.road, x, 0.06, z); r.rotation.x = -Math.PI / 2; r.castShadow = false; });
+  const lot = (x, z, w, d) => { const r = mesh(new T.PlaneGeometry(w, d), M.asph, x, 0.07, z); r.rotation.x = -Math.PI / 2; r.castShadow = false; };
+  lot(122, -25, 46, 40); lot(-115, 32, 40, 44);
+  const pitchAt = (par, x, z, w, d, y = 0.12) => { const p = mesh(new T.PlaneGeometry(w, d), M.pitch, x, y, z, par); p.rotation.x = -Math.PI / 2; p.castShadow = false; return p; };
+  const goals = (par, x, z, w) => { [-1, 1].forEach(s => { const gx = x + s * w / 2; box(0.4, 2.4, 0.4, M.white, gx, 0, z - 3.6, par); box(0.4, 2.4, 0.4, M.white, gx, 0, z + 3.6, par); box(0.4, 0.4, 7.6, M.white, gx, 2.2, z, par); }); };
+  const crane = (par, x, z, h) => { box(1.6, h, 1.6, M.yellow, x, 0, z, par); box(30, 1.2, 1.2, M.yellow, x + 8, h, z, par); box(3, 3, 3, M.concrete, x - 6, h - 2, z, par); };
+  const flood = (par, x, z, h) => { const p = mesh(new T.CylinderGeometry(0.45, 0.7, h, 6), M.metal, x, h / 2, z, par); const l = box(7, 3.2, 1, M.light, x, h, z, par); l.lookAt(par.position.x, 0, par.position.z); return p; };
+  /* ---- 球场：四种风格 ---- */
+  const [style] = stadStyleOf(t), sg = grp('stadium', 0, 0), PW = 54, PD = 36;
+  pitchAt(sg, 0, 0, PW, PD);
+  const stand = (len, rows, depth, x, z, ry, tierY = 0, mat = M.seat) => { const g = new T.Group(); g.position.set(x, tierY, z); g.rotation.y = ry; sg.add(g); for (let i = 0; i < rows; i++) box(len, 1.1 * (i + 1), depth / rows, mat, 0, 0, i * depth / rows + depth / rows / 2, g); return g; };
+  if (style === 'community') {
+    stand(46, 5, 8, 0, -PD / 2 - 3, 0); const rf = box(48, 0.6, 10, M.roofDark, 0, 8.2, -PD / 2 - 7.5, sg); [-22, -8, 8, 22].forEach(x => box(0.5, 8, 0.5, M.metal, x, 0, -PD / 2 - 12, sg)); void rf;
+    stand(44, 3, 5, 0, PD / 2 + 3, Math.PI, 0, M.concrete); stand(30, 3, 5, -PW / 2 - 3, 0, Math.PI / 2, 0, M.concrete); stand(30, 3, 5, PW / 2 + 3, 0, -Math.PI / 2, 0, M.concrete);
+    box(18, 4, 6, M.brick, 0, 0, -PD / 2 - 15.5, sg); [[-30, -21], [30, -21], [-30, 21], [30, 21]].forEach(([x, z]) => flood(sg, x, z, 16));
+  } else if (style === 'classic') {
+    const S1 = stand(54, 7, 12, 0, -PD / 2 - 3, 0), S2 = stand(54, 6, 10, 0, PD / 2 + 3, Math.PI), S3 = stand(36, 6, 10, -PW / 2 - 3, 0, Math.PI / 2), S4 = stand(36, 6, 10, PW / 2 + 3, 0, -Math.PI / 2); void S1, S2, S3, S4;
+    stand(54, 4, 7, 0, -PD / 2 - 15, 0, 8.5); box(60, 0.7, 24, M.roofDark, 0, 13.5, -PD / 2 - 11, sg); box(58, 0.6, 12, M.metal, 0, 9.5, PD / 2 + 9, sg); box(12, 0.6, 40, M.metal, -PW / 2 - 9, 9.5, 0, sg); box(12, 0.6, 40, M.metal, PW / 2 + 9, 9.5, 0, sg);
+    box(62, 13, 3, M.brick, 0, 0, -PD / 2 - 24, sg); [[-36, -28], [36, -28], [-36, 28], [36, 28]].forEach(([x, z]) => flood(sg, x, z, 30));
+  } else if (style === 'modern') {
+    stand(58, 8, 13, 0, -PD / 2 - 3, 0); stand(58, 8, 13, 0, PD / 2 + 3, Math.PI); stand(40, 8, 13, -PW / 2 - 3, 0, Math.PI / 2); stand(40, 8, 13, PW / 2 + 3, 0, -Math.PI / 2);
+    stand(58, 6, 9, 0, -PD / 2 - 17, 0, 9.5); stand(58, 6, 9, 0, PD / 2 + 17, Math.PI, 9.5);
+    [[-PW / 2 - 9, -PD / 2 - 9], [PW / 2 + 9, -PD / 2 - 9], [-PW / 2 - 9, PD / 2 + 9], [PW / 2 + 9, PD / 2 + 9]].forEach(([x, z]) => box(13, 9.5, 13, M.seat, x, 0, z, sg));
+    const sh = new T.Shape(); sh.moveTo(-52, -44); sh.lineTo(52, -44); sh.lineTo(52, 44); sh.lineTo(-52, 44); sh.lineTo(-52, -44); const hole = new T.Path(); hole.moveTo(-36, -26); hole.lineTo(-36, 26); hole.lineTo(36, 26); hole.lineTo(36, -26); hole.lineTo(-36, -26); sh.holes.push(hole);
+    const roof = mesh(new T.ExtrudeGeometry(sh, { depth: 0.8, bevelEnabled: false }), M.poly, 0, 23, 0, sg); roof.rotation.x = -Math.PI / 2; /* 半透明顶棚 */
+    for (let i = -4; i <= 4; i++) box(0.9, 1.8, 88, M.roofDark, i * 11.5, 23.8, 0, sg); [-44, 44].forEach(z => box(104, 1.8, 1.2, M.roofDark, 0, 23.8, z, sg));
+    [[-52, -44], [52, -44], [-52, 44], [52, 44], [0, -44], [0, 44], [-52, 0], [52, 0]].forEach(([x, z]) => box(1.4, 23, 1.4, M.metal, x, 0, z, sg));
+    [[0, -44.6, 104, 1], [0, 44.6, 104, 1]].forEach(([x, z, w]) => { box(w, 4, 1, M.concrete, x, 0, z, sg); box(w, 10, 1, M.teamGlow, x, 4, z, sg); for (let i = -12; i <= 12; i++) box(0.5, 10, 1.3, M.metal, i * 4.3, 4, z, sg); });
+    [[-52.6, 0], [52.6, 0]].forEach(([x, z]) => { box(1, 4, 89, M.concrete, x, 0, z, sg); box(1, 10, 89, M.teamGlow, x, 4, z, sg); for (let i = -10; i <= 10; i++) box(1.3, 10, 0.5, M.metal, x, 4, i * 4.3, sg); });
+  } else {
+    const prof = []; for (let i = 0; i <= 14; i++) prof.push(new T.Vector2(33 + i * 2.4, i * 1.75)); prof.push(new T.Vector2(66.6, 24.5)); prof.push(new T.Vector2(66.6, 0)); prof.push(new T.Vector2(33, 0));
+    const sm2 = M.seat.clone(); sm2.side = T.DoubleSide; sm2.map = M.seat.map.clone(); sm2.map.needsUpdate = true; sm2.map.repeat.set(24, 6); const bowl = mesh(new T.LatheGeometry(prof, 64), sm2, 0, 0, 0, sg); bowl.scale.set(1, 1, 0.72);
+    const fm = M.teamGlow.clone(); fm.side = T.DoubleSide; const fac = mesh(new T.CylinderGeometry(70, 67, 22, 64, 1, true), fm, 0, 13, 0, sg); fac.scale.set(1, 1, 0.74); const base = mesh(new T.CylinderGeometry(68, 68, 2.5, 64, 1, true), M.concrete, 0, 1.25, 0, sg); base.scale.set(1, 1, 0.74); base.material = M.concrete.clone(); base.material.side = T.DoubleSide;
+    for (let i = 0; i < 48; i++) { const a = i / 48 * Math.PI * 2; const rb = box(0.8, 22, 1.2, M.metal, Math.cos(a) * 70.3, 2, Math.sin(a) * 70.3 * 0.74, sg); rb.rotation.y = -a; }
+    const rp = []; [[46, 30.5], [52, 29.5], [60, 28.6], [71, 28]].forEach(([r, y]) => rp.push(new T.Vector2(r, y))); const roof = mesh(new T.LatheGeometry(rp, 64), M.poly, 0, 0, 0, sg); roof.scale.set(1, 1, 0.72);
+    for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2, x = Math.cos(a) * 60, z = Math.sin(a) * 60 * 0.72; const b = box(1.2, 4, 26, M.metal, x, 26, z, sg); b.lookAt(0, 26, 0); }
+    const ring = mesh(new T.TorusGeometry(71, 0.9, 6, 64), M.metal, 0, 28.2, 0, sg); ring.rotation.x = Math.PI / 2; ring.scale.set(1, 0.72, 1);
+  }
+  if (D.stad.build) crane(sg, 50, -40, 40);
+  /* ---- 俱乐部总部：玻璃幕墙塔楼，三段退台 ---- */
+  { const g = grp('hq', -118, -105), lv = +D.hq.lv.slice(2), h = 26 + lv * 8; box(26, h, 22, M.glass, 0, 0, 0, g); box(20, 12, 16, M.glass, 0, h, 0, g); box(13, 6, 10, M.roofDark, 0, h + 12, 0, g); box(14, 4, 0.6, M.team, 0, h + 13, 8.4, g); box(34, 6, 30, M.concrete, 0, 0, 0, g); box(36, 0.8, 32, M.metal, 0, 6, 0, g); }
+  /* ---- 商业中心：玻璃店面 + 球队色雨篷 + 大招牌 ---- */
+  { const g = grp('store', 20, -112), lv = +D.store.lv.slice(2); box(44 + lv * 4, 11, 22, M.glass, 0, 0, 0, g); box(48 + lv * 4, 1, 8, M.team, 0, 7, 14, g); box(30, 5, 1, M.team, 0, 11.5, 11.2, g); box(46 + lv * 4, 1, 24, M.roofDark, 0, 11, 0, g); if (D.store.build) crane(g, 28, -6, 30); }
+  /* ---- 医疗中心：白色建筑 + 蓝色玻璃带 + 红十字 ---- */
+  { const g = grp('med', 128, -108), lv = +D.med.lv.slice(2), h = 12 + lv * 4; box(30, h, 24, M.white, 0, 0, 0, g); for (let y = 3; y < h - 2; y += 6) box(30.4, 2.2, 24.4, M.glass, 0, y, 0, g); box(12, 3, 1, M.red, 0, h - 6, 12.4, g); box(3, 12, 1, M.red, 0, h - 10.5, 12.4, g); box(14, 1, 14, M.roofDark, 0, h, 0, g); }
+  /* ---- 训练基地：低矮现代建筑 + 两三块训练场 + 小看台 ---- */
+  { const g = grp('train', -125, 118), lv = +D.train.lv.slice(2); pitchAt(g, 6, -8, 44, 28); goals(g, 6, -8, 44); if (lv >= 2) { pitchAt(g, 6, 26, 44, 28); goals(g, 6, 26, 44); } if (lv >= 3) pitchAt(g, 58, 26, 30, 20);
+    box(40, 7, 12, M.office, 6, 0, -32, g); box(46, 0.8, 18, M.metal, 6, 7, -30, g); box(20, 3, 4, M.seat, 6, 0, -20, g); if (D.train.build) crane(g, 40, -30, 28); }
+  /* ---- 青训学院：红砖楼 + 斜屋顶 + 训练场 ---- */
+  { const g = grp('acad', 18, 118), lv = +D.acad.lv.slice(2); pitchAt(g, -8, 6, 38, 24); goals(g, -8, 6, 38); const w = 24 + lv * 3; box(w, 9, 14, M.brick, 30, 0, -4, g); prism(w + 1.5, 5.5, 16, M.tile, 30, 9, -4, g); box(4, 4, 0.6, M.glass, 26, 2, 3.2, g); box(4, 4, 0.6, M.glass, 34, 2, 3.2, g); if (D.acad.build) crane(g, 46, 6, 26); }
+  /* ---- 球迷俱乐部：砖砌酒吧 + 旗子 ---- */
+  { const g = grp('fans', 132, 46); box(24, 8, 16, M.brick, 0, 0, 0, g); prism(25.5, 5, 18, M.tile, 0, 8, 0, g); box(6, 5, 0.6, M.team, 0, 1, 8.1, g);
+    for (let i = 0; i < 3; i++) { box(0.4, 16, 0.4, M.metal, -8 + i * 8, 0, 11, g); box(5, 3, 0.15, i % 2 ? M.team : M.white, -5.4 + i * 8, 13, 11, g); } }
+  /* ---- 媒体中心：深色楼 + 卫星天线 ---- */
+  { const g = grp('media', 132, 128); box(26, 12, 20, M.office, 0, 0, 0, g); box(27, 1, 21, M.roofDark, 0, 12, 0, g); [-6, 6].forEach(x => { const d = mesh(new T.SphereGeometry(4, 12, 6, 0, Math.PI * 2, 0, Math.PI / 3), M.white, x, 14, 0, g); d.rotation.x = -0.9; }); box(0.4, 10, 0.4, M.metal, 10, 13, -6, g); }
+  /* ---- 树、车（InstancedMesh，一次画完） ---- */
+  { const spots = []; for (let i = 0; i < 240 && spots.length < 90; i++) { const x = (ghash('t3x|' + i) - 0.5) * 400, z = (ghash('t3z|' + i) - 0.5) * 400; const bad = [[-80, -80, 80, 80], [-160, -140, -70, -70], [-10, -140, 70, -90], [100, -140, 170, -80], [-170, 85, -70, 160], [-30, 90, 70, 150], [110, 30, 160, 70], [110, 105, 160, 150], [96, -50, 150, 0], [-140, 5, -90, 60]].some(([a, b, c, d]) => x > a && x < c && z > b && z < d) || Math.abs(z + 62) < 8 || Math.abs(z - 72) < 8 || Math.abs(x + 78) < 8 || Math.abs(x - 86) < 8; if (!bad) spots.push([x, z, 0.8 + ghash('t3s|' + i) * 0.7]); }
+    const tr = new T.InstancedMesh(new T.CylinderGeometry(0.5, 0.7, 4, 5), M.trunk, spots.length), lf = new T.InstancedMesh(new T.ConeGeometry(4, 10, 7), M.leaf, spots.length), mm = new T.Matrix4();
+    spots.forEach(([x, z, s], i) => { mm.makeScale(s, s, s).setPosition(x, 2 * s, z); tr.setMatrixAt(i, mm); mm.makeScale(s, s, s).setPosition(x, 8.5 * s, z); lf.setMatrixAt(i, mm); }); if (shadows) { lf.castShadow = true; tr.castShadow = true; } root.add(tr); root.add(lf);
+    const cars = []; [[122, -25, 46, 40], [-115, 32, 40, 44]].forEach(([cx, cz, w, d], j) => { for (let r = 0; r < 4; r++) for (let c = 0; c < 8; c++) if (ghash('c3|' + t + j + r + c) < 0.62) cars.push([cx - w / 2 + 4 + c * (w - 8) / 7, cz - d / 2 + 5 + r * (d - 10) / 3]); });
+    const carM = new T.InstancedMesh(new T.BoxGeometry(2.4, 1.6, 4.4), new T.MeshStandardMaterial({ roughness: 0.4, metalness: 0.5 }), cars.length), col = new T.Color(), pal = [0xd9d9d9, 0xb03030, 0x2c3e50, 0xf1c40f, 0x7f8c8d, 0x1f5fa8];
+    cars.forEach(([x, z], i) => { mm.makeTranslation(x, 0.8, z); carM.setMatrixAt(i, mm); carM.setColorAt(i, col.setHex(pal[Math.floor(ghash('cc3|' + t + i) * pal.length)])); }); if (shadows) carM.castShadow = true; root.add(carM); }
+  /* ---- 名牌：HTML 标签跟着建筑投影位置走 ---- */
+  const LAB = [['stadium', 0, style === 'bowl' ? 34 : style === 'modern' ? 28 : 20, 0], ['hq', -118, 60, -105], ['store', 20, 20, -112], ['med', 128, 32, -108], ['train', -119, 14, 110], ['acad', 48, 22, 114], ['fans', 132, 22, 46], ['media', 132, 24, 128]];
+  const NAME = { stadium: (() => { const L = sponsorsOf(t); const x = L && L.find(y => y.slot === 'stad'); return x ? `${x.brand}球场` : (TD[t] && TD[t].stadium) || '主场'; })(), hq: '俱乐部总部', store: '商业中心', med: '医疗中心', train: '训练基地', acad: '青训学院', fans: '球迷俱乐部', media: '媒体中心' };
+  const LV = { stadium: D.stad, hq: D.hq, store: D.store, med: D.med, train: D.train, acad: D.acad };
+  let host0 = host, labs = {}; const mkLabels = h => { const box2 = h.querySelector('.c3lab'); box2.innerHTML = LAB.map(([k]) => `<button class="c3tag${LV[k] && LV[k].build ? ' warn' : ''}" data-campus="${k}" data-t="${esc(t)}">${LV[k] ? `<i>${LV[k].lv}</i>` : ''}${esc(NAME[k])}</button>`).join(''); labs = {}; box2.querySelectorAll('.c3tag').forEach(b => labs[b.dataset.campus] = b); };
+  /* ---- 镜头、拖动、点建筑 ---- */
+  let ang = -0.75, auto = !c3Reduce(), drag = null, lastUser = 0, raf = 0, visible = true, running = false, last = 0;
+  const ray = new T.Raycaster(), v2 = new T.Vector2(), v3 = new T.Vector3();
+  const size = () => { const w = host0.clientWidth || 600, h = Math.round(Math.min(560, Math.max(300, w * 0.62))); renderer.setSize(w, h, false); renderer.domElement.style.width = '100%'; renderer.domElement.style.height = h + 'px'; cam.aspect = w / h; cam.updateProjectionMatrix(); };
+  const place = () => { const zf = Math.max(1, Math.min(1.6, 2.05 / cam.aspect)), R = 255 * zf, H = 150 * zf; scene.fog.near = 330 * zf; scene.fog.far = 680 * zf; cam.position.set(Math.cos(ang) * R, H, Math.sin(ang) * R); cam.lookAt(0, 6, 0); const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+    LAB.forEach(([k, x, y, z]) => { const b = labs[k]; if (!b) return; v3.set(x, y, z).project(cam); if (v3.z > 1) { b.style.display = 'none'; return; } b.style.display = ''; b.style.transform = `translate(${(v3.x * 0.5 + 0.5) * w}px,${(-v3.y * 0.5 + 0.5) * h}px) translate(-50%,-100%)`; }); };
+  const frame = ts => { if (!C3 || C3.renderer !== renderer) return; raf = 0; const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0; last = ts;
+    if (auto && !drag && performance.now() - lastUser > 2500) ang += dt * 0.07; place(); renderer.render(scene, cam);
+    if (running && visible && !document.hidden && !(document.getElementById('dlg') || {}).open && (auto || drag)) raf = requestAnimationFrame(frame); else { running = false; last = 0; } };
+  const kick = () => { if (!running) { running = true; last = 0; raf = requestAnimationFrame(frame); } };
+  const cv = renderer.domElement; cv.style.display = 'block'; cv.style.touchAction = 'pan-y'; cv.setAttribute('aria-label', `${t} 3D 球会园区，可以拖动转换角度`);
+  cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, a: ang, moved: false }; lastUser = performance.now(); kick(); });
+  const mv = e => { if (!drag) return; const dx = e.clientX - drag.x; if (Math.abs(dx) > 4) drag.moved = true; ang = drag.a - dx * 0.008; lastUser = performance.now(); }; addEventListener('pointermove', mv);
+  const up = e => { if (!drag) return; const d = drag; drag = null; lastUser = performance.now(); if (d.moved || e.target !== cv) return; const r = cv.getBoundingClientRect(); v2.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(v2, cam);
+    const hit = ray.intersectObjects(root.children, true).find(h => { let o = h.object; while (o && !o.userData.key) o = o.parent; return o; }); if (hit) { let o = hit.object; while (o && !o.userData.key) o = o.parent; openCampus(t, o.userData.key); } };
+  addEventListener('pointerup', up);
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => { visible = es.some(x => x.isIntersecting); if (visible) kick(); }) : null;
+  const ro = 'ResizeObserver' in window ? new ResizeObserver(() => { size(); kick(); if (!auto) { place(); renderer.render(scene, cam); } }) : null;
+  const onVis = () => { if (!document.hidden) kick(); }; document.addEventListener('visibilitychange', onVis);
+  const attach = h => { host0 = h; const dg = document.getElementById('dlg'); if (dg) { dg.removeEventListener('close', kick); dg.addEventListener('close', kick); } const msg = h.querySelector('.c3msg'); if (msg) msg.remove(); h.insertBefore(cv, h.firstChild); mkLabels(h); if (io) { io.disconnect(); io.observe(h); } if (ro) { ro.disconnect(); ro.observe(h); } size(); place(); renderer.render(scene, cam); kick(); };
+  const api = { t, ver: MOD_VER_SEASON + '|' + JSON.stringify((S.oedit || {})[t] || 0).length, renderer, attach, pause: () => { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; if (io) io.disconnect(); if (ro) ro.disconnect(); },
+    dispose: () => { api.pause(); removeEventListener('pointermove', mv); const dg = document.getElementById('dlg'); if (dg) dg.removeEventListener('close', kick); removeEventListener('pointerup', up); document.removeEventListener('visibilitychange', onVis); scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }); renderer.dispose(); try { renderer.forceContextLoss(); } catch (e) { } cv.remove(); } };
+  C3 = api; attach(host); return api; }
 
 /* ---------- 编辑老板与团队 ---------- */
 function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) || {}, L = staffOf(t), B = boardPlan(t), tk = B.tick[SEASON] ?? o.tick;
@@ -8746,6 +8904,7 @@ document.addEventListener('click', e => {
   if (act === 'u21t') return u21TeamDlg(el.dataset.t);
   if (act === 'teamEdit') return teamEditDlg(el.dataset.t);
   if (act === 'oEdit') return oEditDlg(el.dataset.t);
+  if (act === 'c3Mode') { try { localStorage.setItem('ves-campus-mode', el.dataset.v); } catch (e) { } return render(); }
   if (act === 'campusGo') { $('#dlg').close(); TEAM_TAB = el.dataset.v; return render(); }
   if (act === 'oeSave') return oEditSave(el.dataset.t, false);
   if (act === 'oeReset') return oEditSave(el.dataset.t, true);
