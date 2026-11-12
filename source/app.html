@@ -5963,26 +5963,26 @@ function buildCampus3D(T, t, host) {
 function youthAutoUp(ri) { if (!S || !S.fx) return; let n = 0; const win = mktActive() && !mktLate(), eff = win ? SEASON + 1 : SEASON;
   Object.keys(TD).forEach(t => { const top = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a); if (top.length < 11) return; const bar = top[10];
     let A = []; try { A = academyOf(t); } catch (e) { return; }
-    A.filter(k => k.kind === 'acad' && k.kid && !k.kid.lock && k.age >= 16 && k.rating >= bar && kidEvents(k.kid.id).every(e => e.s < SEASON || (e.act === 'promote' && e.s > eff))).sort((a, b) => b.rating - a.rating).slice(0, 2).forEach(k => {
+    A.filter(k => k.kind === 'acad' && k.kid && !k.kid.lock && k.age >= 16 && k.rating >= bar && kidEvents(k.kid.id).every(e => e.s < SEASON || (e.act === 'promote' && e.s > eff))).sort((a, b) => b.rating - a.rating).forEach(k => {
       S.acadDec = S.acadDec || {}; (S.acadDec[k.kid.id] = S.acadDec[k.kid.id] || []).push({ s: eff, act: 'promote', to: null, fee: 0, auto: 1 });
       S.yup = S.yup || []; S.yup.push({ s: SEASON, ri, t, name: k.name, pos: k.pos, age: k.age, r: k.rating, bar }); n++; }); });
   if (n) { GROWN = 0; applyGrowth(); try { ENGINE.clearCache(); } catch (e) { } } return n; }
 
 /* ---------- 年轻球员每季检讨（季初一次，所有模式）----------
    上季在一线队几乎没上场、表现也一般、能力又排不进前 16 的 21 岁以下球员 → 下放 U21 多踢比赛；
-   上季 U21 表现好（场均评分 7.0 以上、至少 8 场）、能力接近一线队轮换水平的青训球员 → 提拔上来补位。每队每季最多各 2 人。 */
+   上季 U21 表现好（场均评分 7.0 以上、至少 8 场）、能力接近一线队轮换水平的青训球员 → 提拔上来补位。不限人数，只保证一线队不少于 25 人。 */
 function youthReview() { if (!S || SEASON < 2) return; S.yrev = S.yrev || {}; if (S.yrev[SEASON]) return; const A = (S.archive || []).find(x => x.s === SEASON - 1); if (!A || !A.ps) return; S.yrev[SEASON] = []; const LOG = S.yrev[SEASON];
   const st = {}; A.ps.forEach(q => { if (q[22]) st[q[22] + '|' + q[1]] = { apps: q[2], min: q[3], avg: q[2] ? q[14] / 10 / q[2] : 0, g: q[4], a: q[5] }; });
   const U = S.u21 && S.u21.s === SEASON - 1 ? S.u21.p : null; let ch = 0;
   Object.keys(TD).forEach(t => { const L = PDB[t] || []; if (L.length < 18) return; const top = L.map(q => q.rating).sort((a, b) => b - a), rot = top[Math.min(15, top.length - 1)]; let xi = new Set(); try { xi = new Set(ENGINE.lineup(t).xi.map(x => x.name)); } catch (e) { }
     const fresh = new Set((S.yup || []).filter(x => x.s === SEASON && x.t === t).map(x => x.name)); let size = L.length, down = 0;
-    L.filter(p => (p.age || 30) <= 21 && !xi.has(p.name) && !fresh.has(p.name) && p.rating < rot).map(p => ({ p, q: st[(p.uid || '') + '|' + t] })).filter(x => x.q && x.q.apps < 6 && (x.q.apps === 0 || x.q.avg < 6.7)).sort((a, b) => a.p.rating - b.p.rating).slice(0, 2).forEach(({ p, q }) => {
+    L.filter(p => (p.age || 30) <= 21 && !xi.has(p.name) && !fresh.has(p.name) && p.rating < rot).map(p => ({ p, q: st[(p.uid || '') + '|' + t] })).filter(x => x.q && x.q.apps < 6 && (x.q.apps === 0 || x.q.avg < 6.7)).sort((a, b) => a.p.rating - b.p.rating).forEach(({ p, q }) => {
       if (size <= 25) return; S.demoted = S.demoted || {}; S.demoted[roleKey(p)] = { t, s: SEASON, name: p.name, auto: 1 }; size--; down++; ch++; LOG.push({ t, name: p.name, kind: 'down', why: `上季一线队只出场 ${q.apps} 次${q.apps ? `，场均 ${q.avg.toFixed(1)}` : ''}，能力 ${p.rating} 排不进前 16` }); });
     /* 先前自动下放、现在能力已经够轮换的，拉回一线队 */
     Object.entries(S.demoted || {}).forEach(([k, d]) => { if (d.t !== t || !d.auto || d.s >= SEASON) return; const p = (DEMOTED[t] || []).find(x => roleKey(x) === k); if (p && p.rating >= rot - 1) { delete S.demoted[k]; ch++; LOG.push({ t, name: d.name, kind: 'up', why: `在 U21 历练后能力升到 ${p.rating}，回到一线队` }); } });
     if (!U) return; let K = []; try { K = academyOf(t); } catch (e) { return; }
     K.filter(k => k.kind === 'acad' && k.kid && !k.kid.lock && k.age >= 17 && U[k.kid.id] && U[k.kid.id][0] >= 8 && kidEvents(k.kid.id).every(e => e.s < SEASON)).map(k => { const q = U[k.kid.id]; return { k, apps: q[0], g: q[1], avg: q[3] / 10 / q[0] }; })
-      .filter(x => x.avg >= 7.0 && x.k.rating >= rot - 2).sort((a, b) => b.avg - a.avg).slice(0, Math.min(2, down + 1)).forEach(x => {
+      .filter(x => x.avg >= 7.0 && x.k.rating >= rot - 2).sort((a, b) => b.avg - a.avg).forEach(x => {
         (S.acadDec = S.acadDec || {})[x.k.kid.id] = (S.acadDec[x.k.kid.id] || []).concat([{ s: SEASON, act: 'promote', to: null, fee: 0, auto: 1 }]); ch++; LOG.push({ t, name: x.k.name, kind: 'up', why: `上季 U21 ${x.apps} 场 ${x.g} 球、场均 ${x.avg.toFixed(1)}，能力 ${x.k.rating}` }); }); });
   if (ch) { GROWN = 0; applyGrowth(); try { ENGINE.clearCache(); } catch (e) { } TAC_KEY = null; } }
 /* ---------- 全自动 / 快速推演的合同与报价决策：看球员的留队意愿 ----------
@@ -5999,12 +5999,13 @@ function transHistPanel(t) { const seen = new Set(), L = TRANSFERS.filter(x => (
   const nm = x => x.pid != null ? `<button class="lnk" data-pid="${x.pid}">${esc(x.name || (HIST.players[x.pid] || [])[0] || '?')}</button>` : esc(x.name || '?');
   const ty = x => x.rel ? '解约' : x.free ? '自由转会' : x.loan ? '租借' : x.kid ? '青训出售' : '';
   const other = (x, inn) => { if (!inn && x.rel) return '解约离队'; const o = x[inn ? 'from' : 'to']; return o && o !== '解约' ? (TD[o] ? tlink(o, 14) : esc(o)) : inn ? '（自由身）' : '自由身离队'; };
-  const row = (x, inn) => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>${nm(x)} <span class="dim">${inn ? '← ' : '→ '}${other(x, inn)}</span>${x.win ? ' <span class="chip" style="font-size:10px">冬窗</span>' : ''}</span><span class="mono" style="font-size:12px">${ty(x) || (x.fee ? money(x.fee) : '—')}</span></div>`;
+  const row = (x, inn) => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${nm(x)}</b> <span class="dim">${inn ? '来自' : (x.rel || !x.to || x.to === '解约' ? '' : '转往')}</span> ${other(x, inn)}${x.win ? ' <span class="chip" style="font-size:10px">冬窗</span>' : ''}</span><span class="mono" style="font-size:12px">${ty(x) || (x.fee ? money(x.fee) : '—')}</span></div>`;
   if (!ss.length) return `<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer history</div><h2>${esc(t)} · 历年转会</h2></div></div><p class="note" style="margin:0">还没有转会纪录。</p></div>`;
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Transfer history</div><h2>${esc(t)} · 历年转会</h2></div><span class="note">每一季的转入和转出（夏窗记在新赛季，冬窗另外标示）</span></div>
     ${ss.map((s0, i) => { const X = by[s0], IN = X.filter(x => x.to === t), OUT = X.filter(x => x.from === t), sp = IN.reduce((a, x) => a + (x.free || x.loan ? 0 : x.fee || 0), 0), rc = OUT.reduce((a, x) => a + (x.free || x.loan ? 0 : x.fee || 0), 0);
       return `<details ${i < 2 ? 'open' : ''} style="margin-bottom:10px"><summary style="cursor:pointer;font-weight:800">${SN(s0)} <span class="dim" style="font-weight:400;font-size:12px">转入 ${IN.length} 人（${money(sp)}）· 转出 ${OUT.length} 人（${money(rc)}）</span></summary>
-        <div class="grid g-2" style="gap:12px;margin-top:8px"><div><div class="eyebrow" style="margin-bottom:4px">转入</div><div class="rank-list">${IN.map(x => row(x, true)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div><div><div class="eyebrow" style="margin-bottom:4px">转出</div><div class="rank-list">${OUT.map(x => row(x, false)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div></div></details>`; }).join('')}</div>`; }
+        <p style="margin:6px 0 0;font-size:13px;line-height:1.7"><span style="color:var(--win,#3c9);font-weight:700">转入：</span>${IN.length ? IN.map(x => `<b>${esc(x.name || (HIST.players[x.pid] || [])[0] || '?')}</b>`).join('、') : '没有'}<br><span style="color:#e66;font-weight:700">转出：</span>${OUT.length ? OUT.map(x => `<b>${esc(x.name || (HIST.players[x.pid] || [])[0] || '?')}</b>`).join('、') : '没有'}</p>
+        <div class="grid g-2" style="gap:12px;margin-top:8px"><div><div class="eyebrow" style="margin-bottom:4px;color:var(--win,#3c9)">转入（谁、从哪里来、多少钱）</div><div class="rank-list">${IN.map(x => row(x, true)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div><div><div class="eyebrow" style="margin-bottom:4px;color:#e66">转出（谁、去了哪里、多少钱）</div><div class="rank-list">${OUT.map(x => row(x, false)).join('') || '<p class="note" style="margin:0">—</p>'}</div></div></div></details>`; }).join('')}</div>`; }
 
 /* ---------- 编辑老板与团队 ---------- */
 function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) || {}, L = staffOf(t), B = boardPlan(t), tk = B.tick[SEASON] ?? o.tick;
@@ -8724,7 +8725,7 @@ function autoSquad(phase) {
     Object.keys(TD).forEach(t => { /* 包括不在威超、踢威冠联赛的球队 */
       /* 开季：青训里已经够得上一线队轮换水平的（≥ 一线队第 14 好的能力），不管人数够不够都提拔上来（每队每季最多 2 人），多出来的人下面会清掉 */
       if (phase === 'start' && t === Object.keys(TD)[0]) { try { youthReview(); } catch (e) { console.error(e); } }
-      if (phase === 'start') { const top = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a), bar = top[Math.min(13, top.length - 1)] || 0; const yc = (() => { try { return ((coachOf(t) || {}).kind === 'U21 提拔' ? 3 : 0) + youthBoost(t); } catch (e) { return 0; } })(); /* 梯队出身的主帅更敢用年轻人 */ const up = academyOf(t).filter(k => k.kind === 'acad' && k.kid && k.age >= 17 && k.rating >= bar - yc && !kidEvents(k.kid.id).some(e => e.s >= SEASON)).sort((a, b) => b.rating - a.rating).slice(0, 2);
+      if (phase === 'start') { const top = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a), bar = top[Math.min(13, top.length - 1)] || 0; const yc = (() => { try { return ((coachOf(t) || {}).kind === 'U21 提拔' ? 3 : 0) + youthBoost(t); } catch (e) { return 0; } })(); /* 梯队出身的主帅更敢用年轻人 */ const up = academyOf(t).filter(k => k.kind === 'acad' && k.kid && k.age >= 17 && k.rating >= bar - yc && !kidEvents(k.kid.id).some(e => e.s >= SEASON)).sort((a, b) => b.rating - a.rating);
         up.forEach(k => kidDecide(k.kid.id, 'promote')); if (up.length) { GROWN = 0; applyGrowth(); log.push(`${t} 从青训提拔 ${up.map(k => k.name + '（' + k.pos + ' ' + k.rating + '/' + k.pot + '，已达一线队轮换水平）').join('、')}`); } }
       const size = phase === 'sum' ? projSize(t) : (PDB[t] || []).length;
       if (size > SQUAD_MAX) { const cut = sqCutList(t, size - SQUAD_MAX), sold = [], rel = [];
