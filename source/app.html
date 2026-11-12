@@ -494,6 +494,7 @@ th.sorted{color:var(--accent-2)}
 .ico{display:inline-block;vertical-align:-.18em;flex:none}.btn .ico,.roundchip .ico,.chip .ico{margin-right:4px}.derbytag .ico{margin-right:2px}
 .u21tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;padding:0 5px;border-radius:4px;background:rgba(var(--acc-rgb),.16);color:var(--acc-hi,#fff);vertical-align:1px}
 .u21dg{grid-template-columns:minmax(260px,.9fr) minmax(0,1.3fr)}@media (max-width:760px){.u21dg{grid-template-columns:1fr}}
+.campus{border-radius:12px;overflow:hidden;background:linear-gradient(#1d3b24,#152b1a);margin:0 -4px}.campus svg{display:block;width:100%;height:auto}.campus .cmp{cursor:pointer;outline:none}.campus .cmp:hover>*,.campus .cmp:focus-visible>*{filter:brightness(1.18)}.campus .cmp:focus-visible .cmp-tag rect:first-child{stroke:#fff;stroke-width:2}.campus text{font-family:inherit}
 </style>
 <div id="gate" hidden><div class="gl gsky"></div><div class="gl gbeam"></div><div class="gl gfield"></div><div class="gl ghaze"></div><div class="gl gvig"></div><div class="gl ggrain"></div>
 <div class="ghero"><img class="glogo" id="gLogo" alt=""><div class="geye" id="gEye">Season 01</div><h1>VES 足球世界</h1><div class="gen">VES FOOTBALL WORLD</div><div class="gline" id="gLine"></div></div>
@@ -846,7 +847,7 @@ function teamCtx(team, ri, fx = S.fx) {
 }
 const ctxPair = (m, ri) => ({ h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) });
 function simFx(m, i) { if (m.r) return; if (m.pr) { m.r = m.pr; delete m.pr; delete m.ko; delete m.du; return; } m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }
-function postRound(i) { try { u21Sync(); } catch (e) { console.error(e); } try { monthAwardsTick(i); } catch (e) { console.error(e); } try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
+function postRound(i) { try { u21Sync(); } catch (e) { console.error(e); } try { monthAwardsTick(i); } catch (e) { console.error(e); } try { medCheck(i); } catch (e) { console.error(e); } try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
 /* 没开全自动时也要维持一线队人数：每季开踢前、冬窗后第一场前各整理一次（不到 28 人从青训提拔，超过 32 人清理冗员） */
 function sqKeep(i) { if (!S || (S.auto && S.auto.on) || CLOUD.status === 'view' || (WEB.on && !WEB.key)) return; if (i == null || i < 0) return; const ph = i >= WIN_A ? 'win' : 'start'; if (ph === 'win' && !(typeof winActive === 'function' && winActive()) && i !== WIN_A) return; const k = ph + SEASON; if (S.sqK0 === k) return; S.sqK0 = k; try { autoSquad(ph); } catch (e) { console.error(e); } }
 function playRound(i) { sqKeep(i); try { tierCal(false, i); } catch (e) { console.error(e); } try { cupFreeze(); } catch (e) { } ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => simFx(m, i)); postRound(i); }
@@ -2548,6 +2549,7 @@ function newsItems() {
   try { const E = intlAll()[SEASON - 1]; if (E) Object.values(E).forEach(T => { const f = T.ko[T.ko.length - 1].m[0]; add(-1, '国家队', 'gold', `${esc(T.lab)}：<b>${esc(T.champ)}</b> 夺冠（决赛 ${esc(f[0])} ${f[2]}:${f[3]} ${esc(f[1])}${f[5] ? `，点球 ${f[5][0]}:${f[5][1]}` : ''}）${T.mvp ? `，最佳球员 ${ipLink(T.mvp)}` : ''}${T.boot ? `，金靴 ${ipLink(T.boot)} ${T.boot.g} 球` : ''}`, T.k === 'wc' ? 5 : 3); }); } catch (e) { console.error(e); }
   try { if (ownOn(SEASON) && SEASON > 1) { S.teams.forEach(t => { const tr = tourOf(t, SEASON); if (tr && clubBaseApprox(t) >= 82) add(-1, '季前', '', `${tm(t)} 季前赴${esc(tr.region)}巡回比赛，进账 ${money(tr.rev)}`, 0); });
       const MKp = S.market && S.market[SEASON - 1]; if (MKp) MKp.offers.filter(o => o.st === 'a' && (o.dl || o.rc)).sort((a, b) => b.fee - a.fee).slice(0, 6).forEach(o => add(-1, o.rc ? '解约金' : '截止日', 'gold', o.rc ? `${tm(o.to)} 直接支付 ${esc(o.name)} 的解约金 ${money(o.fee)}，${TD[o.from] ? tm(o.from) : esc(o.from)} 无法拒绝` : `转会截止日：${tm(o.to)} 加价到 ${money(o.fee)} 抢下 ${TD[o.from] ? tm(o.from) : esc(o.from)} 的 ${esc(o.name)}`, 3)); } } catch (e) { console.error(e); }
+  try { Object.entries(S.sfire || {}).forEach(([t, L]) => L.filter(x => x.s === SEASON).forEach(x => { const nw = staffOf(t).find(y => y.k === x.k); add(x.ri, '董事会', 'bad', `${tm(t)} 本季已有 ${x.n} 人次伤病，董事会解雇${x.k === 'med' ? '队医主管' : '体能教练'}${x.old ? ' ' + esc(x.old) : ''}，${nw ? `改聘 ${esc(nw.name)}（能力 ${nw.q}）接任` : '另聘他人接任'}`, 3); })); } catch (e) { console.error(e); }
   // 场外事件
   offField().filter(e => e.ri <= Math.min(cur, 37) && (nr < 0 || e.ri <= nr)).forEach(e => {
     if (e.kind === 'train') add(e.ri, '伤病', 'bad', `${pl(e.team, e.name)}（${tm(e.team)}）训练中${esc(e.what)}，预计缺席 ${e.dur} 场`, 1);
@@ -2778,7 +2780,7 @@ function pitchSVG(home, away, LL, XI, ED) {
     const xx = s.x < 8 ? 0 : 6 + (s.x - 12) * 0.95; let x = one ? 4 + xx : (side === 'h' ? 3.5 + xx * 0.5 : 96.5 - xx * 0.5);
     const y = 3 + s.y / 100 * 58;
     const c = KITS ? (side === 'a' ? KITS.a.body : KITS.h.body) : (TD[t] ? kitsOf(t).home.body : tcol(t)), tr = KITS ? (side === 'a' ? KITS.a.trim : KITS.h.trim) : (TD[t] ? kitsOf(t).home.trim : '#000');
-    return `<g class="pl${ED ? ' ed' : ''}" ${ED ? `data-xs="${i}" style="touch-action:none"` : `data-player="${esc(t)}|${esc(s.name)}"`} tabindex="0"><circle cx="${x}" cy="${y}" r="2.15" fill="${c}" stroke="${tr}" stroke-width=".35"/><text class="rt" x="${x}" y="${y + .1}" ${luma(c) < .5 ? 'style="fill:#fff"' : ''}>${s.rating}</text><text class="nm" x="${x}" y="${y + 3.9}">${esc(s.name)}</text>${ED && s.pen ? `<text x="${x + 2.6}" y="${y - 1.9}" style="font-size:1.5px;fill:#e66;font-weight:700">−${s.pen}</text>` : ''}</g>`;
+    return `<g class="pl${ED ? ' ed' : ''}" ${ED ? `data-xs="${i}" style="touch-action:none"` : `data-player="${esc(t)}|${esc(s.name)}"`} tabindex="0"><circle cx="${x}" cy="${y}" r="2.15" fill="${c}" stroke="${tr}" stroke-width=".35"/><text class="rt" x="${x}" y="${y + .1}" ${luma(c) < .5 ? 'style="fill:#fff"' : ''}>${s.rating}</text><text class="nm" x="${x}" y="${y + 3.9}">${esc(s.name)}</text>${s.subFor ? `<circle cx="${x}" cy="${y}" r="2.85" fill="none" stroke="#e9a23b" stroke-width=".3" stroke-dasharray=".7 .5"/><text x="${x}" y="${y + 5.7}" style="font-size:1.45px;fill:#e9a23b;font-weight:700;text-anchor:middle">代 ${esc(s.subFor)}</text>` : ''}${ED && s.pen ? `<text x="${x + 2.6}" y="${y - 1.9}" style="font-size:1.5px;fill:#e66;font-weight:700">−${s.pen}</text>` : ''}</g>`;
   };
   return `<div class="pitch"><svg viewBox="0 0 100 64" role="img" aria-label="首发阵容">
     <rect class="p-bg" x="0" y="0" width="100" height="64" rx="1"/>
@@ -5120,7 +5122,7 @@ function xiPanel(t, st) {
     ${(() => { const ef = sel || cur, ed = S.teams.includes(t) && TD[t] && ef, man = ed && S.xio && S.xio[t] && S.xio[t][ef], C0 = ed ? teamCtx(t, nextRound() >= 0 ? nextRound() : S.fx.length) : null, shown = xi || (ef && ef !== xiFormNow(t) && FORMS[ef] ? previewXI(t, ef) : null) || ENGINE.lineup(t).xi;
       if (!ed) return pitchSVG(t, null, null, xi); setTimeout(xiDragInit, 0);
       const AV = !sel && C0 && C0.out ? availXI(t, shown, C0.out) : { subs: [] };
-      return `<div class="xied" data-t="${esc(t)}" data-f="${esc(ef)}">${(() => { const O = man || null, sq = PDB[t] || [], F = O ? (shown || []).map(x => { const k = O[x.slot || x.pos], p = k && sq.find(q => roleKey(q) === k); return p && p.name !== x.name && slotPen(x.slot || x.pos, p) >= XIO_FIX_PEN ? { autoFor: p.name, name: x.name, pos: x.slot || x.pos } : null; }).filter(Boolean) : []; return F.length ? `<div class="note" style="margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(216,180,95,.12)">位置不熟悉，已自动换人：${F.map(x => `${esc(x.autoFor)} → ${esc(x.name)}（${esc(x.pos)}）`).join('、')}</div>` : ''; })()}${AV.subs.length ? `<div class="note" style="margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(230,85,85,.1);border:1px solid rgba(230,85,85,.3)">下一场伤停，比赛时自动换人：${AV.subs.map(x => `<b>${esc(x.off)}</b>（${esc(whyZh(x.why))}）→ <b>${esc(x.on)}</b>`).join('；')}</div>` : ''}${man ? `<div class="btns" style="justify-content:space-between;align-items:center;margin:0 0 6px"><span class="chip gold" style="font-size:11px">手动安排 · ${esc(ef)}</span><button class="lnk" data-act="xiReset" data-t="${esc(t)}" data-f="${esc(ef)}" style="font-size:12px">恢复主帅自动安排</button></div>` : ''}${pitchSVG(t, null, null, shown, true)}${xiBenchHtml(t, shown, C0 && C0.energy, C0 && C0.out)}</div>`; })()}
+      return `<div class="xied" data-t="${esc(t)}" data-f="${esc(ef)}">${(() => { const O = man || null, sq = PDB[t] || [], F = O ? (shown || []).map(x => { const k = O[x.slot || x.pos], p = k && sq.find(q => roleKey(q) === k); return p && p.name !== x.name && slotPen(x.slot || x.pos, p) >= XIO_FIX_PEN ? { autoFor: p.name, name: x.name, pos: x.slot || x.pos } : null; }).filter(Boolean) : []; return F.length ? `<div class="note" style="margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(216,180,95,.12)">位置不熟悉，已自动换人：${F.map(x => `${esc(x.autoFor)} → ${esc(x.name)}（${esc(x.pos)}）`).join('、')}</div>` : ''; })()}${AV.subs.length ? `<div class="note" style="margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(230,85,85,.1);border:1px solid rgba(230,85,85,.3)">伤停期间已由轮换球员顶上，原首发回归后自动换回：${AV.subs.map(x => `<b>${esc(x.off)}</b>（${esc(whyZh(x.why))}）→ <b>${esc(x.on)}</b>`).join('；')}</div>` : ''}${man ? `<div class="btns" style="justify-content:space-between;align-items:center;margin:0 0 6px"><span class="chip gold" style="font-size:11px">手动安排 · ${esc(ef)}</span><button class="lnk" data-act="xiReset" data-t="${esc(t)}" data-f="${esc(ef)}" style="font-size:12px">恢复主帅自动安排</button></div>` : ''}${(() => { const XS = AV.subs.length ? AV.xi : shown; return pitchSVG(t, null, null, XS, true) + xiBenchHtml(t, XS, C0 && C0.energy, C0 && C0.out); })()}</div>`; })()}
     <p class="note" style="margin:8px 0 0">拖动场上球员互换位置，把下方轮换球员拖到场上的球员身上替换首发（手机上也可以先点一名、再点另一名互换）；红色数字是踢非本位的扣分。安排按阵型分别记住，伤停的球员比赛时会自动由替补顶上。${sel ? `预览 ${esc(sel)}：按这个阵型挑最强的 11 人。${moved.length ? `换上 ${esc(moved.join('、'))}，换下 ${esc(outN.join('、'))}。` : '首发 11 人不变，只调整站位。'}${off.length ? ` ${esc(off.map(x => x.name + '（' + x.slot + '，非本位 -' + x.pen + '）').join('、'))}。` : ''}比赛时主帅按对手强弱自动选用：对手强 3 分以上用「对强队」，弱 3 分以上用「对弱队」，其他用「主打」。` : '点上面的阵型预览站位和首发人选。比赛时主帅按对手强弱自动在三套阵型之间切换。'}</p></div>`;
 }
 // ── 手动首发：在首发阵容图上拖动球员换位置、把轮换球员拖上场替换首发；按阵型分别记住（S.xio[球队][阵型] = {位置: 球员}） ──
@@ -5373,8 +5375,9 @@ function staffOf(t, s = SEASON) {
   if (!TD[t]) return []; const o = ownerAt(t, s), c = coachOf(t), oi = ownerIdx(t, s), out = [];
   STAFF_R.forEach(([k, lab, kind, eff]) => {
     let id, q, since;
-    if (kind === 'coach') { const C = c || {}; id = 'SF|' + t + '|' + (C.id || 'x') + '|' + (C.s0 || 0) + '|' + k; q = (C.rep || 74) - 6 + ghash(id) * 13 + (o.w - 60) * 0.06; since = C.s0 || 1; }
-    else { const ten = 3 + Math.floor(ghash('tn|' + t + k) * 4), s0o = o.s0 || 1, era = Math.floor((s - s0o) / ten); id = 'SC|' + t + '|' + k + '|' + oi + '|' + era; q = 56 + o.w * 0.2 + ghash(id) * 20 + (o.type === 'group' && k === 'dof' ? 6 : 0) + (o.type === 'fans' && k === 'yth' ? 6 : 0); since = s0o + era * ten; }
+    const fz = fireN(t, k, s), fl = fz ? ((S.sfire[t] || []).filter(x => x.k === k && x.s <= s).pop()) : null;
+    if (kind === 'coach') { const C = c || {}; id = 'SF|' + t + '|' + (C.id || 'x') + '|' + (C.s0 || 0) + '|' + k + (fz ? '|f' + fz : ''); q = (C.rep || 74) - 6 + ghash(id) * 13 + (o.w - 60) * 0.06 + (fz ? 6 : 0); since = fl ? fl.s : C.s0 || 1; }
+    else { const ten = 3 + Math.floor(ghash('tn|' + t + k) * 4), s0o = o.s0 || 1, era = Math.floor((s - s0o) / ten); id = 'SC|' + t + '|' + k + '|' + oi + '|' + era + (fz ? '|f' + fz : ''); q = 56 + o.w * 0.2 + ghash(id) * 20 + (fz ? 7 : 0) + (o.type === 'group' && k === 'dof' ? 6 : 0) + (o.type === 'fans' && k === 'yth' ? 6 : 0); since = fl && fl.s > s0o + era * ten ? fl.s : s0o + era * ten; }
     const hn = ghash(id + 'n'), nat = c && c.nat && kind === 'coach' && hn < 0.55 ? c.nat : hn < 0.75 || !(typeof YP !== 'undefined' && YP.NATS) ? TEAM_NAT(t) : YP.NATS[Math.floor(ghash(id + 'nn') * YP.NATS.length)];
     if (!STAFF_NM[id]) STAFF_NM[id] = coachName(id, nat); /* 职员名字另外存，不占用主帅的名字池 */
     const se = S && S.oedit && S.oedit[t] && S.oedit[t].st && S.oedit[t].st[id]; if (se) { if (se.q != null) q = se.q; }
@@ -5684,6 +5687,105 @@ function clauseTrigger(L, s) { if (!ownOn(s)) return; L.forEach(o => { if (o.rc 
 /* 转会截止日：窗口关闭前还没谈拢、但买方很想要的，加价 12% 抢下 */
 function deadlineDay(MK, by, s) { if (!ownOn(s)) return; Object.values(by).forEach(L => { if (L.some(o => o.st === 'a')) return; const o = L.filter(x => x.st === 'r' && !x.user && !x.sched && !x.loan && TD[x.to] && TD[x.from] !== undefined && !isRival(x.from, x.to) && x.fee >= x.v * 0.8).sort((a, b) => b.fee - a.fee)[0]; if (!o || ghash('dl|' + o.uid + '|' + s) > 0.3) return; if (TD[o.from] && nfsUid(o.from, o.uid)) return; const fee = Math.round(Math.max(o.fee, o.v) * 1.12); if (!canAfford(o.to, fee)) return; o.fee = fee; o.st = 'a'; o.dl = 1; o.log.push('转会截止日加价成交 ' + fee$(fee)); }); }
 function agentClauseHTML(p, club) { if (!p || !p.uid || !ownOn(SEASON)) return ''; const a = agentOf(p.uid, p.rating), cl = clauseOf(p, club); return `<div class="rank-list" style="margin-top:8px"><div class="rk" style="grid-template-columns:80px minmax(0,1fr)"><span class="muted">经纪公司</span><span>${esc(a.name)}${a.sup ? ' <span class="chip gold">超级经纪人</span>' : ''} <span class="dim" style="font-size:11px">转会时向买方收 ${a.pct}% 佣金</span></span></div><div class="rk" style="grid-template-columns:80px minmax(0,1fr)"><span class="muted">解约金</span><span>${cl ? `${money(cl)} <span class="dim" style="font-size:11px">有人付这个价，球队不能拒绝</span>` : '<span class="dim">合同没有解约金条款</span>'}</span></div></div>`; }
+
+/* ---------- 伤病太多，高层换人：半季（第 19 轮）和季末各检查一次 ----------
+   本季伤病人次是全联赛最多的三队之一、而且明显高于平均：董事会解雇队医主管另请高明；特别严重时连体能教练一起换。 */
+function injCount(t, upto) { let n = 0; S.fx.forEach((R, ri) => { if (ri > upto) return; R.forEach(m => { if (!m.r || !m.r.ev || (m.h !== t && m.a !== t)) return; m.r.ev.forEach(e => { if (e[1] === 'inj' && (e[2] === 'h' ? m.h : m.a) === t) n++; }); }); }); try { offField().forEach(e => { if (e.kind === 'train' && e.team === t && e.ri <= upto) n++; }); } catch (e) { } return n; }
+function medCheck(i) { if (!ownOn(SEASON) || (i !== 18 && i !== 37)) return; S.sfire = S.sfire || {}; const C = S.teams.map(t => ({ t, n: injCount(t, i) })), avg = C.reduce((a, x) => a + x.n, 0) / C.length; C.sort((a, b) => b.n - a.n);
+  C.slice(0, 3).forEach(({ t, n }) => { if (!TD[t] || n < Math.max(6, avg * 1.45)) return; const L = S.sfire[t] = S.sfire[t] || []; if (L.some(x => x.s === SEASON && x.k === 'med')) return; const o = ownerAt(t), pr = 0.45 + (60 - o.p) / 150 + (n / avg - 1.45) * 0.4;
+    if (ghash('mf|' + t + '|' + SEASON + '|' + i + '|' + saltOf(SEASON)) > pr) return; const old = staffOf(t).find(x => x.k === 'med'); L.push({ k: 'med', s: SEASON, ri: i, n, old: old && old.name });
+    if (n >= avg * 1.9 && !L.some(x => x.s === SEASON && x.k === 'fit')) { const of = staffOf(t).find(x => x.k === 'fit'); L.push({ k: 'fit', s: SEASON, ri: i, n, old: of && of.name }); }
+    SFM_C = {}; MOD_VER++; try { ENGINE.clearCache(); } catch (e) { } }); }
+const fireN = (t, k, s, ri) => ((S && S.sfire && S.sfire[t]) || []).filter(x => x.k === k && (x.s < s || (x.s === s && (ri == null || x.ri <= ri)))).length;
+
+/* ---------- 球会园区：等距视角的俱乐部设施图（纯 SVG，没有图片，手机也不吃力）----------
+   球场、训练基地、青训学院、医疗中心、俱乐部总部、商业中心、球迷俱乐部；规模随董事会的基建项目变化，施工中的会有吊车。点任一建筑看详细内容。 */
+const CP_S = 22, CP_OX = 500, CP_OY = 70;
+const cpP = (x, y, z = 0) => [CP_OX + (x - y) * CP_S * 0.866, CP_OY + (x + y) * CP_S * 0.5 - z * CP_S];
+const cpPts = L => L.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
+const shade = (hex, f) => { const h = hex.replace('#', ''), n = h.length === 3 ? h.split('').map(c => c + c).join('') : h.padEnd(6, '0'); const c = [0, 2, 4].map(i => Math.max(0, Math.min(255, Math.round(parseInt(n.slice(i, i + 2), 16) * f)))); return '#' + c.map(v => v.toString(16).padStart(2, '0')).join(''); };
+/* 一个长方体：x0..x1, y0..y1, 高 h（从 z0 起），三个面不同明暗 */
+function cpBox(x0, y0, x1, y1, h, col, z0 = 0, top) { const A = cpP(x0, y1, z0), B = cpP(x1, y1, z0), C = cpP(x1, y0, z0), At = cpP(x0, y1, z0 + h), Bt = cpP(x1, y1, z0 + h), Ct = cpP(x1, y0, z0 + h), Dt = cpP(x0, y0, z0 + h);
+  return `<polygon points="${cpPts([A, B, Bt, At])}" fill="${shade(col, 0.72)}"/><polygon points="${cpPts([B, C, Ct, Bt])}" fill="${shade(col, 0.55)}"/><polygon points="${cpPts([At, Bt, Ct, Dt])}" fill="${top || shade(col, 1.08)}"/>`; }
+const cpFlat = (x0, y0, x1, y1, col, z = 0, extra = '') => `<polygon points="${cpPts([cpP(x0, y0, z), cpP(x1, y0, z), cpP(x1, y1, z), cpP(x0, y1, z)])}" fill="${col}" ${extra}/>`;
+function cpPitch(x0, y0, x1, y1, z = 0) { const mx = (x0 + x1) / 2, ln = 'stroke="rgba(255,255,255,.75)" stroke-width="1" fill="none"';
+  let g = cpFlat(x0, y0, x1, y1, '#3f8f46', z); for (let i = 0; i < 6; i++) { const a = x0 + (x1 - x0) * i / 6, b = x0 + (x1 - x0) * (i + 0.5) / 6; g += cpFlat(a, y0, b, y1, '#47994e', z); }
+  g += `<polygon points="${cpPts([cpP(x0 + .15, y0 + .15, z), cpP(x1 - .15, y0 + .15, z), cpP(x1 - .15, y1 - .15, z), cpP(x0 + .15, y1 - .15, z)])}" ${ln}/><line x1="${cpP(mx, y0 + .15, z)[0]}" y1="${cpP(mx, y0 + .15, z)[1]}" x2="${cpP(mx, y1 - .15, z)[0]}" y2="${cpP(mx, y1 - .15, z)[1]}" ${ln}/>`;
+  return g; }
+function cpTree(x, y, k) { const [cx, cy] = cpP(x, y, 0), r = 5 + (k % 3) * 1.5; return `<ellipse cx="${cx}" cy="${cy + 2}" rx="${r}" ry="${r * .45}" fill="rgba(0,0,0,.25)"/><circle cx="${cx}" cy="${cy - r * .9}" r="${r}" fill="${k % 2 ? '#2f6b39' : '#3a7d43'}"/><circle cx="${cx - r * .3}" cy="${cy - r * 1.2}" r="${r * .45}" fill="rgba(255,255,255,.12)"/>`; }
+function cpCrane(x, y, h) { const [bx, by] = cpP(x, y, 0), [tx, ty] = cpP(x, y, h); return `<g><line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="#f2b632" stroke-width="2.5"/><line x1="${tx - 26}" y1="${ty}" x2="${tx + 34}" y2="${ty}" stroke="#f2b632" stroke-width="2"/><line x1="${tx + 30}" y1="${ty}" x2="${tx + 30}" y2="${ty + 22}" stroke="#ddd" stroke-width="1"/><rect x="${tx - 3}" y="${ty - 3}" width="6" height="6" fill="#333"/></g>`; }
+function cpTag(x, y, z, title, sub, lv, warn) { const [cx, cy] = cpP(x, y, z), w = Math.max(64, title.length * 13 + (lv ? 30 : 0) + 14);
+  return `<g class="cmp-tag" transform="translate(${(cx - w / 2).toFixed(1)} ${(cy - 34).toFixed(1)})"><rect width="${w}" height="${sub ? 30 : 20}" rx="5" fill="rgba(12,14,18,.82)" stroke="${warn ? '#f2b632' : 'rgba(255,255,255,.18)'}"/>${lv ? `<rect x="5" y="4" width="24" height="12" rx="3" fill="${warn ? '#f2b632' : '#d8b45f'}"/><text x="17" y="13.2" text-anchor="middle" style="font-size:9px;font-weight:800;fill:#111">${esc(lv)}</text>` : ''}<text x="${lv ? 34 : 8}" y="14" style="font-size:12px;font-weight:800;fill:#fff">${esc(title)}</text>${sub ? `<text x="8" y="26" style="font-size:9.5px;fill:rgba(255,255,255,.7)">${esc(sub)}</text>` : ''}<path d="M${w / 2 - 5} ${sub ? 30 : 20} l5 6 l5 -6z" fill="rgba(12,14,18,.82)"/></g>`; }
+function campusData(t) { const B = boardPlan(t), on = ownOn(SEASON), A = on ? attendance(t) : { cap: stadCap0(t), att: 0, occ: 0, tk: 1 }, act = k => B.proj.find(p => p.k === k && p.s0 <= SEASON && p.s1 > SEASON);
+  const st = on ? staffOf(t) : [], q = k => (st.find(x => x.k === k) || {}).q || 70, lv = n => 'Lv' + Math.max(1, Math.min(5, n));
+  return { A, B, on, st, act, q, lv,
+    stad: { lv: lv(1 + projBuilt(t, 'expand') + projBuilt(t, 'newstad') * 2 + (A.cap >= 60000 ? 1 : 0)), build: act('expand') || act('newstad') },
+    train: { lv: lv(1 + projBuilt(t, 'train') + (q('fit') >= 80 ? 1 : 0)), build: act('train') },
+    acad: { lv: lv(1 + projBuilt(t, 'acad') + (q('yth') >= 80 ? 1 : 0)), build: act('acad') },
+    med: { lv: lv(1 + (q('med') >= 72 ? 1 : 0) + (q('med') >= 82 ? 1 : 0)), build: null },
+    hq: { lv: lv(1 + Math.floor((on ? ownerAt(t).w : 50) / 25)), build: null },
+    store: { lv: lv(1 + projBuilt(t, 'comm')), build: act('comm') } }; }
+function campusSVG(t) {
+  const D = campusData(t), k = TD[t] ? kitsOf(t).home : { body: tcol(t), trim: '#fff' }, kc = /^#[0-9a-f]{3,6}$/i.test(k.body) ? k.body : '#c0392b', cap = D.A.cap, big = Math.max(0, Math.min(1, (cap - 22000) / 50000));
+  /* 球场尺寸随容量放大 */
+  const sx0 = 7.6 - big * 0.8, sy0 = 6.4 - big * 0.6, sx1 = 13.4 + big * 0.8, sy1 = 12.6 + big * 0.6, sh = 1.3 + big * 1.0;
+  let g = '';
+  /* 地面、道路、停车场 */
+  g += `<polygon points="${cpPts([cpP(-1, -1), cpP(21, -1), cpP(21, 21), cpP(-1, 21)])}" fill="#2c5a33"/>`;
+  g += cpFlat(-1, 4.6, 21, 5.4, '#4a4f57') + cpFlat(5.6, -1, 6.4, 21, '#4a4f57') + cpFlat(-1, 14.6, 21, 15.4, '#4a4f57') + cpFlat(15.6, -1, 16.4, 21, '#4a4f57');
+  for (let i = 0; i < 6; i++) g += cpFlat(-1 + i * .5, 4.7, -0.7 + i * .5, 5.3, 'rgba(255,255,255,.0)');
+  const lot = (x0, y0, x1, y1) => { let s = cpFlat(x0, y0, x1, y1, '#3b3f46'); for (let i = 0; i < 8; i++) for (let j = 0; j < 2; j++) if (ghash('car|' + t + x0 + i + j) < 0.6) { const cx = x0 + 0.3 + i * (x1 - x0 - 0.6) / 8, cy = y0 + 0.4 + j * (y1 - y0 - 0.8) / 1.5; s += cpBox(cx, cy, cx + .35, cy + .55, .22, ['#d9d9d9', '#c0392b', '#2c3e50', '#f1c40f', '#7f8c8d'][Math.floor(ghash('cc|' + t + i + j) * 5)]); } return s; };
+  g += lot(17, 6, 20.5, 9.6) + lot(-0.5, 9.8, 3, 13.6);
+  /* 树 */
+  { const R = [[0.6, 0.6, 4.4, 4], [6.6, 0.2, 11.8, 4], [16.6, 0.6, 20.4, 4], [sx0 - .3, sy0 - .3, sx1 + .3, sy1 + .3], [16.6, 5.8, 21, 10], [-1, 9.6, 3.4, 14], [16.6, 10.6, 20, 14.4], [-0.4, 15.4, 4.8, 21], [6.6, 15.8, 14.8, 20], [16.8, 16.2, 20.2, 19.6]], free = (x, y) => !R.some(([a, b, c2, d]) => x > a && x < c2 && y > b && y < d) && ![4.4, 5.6, 14.4, 15.6].some(v => false) && Math.abs(y - 5) > .75 && Math.abs(x - 6) > .75 && Math.abs(y - 15) > .75 && Math.abs(x - 16) > .75;
+    const TR = []; for (let i = 0; i < 140 && TR.length < 46; i++) { const x = -0.7 + ghash('tx|' + i) * 21.4, y = -0.7 + ghash('ty|' + i) * 21.4; if (free(x, y)) TR.push([x, y, i]); } TR.sort((a, b) => (a[0] + a[1]) - (b[0] + b[1])).forEach(([x, y, i]) => { g += cpTree(x, y, i); }); }
+  const bld = (key, inner, tag) => `<g class="cmp" data-campus="${key}" data-t="${esc(t)}" role="button" tabindex="0" aria-label="${esc(tag)}">${inner}</g>`;
+  /* 俱乐部总部（左上，高楼） */
+  { const lvN = +D.hq.lv.slice(2), h = 2.4 + lvN * 0.55; g += bld('hq', cpBox(1, 1, 4, 3.6, h, '#5b7fa6', 0, '#8fb0d3') + cpBox(1.4, 1.3, 3.6, 3.3, .5, '#4a6585', h) + cpTag(2.5, 2.3, h + .6, '俱乐部总部', D.on ? ownerAt(t).name : '', D.hq.lv), '俱乐部总部'); }
+  /* 商业中心 / 球迷商店（上中） */
+  { const lvN = +D.store.lv.slice(2); g += bld('store', cpBox(7, .6, 10 + lvN * .3, 3.6, 1.2 + lvN * .2, '#d9822b', 0, '#f0a04b') + `<polygon points="${cpPts([cpP(7, .6, 1.4 + lvN * .2), cpP(10 + lvN * .3, .6, 1.4 + lvN * .2), cpP(10 + lvN * .3, 1.2, 1.4 + lvN * .2), cpP(7, 1.2, 1.4 + lvN * .2)])}" fill="${kc}"/>` + (D.store.build ? cpCrane(9.6, 1.4, 4) : '') + cpTag(8.6, 2, 2.2 + lvN * .2, '商业中心', `赞助 ${(sponsorsOf(t) || []).length} 家`, D.store.lv, !!D.store.build), '商业中心'); }
+  /* 医疗中心（右上，白楼红十字） */
+  { const lvN = +D.med.lv.slice(2), h = 1.6 + lvN * .5; g += bld('med', cpBox(17, 1, 20, 3.6, h, '#d7dde3', 0, '#f2f5f7') + cpFlat(18.25, 1.55, 18.75, 3.05, '#e74c3c', h) + cpFlat(17.75, 2.05, 19.25, 2.55, '#e74c3c', h) + cpTag(18.5, 2.3, h + .5, '医疗中心', D.on ? `队医 ${(D.st.find(x => x.k === 'med') || {}).name || ''}` : '', D.med.lv), '医疗中心'); }
+  /* 球场（中间） */
+  { const stand = shade(kc, 0.95), inset = 1.15 + big * .3; let s = cpBox(sx0, sy0, sx1, sy1, sh, '#8a919c', 0, stand);
+    s += cpPitch(sx0 + inset, sy0 + inset, sx1 - inset, sy1 - inset, sh * 0.55);
+    /* 看台阶梯感：内圈一道暗边 */
+    s += `<polygon points="${cpPts([cpP(sx0 + inset, sy0 + inset, sh * .55), cpP(sx1 - inset, sy0 + inset, sh * .55), cpP(sx1 - inset, sy0 + inset * .55, sh), cpP(sx0 + inset * .55, sy0 + inset * .55, sh)])}" fill="${shade(kc, 0.7)}"/><polygon points="${cpPts([cpP(sx0 + inset, sy0 + inset, sh * .55), cpP(sx0 + inset * .55, sy0 + inset * .55, sh), cpP(sx0 + inset * .55, sy1 - inset * .55, sh), cpP(sx0 + inset, sy1 - inset, sh * .55)])}" fill="${shade(kc, 0.82)}"/>`;
+    if (projBuilt(t, 'newstad') || cap >= 60000) [[sx0, sy0], [sx1, sy0], [sx1, sy1], [sx0, sy1]].forEach(([x, y]) => { const [bx, by] = cpP(x, y, sh), [tx, ty] = cpP(x, y, sh + 1.6); s += `<line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="#bbb" stroke-width="1.5"/><rect x="${tx - 5}" y="${ty - 3}" width="10" height="4" fill="#fffbe0"/>`; });
+    if (D.stad.build) s += cpCrane(sx1 + .3, sy0 + 1, sh + 3);
+    const nm = (() => { const L = sponsorsOf(t); const x = L && L.find(y => y.slot === 'stad'); return x ? `${x.brand}球场` : (TD[t] && TD[t].stadium) || `${t}主场`; })();
+    g += bld('stadium', s + cpTag((sx0 + sx1) / 2, (sy0 + sy1) / 2, sh + 1.1, nm, `${Math.round(cap / 1000)}k 座${D.on ? ` · 上座 ${Math.round(D.A.occ * 100)}%` : ''}`, D.stad.lv, !!D.stad.build), '球场'); }
+  /* 球迷俱乐部（球场右侧小楼 + 旗子） */
+  { const m = D.on ? fanMood(t) : null; g += bld('fans', cpBox(17, 11, 19.6, 13.6, 1.1, '#6b4fa0', 0, '#8a6cc4') + [0, 1, 2].map(i => { const [fx, fy] = cpP(17.3 + i * .9, 13.8, 0), [tx, ty] = cpP(17.3 + i * .9, 13.8, 2.4); return `<line x1="${fx}" y1="${fy}" x2="${tx}" y2="${ty}" stroke="#ddd" stroke-width="1"/><path d="M${tx} ${ty} l12 3 l-12 4z" fill="${i % 2 ? kc : shade(kc, 1.3)}"/>`; }).join('') + cpTag(18.3, 12.3, 1.9, '球迷俱乐部', m ? `情绪 ${m.v} · ${m.lv}` : '', null, m && m.v < 30), '球迷俱乐部'); }
+  /* 训练基地（左下：楼 + 训练场） */
+  { const lvN = +D.train.lv.slice(2); let s = cpPitch(0, 16.2, 4.6, 19.6) + (lvN >= 2 ? cpPitch(0, 19.9 - 0.1, 2.2, 21) : '') + cpBox(1.2, 15.6, 4.2, 16.1, .9, '#7a8a99', 0, '#a7b6c4');
+    if (D.train.build) s += cpCrane(4.4, 17, 4); g += bld('train', s + cpTag(2.3, 17.6, 1.2, '训练基地', D.on ? `体能 ${D.q('fit')} · 助教 ${D.q('ast')}` : '', D.train.lv, !!D.train.build), '训练基地'); }
+  /* 青训学院（下中） */
+  { let s = cpPitch(7, 16.2, 11, 19.4) + cpBox(11.4, 16.2, 14.4, 18.4, 1.3, '#3e8e7e', 0, '#5fb3a1');
+    if (D.acad.build) s += cpCrane(14.6, 17, 4); const n = (ACAD[t] || []).filter(x => x.status === 'academy').length; g += bld('acad', s + cpTag(11, 17.4, 1.9, '青训学院', `梯队 ${n} 人`, D.acad.lv, !!D.acad.build), '青训学院'); }
+  /* 媒体中心（右下小楼，纯装饰 + 显示赞助/新闻入口） */
+  g += bld('media', cpBox(17.2, 16.6, 19.8, 19.2, 1.4, '#455a64', 0, '#607d8b') + `<circle cx="${cpP(18.5, 17.9, 1.4)[0]}" cy="${cpP(18.5, 17.9, 1.4)[1] - 8}" r="6" fill="none" stroke="#cfd8dc" stroke-width="2"/>` + cpTag(18.5, 17.9, 2.3, '媒体中心', '新闻与转播', null), '媒体中心');
+  return `<div class="campus"><svg viewBox="60 -30 880 590" role="img" aria-label="${esc(t)} 球会园区">${g}</svg></div>`; }
+function campusPanel(t) { if (!TD[t]) return ''; return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club campus</div><h2>球会园区</h2></div><span class="note">点任一建筑看详细内容；董事会的扩建、新建项目会让建筑变大，施工中的有吊车</span></div>${campusSVG(t)}</div>`; }
+function openCampus(t, key) { const d = $('#dlg'), D = campusData(t), on = D.on, row = (a, b) => `<div class="rk" style="grid-template-columns:96px minmax(0,1fr)"><span class="muted">${a}</span><span>${b}</span></div>`;
+  const stf = ks => `<div class="rank-list">${D.st.filter(x => ks.includes(x.k)).map(x => row(esc(x.lab), `<b>${esc(x.name)}</b> <span class="dim">${esc(x.nat || '')}</span> · 能力 <b>${x.q}</b> <span class="dim" style="font-size:11px">${esc(x.eff)}</span>`)).join('')}</div>`;
+  const prj = ks => { const L = D.B.proj.filter(p => ks.includes(p.k)); return L.length ? `<div class="eyebrow" style="margin:12px 0 6px">基建项目</div><div class="rank-list">${L.map(p => row(SN(p.s0), `${esc(p.lab)} · ${money(p.cost)} · ${p.s1 > SEASON ? `<span style="color:#f2b632">施工中，${SN(p.s1)} 完工</span>` : '已完工'}`)).join('')}</div>` : ''; };
+  let title = '', body = '';
+  if (!on) body = `<p class="note">这份进度从 ${SN(S.ownFrom)} 起才有园区资料。</p>`;
+  else if (key === 'stadium') { const A = D.A, m = fanMood(t), L = sponsorsOf(t), nm = L && L.find(y => y.slot === 'stad'); title = nm ? `${nm.brand}球场（原${(TD[t] && TD[t].stadium) || t + '主场'}）` : (TD[t] && TD[t].stadium) || `${t}主场`; let rev = null; try { rev = finLedger(t, SEASON - 1).inc['球场营收']; } catch (e) { }
+    body = `<div class="rank-list">${row('容量', `${A.cap.toLocaleString()} 座 <span class="chip">${D.stad.lv}</span>`)}${row('场均上座', `${A.att.toLocaleString()}（${Math.round(A.occ * 100)}%）`)}${row('票价', TICK_LV[A.tk][0])}${row('球迷情绪', `${m.v} · ${m.lv}`)}${nm ? row('冠名', `${esc(nm.brand)} · ${money(nm.v)}/季（${SN(nm.s0)}–${SN(nm.s1)}）`) : ''}${rev != null && SEASON > 1 ? row('上季球场收入', money(rev)) : ''}</div>${prj(['expand', 'newstad'])}`; }
+  else if (key === 'train') { title = '训练基地'; body = `${stf(['ast', 'gk', 'fit', 'ana'])}<div class="rank-list" style="margin-top:8px">${row('伤病率', `×${injMul(t).toFixed(2)}`)}${row('比赛表现', `${staffMatchMod(t) >= 0 ? '+' : ''}${staffMatchMod(t).toFixed(1)}%`)}</div>${prj(['train'])}`; }
+  else if (key === 'acad') { title = '青训学院'; const K = (ACAD[t] || []).filter(x => x.status === 'academy').map(k => ({ k, a: kAge(k, SEASON), r: kidRating(k, SEASON) })).sort((a, b) => b.k.pot - a.k.pot).slice(0, 8);
+    body = `${stf(['yth', 'sct'])}<div class="eyebrow" style="margin:12px 0 6px">梯队潜力最高的 ${K.length} 人</div><div class="rank-list">${K.map(x => row(`${x.a} 岁`, `<b>${esc(x.k.name)}</b> <span class="dim">${esc(x.k.pos)}</span> · 现在 ${x.r} · 潜力 <b>${x.k.pot}</b>`)).join('') || '<p class="note">梯队暂时没人。</p>'}</div><div class="btns" style="margin-top:10px"><button class="btn" data-act="campusGo" data-t="${esc(t)}" data-v="acad">打开青训分页 →</button></div>${prj(['acad'])}`; }
+  else if (key === 'med') { title = '医疗中心'; const n = injCount(t, 37), F = ((S.sfire || {})[t] || []).slice(-4).reverse(); let out = {}; try { const r = nextRound(); out = teamCtx(t, r >= 0 ? r : 37).out || {}; } catch (e) { }
+    const inj = Object.entries(out).filter(([, w]) => (w && w.why || w) === 'inj');
+    body = `${stf(['med', 'fit'])}<div class="rank-list" style="margin-top:8px">${row('本季伤病', `${n} 人次`)}${row('伤停时间', `×${injDurMul(t).toFixed(2)}`)}${row('目前伤员', inj.length ? inj.map(([nm, w]) => `${esc(nm)}${w && w.left ? `（还缺 ${w.left} 场）` : ''}`).join('、') : '没有')}</div>${F.length ? `<div class="eyebrow" style="margin:12px 0 6px">因伤病太多换人</div><div class="rank-list">${F.map(x => row(SN(x.s), `第 ${x.ri + 1} 轮后解雇${x.k === 'med' ? '队医主管' : '体能教练'} ${esc(x.old || '')}（当时 ${x.n} 人次伤病）`)).join('')}</div>` : ''}`; }
+  else if (key === 'hq') { title = '俱乐部总部'; const o = ownerAt(t); body = `<div class="rank-list">${row('老板', `<b>${esc(o.name)}</b> · ${esc(o.lab)}`)}${row('主席', esc(o.chair))}${row('财力 / 野心 / 耐心', `${o.w} / ${o.a} / ${o.p}`)}${row('每季注资', ownerCash(t, SEASON) >= 0 ? money(ownerCash(t, SEASON)) : `抽分红 ${money(-ownerCash(t, SEASON))}`)}${row('转会预算系数', '×' + budgetMul(t).toFixed(2))}</div>${stf(['dof'])}<div class="btns" style="margin-top:10px"><button class="btn" data-act="campusGo" data-t="${esc(t)}" data-v="board">老板与团队分页 →</button><button class="btn ghost" data-act="oEdit" data-t="${esc(t)}">✎ 编辑老板与团队</button></div>`; }
+  else if (key === 'store') { title = '商业中心'; const L = sponsorsOf(t) || []; let lg = null; try { lg = finLedger(t, SEASON - 1); } catch (e) { } body = `<div class="rank-list">${L.map(x => row(esc(x.lab), `<b>${esc(x.brand)}</b> · ${money(x.v)}/季 <span class="dim">${SN(x.s0)}–${SN(x.s1)}</span>`)).join('')}${lg && SEASON > 1 ? row('上季周边', money(lg.inc['周边商品营收'] || 0)) + row('上季广告', money(lg.inc['广告营收'] || 0)) + (lg.inc['季前巡回'] ? row('季前巡回', money(lg.inc['季前巡回'])) : '') : ''}</div>${prj(['comm'])}`; }
+  else if (key === 'fans') { title = '球迷俱乐部'; const m = fanMood(t), A = D.A; body = `<div class="rank-list">${row('情绪', `<b>${m.v}</b> · ${m.lv}`)}${row('原因', esc(m.why.join('、') || '一切如常'))}${row('场均上座', `${A.att.toLocaleString()} / ${A.cap.toLocaleString()}`)}${row('票价', TICK_LV[A.tk][0])}</div>`; }
+  else if (key === 'media') { title = '媒体中心'; body = `<p class="note" style="margin:0 0 8px">球队的新闻、转播与赞助曝光。</p><div class="rank-list">${row('直播场次', (() => { try { const x = tvSplit(table()).find(y => y.t === t); return x ? `本季约 ${x.tv} 场电视直播` : '—'; } catch (e) { return '—'; } })())}${row('主帅', esc((coachOf(t) || {}).name || '—'))}</div><div class="btns" style="margin-top:10px"><button class="btn" data-go="league">看头条新闻 →</button></div>`; }
+  d.innerHTML = `<div class="dlg" style="position:relative;max-width:620px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="eyebrow">${esc(t)} · 球会园区</div><h2 style="margin:4px 0 12px">${esc(title || '设施')}</h2>${body}</div>`;
+  if (!d.open) d.showModal(); }
 
 /* ---------- 编辑老板与团队 ---------- */
 function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) || {}, L = staffOf(t), B = boardPlan(t), tk = B.tick[SEASON] ?? o.tick;
@@ -6244,6 +6346,7 @@ function teamDetail(t) {
   ${wlTeamPanel(t)}` : ''}
   ${TEAM_TAB === 'fin' ? teamFinPanel(t) : ''}
   ${TEAM_TAB === 'board' ? boardPanel(t) + staffPanel(t) : ''}
+  ${TEAM_TAB === 'campus' ? campusPanel(t) : ''}
   ${TEAM_TAB === 'legend' ? `${clubLegendsPanel(t)}${clubCoachesPanel(t)}${coachPanel(t)}` : ''}
   ${TEAM_TAB === 'acad' ? u21Panel(t) + (academyPanel(t) || '') || '<div class="panel"><p class="note" style="margin:0">这支球队暂时没有青训资料。</p></div>' : ''}
   </div></section>`;
@@ -7656,7 +7759,7 @@ function teamTransferCount(t) {
 }
 function teamTabs(t) {
   const n = teamTransferCount(t), open = mktActive() || winActive();
-  const T = [['squad', '阵容'], ['trans', `转会${open ? (n ? ` <b style="color:var(--gold)">· ${n}</b>` : ' · 开放中') : ''}`], ['record', '战绩与荣誉'], ['fin', '财务'], ['board', '老板与团队'], ['legend', '名宿与主帅'], ['acad', '青训']];
+  const T = [['squad', '阵容'], ['campus', '园区'], ['trans', `转会${open ? (n ? ` <b style="color:var(--gold)">· ${n}</b>` : ' · 开放中') : ''}`], ['record', '战绩与荣誉'], ['fin', '财务'], ['board', '老板与团队'], ['legend', '名宿与主帅'], ['acad', '青训']];
   return `<div class="seg" role="tablist" aria-label="球队资料" style="flex-wrap:wrap;position:sticky;top:0;z-index:5">${T.map(([k, l]) => `<button data-act="tTab" data-tab="${k}" aria-pressed="${TEAM_TAB === k}">${l}</button>`).join('')}</div>`;
 }
 // 一名球员对所在球队的地位（卖方开价用）
@@ -8529,9 +8632,10 @@ function confirmReset() {
 document.addEventListener('change', e => { if (e.target && e.target.id === 'edPers') { const n = document.getElementById('edPersNote'); if (n && PERS[e.target.value]) n.textContent = PERS[e.target.value][1]; } });
 document.addEventListener('change', e => { const el = e.target.closest && e.target.closest('[data-role]'); if (!el) return; setRole(el.dataset.t, el.dataset.role, el.value); });
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-pid],[data-hm],[data-statsgo],[data-tmode],[data-pmode],[data-go],[data-act],[data-team],[data-pyp],[data-player],[data-fx],[data-tbl],[data-w],[data-neutral],[data-line],[data-speed],[data-hs],[data-sm],[data-scat],[data-sline],[data-ext],[data-cupm],[data-nat]');
+  const el = e.target.closest('[data-pid],[data-hm],[data-statsgo],[data-tmode],[data-pmode],[data-go],[data-act],[data-team],[data-pyp],[data-player],[data-fx],[data-tbl],[data-w],[data-neutral],[data-line],[data-speed],[data-hs],[data-sm],[data-scat],[data-sline],[data-ext],[data-cupm],[data-nat],[data-campus]');
   if (!el) { if (e.target === $('#dlg')) $('#dlg').close(); return; }
   if (el.dataset.nat) { e.preventDefault(); return openNation(el.dataset.nat); }
+  if (el.dataset.campus) { e.preventDefault(); return openCampus(el.dataset.t, el.dataset.campus); }
   if (el.dataset.go) { e.preventDefault(); navClose(); if (el.dataset.go === 'teams') { teamSel = null; tmSq = null; } return go(el.dataset.go, el.dataset.cup || null); }
   if (el.dataset.pid != null && el.dataset.pid !== '') { const id = +el.dataset.pid; if (id >= 0) openPerson(id); return; }
   if (el.dataset.hm) { const [s, ri, mi] = el.dataset.hm.split(':').map(Number); return openHistMatch(s, ri, mi); }
@@ -8642,6 +8746,7 @@ document.addEventListener('click', e => {
   if (act === 'u21t') return u21TeamDlg(el.dataset.t);
   if (act === 'teamEdit') return teamEditDlg(el.dataset.t);
   if (act === 'oEdit') return oEditDlg(el.dataset.t);
+  if (act === 'campusGo') { $('#dlg').close(); TEAM_TAB = el.dataset.v; return render(); }
   if (act === 'oeSave') return oEditSave(el.dataset.t, false);
   if (act === 'oeReset') return oEditSave(el.dataset.t, true);
   if (act === 'teSave') return teamEditSave(el.dataset.t, false);
@@ -8789,7 +8894,7 @@ function openSearch() {
   inp.addEventListener('input', () => { const r = searchData(inp.value); $('#gsr').innerHTML = inp.value.trim() ? (r.length ? r.map(x => x.html).join('') : '<div class="empty">没有找到</div>') : ''; });
 }
 document.addEventListener('keydown', e => { if (e.key === '/' && !e.target.matches('input,textarea,select') && !$('#dlg').open) { e.preventDefault(); openSearch(); } });
-document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-fx],[data-hm],g.pl')) { e.preventDefault(); e.target.click ? e.target.click() : e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-fx],[data-hm],g.pl,g.cmp')) { e.preventDefault(); e.target.click ? e.target.click() : e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); } });
 
 window.addEventListener('hashchange', () => { const h = (location.hash || '').slice(1); if (VIEWS.includes(h) && h !== view) { if (h === 'teams') teamSel = null; go(h, null, false); } });
 
