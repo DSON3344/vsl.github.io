@@ -8793,7 +8793,7 @@ async function persistAndReload(msg) {
   localSave();
   for (let i = 0; i < 38; i++) DIRTY.add(i);
   toast(msg || '正在保存…');
-  try { if (CLOUD.db) { CLOUD.arch = 0; await cloudFlush(); } else if (WEB.on && WEB.key) { clearTimeout(WEB.timer); await webPush(); } } catch (e) {}
+  try { if (CLOUD.db) { CLOUD.arch = 0; await cloudFlush(); } else if (WEB.on && WEB.key) { clearTimeout(WEB.timer); for (let i = 0; i < 60 && WEB.busy; i++) await new Promise(r => setTimeout(r, 250)); /* 先等上一次上传传完，不然重置不会传上去 */ WEB.forceOnce = true; WEB.pending = false; await webPush(); } } catch (e) {}
   location.reload();
 }
 // 回到某个已踢完的赛季重新模拟：之后的赛季清空，可一键自动推演回原来的进度
@@ -8953,7 +8953,7 @@ async function doResetAll() {
   localSave();
   for (let i = 0; i < 38; i++) DIRTY.add(i);
   toast('正在重置…');
-  try { if (CLOUD.db) { CLOUD.arch = 0; await cloudFlush(); } else if (WEB.on && WEB.key) { clearTimeout(WEB.timer); await webPush(); } } catch (e) {}
+  try { if (CLOUD.db) { CLOUD.arch = 0; await cloudFlush(); } else if (WEB.on && WEB.key) { clearTimeout(WEB.timer); for (let i = 0; i < 60 && WEB.busy; i++) await new Promise(r => setTimeout(r, 250)); /* 先等上一次上传传完，不然重置不会传上去 */ WEB.forceOnce = true; WEB.pending = false; await webPush(); } } catch (e) {}
   location.reload();
 }
 function confirmReset() {
@@ -9312,7 +9312,8 @@ async function ghPush() { const put = b => fetch('/api/progress', { method: 'PUT
   let r = await put(P);
   if (r.status === 409) { let o = {}; try { o = await r.clone().json(); } catch (e) { }
     if (o.error === 'notowner') { devOwnerSet(o.meta); try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, null); } } catch (e) { } setSync('follow'); toast(`主控设备是「${o.meta && o.meta.devName || '另一台设备'}」，这台改为跟随（只读）；要在这台继续玩，到同步设定按「改由这台设备主控」`); return { ok: true, status: 200, json: async () => ({}) }; }
-    if (o.error === 'conflict') { /* 云端已经被另一台设备（或自动模拟）更新过：以云端为准，同步过来，不覆盖 */ try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, '另一台设备的进度比较新，已同步过来'); } } catch (e) { } return { ok: true, status: 200, json: async () => ({}) }; }
+    if (o.error === 'conflict' && o.meta && o.meta.dev && o.meta.dev === DEV && !P.force) { /* 云端那一版也是这台主控设备自己传的（例如上一次上传途中重新整理了网页）：以这台为准，直接覆盖 */ WEB.forceOnce = true; P = await ghPayload(); r = await put(P); if (r.ok) { WEB.takeOnce = false; P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o2 = await r.clone().json(); if (o2.w) baseSet(o2.w); } catch (e) { } } return r; }
+    if (o.error === 'conflict') { /* 云端已经被另一台设备更新过：以云端为准，同步过来，不覆盖 */ try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, '另一台设备的进度比较新，已同步过来'); } } catch (e) { } return { ok: true, status: 200, json: async () => ({}) }; }
     (o.need || []).forEach(f => WEB.remote.delete(f)); P = await ghPayload(); r = await put(P); }
   if (r.ok) { WEB.takeOnce = false; WEB.owner = DEV; WEB.ownerName = DEV_NAME; WEB.ro = false; P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) baseSet(o.w); } catch (e) { } }
   return r; }
@@ -9433,7 +9434,7 @@ async function webPush() {
     const r = WEB.store === 'github' ? await ghPush() : await fetch('/api/progress', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-ves-key': WEB.key }, body: JSON.stringify({ key: KEY, z: LZString.compressToEncodedURIComponent(JSON.stringify(S)), season: S.season, played: countPlayed(S) }) });
     if (r.status === 401) { WEB.key = ''; try { localStorage.removeItem('ves-sync-key'); } catch (e) {} setSync('view'); toast('同步密码不对，进度只存在这台设备'); }
     else if (!r.ok) { setSync('error'); WEB.fails = (WEB.fails || 0) + 1; if (r.status === 503) { if (WEB.fails === 1) toast('云端存储暂时拒绝访问（可能是本月用量用完），进度先存在这台设备'); WEB.fails = 8; } }
-    else { const o = await r.json(); WEB.etag = o.etag || WEB.etag; setSync('cloud'); WEB.fails = 0; }
+    else { const o = await r.json(); WEB.etag = o.etag || WEB.etag; setSync(WEB.ro ? 'follow' : 'cloud'); WEB.fails = 0; }
   } catch (e) { setSync('error'); WEB.fails = (WEB.fails || 0) + 1; }
   WEB.busy = false;
   if (WEB.fails && WEB.fails < 8) { clearTimeout(WEB.retry); WEB.retry = setTimeout(webPush, Math.min(60000, 5000 * WEB.fails)); }
@@ -9449,13 +9450,14 @@ async function webInit() {
   const lp = countPlayed(S);
   let st = o.state && o.state.key === KEY && validState(o.state.s) ? o.state.s : null;
   /* 重开网页时：这台设备上次对齐之后，云端被别的设备 / 自动模拟写过 → 以云端为准；云端没变过 → 本机较新就上传本机的 */
-  const lb = baseLoad(), cloudMoved = o.meta && lb != null && (o.meta.w || 0) > lb;
+  const lb = baseLoad(), mine = !!(o.meta && o.meta.dev && o.meta.dev === DEV), cloudMoved = !mine && o.meta && lb != null && (o.meta.w || 0) > lb; /* 云端最后一版是这台设备自己传的：不算「被别人改过」 */
+  const resetNewer = !!(S.reset && o.meta && o.meta.key === KEY && S.reset >= (o.meta.t || 0) && (o.meta.played || 0) > 0); /* 这台刚「全部重来」、但重置还没传上去 */
   if (o.meta && o.meta.key === KEY && (cloudMoved || (o.meta.t || 0) > (S.updated || 0) || (lp === 0 && (o.meta.played || 0) > 0 && !(S.reset && S.reset >= (o.meta.t || 0))))) { try { const g = await ghLoad(); st = validState(g.s) ? g.s : null; if (st && cloudMoved) st.updated = Math.max(st.updated || 0, (S.updated || 0) + 1); } catch (e) { st = null; } }
   if (o.meta) { baseSet(o.meta.w); devOwnerSet(o.meta); } /* 这台设备接下来的进度以这一版云端为基础 */
   if (WEB.ro && o.meta && o.meta.key === KEY) { try { const g = await ghLoad(); if (validState(g.s)) { g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, null); } } catch (e) { } setSync('follow'); } /* 跟随设备：一律以主控的云端进度为准 */
   if (st && ((st.updated || 0) > (S.updated || 0) || (lp === 0 && countPlayed(st) > 0 && !(S.reset && S.reset >= (st.updated || 0))))) { adopt(st, countPlayed(st) ? '已载入云端进度' : null); setSync(WEB.ro ? 'follow' : WEB.key ? 'cloud' : 'view'); }
   else if (WEB.ro) setSync('follow');
-  else if (WEB.key && lp > 0) await webPush();
+  else if (WEB.key && (lp > 0 || resetNewer)) { if (resetNewer) WEB.forceOnce = true; await webPush(); }
   else setSync(WEB.key ? 'cloud' : 'view');
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') webPull(); });
   window.addEventListener('focus', () => webPull());
