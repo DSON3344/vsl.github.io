@@ -848,10 +848,10 @@ function teamCtx(team, ri, fx = S.fx) {
 }
 const ctxPair = (m, ri) => ({ h: teamCtx(m.h, ri), a: teamCtx(m.a, ri) });
 function simFx(m, i) { if (m.r) return; if (m.pr) { m.r = m.pr; delete m.pr; delete m.ko; delete m.du; return; } m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.r = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }
-function postRound(i) { try { u21Sync(); } catch (e) { console.error(e); } try { monthAwardsTick(i); } catch (e) { console.error(e); } try { medCheck(i); } catch (e) { console.error(e); } try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
+function postRound(i) { try { u21Sync(); } catch (e) { console.error(e); } try { monthAwardsTick(i); } catch (e) { console.error(e); } try { youthAutoUp(i + 1); } catch (e) { console.error(e); } try { medCheck(i); } catch (e) { console.error(e); } try { if (S.bids || (S.market && Object.keys(S.market).length)) bidTick(); } catch (e) { console.error(e); } try { winterHook(); } catch (e) { console.error(e); } try { if (S.mktCfg && S.mktCfg.pilot && !PILOT) { PILOT = 1; try { pilotTick(); } finally { PILOT = 0; } } } catch (e) { console.error(e); } try { if (S.convert && Object.keys(S.convert).length) { applyConversions(); applyPosFoot(); ENGINE.clearCache(); } } catch (e) {} }
 /* 没开全自动时也要维持一线队人数：每季开踢前、冬窗后第一场前各整理一次（不到 28 人从青训提拔，超过 32 人清理冗员） */
 function sqKeep(i) { if (!S || (S.auto && S.auto.on) || CLOUD.status === 'view' || (WEB.on && !WEB.key)) return; if (i == null || i < 0) return; const ph = i >= WIN_A ? 'win' : 'start'; if (ph === 'win' && !(typeof winActive === 'function' && winActive()) && i !== WIN_A) return; const k = ph + SEASON; if (S.sqK0 === k) return; S.sqK0 = k; try { autoSquad(ph); } catch (e) { console.error(e); } }
-function playRound(i) { sqKeep(i); try { tierCal(false, i); } catch (e) { console.error(e); } try { cupFreeze(); } catch (e) { } ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => simFx(m, i)); postRound(i); }
+function playRound(i) { sqKeep(i); if (i === 0) { try { youthAutoUp(0); } catch (e) { console.error(e); } } try { tierCal(false, i); } catch (e) { console.error(e); } try { cupFreeze(); } catch (e) { } ensureTactics(); DIRTY.add(i); MOD_VER++; S.fx[i].forEach(m => simFx(m, i)); postRound(i); }
 /* 全自动模式：一轮的比赛不再同时出结果，而是按开球时间一场接一场踢。到点时先把整轮的赛果算好放在 m.pr（不计入积分榜），
    每场按自己的开球时间直播，终场后才写进 m.r。赛果用固定种子算，同一份进度在哪台设备上算都一样。 */
 const LIVE_DU = 5.5 * 60e3; /* 直播一场约 5.5 分钟：画面速度跟回放的默认速度差不多 */
@@ -2552,6 +2552,7 @@ function newsItems() {
   try { if (ownOn(SEASON) && SEASON > 1) { S.teams.forEach(t => { const tr = tourOf(t, SEASON); if (tr && clubBaseApprox(t) >= 82) add(-1, '季前', '', `${tm(t)} 季前赴${esc(tr.region)}巡回比赛，进账 ${money(tr.rev)}`, 0); });
       const MKp = S.market && S.market[SEASON - 1]; if (MKp) MKp.offers.filter(o => o.st === 'a' && (o.dl || o.rc)).sort((a, b) => b.fee - a.fee).slice(0, 6).forEach(o => add(-1, o.rc ? '解约金' : '截止日', 'gold', o.rc ? `${tm(o.to)} 直接支付 ${esc(o.name)} 的解约金 ${money(o.fee)}，${TD[o.from] ? tm(o.from) : esc(o.from)} 无法拒绝` : `转会截止日：${tm(o.to)} 加价到 ${money(o.fee)} 抢下 ${TD[o.from] ? tm(o.from) : esc(o.from)} 的 ${esc(o.name)}`, 3)); } } catch (e) { console.error(e); }
   try { Object.entries(S.sfire || {}).forEach(([t, L]) => L.filter(x => x.s === SEASON).forEach(x => { const nw = staffOf(t).find(y => y.k === x.k); add(x.ri, '董事会', 'bad', `${tm(t)} 本季已有 ${x.n} 人次伤病，董事会解雇${x.k === 'med' ? '队医主管' : '体能教练'}${x.old ? ' ' + esc(x.old) : ''}，${nw ? `改聘 ${esc(nw.name)}（能力 ${nw.q}）接任` : '另聘他人接任'}`, 3); })); } catch (e) { console.error(e); }
+  try { (S.yup || []).filter(x => x.s === SEASON).forEach(x => add(Math.max(-1, x.ri - 1), '青训', 'gold', `${tm(x.t)} 青训球员 ${pl(x.t, x.name)}（${x.age} 岁 ${esc(x.pos)}，能力 ${x.r}）实力已达首发水平，直接提拔至一线队`, 2)); } catch (e) { console.error(e); }
   // 场外事件
   offField().filter(e => e.ri <= Math.min(cur, 37) && (nr < 0 || e.ri <= nr)).forEach(e => {
     if (e.kind === 'train') add(e.ri, '伤病', 'bad', `${pl(e.team, e.name)}（${tm(e.team)}）训练中${esc(e.what)}，预计缺席 ${e.dur} 场`, 1);
@@ -5944,6 +5945,16 @@ function buildCampus3D(T, t, host) {
   const api = { t, ver: MOD_VER_SEASON + '|' + JSON.stringify((S.oedit || {})[t] || 0).length, renderer, attach, pause: () => { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; if (io) io.disconnect(); if (ro) ro.disconnect(); },
     dispose: () => { api.pause(); removeEventListener('pointermove', mv); const dg = document.getElementById('dlg'); if (dg) dg.removeEventListener('close', kick); removeEventListener('pointerup', up); document.removeEventListener('visibilitychange', onVis); scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }); renderer.dispose(); try { renderer.forceContextLoss(); } catch (e) { } cv.remove(); } };
   C3 = api; attach(host); return api; }
+
+/* ---------- 青训球员实力已经够首发：不等窗口，马上提拔到一线队 ----------
+   16 岁以上、能力达到一线队第 11 好的球员（首发水平），每轮检查一次；你已经替他安排了租借或转会的不动；原本排在之后才提拔的（包括旧资料球员按原出道赛季的安排）提前到现在。一线队满 32 人也照样提拔，多出来的人季末会清。 */
+function youthAutoUp(ri) { if (!S || !S.fx) return; let n = 0; const win = mktActive() && !mktLate(), eff = win ? SEASON + 1 : SEASON;
+  Object.keys(TD).forEach(t => { const top = (PDB[t] || []).map(q => q.rating).sort((a, b) => b - a); if (top.length < 11) return; const bar = top[10];
+    let A = []; try { A = academyOf(t); } catch (e) { return; }
+    A.filter(k => k.kind === 'acad' && k.kid && !k.kid.lock && k.age >= 16 && k.rating >= bar && kidEvents(k.kid.id).every(e => e.s < SEASON || (e.act === 'promote' && e.s > eff))).sort((a, b) => b.rating - a.rating).slice(0, 2).forEach(k => {
+      S.acadDec = S.acadDec || {}; (S.acadDec[k.kid.id] = S.acadDec[k.kid.id] || []).push({ s: eff, act: 'promote', to: null, fee: 0, auto: 1 });
+      S.yup = S.yup || []; S.yup.push({ s: SEASON, ri, t, name: k.name, pos: k.pos, age: k.age, r: k.rating, bar }); n++; }); });
+  if (n) { GROWN = 0; applyGrowth(); try { ENGINE.clearCache(); } catch (e) { } } return n; }
 
 /* ---------- 编辑老板与团队 ---------- */
 function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) || {}, L = staffOf(t), B = boardPlan(t), tk = B.tick[SEASON] ?? o.tick;
