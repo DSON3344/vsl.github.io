@@ -1805,7 +1805,7 @@ function openEditor(uid) {
       ${fld('名字', inp('edName', o.name))}${fld('位置', `<select id="edPos">${POS_LIST.concat(POS_LIST.includes(normPos(o.pos)) ? [] : [o.pos]).map(x => `<option value="${x}" ${x === normPos(o.pos) ? 'selected' : ''}>${x} · ${posZh(x)}</option>`).join('')}</select>`)}
       ${fld('国籍', inp('edNat', o.nat))}${fld('球衣号码', inp('edNo', o.no, 'number', 'min="1" max="99"'))}
       ${fld('身高 (cm)', inp('edH', o.height, 'number'))}${fld('体重 (kg)', inp('edW', o.weight, 'number'))}${cur && typeof cur.age === 'number' ? fld('年龄', inp('edAge', cur.age, 'number', 'min="15" max="45"')) : ''}
-      ${fld(cur ? '总评分' : '巅峰评分', inp('edR', o.rating, 'number', 'min="40" max="99"'))}${uid.startsWith('K|A|') && ACAD_ID[uid.slice(2)] ? fld(`潜力（40–${RMAX}，青训出身）`, inp('edPot', ACAD_ID[uid.slice(2)].pot, 'number', `min="40" max="${RMAX}"`)) : cur && !uid.startsWith('K|') ? fld(`潜力（40–${RMAX}）`, inp('edPot', potentialOf(cur), 'number', `min="40" max="${RMAX}"`)) : ''}<div class="note" style="align-self:end;font-size:11px">改属性会自动算总评；改总评或位置会按位置自动配属性（保留个人特点）。</div>
+      ${fld(cur ? `总评分（40–${RMAX}）` : '巅峰评分', inp('edR', o.rating, 'number', cur ? `min="40" max="${RMAX}"` : 'min="40" max="99"'))}${uid.startsWith('K|A|') && ACAD_ID[uid.slice(2)] ? fld(`潜力（40–${RMAX}，青训出身）`, inp('edPot', ACAD_ID[uid.slice(2)].pot, 'number', `min="40" max="${RMAX}"`)) : cur && !uid.startsWith('K|') ? fld(`潜力（40–${RMAX}）`, inp('edPot', potentialOf(cur), 'number', `min="40" max="${RMAX}"`)) : ''}<div class="note" style="align-self:end;font-size:11px">改属性会自动算总评；改总评或位置会按位置自动配属性（保留个人特点）。</div>
     </div>
     ${cur ? (() => { const alt = cur.alt || altDef(cur), ft = cur.foot || footDef(cur);
       return `<div style="display:grid;gap:10px"><div><div class="eyebrow" style="margin-bottom:6px">其他可踢位置 <span class="dim" style="letter-spacing:0;text-transform:none">（主位置之外，踢这些位置不扣分）</span></div><div class="btns" id="edAlt" style="gap:6px;flex-wrap:wrap">${POS_LIST.map(x => `<label class="chip" style="cursor:pointer;display:inline-flex;gap:4px;align-items:center;font-size:12px"><input type="checkbox" data-alt="${x}" ${alt.includes(x) ? 'checked' : ''} ${x === posMain(o.pos) ? 'disabled' : ''}>${x}</label>`).join('')}</div></div>
@@ -1853,7 +1853,7 @@ function saveEditor(uid, swap) {
     box.scrollIntoView({ block: 'nearest' }); return;
   }
   if (mate && swap && mate.uid) { S.edits = S.edits || {}; const me = edAll()[mate.uid] || {}; S.edits[mate.uid] = { ...me, no: cur.no }; }
-  const e = { orig: old.orig, origPos: old.origPos, origNat: old.origNat };
+  const e = { orig: old.orig, origPos: old.origPos, origNat: old.origNat }, num0 = num('edR');
   const nm = v('edName'); if (nm) e.name = nm; e.pos = v('edPos'); e.nat = v('edNat');
   if (cur && $('#edAlt')) { e.alt = [...document.querySelectorAll('#edAlt [data-alt]')].filter(i => i.checked && !i.disabled).map(i => i.dataset.alt).filter(x => x !== posMain(e.pos)); e.foot = v('edFoot'); const pv = v('edPers'); if (pv && PERS[pv]) { const base = (() => { const k0 = persKey(cur); return persOf0(k0); })(); if (pv !== base) e.pers = pv; } }
   if (uid.startsWith('K|A|')) { const pt = num('edPot'); if (pt != null) e.pot = Math.max(40, Math.min(RMAX, Math.round(pt))); else if (old.pot != null) e.pot = old.pot; }
@@ -1868,7 +1868,10 @@ function saveEditor(uid, swap) {
     else e.la = { a: A, r: nr != null ? nr : cur.rating };
   } else { e.ret = 1; const pk = num('edR'); if (pk != null) e.peak = Math.max(40, Math.min(99, pk)); if (Object.keys(A).length) e.attrs = A; }
   S.edits = S.edits || {}; S.edits[uid] = e; PERS_C.clear(); if (cur) delete cur._g;
-  refreshAfterEdit(); toast('已保存球员资料');
+  refreshAfterEdit();
+  /* 同时改了年龄 / 潜力时，成长曲线会先把能力挪动一点：存好以后再对一次，让总评刚好是你填的数字 */
+  if (cur) { const want = num0, now = Object.values(PDB).flat().concat(Object.values(FDB).flat()).find(q => q.uid === uid); if (want != null && want !== cur.rating && now && now.rating !== Math.max(40, Math.min(RMAX, want))) { e.dr = (e.dr || 0) + (Math.max(40, Math.min(RMAX, want)) - now.rating); S.edits[uid] = e; refreshAfterEdit(); } }
+  toast('已保存球员资料');
 }
 function refreshAfterEdit() {
   save(); applyPLNames(); GROWN = 0; applyGrowth(); TAC_KEY = null; ensureTactics(); syncAllPlayers(); Object.keys(AWARD_CACHE).forEach(k => delete AWARD_CACHE[k]);
@@ -7116,6 +7119,7 @@ const ageNow = p => typeof p.age === 'number' ? p.age : null;
 function potentialOf(p) { // 球探眼中的潜力：伤病 / 个人问题还没发生之前看不出来
   { const E = potEdOf(p); if (E) return Math.max(p.rating, E.pot); } /* 手动改过潜力 */
   if (p.potS != null) return p.potS;
+  if (p.acad && typeof ACAD_ID !== 'undefined' && ACAD_ID[p.acad]) return Math.max(p.rating, Math.round(kidPot(ACAD_ID[p.acad], SEASON))); /* 青训出身：潜力看青训资料 */
   if (typeof p.age0 !== 'number') return p.rating;
   if (p.cv != null && rrOf(p.cv)) { const X = rrOf(p.cv), hit = X[3] && p.age >= X[4], bl = X[6] && p.age >= X[7]; return Math.max(p.rating, hit ? Math.round(X[0] - X[5]) : bl ? X[0] + X[6] : X[0]); }
   if (p.kidBust && p.age < p.kidBust.age) return Math.max(p.rating, p.kidBust.pot);
