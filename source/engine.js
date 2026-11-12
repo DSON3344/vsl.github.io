@@ -120,6 +120,7 @@ const ENGINE = (() => {
   let teamMod = null;
   const setTeamMod = f => { teamMod = f; };
   let injHook = null; const setInjHook = f => { injHook = f; };
+  let refHook = null; const setRefHook = f => { refHook = f; };
   function condition(team, weather, slot, opp) {
     const P = HISTORY.profiles[team] || {};
     const parse = s => (s || '').split(/[；;]/).map(x => x.trim());
@@ -370,9 +371,10 @@ const ENGINE = (() => {
     if (opt.fixed && opt.fixed.cards) opt.fixed.cards.forEach(c => { const x = squad[c.side].find(y => y.name === c.player); if (!x) return; if (c.red) { events.push({ m: c.m, type: 'red', side: c.side, team: T[c.side], player: c.player, straight: c.straight ? 1 : 0, txt: c.straight ? `${c.player} 破坏明显进球机会，直接红牌！` : `${c.player} 两黄变一红，被罚下场` }); x.sent = c.m; x.off = Math.min(x.off, c.m); } else events.push({ m: c.m, type: 'yellow', side: c.side, team: T[c.side], player: c.player, txt: `${c.player} 犯规，吃到黄牌` }); });
     else [['h'], ['a']].forEach(([side]) => {
       const t = T[side], st = TEAMS_DATA[t].style || '';
-      const dby = isDerby(T.h, T.a), yc = poisson(1.6 + (/逼抢|压制|对抗|绞杀/.test(st) ? 0.6 : 0) + (dby ? 0.8 : 0)); /* 德比火药味重：黄牌多、直接红牌机会翻倍 */
+      const RF = refHook ? refHook(T.h, T.a) : null, rc = RF ? RF.c : 1; /* 裁判尺度 */
+      const dby = isDerby(T.h, T.a), yc = poisson((1.6 + (/逼抢|压制|对抗|绞杀/.test(st) ? 0.6 : 0) + (dby ? 0.8 : 0)) * rc); /* 德比火药味重：黄牌多、直接红牌机会翻倍 */
       const ms = []; for (let i = 0; i < yc; i++) ms.push(5 + Math.floor(rnd() * 88));
-      if (rnd() < (dby ? 0.06 : 0.035)) ms.push(-(10 + Math.floor(rnd() * 80)));
+      if (rnd() < (dby ? 0.06 : 0.035) * rc) ms.push(-(10 + Math.floor(rnd() * 80)));
       ms.sort((x, y) => Math.abs(x) - Math.abs(y));
       const used = {};
       ms.forEach(mm => {
@@ -396,7 +398,7 @@ const ENGINE = (() => {
       for (let i = 0; i < n; i++) {
         let m = minute(); if (m === 45 && rnd() < 0.4) m = 45.1; if (m === 90 && rnd() < 0.6) m = 90 + 1 + Math.floor(rnd() * 5);
         const on = onPitch(side, Math.min(m, 89.9)); if (!on.length) continue;
-        const pen = rnd() < 0.07;
+        const pen = rnd() < 0.07 * (refHook ? ((refHook(T.h, T.a) || {}).p || 1) : 1);
         const sc = pen ? penTaker(on) : goalScorer(on), as = pen ? null : assister(on, sc);
         events.push({ m, type: 'goal', side, team: T[side], player: sc.name, assist: as ? as.name : null, pen: pen ? 1 : 0, txt: pen ? PEN_TXT[Math.floor(rnd() * PEN_TXT.length)](sc.name) : GOAL_TXT[Math.floor(rnd() * GOAL_TXT.length)](sc.name, as && as.name) });
         // 精力太低的后防球员容易失误丢球
@@ -496,6 +498,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { tune, withSeed, setTeamMod, setInjHook, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { tune, withSeed, setTeamMod, setInjHook, setRefHook, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;

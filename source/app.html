@@ -2546,6 +2546,8 @@ function newsItems() {
   try { const M = (S.potm || {})[SEASON] || {}; Object.keys(M).forEach(k => { const x = M[k]; if (x.p) add(MONTHS[k][2], '月度最佳', 'gold', `${esc(x.lab)}最佳球员：${pl(x.p.team, x.p.name)}（${tm(x.p.team)}，场均 ${x.p.avg.toFixed(2)}，${x.p.g} 球 ${x.p.a} 助攻）；最佳主帅：${esc(x.c.name)}（${tm(x.c.team)}，${x.c.w}胜${x.c.d}平${x.c.l}负）`, 2); });
     Object.entries((S.ded || {})[SEASON] || {}).forEach(([t, d]) => add(-1, '扣分', 'bad', `${tm(t)} 上季阵容成本超过联赛财务红线，本季被扣 ${d} 分`, 4)); } catch (e) { console.error(e); }
   try { const E = intlAll()[SEASON - 1]; if (E) Object.values(E).forEach(T => { const f = T.ko[T.ko.length - 1].m[0]; add(-1, '国家队', 'gold', `${esc(T.lab)}：<b>${esc(T.champ)}</b> 夺冠（决赛 ${esc(f[0])} ${f[2]}:${f[3]} ${esc(f[1])}${f[5] ? `，点球 ${f[5][0]}:${f[5][1]}` : ''}）${T.mvp ? `，最佳球员 ${ipLink(T.mvp)}` : ''}${T.boot ? `，金靴 ${ipLink(T.boot)} ${T.boot.g} 球` : ''}`, T.k === 'wc' ? 5 : 3); }); } catch (e) { console.error(e); }
+  try { if (ownOn(SEASON) && SEASON > 1) { S.teams.forEach(t => { const tr = tourOf(t, SEASON); if (tr && clubBaseApprox(t) >= 82) add(-1, '季前', '', `${tm(t)} 季前赴${esc(tr.region)}巡回比赛，进账 ${money(tr.rev)}`, 0); });
+      const MKp = S.market && S.market[SEASON - 1]; if (MKp) MKp.offers.filter(o => o.st === 'a' && (o.dl || o.rc)).sort((a, b) => b.fee - a.fee).slice(0, 6).forEach(o => add(-1, o.rc ? '解约金' : '截止日', 'gold', o.rc ? `${tm(o.to)} 直接支付 ${esc(o.name)} 的解约金 ${money(o.fee)}，${TD[o.from] ? tm(o.from) : esc(o.from)} 无法拒绝` : `转会截止日：${tm(o.to)} 加价到 ${money(o.fee)} 抢下 ${TD[o.from] ? tm(o.from) : esc(o.from)} 的 ${esc(o.name)}`, 3)); } } catch (e) { console.error(e); }
   // 场外事件
   offField().filter(e => e.ri <= Math.min(cur, 37) && (nr < 0 || e.ri <= nr)).forEach(e => {
     if (e.kind === 'train') add(e.ri, '伤病', 'bad', `${pl(e.team, e.name)}（${tm(e.team)}）训练中${esc(e.what)}，预计缺席 ${e.dur} 场`, 1);
@@ -2635,6 +2637,7 @@ function vOverview() {
   ${nr < 0 ? seasonDoneBanner(T) : ''}
   ${S.target && S.target > SEASON ? `<div class="panel split" style="padding:14px 18px;border-color:var(--accent-2)"><span class="note">你从 ${SN(SEASON)} 重新开始模拟，原来的进度到 ${SN(S.target)}。踢到满意后，可以把后面的赛季按新结果一键重新推演。</span><span class="btns"><button class="btn primary" data-act="autoTarget">自动推演到 ${SN(S.target)}</button><button class="btn ghost" data-act="dropTarget">不用了</button></span></div>` : ''}
   ${newsPanel()}
+  ${lazy(() => { try { return refPanel(); } catch (e) { return ''; } }, '')}
   <div class="grid g-2">
     <div class="panel"><div class="ph"><div><div class="eyebrow">Title race</div><h2>前五名积分走势</h2></div></div>
       ${played ? raceChart(T.slice(0, 5), played) : `<div class="empty">第 1 轮结束后开始绘制</div>`}</div>
@@ -5645,6 +5648,38 @@ function vHome() {
   </section>`;
 }
 
+/* ---------- 裁判（威超）：每人尺度不同，影响黄红牌和点球；德比、强强对话派经验最老到的 ---------- */
+const REF_NATS = ['英格兰', '英格兰', '英格兰', '苏格兰', '威尔士', '德国', '荷兰', '意大利', '西班牙', '法国'];
+const REFS = Array.from({ length: 20 }, (_, i) => { const id = 'REF|' + i; return { i, id, nat: REF_NATS[i % REF_NATS.length], c: +(0.72 + ghash(id + 'c') * 0.62).toFixed(2), p: +(0.75 + ghash(id + 'p') * 0.55).toFixed(2), exp: Math.round(2 + ghash(id + 'e') * 18) }; });
+let REF_NM = null; const refName = i => { if (!REF_NM) REF_NM = REFS.map(r => coachName(r.id, r.nat)); return REF_NM[i]; };
+const REF_TOP = REFS.slice().sort((a, b) => b.exp - a.exp).slice(0, 5).map(r => r.i);
+function refFor(s, h, a) { if (!ownOn(s) || !TD[h] || !TD[a]) return null; const big = (() => { try { return isRival(h, a) || (clubBaseApprox(h) >= 84 && clubBaseApprox(a) >= 84); } catch (e) { return false; } })(), x = ghash('rf|' + s + '|' + saltOf(s) + '|' + h + '|' + a); return REFS[big ? REF_TOP[Math.floor(x * REF_TOP.length)] : Math.floor(x * REFS.length)]; }
+const refLv = c => c >= 1.18 ? '严格' : c <= 0.88 ? '宽松' : '适中';
+function refStats(fx = S.fx) { const R = {}; fx.forEach(rd => rd.forEach(m => { if (!m.r || !m.r.ev) return; const rf = refFor(SEASON, m.h, m.a); if (!rf) return; const o = R[rf.i] = R[rf.i] || { n: 0, y: 0, r: 0, p: 0 }; o.n++; m.r.ev.forEach(e => { if (e[1] === 'yellow') o.y++; else if (e[1] === 'red') o.r++; else if (e[1] === 'goal' && e[5]) o.p++; else if (e[1] === 'pmiss') o.p++; }); })); return R; }
+function refPanel() { if (!ownOn(SEASON)) return ''; const R = refStats(), L = REFS.map(r => ({ r, o: R[r.i] || { n: 0, y: 0, r: 0, p: 0 } })).filter(x => x.o.n).sort((a, b) => b.o.n - a.o.n || a.r.i - b.r.i); if (!L.length) return '';
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Referees</div><h2>${SN(SEASON)} 裁判</h2></div><span class="note">尺度严的裁判出牌和判点球都多；德比和强强对话派经验最丰富的</span></div><div class="tw"><table><thead><tr><th class="l">裁判</th><th class="l">尺度</th><th>执法</th><th>场均黄牌</th><th>红牌</th><th>点球</th><th>执法年数</th></tr></thead><tbody>${L.map(({ r, o }) => `<tr><td class="l"><b>${esc(refName(r.i))}</b> <span class="dim">${esc(r.nat)}</span></td><td class="l">${refLv(r.c)}</td><td>${o.n}</td><td class="mono">${(o.y / o.n).toFixed(1)}</td><td>${o.r}</td><td>${o.p}</td><td>${r.exp + Math.max(0, SEASON - 1)}</td></tr>`).join('')}</tbody></table></div></div>`; }
+/* ---------- 经纪人：球员都有经纪公司；买方另付佣金（转会费的 5–10%，超级经纪人要更多）---------- */
+const AGENCIES = [['星辉体育管理', 1, 9], ['金牌球员经纪', 1, 8.5], ['环宇体育', 0, 7], ['北极星经纪', 0, 6.5], ['蓝海球员代理', 0, 6], ['红杉之外体育', 0, 6], ['冠途经纪', 0, 5.5], ['家族代理', 0, 5]];
+const agentOf = (uid, r) => { const x = ghash('ag|' + uid); if (!uid) return null; const sup = (r || 75) >= 86 && x < 0.55; const L = sup ? AGENCIES.filter(a => a[1]) : AGENCIES.filter(a => !a[1]); const a = L[Math.floor(ghash('ag2|' + uid) * L.length)]; return { name: a[0], sup: a[1], pct: a[2] }; };
+function agentFees(t, s) { if (!ownOn(s)) return 0; let n = 0; TRANSFERS.forEach(x => { if (x.s !== s || !x.fee || x.to !== t) return; const p = BY_TN[x.to + '|' + x.name]; const a = agentOf(x.uid || (p && p.uid) || x.name, p ? p.rating : 80); n += x.fee * (a ? a.pct : 6) / 100; }); return Math.round(n); }
+/* ---------- 解约金条款：星煌、犀甲（西语联赛）每人都有，其他联赛约三成球员有 ---------- */
+function clauseOf(p, club) { if (!p || !p.uid) return null; const L = EXT_LEAGUES.find(x => x.clubs.some(c => c[0] === club)), es = L && L.style === 'es'; if (!es && ghash('cl|' + p.uid) > 0.3) return null; const v = valueM(p.rating || 75, p.age || 25); return Math.round(v * (es ? 2.2 + ghash('clm|' + p.uid) * 1.6 : 1.6 + ghash('clm|' + p.uid) * 1.2)); }
+/* ---------- 季前巡回赛：商业型老板爱带队去亚洲、北美、中东、澳洲赚钱 ---------- */
+const TOUR_R = [['亚洲', 1.1], ['北美', 1.05], ['中东', 1.2], ['澳洲', 0.8], ['东南亚', 0.9]];
+function tourOf(t, s) { if (!ownOn(s) || !TD[t]) return null; const o = ownerAt(t, s), big = clubBaseApprox(t), x = ghash('tour|' + t + '|' + s + '|' + saltOf(Math.min(s, SEASON))), want = (['corp', 'group', 'pe', 'tech', 'sovereign'].includes(o.type) ? 0.55 : 0.25) + (big >= 84 ? 0.25 : big >= 80 ? 0.1 : -0.1); if (x > want) return null;
+  const R = TOUR_R[Math.floor(ghash('tr|' + t + s) * TOUR_R.length)]; return { region: R[0], rev: Math.round((15 + Math.max(0, big - 74) * 6) * R[1] * (0.8 + ghash('trv|' + t + s) * 0.4)) }; }
+/* ---------- 转播分成：平分 + 排名奖金 + 直播场次费（参考英超的分法） ---------- */
+function tvSplit(table) { const n = table.length, pool = Array.from({ length: n }, (_, i) => pzLeague(i + 1)).reduce((a, b) => a + b, 0), eq = pool * 0.5 / n, merit = pool * 0.25, fac = pool * 0.25;
+  const mw = table.map((_, i) => n - i), mws = mw.reduce((a, b) => a + b, 0);
+  const tvg = table.map((r, i) => { const t = r.team; let pop = 0; try { pop = Math.max(0, clubBaseApprox(t) - 74) * 0.8 + (ownerAt(t).type === 'corp' ? 1 : 0); } catch (e) { } return Math.max(10, Math.min(29, Math.round(10 + pop + (n - i) * 0.45))); }), tvs = tvg.reduce((a, b) => a + b, 0);
+  return table.map((r, i) => ({ t: r.team, eq: Math.round(eq), merit: Math.round(merit * mw[i] / mws), fac: Math.round(fac * tvg[i] / tvs), tv: tvg[i] })); }
+
+/* 有钱又有野心的老板（财力 72、野心 75 以上）看中有解约金的球星：直接付解约金，卖方没法拒绝 */
+function clauseTrigger(L, s) { if (!ownOn(s)) return; L.forEach(o => { if (o.rc || o.loan || o.user || o.sched || !TD[o.to]) return; const ow = ownerAt(o.to, s); if (!ow || ow.w < 72 || ow.a < 75) return; const p = (PDB[o.from] || FDB[o.from] || []).find(q => q.uid === o.uid); const cl = clauseOf(p, o.from); if (!cl || cl > o.v * 2.8 || ghash('rc|' + o.uid + '|' + s) > 0.4) return; const F = finState()[o.to]; if (!F || F.rem < cl) return; o.fee = cl; o.rc = 1; }); }
+/* 转会截止日：窗口关闭前还没谈拢、但买方很想要的，加价 12% 抢下 */
+function deadlineDay(MK, by, s) { if (!ownOn(s)) return; Object.values(by).forEach(L => { if (L.some(o => o.st === 'a')) return; const o = L.filter(x => x.st === 'r' && !x.user && !x.sched && !x.loan && TD[x.to] && TD[x.from] !== undefined && !isRival(x.from, x.to) && x.fee >= x.v * 0.8).sort((a, b) => b.fee - a.fee)[0]; if (!o || ghash('dl|' + o.uid + '|' + s) > 0.3) return; if (TD[o.from] && nfsUid(o.from, o.uid)) return; const fee = Math.round(Math.max(o.fee, o.v) * 1.12); if (!canAfford(o.to, fee)) return; o.fee = fee; o.st = 'a'; o.dl = 1; o.log.push('转会截止日加价成交 ' + fee$(fee)); }); }
+function agentClauseHTML(p, club) { if (!p || !p.uid || !ownOn(SEASON)) return ''; const a = agentOf(p.uid, p.rating), cl = clauseOf(p, club); return `<div class="rank-list" style="margin-top:8px"><div class="rk" style="grid-template-columns:80px minmax(0,1fr)"><span class="muted">经纪公司</span><span>${esc(a.name)}${a.sup ? ' <span class="chip gold">超级经纪人</span>' : ''} <span class="dim" style="font-size:11px">转会时向买方收 ${a.pct}% 佣金</span></span></div><div class="rk" style="grid-template-columns:80px minmax(0,1fr)"><span class="muted">解约金</span><span>${cl ? `${money(cl)} <span class="dim" style="font-size:11px">有人付这个价，球队不能拒绝</span>` : '<span class="dim">合同没有解约金条款</span>'}</span></div></div>`; }
+
 /* ---------- 主帅与士气对比赛的影响 ----------
    执教能力：每高于 78 一点，进攻和防守表现约 +0.22%（最多约 ±4%）
    影响力：带来额外的士气加成，也能在连败时稳住更衣室
@@ -5721,6 +5756,7 @@ ENGINE.setTeamAdj(tierAdj);
 ENGINE.setHomeBoost(t => tid(t).home || 0);
 ENGINE.setDerby((h, a) => isRival(h, a));
 ENGINE.setHot(p => persOf(p) === '暴躁');
+ENGINE.setRefHook((h, a) => { try { const r = refFor(SEASON, h, a); return r ? { c: r.c, p: r.p } : null; } catch (e) { return null; } });
 ENGINE.setInjHook(t => { try { if (!TD[t] || !ownOn(SEASON)) return null; return [injMul(t), injDurMul(t)]; } catch (e) { return null; } });
 ENGINE.setTeamMod((t, opp) => {
   if (!TD[t] || !S || !S.fx) return [];
@@ -6407,7 +6443,7 @@ function openPlayer(team, name) {
     <div class="btns"><button class="btn ghost" data-act="editP" data-uid="${esc(p.uid || '')}" style="padding:5px 10px;font-size:12px" ${p.uid ? '' : 'disabled'}>✎ 编辑资料</button>${cmpBtn(pid != null ? 'p:' + pid : 't:' + team + '|' + p.name, p.name)}${mktActive() && PDB[team] && p.uid && typeof p.age0 === 'number' ? (mktGet().listed[p.uid] ? '<span class="chip">已挂牌</span>' : `<button class="btn ghost" data-act="mkList" data-id="${esc(p.uid)}" style="padding:5px 10px;font-size:12px">挂牌出售</button>`) : ''}${typeof p.age === 'number' && p.age <= 20 ? `<button class="btn ghost" ${scoutBtn({ key: 'U' + p.uid, kind: 'first', name: p.name, nat: p.nat, pos: p.pos, line: ENGINE.LINE(p.pos), age: p.age, rating: p.rating, pot: potentialOf(p), attrs: p.attributes || {}, height: p.height, weight: p.weight, team, uid: p.uid })} style="padding:5px 10px;font-size:12px">${ic('search')} 球探报告</button>` : ''}</div>
     <div class="attrs">${attrs.map(([k, v]) => `<div class="attr"><span class="muted">${ATTR[k] || k}</span><div class="bar"><i style="width:${v}%;--c:${rtColor(v)}"></i></div><b>${v}</b></div>`).join('')}</div>
     ${skillBlock(skillsOf(p))}
-    ${awardChips(pid, p.uid)}${intlCareerHTML(pid, p.uid)}
+    ${awardChips(pid, p.uid)}${agentClauseHTML(p, team)}${intlCareerHTML(pid, p.uid)}
     ${wlCareerForPid(pid)}${preCareerHTML(pid)}
     ${pid != null ? careerTotalHTML(pid) : ''}${TD[team] ? careerCompsHTML(pid) : ''}
     ${loreHTML(pid)}
@@ -6689,7 +6725,8 @@ function prizeOf(s) {
   const A = (S.archive || []).find(x => x.s === s) || (s === SEASON && isPending(s) ? pendingArchive() : null); if (!A) return null;
   const isP = !!(PEND && A === PEND.A), ck = s + '|a'; if (!isP && PZ_CACHE[ck]) return PZ_CACHE[ck];
   const o = {}, add = (t, k, m, why) => { if (!TD[t] || !m) return; (o[t] = o[t] || { total: 0, items: [] }).total += m; o[t].items.push([k, m, why]); };
-  (A.table || []).forEach((r, i) => add(r.team, '威超联赛', pzLeague(i + 1), `第 ${i + 1} 名`));
+  if (ownOn(s) && (A.table || []).length) { tvSplit(A.table).forEach((x, i) => { add(x.t, '转播平分', x.eq, '每队一样'); add(x.t, '排名奖金', x.merit, `第 ${i + 1} 名`); add(x.t, '直播场次费', x.fac, `${x.tv} 场电视直播`); }); }
+  else (A.table || []).forEach((r, i) => add(r.team, '威超联赛', pzLeague(i + 1), `第 ${i + 1} 名`));
   const C = A.cups || {};
   if (C['世联赛'] && C['世联赛'].table) C['世联赛'].table.forEach((r, i) => add(r[0], '世联赛', pzWorld(i + 1), `第 ${i + 1} 名`));
   const TN = ['冠军', '亚军', '4 强', '8 强', '16 强', '其他'];
@@ -6737,7 +6774,7 @@ const finStart = t => { const v = (PDB0[t] || []).map(p => p.rating).sort((a, b)
 let FIN_C = null;
 // 每季账本：收入（卖人、周边商品、投资方赞助、广告、球场、比赛奖金）和支出（周边生产、税务、球场维护、买人、工资）。
 // 一季的商业收入、奖金、工资和税在 38 轮 + 杯赛踢完时结算；买卖球员记在球员加盟的那一季。
-const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款'];
+const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资', '季前巡回'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款', '经纪人佣金'];
 function finLedger(t, s) {
   const inc = {}, exp = {}; FIN_INC.forEach(k => inc[k] = 0); FIN_EXP.forEach(k => exp[k] = 0);
   TRANSFERS.forEach(x => { if (x.s !== s || !x.fee) return; if (x.to === t) exp['买人支出'] += x.fee; if (x.from === t) inc['卖人收入'] += x.fee; });
@@ -6747,6 +6784,7 @@ function finLedger(t, s) {
     exp['周边商品生产'] = Math.round(c.merch * 0.4); exp['球场维护'] = c.maint; exp['球员工资'] = wagesOf(s)[t] || 0; exp['税务'] = Math.round((c.merch + c.invest + c.ads + c.stadium + inc['比赛奖金']) * 0.12);
     try { const oc = ownerCash(t, s); if (oc > 0) inc['老板注资'] = oc; else if (oc < 0) exp['股东分红'] = -oc; exp['基建投资'] = Math.round(boardCost(t, s)); } catch (e) { } }
   { const R = S.scr && S.scr[s - 1] && S.scr[s - 1][t]; if (R && R.fine) exp['财务违规罚款'] = R.fine; } /* 上季超标的罚款在本季缴 */
+  try { const tr = tourOf(t, s); if (tr) inc['季前巡回'] = tr.rev; exp['经纪人佣金'] = agentFees(t, s); } catch (e) { }
   const ti = Object.values(inc).reduce((a, b) => a + b, 0), te = Object.values(exp).reduce((a, b) => a + b, 0);
   return { s, inc, exp, ti, te, net: ti - te, closed };
 }
@@ -7096,6 +7134,7 @@ function mktFinalize(s) {
   MK.offers.filter(o => o.st === 'p' && o.user).forEach(o => { o.st = 'r'; o.log.push('转会窗关闭，谈判没有完成'); });
   MK.offers.filter(o => o.st === 'p').forEach(o => (by[o.uid] = by[o.uid] || []).push(o));
   Object.values(by).forEach(L => sysDecide(L, s));
+  try { deadlineDay(MK, by, s); } catch (e) { console.error(e); }
   mktAutoTrim();
   mktCompute(s);
 }
@@ -7109,7 +7148,7 @@ function mktSysResolve(MK, all, s) {
   return n;
 }
 // 卖方俱乐部按常规挑买方：历史转会照历史；否则只考虑球员愿意去的买方，报价不低于身价时选「报价 × 球员意愿」最好的那家
-function sysDecide(L, s) { { const nf = o => TD[o.from] && nfsUid(o.from, o.uid) && o.fee < o.v * NFS_MULT; const sc = L.find(o => o.sched && !nf(o)); const ok = L.filter(o => !nf(o) && (o.will == null || willNow(o) >= WILL_MIN) && !isRival(o.from, o.to) && (relOf(o.from, o.to) !== 'comp' || o.fee >= o.v * 1.15)); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || ok[0]; L.forEach(o => { if (o === best && (o.sched || ((s > 17 || HIST_END > 1e8) && o.fee >= o.v * (o.kind === 'vet' ? 0.55 : o.loan ? 0.05 : 0.95)))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
+function sysDecide(L, s) { try { clauseTrigger(L, s); } catch (e) { } { const nf = o => TD[o.from] && nfsUid(o.from, o.uid) && o.fee < o.v * NFS_MULT; const sc = L.find(o => o.sched && !nf(o)); const ok = L.filter(o => !nf(o) && (o.will == null || willNow(o) >= WILL_MIN) && !isRival(o.from, o.to) && (relOf(o.from, o.to) !== 'comp' || o.fee >= o.v * 1.15)); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || L.find(o => o.rc) || ok[0]; L.forEach(o => { if (o === best && (o.sched || o.rc || ((s > 17 || HIST_END > 1e8) && o.fee >= o.v * (o.kind === 'vet' ? 0.55 : o.loan ? 0.05 : 0.95)))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : o.rc ? '买方支付解约金，卖方不能拒绝 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
 // 历史时期：把和历史不同的决定记成叠加层 ov，实际发生的转会记成 done（转会窗延续期间新成交的也会重新算）
 function mktCompute(s) {
   if (s >= HIST_END) return; const MK = mktGet(s);
@@ -7139,7 +7178,7 @@ function finPanel() {
     </tbody></table></div>
     <details style="margin-top:10px"><summary class="note" style="cursor:pointer">各项赛事奖金标准</summary><div class="rank-list" style="margin-top:8px">${PRIZE_RULES.map(([k, lv, txt]) => `<div class="rk" style="grid-template-columns:90px minmax(0,1fr)"><b>${k}</b><span><span class="chip" style="font-size:10px;padding:0 5px">${lv}</span> <span class="muted" style="font-size:12.5px">${txt}</span></span></div>`).join('')}</div><p class="note" style="margin:8px 0 0">奖金在每季 38 轮和所有杯赛踢完时结算，下一个转会窗就能用。开局资金按 S01 前的球队实力给 ⰵ100M–ⰵ600M 不等。工资：能力每高 1 分年薪贵约 28%（96 分球星约是 80 分球员的 55 倍）；全联赛工资总额定为当季国内俱乐部奖金总额的 85%，每季踢完时扣除。余额为负时管理层不批转会预算，只能卖人。</p></details></div>`;
 }
-const FIN_COL = { 卖人收入: '#7fd6b4', 周边商品营收: '#ff5b1f', 投资方赞助: '#c9a3ff', 广告营收: '#ffb38a', 球场营收: '#f0d27a', 比赛奖金: '#d8b45f', 周边商品生产: '#8a95a8', 税务: '#e08a8a', 球场维护: '#b98a6a', 买人支出: '#e66b6b', 球员工资: '#ff9f5a', 解约赔偿: '#c47a9a', 老板注资: '#9fb7ff', 基建投资: '#6a9fb9', 股东分红: '#a06ad0', 财务违规罚款: '#ff4d4d' };
+const FIN_COL = { 卖人收入: '#7fd6b4', 周边商品营收: '#ff5b1f', 投资方赞助: '#c9a3ff', 广告营收: '#ffb38a', 球场营收: '#f0d27a', 比赛奖金: '#d8b45f', 周边商品生产: '#8a95a8', 税务: '#e08a8a', 球场维护: '#b98a6a', 买人支出: '#e66b6b', 球员工资: '#ff9f5a', 解约赔偿: '#c47a9a', 老板注资: '#9fb7ff', 基建投资: '#6a9fb9', 股东分红: '#a06ad0', 财务违规罚款: '#ff4d4d', 季前巡回: '#7fc8f8', 经纪人佣金: '#d08a5a' };
 function finBars(led) {
   if (!led.length) return '';
   const max = Math.max(1, ...led.map(L => Math.max(L.ti, L.te)));
