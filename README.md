@@ -1,4 +1,4 @@
-# 威伊士超联赛（VES League）联赛中心
+# VES 足球世界（VES Football World）
 
 网站：https://dson3344.github.io/vsl.github.io/
 
