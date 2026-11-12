@@ -8839,7 +8839,7 @@ document.addEventListener('click', e => {
   if (el.dataset.sline != null) { SM.line = el.dataset.sline; SM.limit = 50; return render(); }
   const act = el.dataset.act;
   if (act === 'round') { const nr = nextRound(); if (nr < 0) return; playRound(nr); S.demo = false; save(); ovRound = null; render(); toast(nextRound() < 0 ? `${SN(SEASON)} 全部踢完，看完满意后点「进入 ${SN(SEASON + 1)}」` : `第 ${nr + 1} 轮已模拟`); }
-  if (act === 'rest') { let n = 0; while (nextRound() >= 0) { playRound(nextRound()); n++; } S.demo = false; save(); ovRound = null; render(); toast(`已模拟剩余 ${n} 轮 · 看完满意后点「进入 ${SN(SEASON + 1)}」`); }
+  if (act === 'rest') { const n0 = playedRounds(); autoFastSeason(); const n = playedRounds() - n0; S.demo = false; save(); ovRound = null; render(); toast(`已模拟剩余 ${n} 轮，冬窗与夏窗的转会、续约、解约、名单整理都已由系统处理 · 看完满意后点「进入 ${SN(SEASON + 1)}」`); } /* 跟快速推演一样：不管转会窗设成哪种处理方式，都全部自动 */
   if (act === 'watch') { M = null; initMatch(); go('match'); }
   if (act === 'prevR') { ovRound = Math.max(0, (ovRound ?? Math.max(0, nextRound())) - 1); render(); }
   if (act === 'nextR') { ovRound = Math.min(37, (ovRound ?? Math.max(0, nextRound())) + 1); render(); }
