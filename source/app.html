@@ -1349,14 +1349,14 @@ const pcrest = (t, n = 18) => tImg(t) ? `<img class="crest" src="${tImg(t)}" wid
 function acadBase(t) { const v = ((typeof PDB0 !== 'undefined' && PDB0[t]) || PDB[t] || []).map(p => p.rating).sort((a, b) => b - a).slice(0, 11); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 78; }
 /* 青训少年的生成很慢（取名要避开所有已用的名字），而且每次重算都完全一样：第一次生成后记下来，之后直接复制（同时把名字标记为已用） */
 var KID_MEMO = new Map();
-/* 旧资料球员：只保留名字（和国籍）。新规则（S.nm2，从 S01 新开的进度）下，他们的名字随机分给 S01–S18 各队各批青训新人，
+/* 旧资料球员：只保留名字（和国籍）。新规则（S.nm2，从 S01 新开的进度）下，他们的名字随机分给各队青训：约三分之一是 S01 时已在梯队的大孩子，其余是 S01–S18 各批新进梯队的新人，
    出现的赛季、球队、潜力、何时提拔或离队全部照一般青训规则，不再沿用旧资料的出道时间和能力。巴扎南德的剧情是你指定的，照旧。 */
 const nm2 = () => !!(S && S.nm2);
 let OLD_SLOT = null;
 function oldSlots() { if (OLD_SLOT && OLD_SLOT.k === Object.keys(TD).length) return OLD_SLOT.m; const base = Object.keys(TD).filter(t => !TD[t].gen).sort(), m = {}, used = new Set();
   const L = []; const seen = new Set(SCR_STORY.map(x => x.name)); SCR_OLD.forEach(x => { if (!seen.has(x[0])) { seen.add(x[0]); L.push([x[0], x[4] || '']); } }); SCR_OLD2.forEach(x => { if (!seen.has(x[0])) { seen.add(x[0]); L.push([x[0], x[4] || '']); } });
   const nOf = (t, b) => 4 + (ghash('acn|' + t + '|' + b) < 0.4 ? 1 : 0);
-  L.forEach(([name, nat]) => { const e = 1 + Math.floor(ghash('on|' + name) * 18), b = e - 15; let ti = Math.floor(ghash('ot|' + name) * base.length), k = Math.floor(ghash('ok|' + name) * 4);
+  L.forEach(([name, nat]) => { const h0 = ghash('on0|' + name), e = h0 < 0.35 ? -3 + Math.floor(ghash('on|' + name) * 4) : 1 + Math.floor(ghash('on|' + name) * 18), b = e - 15; /* 约三分之一给 S01 时已经在梯队、快要能升一线队的年龄，其余分散到 S01–S18 新进梯队的新人 */ let ti = Math.floor(ghash('ot|' + name) * base.length), k = Math.floor(ghash('ok|' + name) * 4);
     for (let tries = 0; tries < base.length * 6; tries++) { const t = base[ti], n = nOf(t, b); if (k >= n) { k = 0; ti = (ti + 1) % base.length; continue; } const key = t + '|' + b + '|' + k; if (!used.has(key)) { used.add(key); m[key] = { name, nat }; break; } k++; } });
   OLD_SLOT = { k: Object.keys(TD).length, m }; return m; }
 
