@@ -1437,9 +1437,10 @@ const fixTeamBoost = t => { const X = fixLg(); if (!X || X.F.lg !== t || X.gap =
 const cupFixOf = k => { const F = fixOf(CUP_S != null ? CUP_S : SEASON); return F && F.cups && F.cups[k] || null; };
 let INTL_FIX = null;
 function fixVotes(list, nm, s, pool) { if (!nm || !list) return list; let i = list.findIndex(p => p.name === nm); if (i === 0) return list; let L = list.slice();
-  if (i < 0) { const r = (pool || []).find(p => p.name === nm) || (HPS[s] || []).find(p => p.name === nm); if (!r) return list; L.unshift({ ...r }); } else L.unshift(L.splice(i, 1)[0]);
-  const pc = L.map(p => p.pct).filter(v => v != null).sort((a, b) => b - a); if (pc.length === L.length) L = L.map((p, j) => ({ ...p, pct: pc[j] })); return L; }
-const fixRow = (nm, s, pool) => nm ? ((pool || []).find(p => p.name === nm) || (HPS[s] || []).find(p => p.name === nm) || null) : null;
+  const pc = list.map(p => p.pct).filter(v => v != null).sort((a, b) => b - a); /* 原本的得票率，由高到低重新发 */
+  if (i < 0) { const r = fixRow(nm, s, pool); if (!r) return list; L.unshift({ ...r }); if (L.length > list.length) L.pop(); /* 名单外的人：挤掉最后一名 */ } else L.unshift(L.splice(i, 1)[0]);
+  if (pc.length) L = L.map((p, j) => ({ ...p, pct: pc[j] != null ? pc[j] : p.pct })); return L; }
+const fixRow = (nm, s, pool) => { if (!nm) return null; const r = (pool || []).find(p => p.name === nm) || (HPS[s] || []).find(p => p.name === nm); if (r) return r; const p = Object.values(PDB).flat().concat(Object.values(FDB).flat()).find(q => q.name === nm); return p ? { name: p.name, team: p.team, pos: p.pos, line: p.line, nat: p.nat, age: p.age, rating: p.rating, apps: 0, g: 0, a: 0, avg: 0 } : null; }; /* 没上场纪录的人也能领奖 */
 function openFixDlg(s0) { const s = s0 || (isPending(SEASON) ? SEASON + 1 : SEASON), d = $('#dlg'), F = (S.fix && S.fix[s]) || {}, cur = s === SEASON, started = cur && playedRounds() > 0, ended = s < SEASON || (cur && isPending(SEASON));
   const clubs = Object.keys(TD).concat(Object.keys(typeof EXT_CLUB !== 'undefined' ? EXT_CLUB : {})).filter((x, i, A) => A.indexOf(x) === i);
   const ppl = cur || s === SEASON + 1 ? Object.values(PDB).flat().map(p => p.name).concat(Object.values(FDB).flat().map(p => p.name)) : Object.values(PDB).flat().map(p => p.name);
