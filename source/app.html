@@ -1201,7 +1201,7 @@ function allLoans() {
 }
 var ACAD_ID = {};
 // 解约青训出身的球员：历史时期的阵容每季按青训去向重建，所以要把解约记进青训去向（eff = 生效的赛季）
-function relKid(p, eff) { if (!p || !p.acad || !ACAD_ID[p.acad]) return; S.acadDec = S.acadDec || {}; const ev = S.acadDec[p.acad] = S.acadDec[p.acad] || []; if (!ev.some(e => e.act === 'release' && e.s === eff)) ev.push({ s: eff, act: 'release' }); }
+function relKid(p, eff) { if (!p || !p.acad || !ACAD_ID[p.acad] || keepUid('K|' + p.acad)) return; S.acadDec = S.acadDec || {}; const ev = S.acadDec[p.acad] = S.acadDec[p.acad] || []; if (!ev.some(e => e.act === 'release' && e.s === eff)) ev.push({ s: eff, act: 'release' }); }
 const kidEvents = id => { const L = ((S && S.acadDec) || {})[id] || [], k = typeof ACAD_ID !== 'undefined' && ACAD_ID[id]; if (k && k.fixEv) return k.lock ? k.fixEv : k.fixEv.concat(L); return k && k.gen ? [{ s: k.genS, act: 'promote' }].concat(L) : L; };
 // 青训球员在第 s 季在哪：academy / first（一线队）/ loan（租借中）/ gone（离队）
 function kidWhere(k, s) {
@@ -1216,7 +1216,7 @@ function kidWhere(k, s) {
   }
   if (st.at === 'loan' && s > st.until) { lb += st.until - st.s + 1; st = { at: 'first', team: st.parent }; }
   else if (st.at === 'loan') lb += s - st.s;
-  if (st.at === 'acad' && kAge(k, s) > 20) st = { at: 'gone', team: null };
+  if (st.at === 'acad' && kAge(k, s) > 20) st = keepUid('K|' + k.id) ? { at: 'first', team: k.team } : { at: 'gone', team: null }; /* 锁定留队的：21 岁还没提拔就直接升上一线队，不放走 */
   st.lb = Math.min(3, lb); return st;
 }
 // 青训球员收到的橄榄枝（转会窗里才有）：租借意向、转会报价
@@ -1476,31 +1476,33 @@ function saveFix(s) { const v = id => { const el = $('#' + id); return el && !el
 
 /* ---------- 转会去向：锁定留队、手动改回某队 ----------
    S.keep[uid]：锁定留队——系统不会卖、不会放走、合同到期自动续约。S.xfer：[{ uid, pid, kid, s, to }] 手动把球员从那季起放到某队（只限国内联赛球队）。 */
-const keepUid = uid => !!(uid && typeof S !== 'undefined' && S && S.keep && S.keep[uid]);
+function keepUid(uid) { return !!(uid && typeof S !== 'undefined' && S && S.keep && S.keep[uid]); }
 function keepToggle(uid, on) { S.keep = S.keep || {}; const was = !!S.keep[uid]; if (on == null) on = !was; if (on) S.keep[uid] = 1; else delete S.keep[uid];
   if (on) [mktActive() ? mktGet() : null, typeof winActive === 'function' && winActive() ? S.market[winKey(SEASON)] : null].forEach(MK => { if (!MK) return; MK.offers.forEach(o => { if (o.uid === uid && (o.st === 'p' || o.st === 'a') && !o.user) { o.st = 'r'; (o.log = o.log || []).push('球员已锁定留队，俱乐部不卖'); } }); if (MK.rel) delete MK.rel[uid]; MK.free = (MK.free || []).filter(f => f.uid !== uid); if (MK.renew && MK.renew[uid] && MK.renew[uid].letgo) delete MK.renew[uid]; if (mktActive()) mktCompute(SEASON); });
   return on; }
 function xferWhere(uid) { const pid = UIDPID[uid] ?? (String(uid).startsWith('H|') ? +String(uid).slice(2) : null), kid = String(uid).startsWith('K|A|') ? String(uid).slice(2) : null;
   let p = null, team = null; Object.entries(PDB).forEach(([t, L]) => L.forEach(q => { if (q.uid === uid || (pid != null && UIDPID[q.uid] === pid)) { p = q; team = t; } }));
   if (!p) Object.entries(FDB).forEach(([c, L]) => L.forEach(q => { if (q.uid === uid) { p = q; team = c; } }));
-  const name = p ? p.name : pid != null && HIST.players[pid] ? HIST.players[pid][0] : kid && ACAD_ID[kid] ? ACAD_ID[kid].name : uid; return { pid, kid, p, team, name }; }
+  let acad = false; if (!p && kid && ACAD_ID[kid]) { const w = kidWhere(ACAD_ID[kid], SEASON); if (w.at === 'acad') { acad = true; team = ACAD_ID[kid].team; } else if (w.team) team = w.team; }
+  const name = p ? p.name : pid != null && HIST.players[pid] ? HIST.players[pid][0] : kid && ACAD_ID[kid] ? ACAD_ID[kid].name : uid; return { pid, kid, p, team, name, acad }; }
 function openXferDlg(uid) { const W = xferWhere(uid), d = $('#dlg'), ok = W.pid != null || (W.kid && ACAD_ID[W.kid]);
   const tiers = {}; Object.keys(TD).forEach(t => { const lv = S.teams.includes(t) ? '威超' : '其他国内联赛'; (tiers[lv] = tiers[lv] || []).push(t); });
   const hist = (S.xfer || []).filter(x => x.uid === uid);
   d.innerHTML = `<div class="dlg" style="position:relative;max-width:520px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
-    <div><div class="eyebrow">转会去向</div><h2 style="font-size:20px;font-weight:900">${esc(W.name)}</h2><p class="note" style="margin:4px 0 0">现在在 ${W.team ? esc(W.team) + (TD[W.team] ? '' : '（外赛区）') : '—'}。</p></div>
-    ${ok ? `<label style="display:grid;gap:4px;font-size:12px"><span class="muted">从 ${SN(SEASON)} 起改到</span><select id="xfTo" style="width:100%">${Object.entries(tiers).map(([lv, L]) => `<optgroup label="${esc(lv)}">${L.sort().map(t => `<option value="${esc(t)}" ${t === W.team ? 'selected' : ''}>${esc(t)}</option>`).join('')}</optgroup>`).join('')}</select></label>
+    <div><div class="eyebrow">转会去向</div><h2 style="font-size:20px;font-weight:900">${esc(W.name)}</h2><p class="note" style="margin:4px 0 0">现在在 ${W.acad ? esc(W.team) + ' 青训营' : W.team ? esc(W.team) + (TD[W.team] ? '' : '（外赛区）') : '—'}。</p></div>
+    ${ok ? `<label style="display:grid;gap:4px;font-size:12px"><span class="muted">从 ${SN(SEASON)} 起改到</span><select id="xfTo" style="width:100%">${W.acad ? `<option value="__acad" selected>留在 ${esc(W.team)} 青训营</option>` : ''}${Object.entries(tiers).map(([lv, L]) => `<optgroup label="${esc(lv)}">${L.sort().map(t => `<option value="${esc(t)}" ${t === W.team && !W.acad ? 'selected' : ''}>${esc(t)}${W.kid && ACAD_ID[W.kid] && t === ACAD_ID[W.kid].team ? (W.acad ? '（升上一线队）' : '（回到母队一线队）') : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>
     <label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="xfKeep" checked> 同时锁定留队（系统不会再卖掉、放走，合同到期自动续约）</label>
     <p class="note" style="margin:0">马上生效：他从这季剩下的比赛起就在新球队踢。之前的比赛和转会记录不变。只能改到国内联赛的球队。</p>` : `<p class="note" style="margin:0">这名球员不是旧资料或青训出身的球员，暂时不能直接改去向；可以先锁定留队，系统就不会再卖掉他。</p>`}
     ${hist.length ? `<p class="note" style="margin:0">之前手动调整：${hist.map(x => `${SN(x.s)} → ${esc(x.to)}`).join('、')}</p>` : ''}
     <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="keepT" data-uid="${esc(uid)}">${keepUid(uid) ? '取消锁定留队' : '只锁定留队'}</button><span class="btns"><button class="btn ghost" data-act="close">取消</button>${ok ? `<button class="btn primary" data-act="xfSave" data-uid="${esc(uid)}">确定</button>` : ''}</span></div></div>`;
   if (!d.open) d.showModal(); }
-function saveXfer(uid) { const W = xferWhere(uid), to = $('#xfTo') ? $('#xfTo').value : null, keep = $('#xfKeep') ? $('#xfKeep').checked : false; if (!to || !TD[to]) return;
-  if (to !== W.team) { S.xfer = (S.xfer || []).filter(x => !(x.uid === uid && x.s >= SEASON));
+function saveXfer(uid) { const W = xferWhere(uid), to = $('#xfTo') ? $('#xfTo').value : null, keep = $('#xfKeep') ? $('#xfKeep').checked : false; if (!to) return;
+  if (to === '__acad') { keepToggle(uid, keep); save(); MOD_VER++; render(); $('#dlg').close(); toast(keep ? `${W.name} 留在青训营，已锁定留队` : '已保存'); return; } if (!TD[to]) return;
+  if (to !== W.team || W.acad) { S.xfer = (S.xfer || []).filter(x => !(x.uid === uid && x.s >= SEASON));
     if (W.pid != null) S.xfer.push({ uid, pid: W.pid, s: SEASON, to, from: W.team || null });
     else if (W.kid && ACAD_ID[W.kid]) { const k = ACAD_ID[W.kid]; S.acadDec = S.acadDec || {}; const ev = S.acadDec[W.kid] = (S.acadDec[W.kid] || []).filter(e => !(e.man && e.s >= SEASON)); ev.push(to === k.team ? { s: SEASON, act: 'promote', man: 1 } : { s: SEASON, act: 'sell', to, fee: 0, man: 1 }); S.xfer.push({ uid, kid: W.kid, s: SEASON, to, from: W.team || null }); } }
   keepToggle(uid, keep); HSQ0 = null; HSQ_RR = 0; refreshAfterEdit();
-  if (W.kid && to !== W.team) { Object.entries(PDB).forEach(([t, L]) => { const i = L.findIndex(q => q.uid === uid); if (i >= 0 && t !== to && PDB[to]) { const [q] = L.splice(i, 1); q.team = to; PDB[to].push(q); } }); MOD_VER++; save(); render(); } /* 青训出身的：这季的名单也马上换过去 */ toast(to !== W.team ? `${W.name} 从 ${SN(SEASON)} 起在 ${to}${keep ? '（已锁定留队）' : ''}` : keep ? `${W.name} 已锁定留队` : '已保存'); }
+  if (W.kid && (to !== W.team || W.acad)) { Object.entries(PDB).forEach(([t, L]) => { const i = L.findIndex(q => q.uid === uid); if (i >= 0 && t !== to && PDB[to]) { const [q] = L.splice(i, 1); q.team = to; PDB[to].push(q); } }); MOD_VER++; save(); render(); } /* 青训出身的：这季的名单也马上换过去 */ toast(to !== W.team || W.acad ? `${W.name} 从 ${SN(SEASON)} 起在 ${to} 一线队${keep ? '（已锁定留队）' : ''}` : keep ? `${W.name} 已锁定留队` : '已保存'); }
 
 function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 'K|' + id, e = (S.edits || {})[uid] || {}, d = $('#dlg'), a = kAge(k, SEASON);
   const inp = (i, v, type = 'text', extra = '') => `<input id="${i}" type="${type}" value="${esc(v ?? '')}" ${extra} style="width:100%;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg-2,transparent);color:inherit">`;
@@ -1513,6 +1515,7 @@ function openKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 
       ${fld('身高 (cm)', inp('kdH', k.height, 'number'))}${fld('体重 (kg)', inp('kdW', k.weight, 'number'))}
       ${fld('年龄（8–20）', inp('kdAge', a, 'number', 'min="8" max="20"'))}${fld(`潜力（40–${RMAX}）`, inp('kdPot', k.pot, 'number', `min="40" max="${RMAX}"`))}<div class="note" style="align-self:end;font-size:11px">目前能力 <b id="kdNow">${kidRating(k, SEASON)}</b>${a <= 14 ? '（14 岁以下，球探报告不显示）' : ''}。早期能力衰退或大器晚成的随机变化照旧会发生。</div>
     </div>
+    <div class="btns"><button class="btn ghost" data-act="xferDlg" data-uid="${esc(uid)}">${keepUid(uid) ? '🔒 已锁定留队 · 转会去向' : '↪ 转会去向'}</button></div>
     <div class="btns" style="justify-content:space-between"><button class="btn ghost" data-act="kdReset" data-id="${esc(id)}" ${S.edits && S.edits[uid] ? '' : 'disabled'}>恢复原始资料</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="kdSave" data-id="${esc(id)}">保存</button></span></div></div>`;
   if (!d.open) d.showModal();
   $('#kdPot').addEventListener('input', ev => { const v = +ev.target.value; if (!v) return; const k2 = { ...k, pot: Math.max(40, Math.min(RMAX, v)) }; $('#kdNow').textContent = kidRating(k2, SEASON); }); }
