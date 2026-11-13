@@ -1113,6 +1113,8 @@ function oneName0(nat, rnd, k) {
 }
 function freshName(nat, rnd, taken) {
   for (let k = 0; k < 400; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n) && !hasDup(n)) { YOUTH_USED.add(n); return n; } }
+  for (let k = 400; k < 1600; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n)) { YOUTH_USED.add(n); return n; } } /* 名字不够用时多试几次，尽量不跟别人同名 */
+  { const gk = YP.NAT_GROUP[nat] || 'en', F = (YP.FIRST || {})[gk]; if (F && F.length) for (let k = 0; k < 600; k++) { const n = F[Math.floor(rnd() * F.length)] + '·' + oneName(nat, rnd, k); if (!YOUTH_USED.has(n)) { YOUTH_USED.add(n); return n; } } } /* 还是撞名：加个名字在前面 */
   for (let k = 0; k < 400; k++) { const n = oneName(nat, rnd, k); if (!taken || !taken(n)) return n; }
   return oneName(nat, rnd, 999);
 }
@@ -1476,10 +1478,14 @@ function fixPickBase(X, k, name) { const nm = k === 'g' ? X.F.boot : X.F.assist;
   if (X.rem <= 8 && d <= 2) return 400; if (d < 0) return Math.min(30, 4 + -d * 2); if (d < 3) return 3; return 1.5; }
 /* 内定得奖的球员：进球 / 助攻机会多一点，表现评分高一点，让数据配得上奖项；但不抢内定金靴 / 助攻王 */
 const STAR_W = { mvp: 2.6, ballon: 2.6, world: 2.4, young: 2, def: 1.3, glove: 1 };
-ENGINE.setPickHook((k, team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); if (!X) return 1; let w = fixPickBase(X, k, name); const st = X.stars && X.stars[name];
-  if (st && name !== (k === 'g' ? X.F.boot : X.F.assist)) { let m = Math.max(...st.map(x => STAR_W[x] || 1)); const me = (X.tally[name] || {})[k] || 0, top = k === 'g' ? (X.F.boot ? X.myG : null) : (X.F.assist ? X.myA : null); if (top != null && me >= top - 3) m = Math.min(m, me >= top - 1 ? 0.15 : 0.4); w *= m; }
+/* 剧本存档：每队当季能力最高的剧本球星（84 以上）和 92 以上的顶级球员是球队核心，进球 / 助攻机会多一点 */
+let SCR_CORE = null;
+function scrCore(name) { if (!nm4() || SEASON > 16) return false; if (!SCR_CORE || SCR_CORE.s !== SEASON) { const set = new Set(); Object.values(PDB).forEach(L => { const sc = L.filter(p => scrLockedUid(p.uid) && p.line !== 'GK' && ENGINE.LINE(p.pos) !== 'GK'); const top = Math.max(0, ...sc.map(p => p.rating)); sc.forEach(p => { if ((p.rating === top && top >= 84) || p.rating >= 92) set.add(p.name); }); }); SCR_CORE = { s: SEASON, set }; } return SCR_CORE.set.has(name); }
+STAR_W.core = 1.9;
+ENGINE.setPickHook((k, team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); let w = X ? fixPickBase(X, k, name) : 1; const st = ((X && X.stars && X.stars[name]) || []).concat(scrCore(name) ? ['core'] : []);
+  if (st.length && (!X || name !== (k === 'g' ? X.F.boot : X.F.assist))) { let m = Math.max(...st.map(x => STAR_W[x] || 1)); const me = X ? ((X.tally[name] || {})[k] || 0) : 0, top = !X ? null : k === 'g' ? (X.F.boot ? X.myG : null) : (X.F.assist ? X.myA : null); if (top != null && me >= top - 3) m = Math.min(m, me >= top - 1 ? 0.15 : 0.4); w *= m; }
   return w; });
-ENGINE.setRateHook((team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); const st = X && X.stars && X.stars[name]; if (!st) return 0; return st.some(x => x === 'mvp' || x === 'ballon' || x === 'world') ? 0.45 : 0.35; });
+ENGINE.setRateHook((team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); const st = X && X.stars && X.stars[name]; if (!st) return scrCore(name) ? 0.25 : 0; return st.some(x => x === 'mvp' || x === 'ballon' || x === 'world') ? 0.45 : 0.35; });
 const fixTeamBoost = t => { const X = fixLg(); if (!X || X.F.lg !== t || X.gap == null) return 0; return X.gap < 0 ? Math.min(5, 1.5 + -X.gap * 0.3) : X.gap < 4 ? 1 : 0; };
 const cupFixOf = k => { const F = fixOf(CUP_S != null ? CUP_S : SEASON); return F && F.cups && F.cups[k] || null; };
 let INTL_FIX = null;
@@ -1578,7 +1584,7 @@ function saveKidEditor(id) { const k = ACAD_ID[id]; if (!k) return; const uid = 
   if (v('kdH')) e.height = +v('kdH'); if (v('kdW')) e.weight = +v('kdW'); if (v('kdPot')) e.pot = Math.max(40, Math.min(RMAX, Math.round(+v('kdPot')))); { const ca = kAge(k, SEASON), na = v('kdAge') ? Math.max(8, Math.min(20, +v('kdAge'))) : 0; /* 改到 14 岁以下：回到少年梯队，满 15 岁再进梯队 */ if (na && na !== ca) { e.dAge = (e.dAge || 0) + (na - ca); e.ageA = na; e.ageS = SEASON; if (!e.dAge) { delete e.dAge; delete e.ageA; delete e.ageS; } } }
   S.edits = S.edits || {}; S.edits[uid] = e; KID_MEMO.clear(); refreshAfterEdit(); toast('已保存青训球员资料'); }
 function acadCohort(t, born) { const skip = false; /* 预设新人拿掉后，新血全靠青训：每季照常招一批 */ const n0 = 4 + (ghash('acn|' + t + '|' + born) < 0.4 ? 1 : 0), n = Math.max(2, n0 - (scrCnt()[t + '|' + born] || 0), oldCnt(t, born)), gold = ghash('gold|' + t + '|' + born) < (GOLD_P[acadQ(t)] || 0.02) ? 2 + (ghash('goldn|' + t + '|' + born) < 0.4 ? 1 : 0) : 0; for (let k = 0; k < n; k++) { const kid = kidEd(acadKid(t, born, k, gold)); if (skip) continue; ACAD[t].push(kid); ACAD_ID[kid.id] = kid; } }
-function acadInit() { ACAD = {}; ACAD_ID = {}; SCR_NAMES.forEach(n => YOUTH_USED.add(n)); Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 1 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); try { genAcad(); } catch (e) { console.error(e); } try { scrAcad(); } catch (e) { console.error(e); } } /* 两季一岁：S02 起每两季（单数赛季）才招一批 15 岁的新梯队（双数赛季那批照样生成名字，但不进梯队，免得别的孩子名字跟着变） */ // 从 S01 起每季都有 15–20 岁的梯队（历史时期也有）
+function acadInit() { ACAD = {}; ACAD_ID = {}; SCR_NAMES.forEach(n => YOUTH_USED.add(n)); if (nm4()) { SCRIPT.P.forEach(p => YOUTH_USED.add(p.n)); Object.values(FDB0).forEach(L => (L || []).forEach(p => YOUTH_USED.add(p.name))); } /* 剧本存档：青训孩子不取剧本球员、外赛区球员用过的名字 */ Object.keys(TD).forEach(t => { ACAD[t] = []; for (let b = 1 - 20; b <= 18 - 15; b++) acadCohort(t, b); }); try { genAcad(); } catch (e) { console.error(e); } try { scrAcad(); } catch (e) { console.error(e); } } /* 两季一岁：S02 起每两季（单数赛季）才招一批 15 岁的新梯队（双数赛季那批照样生成名字，但不进梯队，免得别的孩子名字跟着变） */ // 从 S01 起每季都有 15–20 岁的梯队（历史时期也有）
 function acadNext(s) { Object.keys(TD).forEach(t => { ACAD[t].forEach(k => { if (k.status === 'academy' && kAge(k, s) > 20) k.status = 'released'; }); acadCohort(t, s - 15); }); }
 let HIST_FIRST = null;
 function histFirst() { if (HIST_FIRST) return HIST_FIRST; HIST_FIRST = {}; Object.keys(HIST.squads || {}).map(Number).sort((a, b) => a - b).forEach(s => Object.entries(HIST.squads[s]).forEach(([t, l]) => l.forEach(([pid, , r]) => { if (!HIST_FIRST[pid]) HIST_FIRST[pid] = { s, t, r }; }))); return HIST_FIRST; }
@@ -1901,7 +1907,8 @@ function setupHistoric(s) {
   BY_TN = {}; TEAM_OF_UID = {};
   Object.entries(PDB).forEach(([t, l]) => l.forEach(p => { p.team = t; BY_TN[t + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = t; }));
   const XF = {}; Object.keys(FDB).forEach(c => XF[c] = []);
-  EXTP.concat(synthExt()).forEach(p => { if (typeof p.age0 !== 'number' || XEX.has(p.uid)) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return; const c = p.career ? clubAt(p, s) : (p.stints && p.stints[0] ? p.stints[0][0] : p.team); if (!c || !XF[c]) return; if (XF[c].some(q => q.name === p.name)) return; p.age = a; p.rating = growthOf(p).past(a); XF[c].push(p); });
+  const PLN = nm4() && s <= SCR_END ? new Set(Object.values(PDB).flat().map(p => p.name)) : null; /* 剧本存档：同名的人已经在威超，外赛区就不再出现一位 */
+  EXTP.concat(synthExt()).forEach(p => { if (typeof p.age0 !== 'number' || XEX.has(p.uid) || (PLN && PLN.has(p.name))) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return; const c = p.career ? clubAt(p, s) : (p.stints && p.stints[0] ? p.stints[0][0] : p.team); if (!c || !XF[c]) return; if (XF[c].some(q => q.name === p.name)) return; p.age = a; p.rating = growthOf(p).past(a); XF[c].push(p); });
   Object.keys(FDB).forEach(c => { FDB[c] = XF[c]; toCF(FDB[c]); FDB[c].forEach(p => { BY_TN[c + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = c; }); });
   applyAllEdits();
 }
