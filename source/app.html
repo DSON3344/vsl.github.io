@@ -1440,21 +1440,23 @@ function fixLg() { const F = fixOf(SEASON); if (!F || !S || !S.fx || !S.fx.lengt
   const diff = (nm, k) => { if (!nm) return null; const me = tally[nm] ? tally[nm][k] : 0; let best = 0; Object.entries(tally).forEach(([n, o]) => { if (n !== nm && o[k] > best) best = o[k]; }); return me - best; };
   return (FIXC = { key, F, rem, pts, gap, rivals, tally, myG: F.boot && tally[F.boot] ? tally[F.boot].g : 0, myA: F.assist && tally[F.assist] ? tally[F.assist].a : 0, dg: diff(F.boot, 'g'), da: diff(F.assist, 'a'), bootTeam: F.boot && tally[F.boot] ? tally[F.boot].team : null, astTeam: F.assist && tally[F.assist] ? tally[F.assist].team : null }); }
 let LGP_IT = 0;
-function lgPlan() { const s = SEASON; if (!nm4() || s > 16 || !S.fx || !S.fx.length) return null; if (S.lgp && S.lgp.s === s && S.lgp.v === 2) return S.lgp;
+function lgPlan() { const s = SEASON; if (!nm4() || s > 16 || !S.fx || !S.fx.length) return null; if (S.lgp && S.lgp.s === s && S.lgp.v === 3) return S.lgp;
   const nx = SCRIPT.rt[s + 1] ? new Set(SCRIPT.rt[s + 1]) : null, down = nx ? S.teams.filter(t => !nx.has(t)) : []; /* 剧本：下季名单里没有的球队排在最后（降级） */
   const teams = S.teams.slice(), forced = (SCRIPT.order[s] ? SCRIPT.order[s].slice(0, 17) : [SCRIPT.champ[s]]).filter(t => teams.includes(t) && !down.includes(t)), free = teams.filter(t => !forced.includes(t)), rnd = seeded('lgp|' + s + '|' + (S.reset || '') + saltOf(s));
-  const fx = []; S.fx.forEach(r => r.forEach(m => fx.push([m.h, m.a]))); const str = {}; teams.forEach(t => { let v = 75; try { v = ENGINE.strength(t).ovr; } catch (e) { } const i = forced.indexOf(t); str[t] = v + (i >= 0 ? (forced.length - i) * 0.35 : -2); });
+  const fx = [], lk = []; S.fx.forEach(r => r.forEach(m => { fx.push([m.h, m.a]); lk.push(m.r ? [m.r.hg, m.r.ag] : null); })); const str = {}; /* 已经踢完的比赛照实际比分，只排还没踢的 */ teams.forEach(t => { let v = 75; try { v = ENGINE.strength(t).ovr; } catch (e) { } const i = forced.indexOf(t); str[t] = v + (i >= 0 ? (forced.length - i) * 0.35 : -2); });
   const pois = l => { const L = Math.exp(-l); let k = 0, q = 1; do { k++; q *= rnd(); } while (q > L); return k - 1; };
-  const res = fx.map(([h, a]) => { const d = str[h] - str[a]; return [pois(1.45 * Math.exp(0.06 * d)), pois(1.15 * Math.exp(-0.06 * d))]; });
-  let it = 0; for (; it < 40000; it++) { const P = {}; teams.forEach(t => P[t] = 0); fx.forEach(([h, a], i) => { const [x, y] = res[i]; if (x > y) P[h] += 3; else if (x < y) P[a] += 3; else { P[h]++; P[a]++; } });
+  const res = fx.map(([h, a], i) => { if (lk[i]) return lk[i].slice(); const d = str[h] - str[a]; const c = v => Math.max(0.45, Math.min(2.3, v)); let r; for (let k = 0; k < 12; k++) { r = [pois(c(1.4 * Math.exp(0.045 * d))), pois(c(1.1 * Math.exp(-0.045 * d)))]; if (r[0] + r[1] <= 6) break; } return r; }); /* 比分控制在正常范围 */
+  /* 改赛果时重新抽一个正常的比分（主队赢 / 平 / 输），不是在原比分上一直加球 */
+  const score = o => { for (let k = 0; k < 60; k++) { const x = pois(1.4), y = pois(1.1); if (Math.sign(x - y) === o && x + y <= 6) return [x, y]; } return o > 0 ? [1, 0] : o < 0 ? [0, 1] : [1, 1]; };
+  let it = 0; for (; it < 400000; it++) { const P = {}; teams.forEach(t => P[t] = 0); fx.forEach(([h, a], i) => { const [x, y] = res[i]; if (x > y) P[h] += 3; else if (x < y) P[a] += 3; else { P[h]++; P[a]++; } });
     let bad = null; for (let i = 0; i + 1 < forced.length && !bad; i++) if (!(P[forced[i]] > P[forced[i + 1]])) bad = [forced[i], forced[i + 1]];
     if (!bad && forced.length) { const last = forced[forced.length - 1], f = free.find(t => !(P[last] > P[t])); if (f) bad = [last, f]; }
     if (!bad && down.length) { const up = teams.filter(t => !down.includes(t)); let lo = null, hi = null; up.forEach(t => { if (!lo || P[t] < P[lo]) lo = t; }); down.forEach(t => { if (!hi || P[t] > P[hi]) hi = t; }); if (lo && hi && !(P[lo] > P[hi])) bad = [lo, hi]; }
     if (!bad) break; const [A, B] = bad, opts = [];
-    fx.forEach(([h, a], i) => { const [x, y] = res[i]; if ((h === A && x <= y) || (a === A && y <= x)) opts.push([i, 1]); if ((h === B && x >= y) || (a === B && y >= x)) opts.push([i, 0]); });
+    fx.forEach(([h, a], i) => { if (lk[i]) return; const [x, y] = res[i]; if ((h === A && x <= y) || (a === A && y <= x)) opts.push([i, 1]); if ((h === B && x >= y) || (a === B && y >= x)) opts.push([i, 0]); });
     if (!opts.length) break; const [i, up] = opts[Math.floor(rnd() * opts.length)], [h, a] = fx[i]; let [x, y] = res[i];
-    if (up) { if (h === A) x = y + 1; else y = x + 1; } else { if (h === B) { if (x > y) y = x; else y = x + 1; } else { if (y > x) x = y; else x = y + 1; } } res[i] = [x, y]; }
-  LGP_IT = it; S.lgp = { s, v: 2, res: Object.fromEntries(fx.map(([h, a], i) => [h + '|' + a, res[i]])) }; return S.lgp; }
+    const o = Math.sign(x - y), side = up ? (h === A ? 1 : -1) : (h === B ? -1 : 1); res[i] = score(Math.max(-1, Math.min(1, o + side))); }
+  LGP_IT = it; S.lgp = { s, v: 3, res: Object.fromEntries(fx.map(([h, a], i) => [h + '|' + a, res[i]])) }; return S.lgp; }
 ENGINE.setScoreHook((h, a, hg, ag, opt) => { if (!opt || !opt.ctx || !S || !S.teams || !S.teams.includes(h) || !S.teams.includes(a)) return null;
   if (nm4() && SEASON <= 16) { const LP = lgPlan(), r = LP && LP.res[h + '|' + a]; if (r) return r.slice(); } /* 剧本：照排好的赛果 */ const X = fixLg(); if (!X) return null; const F = X.F; let x = hg, y = ag;
   /* 先帮内定金靴 / 助攻王的球队多进球，再套联赛冠军的规则（冠军优先） */
