@@ -1426,7 +1426,7 @@ function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR
 /* 你手动改名用掉的旧资料名字（「德 / 得」视为同一个字）：系统就不再把这个名字发给别的青训孩子，免得出现两位 */
 const nmNorm = n => String(n || '').replace(/德/g, '得').trim();
 function claimedNames() { const out = new Map(); if (typeof S === 'undefined' || !S || !S.edits) return out; Object.entries(S.edits).forEach(([u, e]) => { if (e && e.name && e.name !== e.orig) out.set(nmNorm(e.name), u); }); return out; }
-function kidEd(k) { if (!k || typeof S === 'undefined' || !S || !S.edits) return k; const e = S.edits['K|' + k.id]; if (!e) return k;
+function kidEd(k) { if (!k || typeof S === 'undefined' || !S || !S.edits) return k; const e = S.edits['K|' + k.id]; if (!e) return k; if (scrEdMoved('K|' + k.id, e)) return k;
   if (nm3() && e.orig && e.orig !== k.name && e.name !== k.name) return k; /* 旧规则下改的，同一个名额已经换了人 */
   if (e.name) k.name = e.name; if (e.nat) k.nat = e.nat; if (e.height) k.height = +e.height; if (e.weight) k.weight = +e.weight; if (e.foot) k.foot = e.foot;
   if (e.pos && normPos(e.pos) !== k.pos) { const np = normPos(e.pos), nl = ENGINE.LINE(np); if (nl) { if (nl !== k.line) k.prof = Object.fromEntries(Object.keys(ATTR_TPL[nl]).map(a => [a, (k.prof || {})[a] || 0])); k.pos = np; k.line = nl; } }
@@ -1912,8 +1912,10 @@ const BASE_EDITS = {"H|742":{"orig":"范文西","origPos":"LW","origNat":"荷兰
 function edAll() { const E = Object.assign({}, BASE_EDITS, (S && S.edits) || {}); if (typeof nm4 === 'function' && nm4()) scrEdAlias(E); return E; }
 /* 剧本存档：旧资料球员现在是 K|X|名字，之前在 H|编号 上改过的资料（名字、位置、号码、惯用脚、身高体重等）照样套用；能力、年龄、潜力照剧本 */
 let SCR_ED_PID = null;
-function scrEdAlias(E) { if (!SCR_ED_PID) SCR_ED_PID = SCRIPT.P.filter(p => p.pid != null).map(p => [p.n, p.pid]); SCR_ED_PID.forEach(([n, pid]) => { const k = 'K|X|' + n; if (E[k]) return; const o = E[(typeof PID_UID !== 'undefined' && PID_UID[pid]) || 'H|' + pid] || E['H|' + pid]; if (!o) return; const c = { ...o }; ['dr', 'dAge', 'ageA', 'ageS', 'pot', 'potA', 'la'].forEach(x => delete c[x]); E[k] = c; }); if (!SCR_ED_N) SCR_ED_N = new Set(SCRIPT.P.map(p => p.n)); Object.keys(E).forEach(u => { const e = E[u]; if (!/^K\|A\|/.test(u) || !e || !e.orig || !SCR_ED_N.has(e.orig) || E['K|X|' + e.orig]) return; const c = { ...e }; ['dr', 'dAge', 'ageA', 'ageS', 'pot', 'potA', 'la'].forEach(x => delete c[x]); E['K|X|' + e.orig] = c; }); /* 旧存档里当青训孩子改过的人，现在是剧本球员 */ return E; }
+function scrEdAlias(E) { if (!SCR_ED_PID) SCR_ED_PID = SCRIPT.P.filter(p => p.pid != null).map(p => [p.n, p.pid]); SCR_ED_PID.forEach(([n, pid]) => { const k = 'K|X|' + n; if (E[k]) return; const o = E[(typeof PID_UID !== 'undefined' && PID_UID[pid]) || 'H|' + pid] || E['H|' + pid]; if (!o) return; const c = { ...o }; ['dr', 'dAge', 'ageA', 'ageS', 'pot', 'potA', 'la'].forEach(x => delete c[x]); E[k] = c; }); if (!SCR_ED_N) SCR_ED_N = new Set(SCRIPT.P.map(p => p.n)); Object.keys(E).forEach(u => { const e = E[u]; if (!/^K\|A\|/.test(u) || !e) return; const n = SCR_ED_N.has(e.name) ? e.name : SCR_ED_N.has(e.orig) ? e.orig : null; if (!n || E['K|X|' + n]) return; const c = { ...e }; ['dr', 'dAge', 'ageA', 'ageS', 'pot', 'potA', 'la'].forEach(x => delete c[x]); if (c.name === n) delete c.name; E['K|X|' + n] = c; }); /* 旧存档里当青训孩子改过的人，现在是剧本球员 */ return E; }
 let SCR_ED_N = null;
+/* 剧本存档：旧存档里改在青训孩子身上的资料，名字现在是剧本球员 → 资料归那位剧本球员，这个孩子不再改名（免得出现两位同名） */
+const scrEdMoved = (u, e) => { if (!nm4() || !/^K\|A\|/.test(u) || !e) return false; if (!SCR_ED_N) SCR_ED_N = new Set(SCRIPT.P.map(p => p.n)); return SCR_ED_N.has(e.name) || SCR_ED_N.has(e.orig); };
 function applyPLNames() {
   Object.entries(edAll()).forEach(([uid, e]) => { const pid = UIDPID[uid] ?? (uid.startsWith('H|') ? +uid.slice(2) : null); if (pid != null && HIST.players[pid]) { const P = HIST.players[pid]; if (e.orig == null) e.orig = P[0]; P[0] = (!e.name || e.name === e.orig) ? (DUP_FIX[e.orig] || e.name || e.orig) : e.name;
     if (e.origPos == null) e.origPos = P[1]; if (e.origNat == null) e.origNat = P[2]; P[1] = (e.ret && e.pos) || e.origPos; P[2] = (e.ret && e.nat) || e.origNat; } });
@@ -1921,7 +1923,7 @@ function applyPLNames() {
 }
 function applyAllEdits() {
   const E = edAll(); if (!Object.keys(E).length) return;
-  const fix = (p, team, dom) => { const e = E[p.uid]; if (!e) return; if (nm3() && e.orig && String(p.uid || '').startsWith('K|A|') && e.orig !== p.name && e.name !== p.name) return; /* 旧规则时改过的青训孩子：新规则下同一个名额已经换了人，不套用 */
+  const fix = (p, team, dom) => { const e = E[p.uid]; if (!e) return; if (scrEdMoved(p.uid, e)) return; if (nm3() && e.orig && String(p.uid || '').startsWith('K|A|') && e.orig !== p.name && e.name !== p.name) return; /* 旧规则时改过的青训孩子：新规则下同一个名额已经换了人，不套用 */
     if (e.name && e.name !== p.name) { if (dom) TD[team].roster.forEach(r => { if (r.name === p.name) r.name = e.name; }); p.name = e.name; }
     ['pos', 'nat', 'height', 'weight', 'no'].forEach(k => { if (e[k] != null && e[k] !== '') p[k] = k === 'pos' ? normPos(e[k]) : e[k]; });
     if (Array.isArray(e.alt)) { p.alt = e.alt.filter(x => x !== p.pos); p.altEd = 1; } if (Array.isArray(e.sk)) p.skEd = e.sk; if (e.foot) { p.foot = e.foot; p.footEd = 1; }
