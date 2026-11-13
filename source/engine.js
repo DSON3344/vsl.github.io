@@ -124,7 +124,7 @@ const ENGINE = (() => {
   const setTeamMod = f => { teamMod = f; };
   let injHook = null; const setInjHook = f => { injHook = f; };
   let refHook = null; const setRefHook = f => { refHook = f; };
-  let scoreHook = null, pickHook = null; const setScoreHook = f => { scoreHook = f; }, setPickHook = f => { pickHook = f; }; /* 内定：比分、进球 / 助攻人选的调整（由网页那边决定） */
+  let scoreHook = null, pickHook = null, rateHook = null; const setScoreHook = f => { scoreHook = f; }, setPickHook = f => { pickHook = f; }, setRateHook = f => { rateHook = f; }; /* 内定：比分、进球 / 助攻人选的调整（由网页那边决定） */
   function condition(team, weather, slot, opp) {
     const P = HISTORY.profiles[team] || {};
     const parse = s => (s || '').split(/[；;]/).map(x => x.trim());
@@ -467,6 +467,7 @@ const ENGINE = (() => {
         press: /防守|逼抢|压制|摆大巴|对抗/.test(TEAMS_DATA[t].style || ''),
       });
       players[side] = rows.map((r, k) => ({ ...r, name: R[k].name, slot: R[k].slot }));
+      if (rateHook) players[side].forEach(p => { const b = rateHook(t, p.name, p); if (b) p.r = +Math.max(4.5, Math.min(10, p.r + b)).toFixed(1); }); /* 内定得奖的球员：表现评分 */
     });
     const sum = (k, f) => players[k].reduce((a, r) => a + r[f], 0);
     stats.tackles = [sum('h', 'tk'), sum('a', 'tk')];
@@ -503,6 +504,6 @@ const ENGINE = (() => {
   function clearCache() { Object.keys(lineupCache).forEach(k => delete lineupCache[k]); Object.keys(strengthCache).forEach(k => delete strengthCache[k]); }
   // 用固定种子跑一段（杯赛球员数据要可重现）
   function withSeed(sd, fn) { const old = seed; seed = sd; try { return fn(); } finally { seed = old; } }
-  return { tune, withSeed, setTeamMod, setInjHook, setRefHook, setScoreHook, setPickHook, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
+  return { tune, withSeed, setTeamMod, setInjHook, setRefHook, setScoreHook, setPickHook, setRateHook, setTeamAdj, clearCache, roleOf, ROLE_ZH, matchRating, sideStats, lineup, pickXI, strengthOf, fitCost, subCost, setHomeBoost, setDerby, isDerby, setHot, strength, condition, expected, probabilities, simulate, quickScore, fixtures, randomConditions, WEATHERS, SLOTS, LINE, clean };
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
