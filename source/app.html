@@ -203,6 +203,7 @@ td.pts{color:var(--accent-2);font-weight:500}
 .fx .lose span{color:var(--fg-2)}
 
 /* hero overview */
+.hm-only{display:none}@media (max-width:760px){.hd-only{display:none!important}.hm-only{display:grid}.hseg::-webkit-scrollbar{display:none}.ovhero .big{font-size:56px}.ovhero h1{font-size:24px}.ovhero p.muted{display:none}.ovhero .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ovhero .btns .btn{justify-content:center;font-size:13px;padding:8px 6px}.ovhero .btns .btn.primary:first-child{grid-column:1/-1}.hdet>summary::-webkit-details-marker{display:none}.hm-only .fx{padding:5px 2px;gap:6px}.hm-only .fx .sc{min-width:52px}.hm-only .fx .sc small{display:none}.hm-only .fx .tname img,.hm-only .fx .tname svg{width:18px;height:18px}.hm-only .fx .tname{font-size:13.5px}}
 .ovhero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:22px;align-items:center}
 .ovhero .big{font-family:var(--disp);font-size:clamp(56px,8vw,100px);line-height:.85;font-weight:700;letter-spacing:-.01em;color:var(--accent-2)}
 .ovhero .big small{font-size:.32em;letter-spacing:0;color:var(--fg-3);margin-left:6px}
@@ -5938,6 +5939,22 @@ function homeHonours() { const s = SEASON - 1; if (s < 1) return ''; try { const
     const team = [row('威超冠军', tn(ranking(s)[0]))].concat(CUP_KS.filter(k => C[k] && C[k].winner).map(k => row(k, tn(C[k].winner)))).concat(EXT_LEAGUES.map(L => { let ch = null; const e = arch && arch.extl && arch.extl[L.short]; if (e) ch = e.champ; else { try { ch = extFinal(L, s).o.champ; } catch (x) { } } return ch ? row(esc(L.short) + '冠军', tn(ch)) : ''; }));
     const ind = A ? [['金球奖', A.ballon && A.ballon[0]], ['世界足球先生', A.world], ['威超 MVP', A.mvp], ['金靴', A.boot], ['助攻王', A.assist], ['最佳后卫', A.def], ['金手套', A.glove], ['金童奖', A.young]].filter(x => x[1]).map(([k, p]) => row(k, pn(p) + (k === '金靴' && p.g != null ? ` <span class="dim">${p.g} 球</span>` : k === '助攻王' && p.a != null ? ` <span class="dim">${p.a} 助</span>` : ''))) : [];
     return `<div class="panel"><div class="ph"><div><div class="eyebrow">Last season · ${SN(s)}</div><h2>上赛季荣誉</h2></div><button class="btn ghost" data-go="awards">全部奖项 →</button></div><div class="grid g-2" style="gap:14px;align-items:start"><div><div class="eyebrow" style="margin-bottom:6px">团队</div><div class="rank-list">${team.join('')}</div></div><div><div class="eyebrow" style="margin-bottom:6px">个人</div><div class="rank-list">${ind.join('') || '<p class="note" style="margin:0">没有资料</p>'}</div></div></div></div>`; } catch (e) { console.error(e); return ''; } }
+/* 手机版首页：精简成一条直线——本轮威超、积分榜（切换联赛）、外赛区比分（切换联赛）、赛事、上季荣誉（收起） */
+let HOME_MT = '威超', HOME_MX = null;
+function homeMobile(N) { const seg = (k, cur, list) => `<div class="seg hseg" role="group" style="overflow-x:auto;flex-wrap:nowrap;max-width:100%;margin-bottom:8px">${list.map(v => `<button data-act="homeTab" data-k="${k}" data-v="${esc(v)}" aria-pressed="${v === cur}" style="flex:none">${esc(v)}</button>`).join('')}</div>`;
+  const shorts = EXT_LEAGUES.map(L => L.short), mt = ['威超'].concat(shorts).includes(HOME_MT) ? HOME_MT : '威超', mx = shorts.includes(HOME_MX) ? HOME_MX : shorts[0];
+  const T = table(); let tb = '';
+  if (mt === '威超') tb = T.slice(0, 6).map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 16)}</td><td>${r.p}</td><td class="pts">${r.pts}</td></tr>`).join('');
+  else { try { const L = EXT_LEAGUES.find(x => x.short === mt), { o, md } = extNow(L); const t2 = md ? pyrTable(L.clubs.map(c => c[0]), o.days.slice(0, md).map(D => D.map(m => [m.h, m.a, m.x, m.y]))) : L.clubs.map(c => [c[0], 0, 0, 0, 0, 0, 0]).sort((x, y) => clubStrAt(y[0], SEASON) - clubStrAt(x[0], SEASON)); tb = t2.slice(0, 6).map((r, i) => `<tr><td class="pos">${i + 1}</td><td class="l">${extNm(r[0], 14)}</td><td>${r[2] + r[3] + r[4]}</td><td class="pts">${r[1]}</td></tr>`).join(''); } catch (e) { } }
+  const LX = EXT_LEAGUES.find(x => x.short === mx), hon = homeHonours();
+  return `<div class="hm-only grid" style="gap:12px">
+    ${homeLgFx()}
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Standings</div><h2>积分榜</h2></div><button class="btn ghost" ${mt === '威超' ? 'data-go="table"' : `data-act="extTab" data-v="${esc((EXT_LEAGUES.find(x => x.short === mt) || {}).name || '')}" data-goext="1"`} style="padding:4px 10px;font-size:12px">完整 →</button></div>${seg('mt', mt, ['威超'].concat(shorts))}<div class="tw"><table style="font-size:13px"><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>分</th></tr></thead><tbody>${tb}</tbody></table></div></div>
+    <div><div class="eyebrow" style="margin:4px 2px 6px">其他联赛</div>${seg('mx', mx, shorts)}${LX ? homeExtFx(LX) : ''}</div>
+    ${homeCups()}
+    ${hon ? `<details class="panel hdet"><summary style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center"><span><span class="eyebrow">Last season · ${SN(SEASON - 1)}</span><br><b style="font-size:17px">上赛季荣誉</b></span><span class="muted" style="font-size:12px">展开 ▾</span></summary><div style="margin-top:10px">${hon.replace(/^<div class="panel">/, '<div>')}</div></details>` : ''}
+    ${N.length ? `<div class="panel"><div class="eyebrow" style="margin-bottom:6px">头条</div><div class="rank-list">${N.slice(0, 3).map(x => `<div class="rk" style="grid-template-columns:auto minmax(0,1fr);font-size:12.5px"><span class="chip ${x.cls || ''}" style="font-size:10.5px">${esc(x.tag)}</span><span>${x.html}</span></div>`).join('')}</div></div>` : ''}
+  </div>`; }
 /* 首页赛事总览：每项赛事目前进行到哪 */
 function homeCups() { try { CUP_ST = {}; cupLiveHTML(); const all = cupAll(), last = all[0] != null ? cupsOf(all[0]) || {} : {}; const st = k => CUP_ST[k] || (last[k] ? `${SN(all[0])} 冠军 ${esc(last[k].winner)}` : '尚未开赛');
     return `<div class="panel"><div class="ph"><div><div class="eyebrow">Competitions</div><h2>赛事总览</h2></div><button class="btn ghost" data-go="cups">全部赛事 →</button></div><div class="rank-list">${CUP_KS.map(k => `<button class="rk" data-go="cups" data-cup="${k}" style="grid-template-columns:76px minmax(0,1fr);text-align:left;width:100%;background:none;border:0;color:inherit;cursor:pointer"><b style="font-size:13px">${esc(k)}</b><span class="muted" style="font-size:12px">${st(k)}</span></button>`).join('')}</div></div>`; } catch (e) { console.error(e); return ''; } }
@@ -5961,7 +5978,8 @@ function vHome() {
     </div>
     ${S.auto && S.auto.on ? `<div style="grid-column:1/-1" class="autoln" id="autoLn">${esc(autoStatus())}</div>` : ''}
   </div>
-  <div class="grid g-main">
+  ${homeMobile(N)}
+  <div class="grid g-main hd-only">
     <div class="grid" style="align-content:start">
       ${homeLgFx()}
       <div class="grid g-2" style="gap:12px;align-items:start">${EXT_LEAGUES.map(homeExtFx).join('')}</div>
@@ -9385,6 +9403,7 @@ document.addEventListener('click', e => {
   if (act === 'teImgReset') { $('#dlg').dataset.teImg = ''; $('#teImgBox').innerHTML = '<span class="note">原队徽</span>'; return; }
   if (act === 'cupStSort') { CUPST_SORT = el.dataset.v; return render(); }
   if (act === 'cupFxAll') { CUPFX_ALL = !CUPFX_ALL; return render(); }
+  if (act === 'homeTab') { if (el.dataset.k === 'mt') HOME_MT = el.dataset.v; else HOME_MX = el.dataset.v; return render(); }
   if (act === 'extTab') { EXT_TAB = el.dataset.v; if (el.dataset.goext) return go('ext'); return render(); }
   if (act === 'intlTab') { INTL_V.tab = el.dataset.v; return render(); }
   if (act === 'intlCup') { INTL_V.k = el.dataset.v; return render(); }
