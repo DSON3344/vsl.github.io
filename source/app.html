@@ -7132,6 +7132,13 @@ function openPlayer(team, name) {
   const pid = pidOf(team, name);
   const d = $('#dlg');
   if ((!p || p.extra) && pid != null) return openPerson(pid);
+  if (!p && !TD[team]) { /* 球队不在威超（外赛区、已离队、记录里没写球队）：按名字找这个人 */
+    for (const [c, L] of Object.entries(FDB)) { if (c !== team && L.some(x => x.name === name)) return openPlayer(c, name); }
+    for (const [t2, L] of Object.entries(PDB)) { if (L.some(x => x.name === name)) return openPlayer(t2, name); }
+    let id = typeof scrPidAlias === 'function' && nm4() ? scrPidAlias(name) : null; if (id == null) { let n = -1; PL.forEach((q, i) => { if (q && q[0] === name && (PSEASONS[i] || []).length > n) { n = (PSEASONS[i] || []).length; id = i; } }); }
+    if (id != null) return openPerson(id);
+    const k = typeof ACAD_ID !== 'undefined' ? Object.values(ACAD_ID).find(x => x.name === name) : null; if (k) { const at = scoutBtn(k), m = /data-(scout|pid|player)="([^"]*)"/.exec(at); if (m) { const v = m[2].replace(/&amp;/g, '&').replace(/&quot;/g, '"'); if (m[1] === 'scout') return openScout(v); if (m[1] === 'pid') return openPerson(+v); const [t3, n3] = v.split('|'); if (t3 !== team) return openPlayer(t3, n3); } }
+    toast('找不到这名球员的资料'); return; }
   if (!p || p.extra) {
     const xi = ENGINE.lineup(team).xi.find(x => x.name === name);
     d.innerHTML = `<div class="dlg" style="position:relative"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="pcard"><div class="ovr" style="color:${rtColor(xi ? xi.rating : 75)}">${xi ? xi.rating : '–'}</div><div><div class="eyebrow">${esc(team)} · ${esc(xi ? xi.slot : '')}</div><h3>${esc(name)}</h3></div></div><p class="note" style="margin:0">球员资料库里没有这名球员的详细数据，只有球队阵容中的评分。</p>
@@ -9762,14 +9769,14 @@ try { if (S && S.fx && playedRounds() === 0 && !isPending(SEASON) && !String(S.t
 go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
 try { history.replaceState(navState(), '', location.hash || ('#' + view)); } catch (e) { }
 /* 返回键：弹窗开着就先关弹窗；否则回到上一页（球队页会记得当时选的是哪支球队） */
-let NAV_SKIP = 0;
-window.addEventListener('popstate', e => { if (NAV_SKIP) { NAV_SKIP = 0; return; } const d = document.getElementById('dlg'), st = e.state || {};
+let NAV_SKIP = 0, NAV_REPUSH = 0; /* 弹窗关了马上又开（点弹窗里的连结）：上一个「返回」还在进行，要等它完成再补一笔，不然会连退两步、退出网站 */
+window.addEventListener('popstate', e => { if (NAV_SKIP) { NAV_SKIP = 0; if (NAV_REPUSH) { NAV_REPUSH = 0; const d0 = document.getElementById('dlg'); if (d0 && d0.open) try { history.pushState({ ...(history.state || navState()), dlg: 1 }, '', location.hash); } catch (e2) { } } return; } const d = document.getElementById('dlg'), st = e.state || {};
   if (d && d.open) { d.dataset.popc = '1'; d.close(); if (st.dlg) return; }
   else if (st.dlg) { try { history.back(); } catch (e) { } return; } /* 弹窗早就关了留下的记录：直接再退一步 */
   const v = st.v || (location.hash || '').slice(1); if (!VIEWS.includes(v)) return; if (v === 'teams') teamSel = st.ts || null;
   if (v !== view || (v === 'teams') || JSON.stringify(st.a ?? null) !== JSON.stringify(viewArg ?? null)) go(v, st.a ?? null, false); });
-{ const d = document.getElementById('dlg'); if (d) { const sm = d.showModal.bind(d); d.showModal = () => { sm(); try { if (!(history.state && history.state.dlg)) history.pushState({ ...(history.state || navState()), dlg: 1 }, '', location.hash); } catch (e) { } };
-  d.addEventListener('close', () => { if (d.dataset.popc) { delete d.dataset.popc; return; } try { if (history.state && history.state.dlg) { NAV_SKIP = 1; history.back(); } } catch (e) { } }); } }
+{ const d = document.getElementById('dlg'); if (d) { const sm = d.showModal.bind(d); d.showModal = () => { sm(); try { if (NAV_SKIP) { NAV_REPUSH = 1; return; } if (!(history.state && history.state.dlg)) history.pushState({ ...(history.state || navState()), dlg: 1 }, '', location.hash); } catch (e) { } };
+  d.addEventListener('close', () => { if (d.dataset.popc) { delete d.dataset.popc; return; } try { if (NAV_SKIP) { NAV_REPUSH = 0; return; } if (history.state && history.state.dlg) { NAV_SKIP = 1; history.back(); } } catch (e) { } }); } }
 if (SANDBOX) { setSync('sandbox'); sandboxBar(); } else { setSync('local'); cloudInit(); }
 /* 全自动模拟的心跳：每 20 秒看一下有没有到点的比赛；?autorun=1 是 GitHub 定时任务用的（补完马上上传，然后标记完成） */
 const AUTORUN = /[?&]autorun=1/.test(location.search);
