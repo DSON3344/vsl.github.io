@@ -519,11 +519,12 @@ th.sorted{color:var(--accent-2)}
     <a class="brand" href="#overview" data-go="overview"><img id="brandLogo" alt="VES 足球世界"><span><b>VES 足球世界</b><small>VES FOOTBALL WORLD</small></span></a>
     <nav class="tabs" aria-label="页面">
       <button data-go="overview">首页</button>
-      <button data-go="match">比赛模拟</button>
-      <button data-grp="club" aria-haspopup="menu">俱乐部<i class="caret"></i></button>
-      <button data-grp="cups" aria-haspopup="menu">赛事<i class="caret"></i></button>
-      <button data-grp="intl" aria-haspopup="menu">国家队<i class="caret"></i></button>
-      <button data-grp="world" aria-haspopup="menu">世界<i class="caret"></i></button>
+      <button data-go="match">比赛</button>
+      <button data-grp="lg" aria-haspopup="menu">威超<i class="caret"></i></button>
+      <button data-go="ext">外赛区</button>
+      <button data-go="cups">赛事</button>
+      <button data-go="intl">国家队</button>
+      <button data-grp="db" aria-haspopup="menu">资料库<i class="caret"></i></button>
     </nav>
     <div class="roundchip" id="roundChip"></div>
     <button class="roundchip" data-act="search" title="搜索球员或球队（快捷键 /）" aria-label="搜索"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tl">搜索</span></button>
@@ -531,7 +532,7 @@ th.sorted{color:var(--accent-2)}
   </div>
 </header>
 <main id="app"></main>
-<nav class="bnav glass" aria-label="页面"><button data-go="overview"><span class="bi"></span><b>首页</b></button><button data-grp="club"><span class="bi"></span><b>俱乐部</b></button><button data-go="match" class="bmain"><span class="bi"></span><b>比赛</b></button><button data-grp="intl"><span class="bi"></span><b>国家队</b></button><button data-grp="more"><span class="bi"></span><b>更多</b></button></nav>
+<nav class="bnav glass" aria-label="页面"><button data-go="overview"><span class="bi"></span><b>首页</b></button><button data-grp="lg"><span class="bi"></span><b>威超</b></button><button data-go="match" class="bmain"><span class="bi"></span><b>比赛</b></button><button data-go="cups"><span class="bi"></span><b>赛事</b></button><button data-grp="more"><span class="bi"></span><b>更多</b></button></nav>
 <div id="navSheet" aria-hidden="true"><div class="nsh-bg" data-act="navClose"></div><div class="nsh glass" role="menu"></div></div>
 <dialog id="dlg"></dialog>
 
@@ -2709,7 +2710,7 @@ function go(v, arg = null, push = true) {
   stopLive();
   view = v; viewArg = arg;
   if (push) { try { const st = navState(), cur = history.state; if (cur && !cur.dlg && cur.v === st.v && cur.ts === st.ts && JSON.stringify(cur.a) === JSON.stringify(st.a)) history.replaceState(st, '', '#' + v); else history.pushState(st, '', '#' + v); } catch (e) {} } /* 每次换页留一笔浏览记录：手机 / 电脑按「返回」回到上一页，而不是直接离开网站 */
-  navClose(); const gv = grpOf(v); document.querySelectorAll('nav.tabs button,.bnav button').forEach(b => { const on = b.dataset.go ? b.dataset.go === v : (b.dataset.grp === gv || (b.dataset.grp === 'more' && (gv === 'cups' || gv === 'world'))); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  navClose(); const gv = grpOf(v); document.querySelectorAll('nav.tabs button,.bnav button').forEach(b => { const on = b.dataset.go ? b.dataset.go === v : (b.dataset.grp === gv || (b.dataset.grp === 'more' && (gv === 'db' || v === 'ext' || v === 'intl'))); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   render(); if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' }); /* 已在顶端就不滚：避免强制重新排版 */
 }
 function render() {
@@ -4799,11 +4800,10 @@ const cupAll = () => SEASONS.slice().concat(pendingArchive() ? [SEASON] : []).so
 /* ---------- 导航：桌面版顶部 6 项（4 个下拉分组），手机版底部 5 个按钮 + 底部弹出面板 ----------
    下拉菜单 / 面板都挂在 body 上（顶部 nav 可以横向滚动，会裁掉里面的下拉） */
 const NAV_G = {
-  club: ['俱乐部', [['league', '威超中心'], ['table', '积分榜'], ['stats', '数据榜'], ['teams', '球队'], ['players', '球员'], ['transfers', '转会窗'], ['u21', 'U21'], ['ext', '各赛区联赛'], ['pyr', '联赛金字塔']]],
-  cups: ['赛事', [['cups', '赛事总览'], ...['世联赛', '全联冠', '全联杯', '全协联', '威联赛杯', '社区杯', '威冠联赛'].map(k => ['cups', k, k])]],
-  intl: ['国家队', [['intl', '国家队大赛', 'cups'], ['intl', '国家队排名', 'rank'], ['intl', '历届冠军', 'hon']]],
-  world: ['世界', [['awards', '奖项'], ['xi', '最强阵容'], ['history', '历史总榜'], ['wl', '威联赛']]] };
-function grpOf(v) { for (const [g, [, L]] of Object.entries(NAV_G)) if (L.some(x => x[0] === v)) return g; return null; }
+  lg: ['威超', [['league', '威超中心'], ['table', '积分榜'], ['stats', '数据榜'], ['transfers', '转会窗'], ['u21', 'U21'], ['pyr', '联赛金字塔']]],
+  go: ['前往', [['ext', '外赛区'], ['intl', '国家队']]],
+  db: ['资料库', [['teams', '球队'], ['players', '球员'], ['awards', '奖项'], ['xi', '最强阵容'], ['history', '历史总榜'], ['wl', '威联赛']]] };
+function grpOf(v) { for (const [g, [, L]] of Object.entries(NAV_G)) if (g !== 'go' && L.some(x => x[0] === v)) return g; return null; }
 const navItem = ([v, lab, arg]) => `<button data-go="${v}"${arg ? ` data-cup="${arg}"` : ''} role="menuitem"${view === v && (arg ? viewArg === arg : !(v === 'cups' && viewArg)) ? ' aria-current="page"' : ''}>${esc(lab)}</button>`;
 function navMenuEl() { let m = document.getElementById('navMenu'); if (!m) { m = document.createElement('div'); m.id = 'navMenu'; m.className = 'glass'; m.setAttribute('role', 'menu'); m.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') navHoverClose(); }); m.addEventListener('pointerenter', () => clearTimeout(NAV_T)); document.body.appendChild(m); } return m; }
 let NAV_T = 0, NAV_OPEN = null;
@@ -4811,11 +4811,11 @@ function navClose() { clearTimeout(NAV_T); NAV_OPEN = null; const m = document.g
 function navHoverClose() { clearTimeout(NAV_T); NAV_T = setTimeout(navClose, 220); }
 function navOpen(g, btn, hover) { clearTimeout(NAV_T);
   if (btn.closest('.bnav')) { const sh = document.getElementById('navSheet'); if (NAV_OPEN === g && sh.classList.contains('open')) return navClose(); navClose(); NAV_OPEN = g;
-    const groups = g === 'more' ? ['cups', 'world'] : [g]; sh.querySelector('.nsh').innerHTML = `<i class="nsh-grip"></i>` + groups.map(k => `<div class="nsh-g"><div class="eyebrow">${NAV_G[k][0]}</div><div class="nsh-items">${NAV_G[k][1].map(navItem).join('')}</div></div>`).join('');
+    const groups = g === 'more' ? ['go', 'db'] : [g]; sh.querySelector('.nsh').innerHTML = `<i class="nsh-grip"></i>` + groups.map(k => `<div class="nsh-g"><div class="eyebrow">${NAV_G[k][0]}</div><div class="nsh-items">${NAV_G[k][1].map(navItem).join('')}</div></div>`).join('');
     sh.classList.add('open'); sh.setAttribute('aria-hidden', 'false'); btn.setAttribute('aria-expanded', 'true'); return; }
   const m = navMenuEl(); if (NAV_OPEN === g && m.classList.contains('open')) { if (!hover) navClose(); return; } navClose(); NAV_OPEN = g;
   m.innerHTML = NAV_G[g][1].map(navItem).join(''); const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(innerWidth - 200, r.left)) + 'px'; m.style.top = (r.bottom + 8) + 'px'; m.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
-{ const BI = { overview: 'home', match: 'goal', club: 'shirt', intl: 'flag', more: 'more' }; document.querySelectorAll('.bnav button').forEach(b => { const k = b.dataset.go || b.dataset.grp, sp = b.querySelector('.bi'); if (sp) sp.innerHTML = ic(BI[k] || 'more', b.classList.contains('bmain') ? 24 : 21); }); }
+{ const BI = { overview: 'home', match: 'goal', lg: 'shirt', cups: 'trophy', more: 'more' }; document.querySelectorAll('.bnav button').forEach(b => { const k = b.dataset.go || b.dataset.grp, sp = b.querySelector('.bi'); if (sp) sp.innerHTML = ic(BI[k] || 'more', b.classList.contains('bmain') ? 24 : 21); }); }
 document.addEventListener('click', e => { const g = e.target.closest && e.target.closest('[data-grp]'); if (g) { e.preventDefault(); e.stopPropagation(); navOpen(g.dataset.grp, g); return; } if (e.target.closest && e.target.closest('[data-act="navClose"]')) { e.preventDefault(); e.stopPropagation(); navClose(); } }, true);
 document.addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return; const g = e.target.closest && e.target.closest('nav.tabs [data-grp]'); if (g) navOpen(g.dataset.grp, g, true); else if (NAV_OPEN && e.target.closest && e.target.closest('nav.tabs button')) navClose(); });
 document.addEventListener('pointerout', e => { if (e.pointerType === 'mouse' && e.target.closest && e.target.closest('nav.tabs [data-grp]') && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('#navMenu'))) navHoverClose(); });
@@ -4828,7 +4828,7 @@ function vCups() {
   const seats = c => c.seats ? Object.entries(c.seats).map(([k, n]) => `${k} ×${n}`).join('、') : '—';
   CUP_ST = {}; try { cupLiveHTML(); } catch (e) { } const repr = k => E[k].filter(t => TD[t]), L = { st: CUP_ST }, last = all[0] != null ? cupsOf(all[0]) || {} : {};
   const stat = k => { if (L && L.st && L.st[k]) return L.st[k]; const r = last[k]; return r ? `${SN(all[0])} 冠军 ${esc(r.winner)}` : '尚未开赛'; };
-  return `<section class="view"><div><div class="eyebrow">Competitions</div><h1>赛事</h1><p class="muted" style="margin:6px 0 0;font-size:13px">每项赛事都有单独的页面（点下面的卡片，或导航栏「赛事」的下拉菜单）。个人奖项、历届冠军和金球奖在「奖项」页。</p></div>
+  return `<section class="view"><div><div class="eyebrow">Competitions</div><h1>赛事</h1><p class="muted" style="margin:6px 0 0;font-size:13px">每项赛事都有单独的页面，点下面的卡片进入。个人奖项、历届冠军和金球奖在「奖项」页。</p></div>
   <div class="grid g-3" style="gap:12px">${CUP_KS.map(k => { const c = CUPS.find(x => x.k === k) || {}; return `<button class="panel cupcard" data-go="cups" data-cup="${k}" style="text-align:left;cursor:pointer;display:grid;gap:6px"><div class="split" style="margin:0"><b style="font-size:16px">${k}</b>${c.tier ? `<span class="chip ${TIER_CLS[c.tier]}">${c.tier} 级</span>` : ''}</div><span class="muted" style="font-size:12px">${esc(c.note || '')}</span><span style="font-size:13px">${stat(k)}</span></button>`; }).join('')}</div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">Tiers & slots</div><h2>赛事级别与席位</h2></div><span class="note">赛区实力：威超 ≥ 星煌 > 鹰超 > 犀甲 > 得甲 > 壹甲 > 阀甲 ≫ 东海职联</span></div>
     <div class="tw"><table><thead><tr><th class="l">赛事</th><th>级别</th><th>球队数</th><th class="l">赛制</th><th class="l">席位</th></tr></thead><tbody>
@@ -6951,7 +6951,6 @@ function teamDetail(t) {
   ${wlTeamPanel(t)}` : ''}
   ${TEAM_TAB === 'fin' ? teamFinPanel(t) : ''}
   ${TEAM_TAB === 'board' ? boardPanel(t) + staffPanel(t) : ''}
-  ${TEAM_TAB === 'campus' ? campusPanel(t) : ''}
   ${TEAM_TAB === 'legend' ? `${clubLegendsPanel(t)}${clubCoachesPanel(t)}${coachPanel(t)}` : ''}
   ${TEAM_TAB === 'acad' ? u21Panel(t) + (academyPanel(t) || '') || '<div class="panel"><p class="note" style="margin:0">这支球队暂时没有青训资料。</p></div>' : ''}
   </div></section>`;
@@ -8400,7 +8399,8 @@ function teamTransferCount(t) {
 }
 function teamTabs(t) {
   const n = teamTransferCount(t), open = mktActive() || winActive();
-  const T = [['squad', '阵容'], ['campus', '园区'], ['trans', `转会${open ? (n ? ` <b style="color:var(--gold)">· ${n}</b>` : ' · 开放中') : ''}`], ['record', '战绩与荣誉'], ['fin', '财务'], ['board', '老板与团队'], ['legend', '名宿与主帅'], ['acad', '青训']];
+  if (TEAM_TAB === 'campus') TEAM_TAB = 'squad';
+  const T = [['squad', '阵容'], ['trans', `转会${open ? (n ? ` <b style="color:var(--gold)">· ${n}</b>` : ' · 开放中') : ''}`], ['record', '战绩与荣誉'], ['fin', '财务'], ['board', '老板与团队'], ['legend', '名宿与主帅'], ['acad', '青训']];
   return `<div class="seg" role="tablist" aria-label="球队资料" style="flex-wrap:wrap;position:sticky;top:0;z-index:5">${T.map(([k, l]) => `<button data-act="tTab" data-tab="${k}" aria-pressed="${TEAM_TAB === k}">${l}</button>`).join('')}</div>`;
 }
 // 一名球员对所在球队的地位（卖方开价用）
