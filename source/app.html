@@ -857,12 +857,11 @@ function playRound(i) { if (i === 0) { try { if (preseasonGen()) { GROWN = 0; ap
    每场按自己的开球时间直播，终场后才写进 m.r。赛果用固定种子算，同一份进度在哪台设备上算都一样。 */
 const LIVE_DU = 5.5 * 60e3; /* 直播一场约 5.5 分钟：画面速度跟回放的默认速度差不多 */
 function koSlots(i, Rr) { const n = Rr.length, h = k => ghash('kos|' + SEASON + '|' + saltOf(SEASON) + '|' + i + '|' + k), nk = n >= 8 ? (h('n') < 0.5 ? 3 : 4) : Math.max(1, Math.min(n, 2)), out = new Array(n).fill(-1);
-  const dby = Rr.map((m, j) => isRival(m.h, m.a) ? j : -1).filter(j => j >= 0).slice(0, Math.max(0, nk - 2)); let s0 = 0; dby.forEach(j => { out[j] = nk - 1 - s0; s0++; }); /* 德比放在最后的时段压轴 */
-  const rest = Rr.map((m, j) => j).filter(j => out[j] < 0).sort((a, b) => h('o' + a) - h('o' + b)), free = nk - dby.length; rest.forEach((j, k) => { out[j] = k % free; }); return out; }
+  Rr.forEach((m, j) => { out[j] = Math.min(nk - 1, Math.floor(j * nk / n)); }); return out; } /* 按赛程上的排序分时段：排在前面的先开踢，同一时段的几场同时进行 */
 function autoPend(i, T) { try { tierCal(false, i); } catch (e) { console.error(e); } try { cupFreeze(); } catch (e) { } const Rr = S.fx[i], C = AUTO_C(), n = Rr.length || 1, sd0 = Math.floor(ghash('ko|' + SEASON + '|' + saltOf(SEASON) + '|' + i) * 2147480000) + 1;
   /* 开球时段：每轮分 3–4 个时段，同一时段的几场同时开踢（像真实联赛的周末赛程）；德比单独占一个时段当焦点战 */
-  const KS = koSlots(i, Rr), nk = Math.max(...KS) + 1, slot = C.R / nk, du = Math.max(5e3, Math.min(slot * 0.9, LIVE_DU));
-  ensureTactics(); Rr.forEach((m, j) => { if (m.r || m.pr) return; ENGINE.withSeed(sd0 + j * 7919, () => { m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.pr = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }); m.ko = Math.round(T + KS[j] * slot); m.du = Math.round(du); });
+  const off = cupOff(), KS = koSlots(i, Rr), nk = Math.max(...KS) + 1, slot = (C.R - off) * 0.9 / nk, du = Math.max(5e3, Math.min(slot * 0.9, LIVE_DU)); /* 每轮先踢杯赛（这一轮开始时），杯赛踢完才开始联赛：同一队不会同时踢两场 */
+  ensureTactics(); Rr.forEach((m, j) => { if (m.r || m.pr) return; ENGINE.withSeed(sd0 + j * 7919, () => { m.c = ENGINE.randomConditions(); try { m.fm = [matchForm(m.h, m.a), matchForm(m.a, m.h)]; } catch (e) {} m.pr = compact(ENGINE.simulate(m.h, m.a, { ...m.c, ctx: ctxPair(m, i) })); }); m.ko = Math.round(T + off + KS[j] * slot); m.du = Math.round(du); });
   DIRTY.add(i); MOD_VER++; }
 const fxState = m => !m.pr ? (m.r ? 'ft' : 'pre') : Date.now() < m.ko ? 'wait' : Date.now() < m.ko + m.du ? 'live' : 'done';
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v; const LIVE_TM = new Map(); let LIVE_SIG = null;
@@ -891,7 +890,10 @@ function migrateState() {
 }
 // 存档只能留比当前赛季早的、每季一份（防止旧进度的赛季被同步合并回来）
 function cleanArchive() { if (!S || !S.archive) return; const seen = new Set(); S.archive = S.archive.filter(A => A && A.s < (S.season || 1) && !seen.has(A.s) && seen.add(A.s)).sort((a, b) => a.s - b.s); if (S.market) Object.keys(S.market).forEach(k => { if (+k > (S.season || 1)) delete S.market[k]; }); }
-function applyState() { if (migrateState()) { localSave(); setTimeout(() => cloudQueue(), 0); } if (S && S.nm2 == null && (S.season || 1) === 1 && !(S.archive || []).length && !(S.fx || []).some(r => r.some(m => m.r))) S.nm2 = 1; /* 还没开踢的进度改用新的旧名字规则 */ if (S && S.nm2 && S.nm3 == null && !S.nm4 && (S.season || 1) === 1 && !(S.archive || []).length && !(S.fx || []).some(r => r.some(m => m.r))) S.nm3 = 1; /* 旧名字沿用时代、原球队、位置（2026-11-12） */ if (S && S.ownFrom == null) { const pl0 = (S.season || 1) > 1 || (S.fx || []).some(r => r.some(m => m.r)); S.ownFrom = pl0 ? (S.season || 1) + 1 : (S.season || 1); } /* 老板、董事会、教练团队：旧进度从下季起生效 */ if (!S.archive) S.archive = []; cleanArchive(); SEASON = S.season || 1; if (GROWN !== SEASON) applyGrowth(); S.archive.forEach(A => { if (!HS[A.s] || HS[A.s].sim) registerArchive(A); }); { let ch = false; S.archive.map(A => A.s).sort((a, b) => a - b).forEach(s => { try { if (pfSeason(s)) ch = true; } catch (e) { console.error(e); } }); if (ch) { applyGrowth(); GROWN = SEASON; setTimeout(() => { try { save(); } catch (e) { } }, 0); } } }
+let OLD_KILL = 0;
+function oldSaveKill() { if (!S || S.nm4 || OLD_KILL) return; if (typeof WEB !== 'undefined' && (WEB.ro || (WEB.on && !WEB.key))) return; /* 只读 / 跟随设备不动，等主控设备处理 */ OLD_KILL = 1; setTimeout(() => { try { if (S && S.nm4) return; toast('旧版存档已停用：改用剧本存档，从 S01 重新开始（你改过的球员资料和内定结果都保留）'); doResetAll(); } catch (e) { console.error(e); } }, 50); } /* 旧版（剧本之前）的存档不再支持（2026-11-14） */
+function applyState() { oldSaveKill();
+  if (migrateState()) { localSave(); setTimeout(() => cloudQueue(), 0); } if (S && S.nm2 == null && (S.season || 1) === 1 && !(S.archive || []).length && !(S.fx || []).some(r => r.some(m => m.r))) S.nm2 = 1; /* 还没开踢的进度改用新的旧名字规则 */ if (S && S.ownFrom == null) { const pl0 = (S.season || 1) > 1 || (S.fx || []).some(r => r.some(m => m.r)); S.ownFrom = pl0 ? (S.season || 1) + 1 : (S.season || 1); } /* 老板、董事会、教练团队：旧进度从下季起生效 */ if (!S.archive) S.archive = []; cleanArchive(); SEASON = S.season || 1; if (GROWN !== SEASON) applyGrowth(); S.archive.forEach(A => { if (!HS[A.s] || HS[A.s].sim) registerArchive(A); }); { let ch = false; S.archive.map(A => A.s).sort((a, b) => a - b).forEach(s => { try { if (pfSeason(s)) ch = true; } catch (e) { console.error(e); } }); if (ch) { applyGrowth(); GROWN = SEASON; setTimeout(() => { try { save(); } catch (e) { } }, 0); } } }
 /* ---------- 能力成长、退役与青训 ----------
    每名球员有一条固定的成长曲线；每个赛季结束时，到了年纪或能力掉得太多的球员退役，由青训新人补上。
    这些全由赛季数推算出来（同一个赛季结果永远一样），不需要额外存档。 */
@@ -1369,7 +1371,7 @@ function acadBase(t) { const v = ((typeof PDB0 !== 'undefined' && PDB0[t]) || PD
 var KID_MEMO = new Map();
 /* 旧资料球员：只保留名字（和国籍）。新规则（S.nm2，从 S01 新开的进度）下，他们的名字随机分给各队青训：约三分之一是 S01 时已在梯队的大孩子，其余是 S01–S18 各批新进梯队的新人，
    出现的赛季、球队、潜力、何时提拔或离队全部照一般青训规则，不再沿用旧资料的出道时间和能力。巴扎南德的剧情是你指定的，照旧。 */
-const nm2 = () => !!(S && S.nm2), nm3 = () => !!(S && S.nm3), nm4 = () => !!(S && S.nm4);
+const nm2 = () => !!(S && S.nm2), nm3 = () => false, nm4 = () => !!(S && S.nm4); /* nm3 规则只给旧版存档用，已停用 */
 /* ---------- 生涯剧本（S.nm4，2026-11-13 起新开的进度）----------
    旧资料球员（S16、S17 名单、核心球员、旧资料摘要里的人）S01–S17 每季在哪队、能力多少都照 SCRIPT 走（锁定，转会市场不碰）；S18 起交给系统。
    威超 S01–S15 的排名（降级区以外）照文档：开季先把整季每场的赛果排好；S16、S17 只定冠军。 */
@@ -2163,7 +2165,7 @@ function applyGrowth() {
   if (GROWN && GROWN !== SEASON && ALLP_READY) syncAllPlayers();
   GROWN = SEASON;
 }
-const MIGRATED = migrateState(); if (MIGRATED) { localSave(); }
+const MIGRATED = migrateState(); if (MIGRATED) { localSave(); } setTimeout(() => { try { oldSaveKill(); } catch (e) { } }, 20000); /* 本机存的是旧版存档：等 20 秒，云端如果有剧本存档会先载入；还是旧版才改 */
 if (!S.archive) S.archive = [];
 cleanArchive();
 SEASON = S.season || 1;
@@ -4692,7 +4694,8 @@ const CUP_SW_KO = [['附加赛', 27], ['16 强', 30], ['8 强', 33], ['半决赛
    每场杯赛都在模拟时记下首发、进球分钟和球员数据（cupPlayerStats 的 det）。全自动模式下，第 w 周的杯赛在威超第 w 轮那段时间的中间开踢，
    跟联赛一样会「进行中」并显示实时比分；手动模式踢完那轮威超就揭晓。 */
 const cupDet = () => { const L = cupLive(); return (L && L.D && L.D.det) || []; };
-function cupKo(w) { const C = S && S.auto; if (!C || !C.on || !C.an || w < 1) return null; return autoT(w - 1) + C.R * 0.5; }
+function cupKo(w) { const C = S && S.auto; if (!C || !C.on || !C.an || w < 1) return null; return autoT(w - 1); }
+function cupOff() { const C = AUTO_C(); return Math.min(C.R * 0.4, LIVE_DU * 1.08); } /* 杯赛先踢，联赛等杯赛踢完再开 */
 function cupWkState(w) { if (!w) return 'ft'; const p = playedRounds(); if (p >= w) return 'ft'; if (p < w - 1) return 'wait'; const ko = cupKo(w); if (ko == null) return 'wait'; const now = Date.now(); return now < ko ? 'wait' : now < ko + LIVE_DU ? 'live' : 'ft'; }
 function cupP() { const p = playedRounds(); return p < 38 && cupWkState(p + 1) === 'ft' ? p + 1 : p; }
 const cupLiveMin = w => { const ko = cupKo(w); return ko == null ? 90 : Math.max(1, Math.min(90, Math.floor((Date.now() - ko) / LIVE_DU * 90))); };
@@ -5139,7 +5142,7 @@ const plyId = (pid, uid) => pid != null && pid < HIST_N0 ? 'PLY-' + String(pid +
 const kLabel = k => k >= 1 ? SN(k) : 'W' + String(50 + k).padStart(2, '0');
 const PRE_C = {};
 function preCareer(pid) {
-  if (pid == null || !PL[pid]) return null; if (PRE_C[pid] !== undefined) return PRE_C[pid];
+  if (pid == null || !PL[pid]) return null; if (nm4() && typeof ACAD_ID !== 'undefined' && ACAD_ID['X|' + PL[pid][0]]) return null; /* 剧本球员：出道前的经历照剧本（青训或从外赛区转来），不用旧资料编的外赛区生涯 */ if (PRE_C[pid] !== undefined) return PRE_C[pid];
   const hf = histFirst()[pid], f = (hf && hf.s) || PL[pid][8] || ((typeof spanOf === 'function' && spanOf(pid)) || [])[0];
   const a = f != null ? ageAtSeason(pid, f) : null; if (f == null || a == null) return (PRE_C[pid] = null);
   { const hf0 = histFirst()[pid]; if (a <= 23 && hf0 && TD[hf0.t]) return (PRE_C[pid] = null); if (a <= 18) return (PRE_C[pid] = null); } // 23 岁前在威超出道的都是本队青训出品（出道前在青训梯队 / 预备队）
@@ -5915,13 +5918,24 @@ function intlCareerHTML(pid, uid) { const o = intlCareer(pid, uid); if (!o.eds.l
 /* ---------- 首页：VES 足球世界总览（威超的赛程和操作在「威超中心」） ---------- */
 function worldStars(n) { const L = []; Object.entries(PDB).forEach(([t, A]) => A.forEach(p => L.push({ p, t, r: p.rating }))); Object.entries(FDB).forEach(([c, A]) => A.forEach(p => { if (typeof p.age0 === 'number') { const a = pAge(p, SEASON); if (a < 17 || a > 38) return; let r = p.rating; try { r = growthOf(p).at(a); } catch (e) { } L.push({ p, t: c, r }); } }));
   return L.sort((a, b) => b.r - a.r).slice(0, n); }
+/* 首页比分中心：威超本轮（含直播中的比分）+ 各赛区最近一轮 */
+let HOME_SC = '威超';
+function homeScores() { const tabs = ['威超'].concat(EXT_LEAGUES.map(L => L.short)), cur = tabs.includes(HOME_SC) ? HOME_SC : '威超'; let body = '';
+  if (cur === '威超') { const nr = nextRound(), ri = nr < 0 ? S.fx.length - 1 : (S.fx[nr].some(m => m.r || m.pr) || nr === 0 ? nr : nr - 1), R = S.fx[ri] || [], st = R.some(m => fxState(m) === 'live') ? '进行中' : R.every(m => m.r) ? '已完赛' : '未开赛';
+    body = `<div class="split" style="margin-bottom:8px"><span class="eyebrow">第 ${ri + 1} 轮 · ${st}</span><button class="btn ghost" data-go="league" style="padding:4px 10px;font-size:12px">威超中心 →</button></div><div class="fxlist">${R.map((m, mi) => fxRow(m, ri, mi)).join('')}</div>`; }
+  else { const L = EXT_LEAGUES.find(x => x.short === cur); try { const o = extSeason(L, SEASON), p = cupP(), md = extMd(o, p), nx = extMd(o, p + 1), live = nextRound() >= 0 && S.fx[nextRound()].some(m => m.r || m.pr), row = (m, show) => `<div class="rk" style="grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);gap:8px"><span style="display:flex;justify-content:flex-end">${extNm(m.h)}</span><b class="mono" style="text-align:center">${show ? m.x + ' – ' + m.y : '<span class="dim">VS</span>'}</b><span style="display:flex">${extNm(m.a)}</span></div>`;
+      const now = o.days.slice(md, Math.max(nx, md + 1)), last = md ? o.days[md - 1] : null, thisWk = nx > md;
+      body = (now.length ? `<div class="eyebrow" style="margin-bottom:6px">第 ${md + 1}${now.length > 1 ? '–' + (md + now.length) : ''} 轮 · ${live ? (thisWk ? '进行中（跟威超同一周，威超这轮踢完一起出结果）' : '下一轮') : (thisWk ? '本周' : '下一轮')}</div><div class="rank-list">${now.flat().map(m => row(m, false)).join('')}</div>` : '')
+        + (last ? `<div class="eyebrow" style="margin:${now.length ? 12 : 0}px 0 6px">第 ${md} 轮 · 已完赛</div><div class="rank-list">${last.map(m => row(m, true)).join('')}</div>` : (now.length ? '' : '<p class="note" style="margin:0">还没开赛</p>'))
+        + `<div class="btns" style="justify-content:flex-end;margin-top:8px"><button class="btn ghost" data-act="extTab" data-v="${esc(L.name)}" data-goext="1" style="padding:4px 10px;font-size:12px">${esc(L.short)} 积分榜 →</button></div>`; } catch (e) { console.error(e); body = '<p class="note">暂时无法显示</p>'; } }
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Scores</div><h2>比分中心</h2></div></div><div class="seg" role="group" aria-label="联赛" style="flex-wrap:wrap;margin-bottom:10px">${tabs.map(k => `<button data-act="homeSc" data-v="${esc(k)}" aria-pressed="${k === cur}">${esc(k)}</button>`).join('')}</div>${body}</div>`; }
+/* 首页赛事总览：每项赛事目前进行到哪 */
+function homeCups() { try { CUP_ST = {}; cupLiveHTML(); const all = cupAll(), last = all[0] != null ? cupsOf(all[0]) || {} : {}; const st = k => CUP_ST[k] || (last[k] ? `${SN(all[0])} 冠军 ${esc(last[k].winner)}` : '尚未开赛');
+    return `<div class="panel"><div class="ph"><div><div class="eyebrow">Competitions</div><h2>赛事总览</h2></div><button class="btn ghost" data-go="cups">全部赛事 →</button></div><div class="rank-list">${CUP_KS.map(k => `<button class="rk" data-go="cups" data-cup="${k}" style="grid-template-columns:76px minmax(0,1fr);text-align:left;width:100%;background:none;border:0;color:inherit;cursor:pointer"><b style="font-size:13px">${esc(k)}</b><span class="muted" style="font-size:12px">${st(k)}</span></button>`).join('')}</div></div>`; } catch (e) { console.error(e); return ''; } }
 function vHome() {
   const nr = nextRound(), played = playedRounds(), T = table(), N = (() => { try { return newsItems().slice().sort((a, b) => (b.pr - a.pr) || (b.ri - a.ri)).slice(0, 7); } catch (e) { return []; } })();
   const nx = nextIntl(), lastI = (() => { const ss = intlSeasons(); return ss.length ? intlAll()[ss[0]] : null; })();
   const card = (eye, title, body, go, arg) => `<div class="panel"><div class="ph"><div><div class="eyebrow">${eye}</div><h2>${title}</h2></div>${go ? `<button class="btn ghost" data-go="${go}"${arg ? ` data-cup="${esc(arg)}"` : ''}>查看 →</button>` : ''}</div>${body}</div>`;
-  const ext = EXT_LEAGUES.map(L => { let ch = null; try { ch = SEASON > 1 ? extTable(L, SEASON - 1)[0] : null; } catch (e) { } return `<div class="rk" style="grid-template-columns:76px minmax(0,1fr)"><span class="muted">${esc(L.short || L.name)}</span><span>${ch ? `上季冠军 <b>${esc(ch)}</b>` : `<span class="dim">${L.clubs.length} 队</span>`}</span></div>`; }).join('');
-  const stars = worldStars(8).map((x, i) => `<div class="rk" style="grid-template-columns:22px minmax(0,1fr) auto"><span class="dim mono">${i + 1}</span><span><button class="lnk" ${TD[x.t] ? plink(x.t, x.p.name) : `data-player="${esc(x.t)}|${esc(x.p.name)}"`}>${esc(x.p.name)}</button> <span class="dim">${esc(x.t)} · ${esc(x.p.nat || '')}</span></span><span class="mono">${x.r}</span></div>`).join('');
-  const rich = (() => { try { return Object.keys(TD).filter(t => S.teams.includes(t)).map(t => ({ t, o: ownerAt(t) })).sort((a, b) => b.o.w - a.o.w).slice(0, 5).map(x => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span>${tlink(x.t, 18)} <span class="dim">${esc(x.o.name)}</span></span><span class="mono dim">${esc(x.o.lab)}</span></div>`).join(''); } catch (e) { return ''; } })();
   const intlB = `${lastI ? `<div class="rank-list">${Object.values(lastI).map(I => `<div class="rk" style="grid-template-columns:86px minmax(0,1fr)"><span class="muted">${esc(I.lab)}</span><span>${natLink(I.champ)} <span class="dim">${SN(I.s)} 季后</span></span></div>`).join('')}</div>` : '<p class="note" style="margin:0">还没办过国家队大赛。</p>'}${nx ? `<p class="note" style="margin:10px 0 0">下一届：${SN(nx[0])} 季后 · ${nx[1].map(k => INTL_CUPS[k][0]).join('、')}</p>` : ''}`;
   return `<section class="view">
   <div class="panel ovhero">
@@ -5939,16 +5953,13 @@ function vHome() {
     ${S.auto && S.auto.on ? `<div style="grid-column:1/-1" class="autoln" id="autoLn">${esc(autoStatus())}</div>` : ''}
   </div>
   <div class="grid g-main">
-    ${card('Headlines', '头条', N.length ? `<div class="rank-list">${N.map(x => `<div class="rk" style="grid-template-columns:auto minmax(0,1fr)"><span class="chip ${x.cls || ''}">${esc(x.tag)}</span><span>${x.html}</span></div>`).join('')}</div>` : '<p class="note" style="margin:0">暂时没有消息。</p>', 'league')}
+    ${homeScores()}
     <div class="grid" style="align-content:start">
       ${card('VES League', '威超积分榜', `<div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>积分</th></tr></thead><tbody>${T.slice(0, 6).map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 18)}</td><td>${r.p}</td><td class="pts">${r.pts}</td></tr>`).join('')}</tbody></table></div>`, 'table')}
+      ${homeCups()}
+      ${N.length ? `<div class="panel hnews"><div class="ph"><div><div class="eyebrow">Headlines</div><h3 style="margin:2px 0 0;font-size:15px">头条</h3></div></div><div class="rank-list">${N.slice(0, 4).map(x => `<div class="rk" style="grid-template-columns:auto minmax(0,1fr);font-size:12.5px"><span class="chip ${x.cls || ''}" style="font-size:10.5px">${esc(x.tag)}</span><span>${x.html}</span></div>`).join('')}</div></div>` : ''}
       ${card('National teams', '国家队', intlB, 'intl')}
     </div>
-  </div>
-  <div class="grid g-3" style="align-items:start">
-    ${card('World leagues', '各赛区联赛', `<div class="rank-list">${ext}</div>`, 'ext')}
-    ${card('Best players', '世界最强球员', `<div class="rank-list">${stars}</div>`, 'players')}
-    ${card('Owners', '最有钱的老板', `<div class="rank-list">${rich}</div>`, 'teams')}
   </div>
   </section>`;
 }
@@ -8820,6 +8831,8 @@ function openHealth() {
 }
 /* ---------- 威联赛时代 W01–W50（威超前身，固定历史，只能浏览） ---------- */
 let WL = null, WL_LOADING = null;
+/* 剧本存档：剧本球员的年龄照剧本，旧资料里同名的人在威联赛时代的经历如果那时他还不到 16 岁，就不算他的（不然 24 岁的人会有 W48 的出场记录） */
+function scrWlFix(W) { if (!nm4() || !W || !W.byPid) return; Object.entries(W.byPid).forEach(([pid, id]) => { const n = (PL[+pid] || [])[0]; const k = n && ACAD_ID['X|' + n]; if (!k) return; const C = (W.car && W.car[id]) || []; if (!C.length) return; const w0 = Math.min(...C.map(x => x[0])); if (kAge(k, 1) - (51 - w0) < 16) delete W.byPid[pid]; /* 威联赛时代一季一年：W50 是 S01 前一年 */ }); }
 const WL_CUPS = ['世联赛', '全联杯', '威联赛杯', '社区杯'];
 const WN = w => 'W' + String(w).padStart(2, '0');
 function wlDecode(D) {
@@ -8841,7 +8854,7 @@ function loadWL() {
   if (WL) return Promise.resolve(WL);
   if (WL_LOADING) return WL_LOADING;
   WL_LOADING = (typeof WL_DATA !== 'undefined' && WL_DATA ? Promise.resolve(WL_DATA) : fetch(typeof WL_URL !== 'undefined' ? WL_URL : 'wl.json').then(r => r.json()))
-    .then(D => { WL = wlDecode(D); return WL; }).catch(e => { WL_LOADING = null; throw e; });
+    .then(D => { WL = wlDecode(D); try { scrWlFix(WL); } catch (e) { console.error(e); } return WL; }).catch(e => { WL_LOADING = null; throw e; });
   return WL_LOADING;
 }
 setTimeout(() => { loadWL().then(() => { if (['wl', 'teams', 'history'].includes(view)) render(); }).catch(() => {}); }, 1200);
@@ -9171,19 +9184,21 @@ function autoFastSeason() { const c = mktCfg(), prev = { auto: c.auto, pilot: c.
       playRound(i); });
     if (mktActive() && !mktLate()) { try { autoSquad('sum'); autoMarket(false); } catch (e) { console.error(e); } }
   } finally { c.auto = prev.auto; c.pilot = prev.pilot; } }
+/* 快速推演多个赛季：目标存进进度（S.autoTo），中途网页被重新整理或关掉，下次打开会接着推演；出错会停下并告诉你 */
 function autoSimTo(target) {
-  if (AUTO) return; AUTO = { target };
-  const chip = $('#roundChip');
+  if (AUTO) return; AUTO = { target }; S.autoTo = target; try { save(); } catch (e) { }
   const step = () => {
     if (!AUTO) return;
-    if (SEASON >= AUTO.target) { AUTO = null; S.target = null; save(); render(); toast(`已推演到 ${SN(SEASON)}`); return; }
-    if (chip) chip.innerHTML = `自动推演中 · ${SN(SEASON)} → ${SN(AUTO.target)}`;
-    autoFastSeason();
-    QUIET_END = true; maybeEndSeason(true); QUIET_END = false;
-    setTimeout(step, 20);
+    if (SEASON >= AUTO.target) { AUTO = null; S.target = null; S.autoTo = null; save(); render(); toast(`已推演到 ${SN(SEASON)}`); return; }
+    const chip = $('#roundChip'); if (chip) chip.innerHTML = `自动推演中 · ${SN(SEASON)} → ${SN(AUTO.target)}`;
+    try { autoFastSeason(); QUIET_END = true; maybeEndSeason(true); }
+    catch (e) { console.error(e); QUIET_END = false; AUTO = null; S.autoTo = null; try { save(); render(); } catch (e2) { } toast(`推演在 ${SN(SEASON)} 出错停下了：${String(e && e.message || e).slice(0, 80)}`); return; }
+    finally { QUIET_END = false; }
+    setTimeout(step, 30);
   };
   step();
 }
+setTimeout(() => { try { if (S && S.autoTo && S.autoTo > SEASON && !AUTO && !(typeof WEB !== 'undefined' && WEB.ro)) { toast(`接着推演到 ${SN(S.autoTo)}…`); autoSimTo(S.autoTo); } else if (S && S.autoTo && S.autoTo <= SEASON) S.autoTo = null; } catch (e) { console.error(e); } }, 6000);
 async function doResetAll() {
   const I = (S && S.init) || (S ? initSnap() : null); /* 套回初始设定（球员资料、阵型、首发、职务、球衣、非卖品、转会设置） */
   const LIVE = S ? { edits: S.edits, tedit: S.tedit, oedit: S.oedit } : {}, FIX0 = S && S.fix ? JSON.parse(JSON.stringify(S.fix)) : null; /* 球员资料和球队信息是你手动改的，一律保留最新版本 */
@@ -9357,7 +9372,8 @@ document.addEventListener('click', e => {
   if (act === 'teImgReset') { $('#dlg').dataset.teImg = ''; $('#teImgBox').innerHTML = '<span class="note">原队徽</span>'; return; }
   if (act === 'cupStSort') { CUPST_SORT = el.dataset.v; return render(); }
   if (act === 'cupFxAll') { CUPFX_ALL = !CUPFX_ALL; return render(); }
-  if (act === 'extTab') { EXT_TAB = el.dataset.v; return render(); }
+  if (act === 'homeSc') { HOME_SC = el.dataset.v; return render(); }
+  if (act === 'extTab') { EXT_TAB = el.dataset.v; if (el.dataset.goext) return go('ext'); return render(); }
   if (act === 'intlTab') { INTL_V.tab = el.dataset.v; return render(); }
   if (act === 'intlCup') { INTL_V.k = el.dataset.v; return render(); }
   if (act === 'pyrTab') { PYR_TAB = el.dataset.v; return render(); }
@@ -9601,6 +9617,7 @@ async function cloudPull(meta) {
   if (meta.arch) { const qa = await CLOUD.meta.collection('archive').get(); archive = qa.docs.map(d => { try { const x = d.data(); return JSON.parse(x.z ? LZString.decompressFromUTF16(x.z) : x.a); } catch (e) { return null; } }).filter(Boolean).filter(A => A.s < meta.season).sort((x, y) => x.s - y.s); if (archive.length < meta.arch) return false; }
   let edits = {}, salt = {}; try { edits = JSON.parse(meta.edits || '{}'); salt = JSON.parse(meta.salt || '{}'); } catch (e) {}
   const next = { season: meta.season, teams: meta.teams, promoted: meta.promoted, demo: false, updated: meta.updated, fx: JSON.parse(JSON.stringify(rounds)), archive, edits, salt, target: meta.target || null };
+  if (AUTO) return false;
   if (structuralChange(next)) { S = next; CLOUD.arch = archive.length; if (localSave()) { reloadSoon('已载入其他设备的进度，正在重新整理…'); return true; } }
   S = next; applyState(); CLOUD.arch = archive.length;
   localSave();
@@ -9650,6 +9667,7 @@ async function webFetch(headers) {
 function structuralChange(st) { return !S || st.season !== S.season || (st.archive || []).length !== (S.archive || []).length || (st.reset || 0) !== (S.reset || 0) || JSON.stringify((st.archive || []).map(a => a.s)) !== JSON.stringify((S.archive || []).map(a => a.s)); }
 function reloadSoon(msg) { if (msg) toast(msg); setTimeout(() => location.reload(), 600); }
 function adopt(st, msg) {
+  if (AUTO) return; /* 正在快速推演：不让云端的旧进度把它打断 */
   if (structuralChange(st)) { S = st; if (localSave()) { reloadSoon(msg || '已同步其他设备的进度，正在重新整理…'); return; } }
   S = st; applyState(); localSave();
   if (!live) { M = null; render(); }
