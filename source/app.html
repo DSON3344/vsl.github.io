@@ -8767,9 +8767,9 @@ function clubAllTime(t) {
   clubAgg(t).forEach(o => { const yrs = o.ws.length + o.ss.length; if (o.apps < 15 && yrs < 2) return; const pk = legendPeak(o); if (!pk) return;
     const wid = o.wl != null ? o.wl : o.pid != null && WL && WL.byPid ? WL.byPid[o.pid] : null, pos = o.pos || (o.pid != null && PL[o.pid] && PL[o.pid][1]) || (wid != null && wlP(wid).pos) || (o.line === 'GK' ? 'GK' : o.line === 'DF' ? 'CB' : o.line === 'FW' ? 'ST' : 'CM');
     const nm = o.pid != null && PL[o.pid] ? PL[o.pid][0] : o.name;
-    add(o.pid != null ? 'p' + o.pid : o.wl != null ? 'w' + o.wl : 'n' + o.name, { pid: o.pid, wl: o.wl, name: nm, pos, rating: pk, team: t, nat: o.pid != null && PL[o.pid] ? PL[o.pid][2] : '', seasons: yrs, cur: curN.has(nm) }); });
-  cur.forEach(p => { const pid = UIDPID[p.uid], key = pid != null ? 'p' + pid : 'n' + p.name, c = M[key];
-    if (c) { c.cur = true; if (p.rating > c.rating) c.rating = p.rating; if (!c.pos) c.pos = p.pos; } else M[key] = { pid, name: p.name, pos: p.pos, rating: p.rating, team: t, nat: p.nat, seasons: 1, cur: true }; });
+    add(nm, { pid: o.pid, wl: o.wl, name: nm, pos, rating: pk, team: t, nat: o.pid != null && PL[o.pid] ? PL[o.pid][2] : '', seasons: yrs, cur: curN.has(nm) }); });
+  cur.forEach(p => { const pid = UIDPID[p.uid], key = p.name, c = M[key];
+    if (c) { c.cur = true; if (p.rating > c.rating) c.rating = p.rating; if (!c.pos) c.pos = p.pos; } else M[key] = { pid, name: p.name, pos: p.pos, rating: p.rating, team: t, nat: p.nat, seasons: 1, cur: true }; if (c && c.pid == null && pid != null) c.pid = pid; });
   return Object.values(M);
 }
 function liveCands(scope) {
@@ -8787,9 +8787,8 @@ function xiPitch(xi, coords) {
 function allTimePool(withExt) {
   const M = {};
   const add = (key, o) => { const c = M[key]; if (!c || o.rating > c.rating) M[key] = o; };
-  ALL_TEAMS.forEach(t => clubAllTime(t).forEach(o => add(o.pid != null ? 'p' + o.pid : o.wl != null ? 'w' + o.wl : 'n' + o.team + o.name, o)));
-  if (SEASON >= HIST_END) Object.entries(PDB).forEach(([t, l]) => l.forEach(p => { const pid = UIDPID[p.uid]; add(pid != null ? 'p' + pid : 'n' + t + p.name, { pid, name: p.name, pos: p.pos, rating: p.rating, team: t, nat: p.nat }); }));
-  if (withExt) EXTP.forEach(p => { if (typeof p.age0 !== 'number') return; const ageNow = pAge(p, SEASON); if (ageNow < 17) return; const g = growthOf(p); let pk = 0, pkAge = p.age0; for (let a = 17; a <= ageNow; a++) { const r = a <= p.age0 ? g.past(a) : g.at(a); if (r > pk) { pk = r; pkAge = a; } } const club = clubAt(p, p.s0 + (pkAge - p.age0)) || p.team; add('x' + p.uid, { pid: null, name: p.name, pos: p.pos, rating: pk, team: club, nat: p.nat, ext: 1 }); });
+  ALL_TEAMS.forEach(t => clubAllTime(t).forEach(o => add(o.name, o)));
+  if (withExt) EXTP.forEach(p => { if (typeof p.age0 !== 'number') return; const ageNow = pAge(p, SEASON); if (ageNow < 17) return; const g = growthOf(p); let pk = 0, pkAge = p.age0; for (let a = 17; a <= ageNow; a++) { const r = a <= p.age0 ? g.past(a) : g.at(a); if (r > pk) { pk = r; pkAge = a; } } const club = clubAt(p, p.s0 + (pkAge - p.age0)) || p.team; add(p.name, { pid: null, name: p.name, pos: p.pos, rating: pk, team: club, nat: p.nat, ext: 1 }); });
   return Object.values(M);
 }
 function vXI() {
