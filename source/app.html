@@ -5918,17 +5918,26 @@ function intlCareerHTML(pid, uid) { const o = intlCareer(pid, uid); if (!o.eds.l
 /* ---------- 首页：VES 足球世界总览（威超的赛程和操作在「威超中心」） ---------- */
 function worldStars(n) { const L = []; Object.entries(PDB).forEach(([t, A]) => A.forEach(p => L.push({ p, t, r: p.rating }))); Object.entries(FDB).forEach(([c, A]) => A.forEach(p => { if (typeof p.age0 === 'number') { const a = pAge(p, SEASON); if (a < 17 || a > 38) return; let r = p.rating; try { r = growthOf(p).at(a); } catch (e) { } L.push({ p, t: c, r }); } }));
   return L.sort((a, b) => b.r - a.r).slice(0, n); }
-/* 首页比分中心：威超本轮（含直播中的比分）+ 各赛区最近一轮 */
-let HOME_SC = '威超';
-function homeScores() { const tabs = ['威超'].concat(EXT_LEAGUES.map(L => L.short)), cur = tabs.includes(HOME_SC) ? HOME_SC : '威超'; let body = '';
-  if (cur === '威超') { const nr = nextRound(), ri = nr < 0 ? S.fx.length - 1 : (S.fx[nr].some(m => m.r || m.pr) || nr === 0 ? nr : nr - 1), R = S.fx[ri] || [], st = R.some(m => fxState(m) === 'live') ? '进行中' : R.every(m => m.r) ? '已完赛' : '未开赛';
-    body = `<div class="split" style="margin-bottom:8px"><span class="eyebrow">第 ${ri + 1} 轮 · ${st}</span><button class="btn ghost" data-go="league" style="padding:4px 10px;font-size:12px">威超中心 →</button></div><div class="fxlist">${R.map((m, mi) => fxRow(m, ri, mi)).join('')}</div>`; }
-  else { const L = EXT_LEAGUES.find(x => x.short === cur); try { const o = extSeason(L, SEASON), p = cupP(), md = extMd(o, p), nx = extMd(o, p + 1), live = nextRound() >= 0 && S.fx[nextRound()].some(m => m.r || m.pr), row = (m, show) => `<div class="rk" style="grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);gap:8px"><span style="display:flex;justify-content:flex-end">${extNm(m.h)}</span><b class="mono" style="text-align:center">${show ? m.x + ' – ' + m.y : '<span class="dim">VS</span>'}</b><span style="display:flex">${extNm(m.a)}</span></div>`;
-      const now = o.days.slice(md, Math.max(nx, md + 1)), last = md ? o.days[md - 1] : null, thisWk = nx > md;
-      body = (now.length ? `<div class="eyebrow" style="margin-bottom:6px">第 ${md + 1}${now.length > 1 ? '–' + (md + now.length) : ''} 轮 · ${live ? (thisWk ? '进行中（跟威超同一周，威超这轮踢完一起出结果）' : '下一轮') : (thisWk ? '本周' : '下一轮')}</div><div class="rank-list">${now.flat().map(m => row(m, false)).join('')}</div>` : '')
-        + (last ? `<div class="eyebrow" style="margin:${now.length ? 12 : 0}px 0 6px">第 ${md} 轮 · 已完赛</div><div class="rank-list">${last.map(m => row(m, true)).join('')}</div>` : (now.length ? '' : '<p class="note" style="margin:0">还没开赛</p>'))
-        + `<div class="btns" style="justify-content:flex-end;margin-top:8px"><button class="btn ghost" data-act="extTab" data-v="${esc(L.name)}" data-goext="1" style="padding:4px 10px;font-size:12px">${esc(L.short)} 积分榜 →</button></div>`; } catch (e) { console.error(e); body = '<p class="note">暂时无法显示</p>'; } }
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Scores</div><h2>比分中心</h2></div></div><div class="seg" role="group" aria-label="联赛" style="flex-wrap:wrap;margin-bottom:10px">${tabs.map(k => `<button data-act="homeSc" data-v="${esc(k)}" aria-pressed="${k === cur}">${esc(k)}</button>`).join('')}</div>${body}</div>`; }
+/* 首页：威超本轮（大）+ 各赛区各一栏（小）；积分榜都放在右侧 */
+function homeLgFx() { const nr = nextRound(), ri = nr < 0 ? S.fx.length - 1 : (S.fx[nr].some(m => m.r || m.pr) || nr === 0 ? nr : nr - 1), R = S.fx[ri] || [], st = R.some(m => fxState(m) === 'live') ? '进行中' : R.every(m => m.r) ? '已完赛' : '未开赛';
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">VES League · 第 ${ri + 1} 轮 · ${st}</div><h2>威超</h2></div><button class="btn ghost" data-go="league">威超中心 →</button></div>${R.map((m, mi) => fxRow(m, ri, mi)).join('')}</div>`; }
+function extNow(L) { const o = extSeason(L, SEASON), p = cupP(), md = extMd(o, p), nx = extMd(o, p + 1); return { o, p, md, nx }; }
+function homeExtFx(L) { try { const { o, md, nx } = extNow(L), live = nextRound() >= 0 && S.fx[nextRound()].some(m => m.r || m.pr);
+    const row = (m, show) => `<div class="rk" style="grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);gap:6px;font-size:12.5px"><span style="display:flex;justify-content:flex-end;min-width:0">${extNm(m.h, 14)}</span><b class="mono" style="text-align:center">${show ? m.x + '–' + m.y : '<span class="dim" style="font-weight:400">VS</span>'}</b><span style="display:flex;min-width:0">${extNm(m.a, 14)}</span></div>`;
+    let lab, L2, show; if (nx > md && live) { lab = `第 ${md + 1} 轮 · 进行中`; L2 = o.days[md]; show = false; } else if (md) { lab = `第 ${md} 轮 · 已完赛`; L2 = o.days[md - 1]; show = true; } else if (o.days.length) { lab = '第 1 轮 · 未开赛'; L2 = o.days[0]; show = false; } else return '';
+    return `<div class="panel" style="padding:14px 16px"><div class="split" style="margin-bottom:6px"><div><div class="eyebrow">${esc(lab)}</div><h3 style="margin:2px 0 0;font-size:15px">${esc(L.name)}</h3></div><button class="btn ghost" data-act="extTab" data-v="${esc(L.name)}" data-goext="1" style="padding:3px 9px;font-size:12px">→</button></div><div class="rank-list">${(L2 || []).slice(0, 10).map(m => row(m, show)).join('')}</div>${(L2 || []).length > 10 ? `<p class="note" style="margin:6px 0 0;text-align:center">还有 ${(L2 || []).length - 10} 场 · 点 → 看全部</p>` : ''}</div>`; } catch (e) { console.error(e); return ''; } }
+function homeTables() { const T = table(); const mini = (title, go, rows, extra) => `<div style="margin-bottom:12px"><div class="split" style="margin-bottom:4px"><b style="font-size:13px">${title}</b>${go}</div><div class="tw"><table style="font-size:12.5px"><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>分</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  let h = mini('威超', '<button class="btn ghost" data-go="table" style="padding:2px 8px;font-size:11px">→</button>', T.slice(0, 6).map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 16)}</td><td>${r.p}</td><td class="pts">${r.pts}</td></tr>`).join(''));
+  EXT_LEAGUES.forEach(L => { try { const { o, md } = extNow(L); const tb = md ? pyrTable(L.clubs.map(c => c[0]), o.days.slice(0, md).map(D => D.map(m => [m.h, m.a, m.x, m.y]))) : L.clubs.map(c => [c[0], 0, 0, 0, 0, 0, 0]).sort((x, y) => clubStrAt(y[0], SEASON) - clubStrAt(x[0], SEASON));
+    h += mini(esc(L.short || L.name), `<button class="btn ghost" data-act="extTab" data-v="${esc(L.name)}" data-goext="1" style="padding:2px 8px;font-size:11px">→</button>`, tb.slice(0, 4).map((r, i) => `<tr><td class="pos">${i + 1}</td><td class="l">${extNm(r[0], 14)}</td><td>${r[2] + r[3] + r[4]}</td><td class="pts">${r[1]}</td></tr>`).join('')); } catch (e) { console.error(e); } });
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Standings</div><h2>积分榜</h2></div></div>${h}</div>`; }
+/* 上赛季荣誉：团队（各联赛、各杯赛冠军）+ 个人奖项 */
+function homeHonours() { const s = SEASON - 1; if (s < 1) return ''; try { const C = cupsOf(s) || {}, A = awardsOf(s), arch = (S.archive || []).find(x => x.s === s);
+    const pn = p => p ? `<button class="lnk tname" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${TD[p.team] ? crest(p.team, 16) : ecrest(p.team, 16)}<span>${esc(p.name)}</span></button>` : '–';
+    const tn = t => t ? (TD[t] ? tlink(t, 16) : extNm(t, 16)) : '–', row = (k, v) => `<div class="rk" style="grid-template-columns:96px minmax(0,1fr);font-size:13px"><span class="muted">${k}</span><span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${v}</span></div>`;
+    const team = [row('威超冠军', tn(ranking(s)[0]))].concat(CUP_KS.filter(k => C[k] && C[k].winner).map(k => row(k, tn(C[k].winner)))).concat(EXT_LEAGUES.map(L => { let ch = null; const e = arch && arch.extl && arch.extl[L.short]; if (e) ch = e.champ; else { try { ch = extFinal(L, s).o.champ; } catch (x) { } } return ch ? row(esc(L.short) + '冠军', tn(ch)) : ''; }));
+    const ind = A ? [['金球奖', A.ballon && A.ballon[0]], ['世界足球先生', A.world], ['威超 MVP', A.mvp], ['金靴', A.boot], ['助攻王', A.assist], ['最佳后卫', A.def], ['金手套', A.glove], ['金童奖', A.young]].filter(x => x[1]).map(([k, p]) => row(k, pn(p) + (k === '金靴' && p.g != null ? ` <span class="dim">${p.g} 球</span>` : k === '助攻王' && p.a != null ? ` <span class="dim">${p.a} 助</span>` : ''))) : [];
+    return `<div class="panel"><div class="ph"><div><div class="eyebrow">Last season · ${SN(s)}</div><h2>上赛季荣誉</h2></div><button class="btn ghost" data-go="awards">全部奖项 →</button></div><div class="grid g-2" style="gap:14px;align-items:start"><div><div class="eyebrow" style="margin-bottom:6px">团队</div><div class="rank-list">${team.join('')}</div></div><div><div class="eyebrow" style="margin-bottom:6px">个人</div><div class="rank-list">${ind.join('') || '<p class="note" style="margin:0">没有资料</p>'}</div></div></div></div>`; } catch (e) { console.error(e); return ''; } }
 /* 首页赛事总览：每项赛事目前进行到哪 */
 function homeCups() { try { CUP_ST = {}; cupLiveHTML(); const all = cupAll(), last = all[0] != null ? cupsOf(all[0]) || {} : {}; const st = k => CUP_ST[k] || (last[k] ? `${SN(all[0])} 冠军 ${esc(last[k].winner)}` : '尚未开赛');
     return `<div class="panel"><div class="ph"><div><div class="eyebrow">Competitions</div><h2>赛事总览</h2></div><button class="btn ghost" data-go="cups">全部赛事 →</button></div><div class="rank-list">${CUP_KS.map(k => `<button class="rk" data-go="cups" data-cup="${k}" style="grid-template-columns:76px minmax(0,1fr);text-align:left;width:100%;background:none;border:0;color:inherit;cursor:pointer"><b style="font-size:13px">${esc(k)}</b><span class="muted" style="font-size:12px">${st(k)}</span></button>`).join('')}</div></div>`; } catch (e) { console.error(e); return ''; } }
@@ -5953,9 +5962,13 @@ function vHome() {
     ${S.auto && S.auto.on ? `<div style="grid-column:1/-1" class="autoln" id="autoLn">${esc(autoStatus())}</div>` : ''}
   </div>
   <div class="grid g-main">
-    ${homeScores()}
     <div class="grid" style="align-content:start">
-      ${card('VES League', '威超积分榜', `<div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>积分</th></tr></thead><tbody>${T.slice(0, 6).map((r, i) => `<tr class="${zone(i)}"><td class="pos">${i + 1}</td><td class="l">${tlink(r.team, 18)}</td><td>${r.p}</td><td class="pts">${r.pts}</td></tr>`).join('')}</tbody></table></div>`, 'table')}
+      ${homeLgFx()}
+      <div class="grid g-2" style="gap:12px;align-items:start">${EXT_LEAGUES.map(homeExtFx).join('')}</div>
+      ${homeHonours()}
+    </div>
+    <div class="grid" style="align-content:start">
+      ${homeTables()}
       ${homeCups()}
       ${N.length ? `<div class="panel hnews"><div class="ph"><div><div class="eyebrow">Headlines</div><h3 style="margin:2px 0 0;font-size:15px">头条</h3></div></div><div class="rank-list">${N.slice(0, 4).map(x => `<div class="rk" style="grid-template-columns:auto minmax(0,1fr);font-size:12.5px"><span class="chip ${x.cls || ''}" style="font-size:10.5px">${esc(x.tag)}</span><span>${x.html}</span></div>`).join('')}</div></div>` : ''}
       ${card('National teams', '国家队', intlB, 'intl')}
@@ -9372,7 +9385,6 @@ document.addEventListener('click', e => {
   if (act === 'teImgReset') { $('#dlg').dataset.teImg = ''; $('#teImgBox').innerHTML = '<span class="note">原队徽</span>'; return; }
   if (act === 'cupStSort') { CUPST_SORT = el.dataset.v; return render(); }
   if (act === 'cupFxAll') { CUPFX_ALL = !CUPFX_ALL; return render(); }
-  if (act === 'homeSc') { HOME_SC = el.dataset.v; return render(); }
   if (act === 'extTab') { EXT_TAB = el.dataset.v; if (el.dataset.goext) return go('ext'); return render(); }
   if (act === 'intlTab') { INTL_V.tab = el.dataset.v; return render(); }
   if (act === 'intlCup') { INTL_V.k = el.dataset.v; return render(); }
