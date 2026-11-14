@@ -80,7 +80,7 @@ const ENGINE = (() => {
   function pickXI(team, ctx) {
     const base = lineup(team);
     if (!ctx) return { xi: base.xi.map(x => ({ ...x, start: 1 })), bench: base.bench.slice(), out: [], rested: [] };
-    const must = new Set(ctx.must || []), out = { ...(ctx.out || {}) }; must.forEach(n => delete out[n]); const streak = ctx.streak || {}; /* must：一定要首发的人（内定金靴 / 助攻王） */
+    const must = new Set(ctx.must || []), out = { ...(ctx.out || {}) }; must.forEach(n => delete out[n]); (ctx.pref || []).forEach(n => { if (!out[n]) must.add(n); }); /* pref：能上就首发（伤停照算） */ const streak = ctx.streak || {}; /* must：一定要首发的人（内定金靴 / 助攻王） */
     const pool = base.bench.filter(p => !out[p.name]);
     const usedB = new Set();
     const best = base.xi.reduce((m, x) => Math.max(m, x.rating), 0);
@@ -109,7 +109,7 @@ const ENGINE = (() => {
       return { slot: x.slot, name: p.name, rating: Math.max(60, p.rating - cost), p, x: x.x, y: x.y, line: x.line, start: 1, sub4: x.name };
     });
     must.forEach(n => { if (xi.some(x => x.name === n)) return; const p = base.bench.find(b => b.name === n) || (PLAYER_DATABASE[team] || []).find(b => b.name === n); if (!p) return;
-      const ln = LINE(p.pos), cand = xi.map((x, i) => ({ x, i })).filter(o => o.x.line !== 'GK' && !must.has(o.x.name) && (ln === 'GK' ? o.x.line === 'GK' : true)).sort((a, b) => (a.x.line === ln ? 0 : 1) - (b.x.line === ln ? 0 : 1) || a.x.rating - b.x.rating)[0]; if (!cand) return;
+      const ln = LINE(p.pos), cand = xi.map((x, i) => ({ x, i })).filter(o => !must.has(o.x.name) && (ln === 'GK' ? o.x.line === 'GK' : o.x.line !== 'GK')).sort((a, b) => (a.x.line === ln ? 0 : 1) - (b.x.line === ln ? 0 : 1) || a.x.rating - b.x.rating)[0]; if (!cand) return;
       const x = cand.x; xi[cand.i] = { slot: x.slot, name: p.name, rating: Math.max(60, p.rating - fitCost(x.slot, p)), p, x: x.x, y: x.y, line: x.line, start: 1, sub4: x.name }; });
     if (ctx.energy) xi.forEach(x => { const E = ctx.energy[x.name]; if (E == null) return; x.en = Math.round(E); const d = fatPen(E); if (d) { x.rating = Math.max(50, Math.round(x.rating - d)); x.fat = +d.toFixed(1); } });
     const onXI = new Set(xi.map(x => x.name));
