@@ -1482,7 +1482,7 @@ const STAR_W = { mvp: 2.6, ballon: 2.6, world: 2.4, young: 2, def: 1.3, glove: 1
 /* 核心球员文档：在队期间是球队核心（S++ > S+ > S > A+ > A）。
    能力：在队第一季至少到「级别分 − 4」，第二季 − 2，之后不低于级别分（S16、S17 照名单不动）；进队前几季也跟着往上铺。
    表现：在队期间进球 / 助攻机会和评分按级别加成 */
-const KEY_R = { 'S++': 93, 'S+': 90, 'S': 87, 'A+': 84, 'A': 81 }, KEY_W = { 'S++': 3.8, 'S+': 3.0, 'S': 2.5, 'A+': 2.1, 'A': 1.8 }, KEY_B = { 'S++': 0.5, 'S+': 0.42, 'S': 0.36, 'A+': 0.3, 'A': 0.25 };
+const KEY_R = { 'S++': 93, 'S+': 90, 'S': 87, 'A+': 84, 'A': 81 }, KEY_W = { 'S++': 10, 'S+': 6.2, 'S': 4.5, 'A+': 3.4, 'A': 2.8 }, KEY_B = { 'S++': 0.5, 'S+': 0.42, 'S': 0.36, 'A+': 0.3, 'A': 0.25 };
 function scrKeyR(p) { const r = p.r.slice(), at = s => { let t = null; p.ev.forEach(e => { if (e[0] <= s) t = e[1]; }); return t; };
   (SCRIPT.key || []).forEach(([n, team, s0, s1, tier]) => { if (n !== p.n) return; const R = KEY_R[tier] || 84; let first = null;
     for (let s = s0; s <= Math.min(s1, 15); s++) { if (at(s) !== team) continue; if (first == null) first = s; const i = s - first, fl = R - Math.max(0, 4 - 2 * i); if (r[s - 1] > 0 && r[s - 1] < fl) r[s - 1] = fl; }
@@ -1493,8 +1493,12 @@ let SCR_CORE = null;
 function scrCore(name) { if (!nm4() || SEASON > 16) return false; if (!SCR_CORE || SCR_CORE.s !== SEASON) { const set = new Set(); Object.values(PDB).forEach(L => { const sc = L.filter(p => scrLockedUid(p.uid) && p.line !== 'GK' && ENGINE.LINE(p.pos) !== 'GK'); const top = Math.max(0, ...sc.map(p => p.rating)); sc.forEach(p => { if ((p.rating === top && top >= 84) || p.rating >= 92) set.add(p.name); }); }); SCR_CORE = { s: SEASON, set }; } return SCR_CORE.set.has(name); }
 STAR_W.core = 1.6; Object.entries(KEY_W).forEach(([t, w]) => { STAR_W['k' + t] = w; });
 ENGINE.setPickHook((k, team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); let w = X ? fixPickBase(X, k, name) : 1; const kt = scrKey(team, name), st = ((X && X.stars && X.stars[name]) || []).concat(kt ? ['k' + kt] : scrCore(name) ? ['core'] : []);
-  if (st.length && (!X || name !== (k === 'g' ? X.F.boot : X.F.assist))) { let m = Math.max(...st.map(x => STAR_W[x] || 1)); const me = X ? ((X.tally[name] || {})[k] || 0) : 0, top = !X ? null : k === 'g' ? (X.F.boot ? X.myG : null) : (X.F.assist ? X.myA : null); if (top != null && me >= top - 3) m = Math.min(m, me >= top - 1 ? 0.15 : 0.4); w *= m; }
+  if (st.length && (!X || name !== (k === 'g' ? X.F.boot : X.F.assist))) { let m = Math.max(...st.map(x => STAR_W[x] || 1)); const me = X ? ((X.tally[name] || {})[k] || 0) : 0, top = !X ? null : k === 'g' ? (X.F.boot ? X.myG : null) : (X.F.assist ? X.myA : null); if (top != null && me >= top - 3) m = Math.min(m, me >= top - 1 ? 0.15 : 0.4); if (kt && k === 'g') { const g = scrTally(name), cap = KEY_CAP[kt]; if (g >= cap + 6) m = Math.min(m, 0.4); else if (g >= cap) m = Math.min(m, 1); } w *= m; }
   return w; });
+/* 核心球员一季进球的大概上限：到了就不再额外加成，免得弱队核心一季进 60 多球 */
+const KEY_CAP = { 'S++': 50, 'S+': 38, 'S': 30, 'A+': 25, 'A': 20 };
+let SCR_TL = null;
+function scrTally(name) { const k = SEASON + '|' + playedRounds(); if (!SCR_TL || SCR_TL.k !== k) { const g = {}; try { liveStats().forEach(x => { g[x.name] = (g[x.name] || 0) + (x.g || 0); }); } catch (e) { } SCR_TL = { k, g }; } return SCR_TL.g[name] || 0; }
 ENGINE.setRateHook((team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); const st = X && X.stars && X.stars[name]; if (!st) { const kt = scrKey(team, name); return kt ? KEY_B[kt] : scrCore(name) ? 0.2 : 0; } return st.some(x => x === 'mvp' || x === 'ballon' || x === 'world') ? 0.45 : 0.35; });
 const fixTeamBoost = t => { const X = fixLg(); if (!X || X.F.lg !== t || X.gap == null) return 0; return X.gap < 0 ? Math.min(5, 1.5 + -X.gap * 0.3) : X.gap < 4 ? 1 : 0; };
 const cupFixOf = k => { const F = fixOf(CUP_S != null ? CUP_S : SEASON); return F && F.cups && F.cups[k] || null; };
