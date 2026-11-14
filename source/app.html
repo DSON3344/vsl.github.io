@@ -8760,11 +8760,16 @@ function bestXIFrom(cands, slots) {
   const bench = cands.filter(p => !used.has(p)).sort((a, b) => b.rating - a.rating).slice(0, 7);
   return { xi: slots.map((sl, i) => pick[i] ? { ...pick[i], slot: sl } : null).filter(Boolean), bench };
 }
+// 俱乐部史上最强：威联赛时代 + 威超，在本队踢过球的所有人（含现役、已离队、已退役），按生涯巅峰评分挑
 function clubAllTime(t) {
-  const M = {}, add = (key, o) => { const c = M[key]; if (!c || o.rating > c.rating) M[key] = { ...o, seasons: (c ? c.seasons : 0) + 1 }; else c.seasons++; };
-  for (let s = 1; s <= Math.min(SEASON, 17); s++) (((HIST.squads || {})[s] || {})[t] || []).forEach(([pid, , r]) => add('p' + pid, { pid, name: PL[pid][0], pos: PL[pid][1], rating: r, team: t, nat: PL[pid][2] }));
-  SEASONS.filter(s => s >= HIST_END).forEach(s => ((HS[s].xi || {})[t] || []).forEach(([pid, sl, r]) => { if (pid != null && PL[pid]) add('p' + pid, { pid, name: PL[pid][0], pos: PL[pid][1] || String(sl).replace(/-.*/, ''), rating: r, team: t, nat: PL[pid][2] }); }));
-  if (SEASON >= HIST_END) (PDB[t] || []).forEach(p => { const pid = UIDPID[p.uid]; add(pid != null ? 'p' + pid : 'n' + p.name, { pid, name: p.name, pos: p.pos, rating: p.rating, team: t, nat: p.nat }); });
+  const M = {}, cur = PDB[t] || [], curN = new Set(cur.map(p => p.name));
+  const add = (key, o) => { const c = M[key]; if (!c || o.rating > c.rating) M[key] = c ? { ...o, seasons: c.seasons, cur: c.cur || o.cur } : o; };
+  clubAgg(t).forEach(o => { const yrs = o.ws.length + o.ss.length; if (o.apps < 15 && yrs < 2) return; const pk = legendPeak(o); if (!pk) return;
+    const wid = o.wl != null ? o.wl : o.pid != null && WL && WL.byPid ? WL.byPid[o.pid] : null, pos = o.pos || (o.pid != null && PL[o.pid] && PL[o.pid][1]) || (wid != null && wlP(wid).pos) || (o.line === 'GK' ? 'GK' : o.line === 'DF' ? 'CB' : o.line === 'FW' ? 'ST' : 'CM');
+    const nm = o.pid != null && PL[o.pid] ? PL[o.pid][0] : o.name;
+    add(o.pid != null ? 'p' + o.pid : o.wl != null ? 'w' + o.wl : 'n' + o.name, { pid: o.pid, wl: o.wl, name: nm, pos, rating: pk, team: t, nat: o.pid != null && PL[o.pid] ? PL[o.pid][2] : '', seasons: yrs, cur: curN.has(nm) }); });
+  cur.forEach(p => { const pid = UIDPID[p.uid], key = pid != null ? 'p' + pid : 'n' + p.name, c = M[key];
+    if (c) { c.cur = true; if (p.rating > c.rating) c.rating = p.rating; if (!c.pos) c.pos = p.pos; } else M[key] = { pid, name: p.name, pos: p.pos, rating: p.rating, team: t, nat: p.nat, seasons: 1, cur: true }; });
   return Object.values(M);
 }
 function liveCands(scope) {
@@ -8782,7 +8787,7 @@ function xiPitch(xi, coords) {
 function allTimePool(withExt) {
   const M = {};
   const add = (key, o) => { const c = M[key]; if (!c || o.rating > c.rating) M[key] = o; };
-  ALL_TEAMS.forEach(t => clubAllTime(t).forEach(o => add(o.pid != null ? 'p' + o.pid : 'n' + o.team + o.name, o)));
+  ALL_TEAMS.forEach(t => clubAllTime(t).forEach(o => add(o.pid != null ? 'p' + o.pid : o.wl != null ? 'w' + o.wl : 'n' + o.team + o.name, o)));
   if (SEASON >= HIST_END) Object.entries(PDB).forEach(([t, l]) => l.forEach(p => { const pid = UIDPID[p.uid]; add(pid != null ? 'p' + pid : 'n' + t + p.name, { pid, name: p.name, pos: p.pos, rating: p.rating, team: t, nat: p.nat }); }));
   if (withExt) EXTP.forEach(p => { if (typeof p.age0 !== 'number') return; const ageNow = pAge(p, SEASON); if (ageNow < 17) return; const g = growthOf(p); let pk = 0, pkAge = p.age0; for (let a = 17; a <= ageNow; a++) { const r = a <= p.age0 ? g.past(a) : g.at(a); if (r > pk) { pk = r; pkAge = a; } } const club = clubAt(p, p.s0 + (pkAge - p.age0)) || p.team; add('x' + p.uid, { pid: null, name: p.name, pos: p.pos, rating: pk, team: club, nat: p.nat, ext: 1 }); });
   return Object.values(M);
@@ -8803,8 +8808,8 @@ function vXI() {
   const what = { league: '威超联赛', world: '全球（含外赛区）', club: XIF.team, nat: XIF.nat + ' 国家队' }[XIF.scope];
   const title = `${what}${hist ? `史上最强阵容（S01–${SN(SEASON)}）` : ` ${SN(SEASON)} 现役最强阵容`}`;
   const sel = (id, opts, v) => `<select id="${id}">${opts.map(([k, n]) => `<option value="${esc(k)}" ${k === v ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
-  const who = p => `${p.pid != null ? `<button class="lnk" data-pid="${p.pid}">${esc(p.name)}</button>` : p.ext ? `<button class="lnk" data-ext="${esc(p.team)}">${esc(p.name)}</button>` : `<button class="lnk" data-player="${esc(p.team)}|${esc(p.name)}">${esc(p.name)}</button>`}`;
-  return `<section class="view"><div><div class="eyebrow">Dream teams</div><h1>最强阵容</h1><p class="muted" style="margin:6px 0 0;font-size:13px">按阵型挑出最强的 11 人，位置不对口会扣能力分。「现役」看当季评分；「历史」看每名球员生涯最高评分，球队取他巅峰时效力的球队（俱乐部只算在该队效力期间）。</p></div>
+  const who = p => `${p.pid != null ? `<button class="lnk" data-pid="${p.pid}">${esc(p.name)}</button>` : p.wl != null ? `<button class="lnk" data-wl="${p.wl}">${esc(p.name)}</button>` : p.ext ? `<button class="lnk" data-ext="${esc(p.team)}">${esc(p.name)}</button>` : `<button class="lnk" data-player="${esc(p.team)}|${esc(p.name)}">${esc(p.name)}</button>`}`;
+  return `<section class="view"><div><div class="eyebrow">Dream teams</div><h1>最强阵容</h1><p class="muted" style="margin:6px 0 0;font-size:13px">按阵型挑出最强的 11 人，位置不对口会扣能力分。「现役」看当季评分；「历史」看每名球员生涯最高评分，球队取他巅峰时效力的球队；俱乐部的历史最强从威联赛时代起、所有在这支球队踢过球的人里挑（现役、已离队、已退役都算，至少在队 2 季或出场 15 场）。</p></div>
   <div class="panel"><div class="btns" style="gap:10px;align-items:center">
     ${sel('xiScope', [['league', '威超联赛'], ['world', '全球（含外赛区）'], ['club', '俱乐部'], ['nat', '国家队']], XIF.scope)}
     ${sel('xiEra', [['now', '现役最强'], ['all', '历史最强']], XIF.era)}
@@ -8814,7 +8819,7 @@ function vXI() {
   <div class="grid g-main" style="align-items:start">
     <div class="panel"><div class="ph"><div><div class="eyebrow">${esc(XIF.form)}</div><h2>${esc(title)}</h2></div><span class="note mono">首发均分 ${avg.toFixed(1)}${R.xi.length < 11 ? ` · 只有 ${R.xi.length} 人` : ''}</span></div>${R.xi.length ? xiPitch(R.xi, F.coords) : '<div class="empty">没有符合条件的球员</div>'}</div>
     <div class="panel"><div class="ph"><div><div class="eyebrow">Line-up</div><h2>名单</h2></div></div><div class="rank-list">
-      ${R.xi.map(p => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(p.slot)}</span><span>${who(p)} <span class="sub">${esc(p.team)}${p.nat ? ' · ' + esc(p.nat) : ''}${p.seasons ? ` · ${p.seasons} 季` : ''}</span></span><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></div>`).join('')}
+      ${R.xi.map(p => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(p.slot)}</span><span>${who(p)} <span class="sub">${esc(p.team)}${p.nat ? ' · ' + esc(p.nat) : ''}${p.seasons ? ` · ${p.seasons} 季` : ''}${XIF.scope === 'club' && hist ? (p.cur ? ' · 现役' : ' · 已离队/退役') : ''}</span></span><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></div>`).join('')}
       ${R.bench.length ? `<div class="eyebrow" style="margin:10px 0 4px">替补</div>${R.bench.map(p => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(p.pos)}</span><span>${who(p)} <span class="sub">${esc(p.team)}</span></span><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></div>`).join('')}` : ''}</div></div>
   </div></section>`;
 }
