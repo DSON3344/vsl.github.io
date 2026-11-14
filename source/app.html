@@ -1447,14 +1447,14 @@ function fixLg() { const F = fixOf(SEASON); if (!F || !S || !S.fx || !S.fx.lengt
   const diff = (nm, k) => { if (!nm) return null; const me = tally[nm] ? tally[nm][k] : 0; let best = 0; Object.entries(tally).forEach(([n, o]) => { if (n !== nm && o[k] > best) best = o[k]; }); return me - best; };
   return (FIXC = { key, F, rem, pts, gap, rivals, tally, stars, myG: F.boot && tally[F.boot] ? tally[F.boot].g : 0, myA: F.assist && tally[F.assist] ? tally[F.assist].a : 0, dg: diff(F.boot, 'g'), da: diff(F.assist, 'a'), bootTeam: F.boot && tally[F.boot] ? tally[F.boot].team : null, astTeam: F.assist && tally[F.assist] ? tally[F.assist].team : null }); }
 let LGP_IT = 0;
-function lgPlan() { const s = SEASON; if (!nm4() || s > 16 || !S.fx || !S.fx.length) return null; if (S.lgp && S.lgp.s === s && S.lgp.v === 4) return S.lgp;
+function lgPlan() { const s = SEASON; if (!nm4() || s > 16 || !S.fx || !S.fx.length) return null; if (S.lgp && S.lgp.s === s && S.lgp.v === 5) return S.lgp;
   const nx = SCRIPT.rt[s + 1] ? new Set(SCRIPT.rt[s + 1]) : null, down = nx ? S.teams.filter(t => !nx.has(t)) : []; /* 剧本：下季名单里没有的球队排在最后（降级） */
   const teams = S.teams.slice(), forced = (SCRIPT.order[s] ? SCRIPT.order[s].slice(0, 17) : [SCRIPT.champ[s]]).filter(t => teams.includes(t) && !down.includes(t)), free = teams.filter(t => !forced.includes(t)), rnd = seeded('lgp|' + s + '|' + (S.reset || '') + saltOf(s));
   const fx = [], lk = []; S.fx.forEach(r => r.forEach(m => { fx.push([m.h, m.a]); lk.push(m.r ? [m.r.hg, m.r.ag] : null); })); const str = {}; /* 已经踢完的比赛照实际比分，只排还没踢的 */ teams.forEach(t => { let v = 75; try { v = ENGINE.strength(t).ovr; } catch (e) { } const i = forced.indexOf(t); str[t] = v + (i >= 0 ? (forced.length - i) * 0.35 : -2); });
   const pois = l => { const L = Math.exp(-l); let k = 0, q = 1; do { k++; q *= rnd(); } while (q > L); return k - 1; };
-  const res = fx.map(([h, a], i) => { if (lk[i]) return lk[i].slice(); const d = str[h] - str[a]; const c = v => Math.max(0.5, Math.min(2.6, v)); let r; for (let k = 0; k < 12; k++) { r = [pois(c(1.65 * Math.exp(0.045 * d))), pois(c(1.3 * Math.exp(-0.045 * d)))]; if (r[0] + r[1] <= 7 || rnd() < 0.05) break; } if (rnd() < 0.004) { const w = 5 + pois(1.8), l = pois(0.4); r = d >= 0 ? [w, l] : [l, w]; } /* 极小概率出现大比分惨案 */ return r; }); /* 比分控制在正常范围 */
+  const res = fx.map(([h, a], i) => { if (lk[i]) return lk[i].slice(); const d = str[h] - str[a]; const c = v => Math.max(0.55, Math.min(2.8, v)); let r; for (let k = 0; k < 12; k++) { r = [pois(c(1.8 * Math.exp(0.045 * d))), pois(c(1.42 * Math.exp(-0.045 * d)))]; if (r[0] + r[1] <= 7 || rnd() < 0.05) break; } if (rnd() < 0.004) { const w = 5 + pois(1.8), l = pois(0.4); r = d >= 0 ? [w, l] : [l, w]; } /* 极小概率出现大比分惨案 */ return r; }); /* 比分控制在正常范围 */
   /* 改赛果时重新抽一个正常的比分（主队赢 / 平 / 输），不是在原比分上一直加球 */
-  const score = o => { for (let k = 0; k < 60; k++) { const x = pois(1.65), y = pois(1.3); if (Math.sign(x - y) === o && (x + y <= 7 || rnd() < 0.05)) return [x, y]; } return o > 0 ? [1, 0] : o < 0 ? [0, 1] : [1, 1]; };
+  const score = o => { for (let k = 0; k < 60; k++) { const x = pois(1.8), y = pois(1.42); if (Math.sign(x - y) === o && (x + y <= 7 || rnd() < 0.05)) return [x, y]; } return o > 0 ? [1, 0] : o < 0 ? [0, 1] : [1, 1]; };
   let it = 0; for (; it < 400000; it++) { const P = {}; teams.forEach(t => P[t] = 0); fx.forEach(([h, a], i) => { const [x, y] = res[i]; if (x > y) P[h] += 3; else if (x < y) P[a] += 3; else { P[h]++; P[a]++; } });
     let bad = null; for (let i = 0; i + 1 < forced.length && !bad; i++) if (!(P[forced[i]] > P[forced[i + 1]])) bad = [forced[i], forced[i + 1]];
     if (!bad && forced.length) { const last = forced[forced.length - 1], f = free.find(t => !(P[last] > P[t])); if (f) bad = [last, f]; }
@@ -1463,7 +1463,7 @@ function lgPlan() { const s = SEASON; if (!nm4() || s > 16 || !S.fx || !S.fx.len
     fx.forEach(([h, a], i) => { if (lk[i]) return; const [x, y] = res[i]; if ((h === A && x <= y) || (a === A && y <= x)) opts.push([i, 1]); if ((h === B && x >= y) || (a === B && y >= x)) opts.push([i, 0]); });
     if (!opts.length) break; const [i, up] = opts[Math.floor(rnd() * opts.length)], [h, a] = fx[i]; let [x, y] = res[i];
     const o = Math.sign(x - y), side = up ? (h === A ? 1 : -1) : (h === B ? -1 : 1); res[i] = score(Math.max(-1, Math.min(1, o + side))); }
-  LGP_IT = it; S.lgp = { s, v: 4, res: Object.fromEntries(fx.map(([h, a], i) => [h + '|' + a, res[i]])) }; return S.lgp; }
+  LGP_IT = it; S.lgp = { s, v: 5, res: Object.fromEntries(fx.map(([h, a], i) => [h + '|' + a, res[i]])) }; return S.lgp; }
 ENGINE.setScoreHook((h, a, hg, ag, opt) => { if (!opt || !opt.ctx || !S || !S.teams || !S.teams.includes(h) || !S.teams.includes(a)) return null;
   if (nm4() && SEASON <= 16) { const LP = lgPlan(), r = LP && LP.res[h + '|' + a]; if (r) return r.slice(); } /* 剧本：照排好的赛果 */ const X = fixLg(); if (!X) return null; const F = X.F; let x = hg, y = ag;
   /* 先帮内定金靴 / 助攻王的球队多进球，再套联赛冠军的规则（冠军优先） */
@@ -1482,7 +1482,7 @@ const STAR_W = { mvp: 2.6, ballon: 2.6, world: 2.4, young: 2, def: 1.3, glove: 1
 /* 核心球员文档：在队期间是球队核心（S++ > S+ > S > A+ > A）。
    能力：在队第一季至少到「级别分 − 4」，第二季 − 2，之后不低于级别分（S16、S17 照名单不动）；进队前几季也跟着往上铺。
    表现：在队期间进球 / 助攻机会和评分按级别加成 */
-const KEY_R = { 'S++': 93, 'S+': 90, 'S': 87, 'A+': 84, 'A': 81 }, KEY_W = { 'S++': 2.6, 'S+': 2.2, 'S': 1.9, 'A+': 1.65, 'A': 1.45 }, KEY_B = { 'S++': 0.5, 'S+': 0.42, 'S': 0.36, 'A+': 0.3, 'A': 0.25 };
+const KEY_R = { 'S++': 93, 'S+': 90, 'S': 87, 'A+': 84, 'A': 81 }, KEY_W = { 'S++': 3.8, 'S+': 3.0, 'S': 2.5, 'A+': 2.1, 'A': 1.8 }, KEY_B = { 'S++': 0.5, 'S+': 0.42, 'S': 0.36, 'A+': 0.3, 'A': 0.25 };
 function scrKeyR(p) { const r = p.r.slice(), at = s => { let t = null; p.ev.forEach(e => { if (e[0] <= s) t = e[1]; }); return t; };
   (SCRIPT.key || []).forEach(([n, team, s0, s1, tier]) => { if (n !== p.n) return; const R = KEY_R[tier] || 84; let first = null;
     for (let s = s0; s <= Math.min(s1, 15); s++) { if (at(s) !== team) continue; if (first == null) first = s; const i = s - first, fl = R - Math.max(0, 4 - 2 * i); if (r[s - 1] > 0 && r[s - 1] < fl) r[s - 1] = fl; }
