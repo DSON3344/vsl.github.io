@@ -5965,7 +5965,7 @@ function homeHonours(max = 6) { const s = SEASON - 1; if (s < 1) return ''; try 
     return `<div class="panel"><div class="ph"><div><div class="eyebrow">Last season</div><h2>上季荣誉 · ${SN(s)}</h2></div><button class="btn ghost" data-go="awards" style="padding:4px 10px;font-size:12px">全部奖项 →</button></div><div class="hon">${L.map(([k, v]) => `<div class="hon-i"><div class="hon-k">${k}</div><div class="hon-v">${v}</div></div>`).join('')}</div></div>`; } catch (e) { console.error(e); return ''; } }
 /* 手机版首页：精简成一条直线——本轮威超、积分榜（切换联赛）、外赛区比分（切换联赛）、赛事、上季荣誉（收起） */
 function homeNews(N, k) { return N.length ? `<div class="hnews2"><div class="eyebrow" style="margin-bottom:4px">头条</div>${N.slice(0, k).map(x => `<div class="hn-i"><span class="chip ${x.cls || ''}" style="font-size:10.5px">${esc(x.tag)}</span><span>${x.html}</span></div>`).join('')}</div>` : ''; }
-function homeMobile(N) { return `<div class="hm-only grid" style="gap:12px">${homeLgFx()}${homeWatch()}${homeLgTable()}${homeOther()}${homeHonours(4)}${homeCups()}${homeNews(N, 2)}</div>`; }
+function homeMobile(N, X = '') { return `<div class="hm-only grid" style="gap:12px">${homeLgFx()}${homeWatch()}${homeLgTable()}${homeOther()}${homeHonours(4)}${homeCups()}${X}${homeNews(N, 2)}</div>`; }
 /* 首页赛事总览：每项赛事目前进行到哪 */
 function homeCups() { try { CUP_ST = {}; cupLiveHTML(); const all = cupAll(), last = all[0] != null ? cupsOf(all[0]) || {} : {}; const st = k => CUP_ST[k] || (last[k] ? `${SN(all[0])} 冠军 ${esc(last[k].winner)}` : '尚未开赛');
     return `<div class="panel"><div class="ph"><div><div class="eyebrow">Competitions</div><h2>赛事总览</h2></div><button class="btn ghost" data-go="cups">全部赛事 →</button></div><div class="rank-list">${CUP_KS.map(k => `<button class="rk" data-go="cups" data-cup="${k}" style="grid-template-columns:76px minmax(0,1fr);text-align:left;width:100%;background:none;border:0;color:inherit;cursor:pointer"><b style="font-size:13px">${esc(k)}</b><span class="muted" style="font-size:12px">${st(k)}</span></button>`).join('')}</div></div>`; } catch (e) { console.error(e); return ''; } }
@@ -5989,7 +5989,7 @@ function vHome() {
     </div>
     ${S.auto && S.auto.on ? `<div style="grid-column:1/-1" class="autoln" id="autoLn">${esc(autoStatus())}</div>` : ''}
   </div>
-  ${homeMobile(N)}
+  ${homeMobile(N, card('National teams', '国家队', intlB, 'intl'))}
   <div class="grid g-main hd-only">
     <div class="grid" style="align-content:start">
       ${homeLgFx()}
@@ -6000,6 +6000,7 @@ function vHome() {
       ${homeLgTable()}
       ${homeHonours(6)}
       ${homeCups()}
+      ${card('National teams', '国家队', intlB, 'intl')}
       ${homeNews(N, 3)}
     </div>
   </div>
