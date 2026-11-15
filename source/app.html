@@ -2304,7 +2304,7 @@ function pidFor(team, name, slot, rating, uid) {
   if (uid && UIDPID[uid] != null) return UIDPID[uid];
   if (uid && /^H\|\d+$/.test(uid) && PL[+uid.slice(2)]) { linkUid(uid, +uid.slice(2)); return +uid.slice(2); }
   let id = uid ? null : CUR_PID[team + '|' + name];
-  if (id == null) { const h = histPidByName(team, name); if (h != null) { if (uid && PID_UID[h] == null) linkUid(uid, h); return h; } }
+  if (id == null && !(uid && /^X\|/.test(uid))) { const h = histPidByName(team, name); if (h != null) { /* 外赛区来的球员（X|…）不按名字认人：外赛区常有跟威超历史球员同名的人 */ if (uid && PID_UID[h] == null) linkUid(uid, h); return h; } }
   if (id == null && uid) { const info = BY_TN[team + '|' + name] || {}; id = PL.length; PL.push([name, info.pos || String(slot || '').replace(/-.*/, ''), info.nat || '', team, 'd', 1, '', info.rating0 || info.rating || rating || 0]); linkUid(uid, id); return id; }
   if (id == null) { const info = (PDB[team] || []).find(p => p.name === name) || {}; id = PL.length; PL.push([name, info.pos || String(slot || '').replace(/-.*/, ''), info.nat || '', team, 'd', 1, '', info.rating || rating || 0]); CUR_PID[team + '|' + name] = id; }
   return id;
@@ -2320,7 +2320,7 @@ function makeArchive() {
       [r.motm[0], r.motm[1]], r.st[0], r.st[1], r.st[2]];
   }));
   const club = {}; cs.forEach(c => club[c.team] = { poss: c.poss, sh: c.sh, ot: c.ot, tk: c.tk, sv: c.sv, cor: c.cor, y: c.y, rc: c.rc, cs: c.cs, hp: c.hp, ap: c.ap, ps: c.ps, pc: c.pc, pg: c.pg, pm: c.pm });
-  const xi = {}; S.teams.forEach(t => xi[t] = ENGINE.lineup(t).xi.map(x => [x.name, x.slot, x.rating]));
+  const xi = {}; S.teams.forEach(t => xi[t] = ENGINE.lineup(t).xi.map(x => [x.name, x.slot, x.rating, x.p ? x.p.rating : x.rating]));
   return {
     s: SEASON, teams: S.teams.slice(), promoted: (S.promoted || []).slice(),
     table: tb.map(r => ({ team: r.team, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.pts })),
@@ -2338,7 +2338,7 @@ function registerArchive(A, preview) {
   const T = A.teams;
   HS[s] = {
     teams: T, table: A.table, official: null, sim: true, club: A.club,
-    xi: Object.fromEntries(Object.entries(A.xi).map(([t, l]) => [t, l.map(([n, sl, r], k) => [pidFor(t, n, sl, r, (A.xiUid && A.xiUid[t] && A.xiUid[t][k]) || UM[t + '|' + n]), sl, r])])),
+    xi: Object.fromEntries(Object.entries(A.xi).map(([t, l]) => [t, l.map(([n, sl, r, raw], k) => [pidFor(t, n, sl, r, (A.xiUid && A.xiUid[t] && A.xiUid[t][k]) || UM[t + '|' + n]), sl, r, raw])])),
     rounds: A.rounds.map(rd => rd.map(m => { const th = T[m[0]], ta = T[m[1]], tm = x => x ? ta : th; return [m[0], m[1], m[2], m[3], m[4], m[5], m[6].map(g => [g[0], g[1], pid(tm(g[1]), g[2]), g[3] ? pid(tm(g[1]), g[3]) : -1, g[4]]), m[7].map(c => [c[0], c[1], c[2], pid(tm(c[1]), c[3])]), pid(m[8][1], m[8][0]), m[9], m[10], m[11]]; })),
   };
   delete AWARD_CACHE[s];
@@ -8852,7 +8852,7 @@ function healthReport() {
     const gRow = {}; (HPS[s] || []).forEach(p => { if (p.pid != null) gRow[p.pid] = (gRow[p.pid] || 0) + p.g; });
     Object.keys(Object.assign({}, gp, gRow)).forEach(pid => { const a = gp[pid] || 0, b = gRow[pid] || 0; if (a !== b) add(err, '个人数据', `${SN(s)} ${nm(+pid)} 的进球数是 ${b}，比赛记录里是 ${a}`); });
     // 评分暴涨暴跌（首发评分和上一季比）
-    const cur = {}; Object.entries(H.xi || {}).forEach(([t, l]) => l.forEach(([pid, , r]) => { if (pid == null || pid < 0) return; cur[pid] = r; if (prevR[pid] != null && Math.abs(r - prevR[pid]) >= 9) add(warn, '评分', `${nm(pid)} 的首发评分 ${SN(s - 1)} → ${SN(s)} 从 ${prevR[pid]} 变成 ${r}`); }));
+    const cur = {}; Object.entries(H.xi || {}).forEach(([t, l]) => l.forEach(([pid, sl, r0, raw]) => { if (pid == null || pid < 0) return; /* 存档里的首发评分扣过「踢非本位」的分：有原始评分就用原始评分；旧存档没有，踢非本位的人就不比，免得换个位置被当成评分暴跌 */ let r = raw; if (r == null) { let fc = 0; try { fc = PL[pid] && PL[pid][1] ? ENGINE.fitCost(sl, PL[pid][1]) : 0; } catch (e) { } if (fc > 0) return; r = r0; } cur[pid] = r; if (prevR[pid] != null && Math.abs(r - prevR[pid]) >= 9) add(warn, '评分', `${nm(pid)} 的首发评分 ${SN(s - 1)} → ${SN(s)} 从 ${prevR[pid]} 变成 ${r}`); }));
     Object.assign(prevR, cur);
     // 奖项
     const W = awardsOf(s); if (W) { const mx = Math.max(0, ...(HPS[s] || []).map(p => p.g)); if (W.boot && W.boot.g !== mx) add(err, '奖项', `${SN(s)} 金靴 ${W.boot.name} 只有 ${W.boot.g} 球，但最多的是 ${mx} 球`);
