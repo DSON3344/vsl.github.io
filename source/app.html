@@ -2823,6 +2823,7 @@ function newsItems() {
     ((RET_LOG[SEASON - 1] || {}).retired || []).slice().sort((a, b) => b.peak - a.peak).slice(0, 3).forEach(x => add(-1, '退役', '', `${esc(x.name)}（${x.age} 岁）宣布退役，告别 ${tm(x.team)}`, 2));
     ((RET_LOG[SEASON - 1] || {}).youth || []).slice().sort((a, b) => b.pot - a.pot).slice(0, 2).forEach(x => add(-1, '新星', 'good', `${tm(x.team)} 青训提拔 ${esc(x.name)}（${x.age} 岁，潜力 ${x.pot}）`, 1));
   }
+  try { Object.entries(S.ownx || {}).forEach(([t, L]) => L.filter(x => x.s === SEASON && TD[t]).forEach(x => add(Math.max(-1, (x.r || 0) - 1), '易主', 'gold', `${esc(x.name)}完成对 ${tm(t)} 的收购，成为球队新老板${x.prev ? `（前老板：${esc(x.prev)}）` : ''}`, 4))); } catch (e) { }
   capitalHistory().ev.filter(e => e.s === SEASON).forEach(e => add(-1, e.kind === 'in' ? '资本入主' : '撤资', e.kind === 'in' ? 'gold' : 'bad', e.kind === 'in' ? `${esc(e.inv)}完成对 ${tm(e.team)} 的收购，承诺大手笔投入引援和青训` : `${esc(e.inv)}因${esc(e.why)}宣布从 ${tm(e.team)} 撤资（${SN(e.since)} 入主），球队陷入动荡`, 4));
   try { Object.keys(TD).forEach(t => { if (!S.teams.includes(t) || !ownOn(SEASON)) return; boardPlan(t).log.filter(x => x.s === SEASON && !/入主/.test(x.txt)).forEach(x => add(-1, '董事会', /完工/.test(x.txt) ? 'good' : '', `${tm(t)} ${esc(x.txt)}`, 1));
       if (playedRounds() >= 8) { const m = fanMood(t); if (m.v < 30) add(Math.min(cur, 37) - 1, '球迷', 'bad', `${tm(t)} 球迷在主场外抗议（${esc(m.why.slice(0, 2).join('、') || '对球队现状不满')}），矛头指向老板${esc(ownerAt(t).name)}`, 2); } }); } catch (e) { console.error(e); }
@@ -5098,7 +5099,7 @@ function coachHistory() {
       let why = null; const sm = ownSackMul(t, s), o1 = ownOn(s + 1) ? ownerAt(t, s + 1) : null, o0 = ownerAt(t, s);
       if (rk >= 17 && rnd() < Math.min(0.95, 0.75 * sm)) why = '球队降级，下课';
       else if (rk >= 0 && rk - e >= 6 && rnd() < Math.min(0.9, 0.45 * sm)) why = `排第 ${rk + 1}，低于预期，下课`;
-      else if (o1 && o0 && o1.key !== o0.key && rnd() < 0.5) why = `新老板${o1.name}入主，换上自己信任的主帅`;
+      else if (((o1 && o0 && o1.key !== o0.key) || (o0 && o0.mt === s)) && rnd() < 0.5) why = `新老板${(o1 && o1.key !== o0.key ? o1 : o0).name}入主，换上自己信任的主帅`;
       else if (rk >= 0 && rk - e >= 3 && o0 && ownOn(s) && o0.p < 35 && rnd() < 0.3) why = `排第 ${rk + 1}，没能达到老板的期望，下课`;
       else if (rk < 0 && !next.includes(t) && ten >= 2 && rnd() < 0.3) why = '没能带队升级，离任';
       else if (rk !== 0 && ten >= 6 && rnd() < (ten >= 10 ? 0.4 : 0.22)) why = '合约到期，离任';
@@ -5609,7 +5610,7 @@ function mkOwner(t, type, key, s, name) {
 let OWN_C = null;
 /* 每支球队的老板时间线：S01 的老板 + 资本入主 / 撤资带来的换手 */
 function ownerHist(t) {
-  const H = capitalHistory(), k = H.key + '|' + Object.keys(TD).length; if (!OWN_C || OWN_C.k !== k) OWN_C = { k, m: {} }; if (OWN_C.m[t]) return OWN_C.m[t];
+  const H = capitalHistory(), k = H.key + '|' + Object.keys(TD).length + '|' + JSON.stringify((S && S.ownx) || {}).length; if (!OWN_C || OWN_C.k !== k) OWN_C = { k, m: {} }; if (OWN_C.m[t]) return OWN_C.m[t];
   const base = clubBaseApprox(t), x = ghash('own0|' + t), big = base >= 84, mid = base >= 79;
   const pick = W => { let y = x * W.reduce((a, b) => a + b[1], 0); for (const [k, w] of W) { if ((y -= w) <= 0) return k; } return W[0][0]; };
   const type = big ? pick([['corp', 26], ['group', 18], ['family', 20], ['tycoon', 14], ['pe', 12], ['tech', 10]]) : mid ? pick([['family', 28], ['tycoon', 26], ['corp', 16], ['pe', 10], ['fans', 10], ['group', 10]]) : pick([['family', 34], ['tycoon', 28], ['fans', 22], ['pe', 10], ['corp', 6]]);
@@ -5618,6 +5619,9 @@ function ownerHist(t) {
     if (e.kind === 'in') L.push({ ...mkOwner(t, INV_TYPE[e.inv] || 'corp', t + '|' + (i + 1), e.s, e.inv), via: '收购' });
     else { const y = ghash('ownx|' + t + '|' + e.s), ty = y < 0.3 ? 'tycoon' : y < 0.5 ? 'family' : y < 0.7 ? 'pe' : y < 0.85 ? 'group' : 'fans'; L.push({ ...mkOwner(t, ty, t + '|' + (i + 1), e.s), via: `前老板撤资（${e.why || '出售球队'}）后接手` }); }
   });
+  /* 你手动换的老板（在「编辑老板与团队」里把老板名字改成别人）：从改的那季起接手 */
+  ((S && S.ownx && S.ownx[t]) || []).forEach((x, i) => { const o = mkOwner(t, OWN_T[x.type] ? x.type : 'tycoon', t + '|m' + i + '|' + x.s, x.s, x.name); o.name = x.name; if (x.chair) o.chair = x.chair; ['w', 'a', 'p', 'tick'].forEach(k => { if (typeof x[k] === 'number') o[k] = x[k]; }); L.push({ ...o, via: '收购', mt: x.s }); });
+  L.sort((a, b) => a.s0 - b.s0);
   return (OWN_C.m[t] = L);
 }
 const oEd = (t, key) => { const E = S && S.oedit && S.oedit[t]; return E && E.own && E.own[key] || null; };
@@ -6383,11 +6387,12 @@ function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) ||
   d.innerHTML = `<div class="dlg" data-noalias style="position:relative;max-width:640px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="eyebrow">编辑老板与团队</div><h2 style="margin:4px 0 12px">${esc(t)}</h2>
     <div class="eyebrow" style="margin-bottom:6px">老板</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
-      <label style="display:grid;gap:4px;min-width:0"><span class="note">老板名字</span><input id="oeName" style="width:100%;min-width:0;box-sizing:border-box" value="${esc(e.name || '')}" placeholder="${esc(o.name)}" maxlength="24"></label>
+      <label style="display:grid;gap:4px;min-width:0"><span class="note">老板名字</span><input id="oeName" style="width:100%;min-width:0;box-sizing:border-box" value="${esc(e.name || '')}" placeholder="${esc(o.name)}" data-cur="${esc(o.name)}" maxlength="24"></label>
       <label style="display:grid;gap:4px;min-width:0"><span class="note">主席</span><input id="oeChair" style="width:100%;min-width:0;box-sizing:border-box" value="${esc(e.chair || '')}" placeholder="${esc(o.chair)}" maxlength="24"></label>
       <label style="display:grid;gap:4px"><span class="note">老板类型</span><select id="oeType" style="width:100%;min-width:0;box-sizing:border-box">${Object.entries(OWN_T).map(([k, v]) => `<option value="${k}" ${o.type === k ? 'selected' : ''}>${v.lab}</option>`).join('')}</select></label>
       <label style="display:grid;gap:4px"><span class="note">票价</span><select id="oeTick" style="width:100%;min-width:0;box-sizing:border-box">${TICK_LV.map((x, i) => `<option value="${i}" ${tk === i ? 'selected' : ''}>${x[0]}</option>`).join('')}</select></label>
       ${num('oeW', o.w, '财力')}${num('oeA', o.a, '野心')}${num('oeP', o.p, '耐心')}</div>
+    <div class="note" style="margin:10px 0 0;padding:10px 12px;border-radius:10px;background:rgba(var(--tint),.05)"><b style="color:var(--gold)">换老板</b>：把老板名字改成另一个人，保存后就算<b>球队易主</b>——新老板从 ${SN(SEASON)} 起接手，下面的类型、财力、野心、耐心、票价都是新老板的；会上头条、球迷有蜜月期，赛季结束时新老板有一半机会换掉主帅，预算和董事会决策也照新老板来。<label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="oeRename"> 只是改名字 / 修正错字，不算换老板</label></div>
     <p class="note" style="margin:8px 0 0">名字马上生效；类型、财力、野心、耐心、票价从${ownOn(SEASON) ? ` ${SN(SEASON)} 起` : '老板功能生效那季起'}影响预算、注资、换帅和上座，之前踢完的赛季不会改写。如果之后球队易主，新老板不套用这些设定。</p>
     <div class="eyebrow" style="margin:14px 0 6px">教练团队与职能部门</div>
     <div class="tw"><table><thead><tr><th class="l">职务</th><th class="l">姓名</th><th class="l">国籍</th><th>能力（30–99）</th></tr></thead><tbody>${L.map(x => `<tr><td class="l">${esc(x.lab)}</td><td class="l"><input data-sn="${esc(x.id)}" value="${esc(x.ed && S.oedit[t].st[x.id].name || '')}" placeholder="${esc(x.name)}" maxlength="16" style="width:100%;min-width:110px"></td><td class="l"><input data-snat="${esc(x.id)}" value="${esc(x.ed && S.oedit[t].st[x.id].nat || '')}" placeholder="${esc(x.nat)}" maxlength="10" style="width:100%;min-width:70px"></td><td><input data-sq="${esc(x.id)}" type="number" min="30" max="99" value="${x.q}" data-q0="${x.ed && S.oedit[t].st[x.id].q != null ? '' : x.q}" style="width:72px"></td></tr>`).join('')}</tbody></table></div>
@@ -6395,9 +6400,15 @@ function oEditDlg(t) { const d = $('#dlg'), o = ownerAt(t), e = oEd(t, o.key) ||
     <div class="btns" style="justify-content:space-between;margin-top:12px"><button class="btn ghost" data-act="oeReset" data-t="${esc(t)}">全部恢复默认</button><span class="btns"><button class="btn ghost" data-act="close">取消</button><button class="btn primary" data-act="oeSave" data-t="${esc(t)}">保存</button></span></div></div>`;
   if (!d.open) d.showModal(); }
 function oEditSave(t, reset) { S.oedit = S.oedit || {}; const o0 = ownerHist(t).filter(x => x.s0 <= SEASON).pop();
-  if (reset) delete S.oedit[t];
+  if (reset) { delete S.oedit[t]; if (S.ownx && S.ownx[t]) { S.ownx[t] = S.ownx[t].filter(x => x.s < SEASON); if (!S.ownx[t].length) delete S.ownx[t]; } OWN_C = null; }
   else { const E = S.oedit[t] = S.oedit[t] || { own: {}, st: {} }, cl = (v, a, b) => Math.max(a, Math.min(b, Math.round(+v))), raw = ownApply(t, o0, -1), base = { ...o0 }, prev = E.own[o0.key] || {};
-    const e = { from: prev.from && prev.from <= SEASON ? prev.from : (ownOn(SEASON) ? SEASON : (S.ownFrom || SEASON)) }, nm = $('#oeName').value.trim(), ch = $('#oeChair').value.trim(); if (nm) e.name = nm; if (ch) e.chair = ch;
+    const curNm = ownerAt(t).name, nmIn = $('#oeName').value.trim(), ren = $('#oeRename') && $('#oeRename').checked;
+    if (nmIn && nmIn !== curNm && !ren) { /* 名字变了 → 球队易主 */ const ty0 = $('#oeType').value, x = { s: SEASON, r: playedRounds(), name: nmIn, prev: curNm, type: ty0 }; const ch0 = $('#oeChair').value.trim(); if (ch0 && ch0 !== ownerAt(t).chair) x.chair = ch0; [['w', '#oeW'], ['a', '#oeA'], ['p', '#oeP']].forEach(([k, id]) => { const v = $(id).value; if (v !== '' && !isNaN(+v)) x[k] = cl(v, 0, 100); }); x.tick = +$('#oeTick').value;
+      S.ownx = S.ownx || {}; const L0 = (S.ownx[t] = (S.ownx[t] || []).filter(y => y.s !== SEASON)); L0.push(x); OWN_C = null;
+      if (!Object.keys(E.own).length && !Object.keys(E.st).length) delete S.oedit[t];
+      BRD_C = null; SFM_C = {}; FIN_C = null; SPON_C = null; COACH_CACHE = null; CH_BASE = null; MOD_VER++; try { ENGINE.clearCache(); } catch (e) { }
+      save(); $('#dlg').close(); render(); toast(`${t} 易主：${nmIn} 成为新老板`); return; }
+    const e = { from: prev.from && prev.from <= SEASON ? prev.from : (ownOn(SEASON) ? SEASON : (S.ownFrom || SEASON)) }, nm = nmIn, ch = $('#oeChair').value.trim(); if (nm) e.name = nm; if (ch) e.chair = ch;
     const ty = $('#oeType').value; if (ty !== base.type) e.type = ty; [['w', '#oeW'], ['a', '#oeA'], ['p', '#oeP']].forEach(([k, id]) => { const v = $(id).value; if (v !== '' && !isNaN(+v) && cl(v, 0, 100) !== base[k]) e[k] = cl(v, 0, 100); });
     const tk = +$('#oeTick').value; const B = boardPlan(t), curTk = B.tick[SEASON] ?? base.tick; if (tk !== curTk || prev.tick != null) e.tick = tk;
     if (Object.keys(e).length > 1) E.own[o0.key] = e; else delete E.own[o0.key]; void raw;
