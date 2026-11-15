@@ -1103,17 +1103,32 @@ const EXT_LEAGUES = [
   { name: '阀甲联赛', short: '阀甲', style: 'fr', clubs: [['巴黎圣泽门', 85], ['玛赛', 79], ['理昂', 78], ['理尔', 77], ['楠特', 76], ['蕾恩', 75], ['妮斯', 74], ['摩纳咖', 73], ['蓝斯', 73], ['涂卢兹', 72], ['朗斯矿工', 74.5], ['斯特拉斯堡城', 73], ['布雷斯特港', 73], ['圣埃蒂安星', 71.5], ['蒙彼利埃城', 71], ['勒阿弗尔港', 70.5], ['欧塞尔城', 70], ['昂热城', 70]] },
   { name: '东海职联', short: '东海职联', style: 'kr', clubs: [['首尔虎', 76], ['鹿岛鹿脚', 75], ['江源城', 74], ['釜山偶相', 73], ['全北现带', 72], ['浦和红赞', 71], ['济洲联', 70], ['广岛三剑', 69], ['上海海巷', 72, 'cn'], ['山东太山', 71, 'cn'], ['蔚山现带', 72], ['北京国按', 72], ['横滨水手号', 71], ['川崎前锋队', 71], ['浦项铁人队', 70], ['上海申华', 70], ['首尔FC城', 69.5], ['大阪钢吧', 69]] },
   { name: '其他赛区', short: '其他', style: 'nord', clubs: [["本菲咖", 79.0], ["波耳图", 78.8], ["葡萄芽体育", 78.6], ["阿贾克丝", 78.3], ["埃因霍文", 78.1], ["费耶诺得", 77.9], ["加拉塔萨蕾", 77.7], ["费内巴且", 77.5], ["凯耳特人", 77.2], ["格拉斯哥流浪着", 77.0], ["萨耳茨堡", 76.8], ["布鲁曰", 76.6], ["顿涅茨克旷工", 76.4], ["奥林匹亚珂斯", 76.1], ["泽妮特", 75.9], ["博咖青年", 75.7], ["河牀", 75.5], ["弗拉门哥", 75.3], ["帕尔梅腊斯", 75.0], ["利雅得新玥", 74.8], ["利雅得胜莉", 74.6], ["迈阿密国计", 74.4], ["布拉咖", 74.2], ["阿尔克玛尔", 73.9], ["安德莱赫忒", 73.7], ["亨珂", 73.5], ["萨格勒布迪纳魔", 73.3], ["贝尔格莱德红醒", 73.1], ["哥本哈跟", 72.8], ["中日德蓝", 72.6], ["博德闪曜", 72.4], ["莫耳德", 72.2], ["马耳默", 72.0], ["巴赛尔", 71.7], ["伯尔尼年青人", 71.5], ["布拉格斯拉唯亚", 71.3], ["布拉格斯巴哒", 71.1], ["费伦茨瓦洛斯", 70.9], ["华沙莱吉雅", 70.6], ["帕纳辛奈珂斯", 70.4], ["帕奥珂", 70.2], ["基辅迪纳魔", 70.0], ["贝西克塔丝", 69.8], ["蒙特蕾", 69.5], ["墨西哥美州", 69.3], ["佩纳洛尔", 69.1], ["桑托丝", 68.9], ["科林蒂恩", 68.7], ["圣保洛", 68.4], ["洛杉玑银河", 68.2]] },
+  { name: '西亚联赛', short: '西亚', style: 'sa', wa: 1, clubs: [['利雅德新悦', 80], ['利雅德胜立', 79], ['吉答联合', 78], ['吉答国名', 76.5], ['撒德', 74.5, 'qa'], ['卡迪西娅', 74], ['艾茵', 73, 'ae'], ['杜海乐', 72.5, 'qa'], ['协做', 72], ['迪拜国名青年', 71.5, 'ae'], ['利雅德青年仁', 71], ['赖洋', 71, 'qa'], ['波斯珀利斯', 70.5, 'ir'], ['德黑兰独力', 70, 'ir'], ['阿布扎比团洁', 69.5, 'ae'], ['塞帕寒', 68, 'ir'], ['巴格达警查', 67, 'iq'], ['安曼费萨利', 66, 'jo']] }
 ];
 const EXT_CLUB = {}; EXT_LEAGUES.forEach(L => L.clubs.forEach(([c, st, sty]) => EXT_CLUB[c] = { league: L.name, style: sty || L.style, str: Math.round(RC(st) * 10) / 10 }));
-const STYLE_NATS = { nord: ['丹麦', '瑞典', '挪威', '荷兰', '比利时', '克罗地亚', '塞尔维亚', '波兰'], en: ['英格兰', '英格兰', '苏格兰', '美国'], es: ['西班牙', '西班牙', '阿根廷', '乌拉圭', '哥伦比亚'], de: ['德国', '德国', '奥地利', '瑞士'], it: ['意大利', '意大利', '意大利', '克罗地亚'], fr: ['法国', '法国', '比利时', '塞内加尔', '科特迪瓦'], kr: ['韩国', '韩国', '日本'], cn: ['中国', '中国', '中国', '中国', '巴西'] };
+/* 西亚联赛（2026-11 加入）：S18 起逐季变强，每季 +0.3，最多 +6；西亚各国国家队的国内球员也跟着变强 */
+const WA_FROM = 18;
+function waBoost(t, s) { const c = EXT_CLUB[t]; if (!c || c.league !== '西亚联赛' || s == null) return 0; return Math.max(0, Math.min(6, (s - WA_FROM) * 0.3)); }
+const waNatBoost = (nat, s) => s != null && WA_NAT_SET.has(nat) ? Math.max(0, Math.min(5, (s - WA_FROM) * 0.25)) : 0;
+/* 西亚资本收购威超球队（参照沃特梅兹被东亚资本收购）：S20 由「新月海湾体育集团」收购一支威超中游球队，之后青训以西亚球员为主、转会偏爱西亚球员 */
+const WA_TK_S = 20, WA_INV = '新月海湾体育集团';
+function waClubAt(t, s) { if (s == null || s < WA_TK_S || typeof SEASON === 'undefined' || SEASON < WA_TK_S) return null; try { const e = capitalHistory().ev.find(x => x.wa); return e && e.team === t && s >= e.s ? e : null; } catch (er) { return null; } }
+const STYLE_NATS = { nord: ['丹麦', '瑞典', '挪威', '荷兰', '比利时', '克罗地亚', '塞尔维亚', '波兰'], en: ['英格兰', '英格兰', '苏格兰', '美国'], es: ['西班牙', '西班牙', '阿根廷', '乌拉圭', '哥伦比亚'], de: ['德国', '德国', '奥地利', '瑞士'], it: ['意大利', '意大利', '意大利', '克罗地亚'], fr: ['法国', '法国', '比利时', '塞内加尔', '科特迪瓦'], kr: ['韩国', '韩国', '日本'], cn: ['中国', '中国', '中国', '中国', '巴西'], sa: ['沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '巴西', '葡萄牙', '阿根廷'], qa: ['卡塔尔', '卡塔尔', '卡塔尔', '卡塔尔', '巴西', '西班牙'], ae: ['阿联酋', '阿联酋', '阿联酋', '阿联酋', '巴西', '阿根廷'], ir: ['伊朗', '伊朗', '伊朗', '伊朗', '伊朗', '伊拉克'], iq: ['伊拉克', '伊拉克', '伊拉克', '伊拉克', '约旦'], jo: ['约旦', '约旦', '约旦', '约旦', '伊拉克'] };
 // 名字只用一个词（不加名·姓）；两段式用完后用三段式，再不够就允许和别队重名（同队不重名）
 var DUP_FIX = {"凯斯斯坦": "凯斯坦", "巴巴莱": "巴莱", "韦伯伯格": "韦伯格", "奥尔尔贝克": "奥尔贝克", "沃尔尔": "沃尔", "德尔加加": "德尔加", "拉尔尔斯塔德": "拉尔斯塔德", "奥尔特特斯": "奥尔特斯", "加利利": "加利", "米尔尔": "米尔", "巴巴乌": "巴乌", "安德德斯塔德": "安德斯塔德", "马丁内内斯": "马丁内兹", "巴巴耶": "巴耶", "霍尔尔": "霍尔", "巴巴尔": "巴尔", "巴巴巴": "巴克斯"}; /* 历史资料里改掉叠字的名字：旧存档的球员修改记录里还是旧名，载入时换成新名 */
 /* 名字里不要叠字（奥尔尔贝克、巴巴巴这类）：拼出来后把相邻重复的字合并 */
 function ddName(n) { n = String(n); let dup = false; for (let i = 1; i < n.length; i++) if (n.charCodeAt(i) === n.charCodeAt(i - 1)) { dup = true; break; } if (!dup) return n; /* 快速检查：没有叠字直接返回 */ const m = n.replace(/(.)\1+/g, '$1'); return m.replace(/·/g, '').length >= 2 ? m : m + '诺'; }
 const hasDup = n => /(.)\1/.test(String(n).replace(/·/g, ''));
 function oneName(nat, rnd, k) { return ddName(oneName0(nat, rnd, k)); }
+/* 西亚球员的名字（阿拉伯语 / 波斯语音译） */
+const WA_NAT_SET = new Set(['沙特阿拉伯', '卡塔尔', '阿联酋', '伊拉克', '约旦', '阿曼', '巴林', '科威特', '伊朗']);
+const WA_NM = {
+  arab: [['阿卜杜拉', '穆罕默德', '哈立德', '法赫德', '萨利赫', '阿里', '优素福', '纳赛尔', '萨米', '阿迈德', '塔米尔', '马吉德', '苏尔坦', '费萨尔', '奥马尔', '易卜拉欣', '哈桑', '贾西姆', '马赫迪', '拉希德', '扎耶德', '赛义夫', '穆萨', '伊萨', '巴德尔', '图尔基', '纳瓦夫', '马尔万', '萨尔曼', '哈马德', '塔里克', '亚西尔'], ['·阿尔', '·'], ['多萨里', '沙赫里', '加姆迪', '奥韦斯', '布赖克', '法拉杰', '穆尔塔达', '卡塔尼', '穆瓦拉德', '阿菲夫', '海多斯', '马布胡特', '卡比', '巴伊', '萨马尔', '塔马里', '阿迈里', '纳贾尔', '苏莱曼', '达瓦西', '奥泰比', '哈尔比', '穆特里', '扎赫拉尼', '马尔基', '贾布里', '舒马里', '奈米', '卡西米', '鲁韦利']],
+  iran: [['阿里', '礼萨', '梅赫迪', '萨伊德', '莫尔塔扎', '阿米尔', '侯赛因', '卡里姆', '马苏德', '瓦希德', '贾瓦德', '鲁兹贝', '萨德格', '米拉德', '阿里亚', '沙赫里亚尔'], ['·'], ['塔雷米', '贾汉巴赫什', '阿兹蒙', '侯赛尼', '雷扎伊安', '莫哈迈迪', '诺鲁兹', '卡里米', '贝兰万德', '哈吉萨菲', '卡纳尼', '谢卡里', '戈多斯', '努拉拉希', '阿布拉希米', '安萨里法德', '莫拉迪', '法拉赫尼', '萨达吉', '霍斯拉维']] };
+function waName(nat, rnd) { const P = WA_NM[nat === '伊朗' ? 'iran' : 'arab'], one = a => a[Math.floor(rnd() * a.length)]; return P.map(one).join(''); }
 function oneName0(nat, rnd, k) {
   const one = a => a[Math.floor(rnd() * a.length)];
+  if (WA_NAT_SET.has(nat)) return waName(nat, rnd);
   if (nat === '韩国') return one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]);
   if (nat === '日本') return one(YP.JP[0]) + one(YP.JP[1]);
   if (nat === '中国') return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
@@ -1140,9 +1155,9 @@ function nameFor_old(nat, rnd) {
   }
   return '外援' + Math.floor(rnd() * 1e4);
 }
-function youthName(team, rnd) {
+function youthName(team, rnd, sj) {
   const one = a => a[Math.floor(rnd() * a.length)];
-  const nat = tid(team).asia ? (x => x < 0.4 ? '韩国' : x < 0.75 ? '日本' : '中国')(rnd()) : one(YP.NATS); /* 沃特梅兹：青训以东亚球员为主 */
+  const nat = sj >= WA_TK_S && waClubAt(team, sj) ? (x => x < 0.4 ? '沙特阿拉伯' : x < 0.55 ? '伊朗' : x < 0.7 ? '伊拉克' : x < 0.8 ? '卡塔尔' : x < 0.9 ? '阿联酋' : '约旦')(rnd()) /* 被西亚资本收购后：青训以西亚球员为主 */ : tid(team).asia ? (x => x < 0.4 ? '韩国' : x < 0.75 ? '日本' : '中国')(rnd()) : one(YP.NATS); /* 沃特梅兹：青训以东亚球员为主 */
   return { name: freshName(nat, rnd, n => (PDB[team] || []).some(p => p.name === n) || TD[team].roster.some(r => r.name === n)), nat };
 }
 function youthName_old(team, rnd) {
@@ -1419,7 +1434,7 @@ function acadKid(t, born, k, gold) { const mk = t + '|' + born + '|' + k + '|' +
   const o = acadKid0(t, born, k, gold); KID_MEMO.set(mk, { name: o.name, j: JSON.stringify(o) }); return o; }
 function acadKid0(t, born, k, gold) {
   const rnd = seeded('acad|' + t + '|' + born + '|' + k);
-  let { name, nat } = youthName(t, rnd); if (nm2()) { const o = oldSlots()[t + '|' + born + '|' + k], cl = o && claimedNames().get(nmNorm(o.name)); if (o && (!cl || cl === 'K|A|' + t + '|' + born + '|' + k)) { name = o.name; if (o.nat && (YP.NATS.includes(o.nat) || (YP.NAT_GROUP || {})[o.nat] || ['韩国', '日本', '中国'].includes(o.nat))) nat = o.nat; } }
+  let { name, nat } = youthName(t, rnd, born + 15); if (nm2()) { const o = oldSlots()[t + '|' + born + '|' + k], cl = o && claimedNames().get(nmNorm(o.name)); if (o && (!cl || cl === 'K|A|' + t + '|' + born + '|' + k)) { name = o.name; if (o.nat && (YP.NATS.includes(o.nat) || (YP.NAT_GROUP || {})[o.nat] || ['韩国', '日本', '中国'].includes(o.nat))) nat = o.nat; } }
   let x = rnd(), line = 'FW'; for (const [l, w] of (tid(t).defAcad ? [['GK', 0.14], ['DF', 0.42], ['MF', 0.27], ['FW', 0.17]] : [['GK', 0.11], ['DF', 0.33], ['MF', 0.33], ['FW', 0.23]])) { if ((x -= w) <= 0) { line = l; break; } }
   let pos = ACAD_POS[line][Math.floor(rnd() * ACAD_POS[line].length)]; if (nm3()) { const o = oldSlots()[t + '|' + born + '|' + k]; if (o && o.pos && ENGINE.LINE(o.pos)) { pos = o.pos; line = ENGINE.LINE(o.pos) === 'GK' ? 'GK' : ENGINE.LINE(o.pos); } } /* 旧资料名字：位置照旧资料 */
   const pr = seeded('pa|' + t + '|' + born + '|' + k), isGold = gold && k < gold; let pot = isGold ? sampleGoldPA(pr) : samplePA(pr, acadQ(t)); if (tid(t).defAcad) pot = Math.min(99, pot + (line === 'DF' || line === 'GK' ? 4 : line === 'FW' ? -2 : -1)); /* 狂蜂：后防和门将出世界级，锋线中场一般 */
@@ -1653,7 +1668,7 @@ function fakeName(real) {
   const n = real + '二世'; YOUTH_USED.add(n); return n;
 }
 const LEAGUE_OF = {}; EXT_LEAGUES.forEach(L => L.clubs.forEach(([c]) => LEAGUE_OF[c] = L));
-const LEAGUE_COEF = { 星煌: 0.99, 鹰超: 0.975, 犀甲: 0.965, 得甲: 0.955, 壹甲: 0.95, 阀甲: 0.94, 东海职联: 0.88, 其他: 0.86 };
+const LEAGUE_COEF = { 星煌: 0.99, 鹰超: 0.975, 犀甲: 0.965, 得甲: 0.955, 壹甲: 0.95, 阀甲: 0.94, 东海职联: 0.88, 其他: 0.86, 西亚: 0.86 };
 function extPlayer(club, name, pos, nat, age, rating, rnd) {
   const line = ENGINE.LINE(pos), tpl = { ...ATTR_TPL[line] }; if (/W|AM/.test(pos)) { tpl.dri = (tpl.dri || 0) + 3; tpl.spd = (tpl.spd || 0) + 3; }
   const attributes = {}; Object.entries(tpl).forEach(([k, d]) => attributes[k] = Math.max(30, Math.min(99, Math.round(rating + d + (rnd() - 0.5) * 8))));
@@ -1680,7 +1695,7 @@ const FDB0 = {};
     const nats = STYLE_NATS[sty || L.style] || STYLE_NATS.nord;
     const POS = ['GK', 'CB', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST', 'GK', 'CB', 'CM', 'ST', 'LB', 'CM', 'RW'];
     const have = l => list.filter(x => ENGINE.LINE(x.pos) === l).length, want = { GK: 2, DF: 6, MF: 6, FW: 4 };
-    for (const pos of POS) { if (list.length >= 18) break; const l = ENGINE.LINE(pos); if (have(l) >= want[l]) continue; list.push({ pos, nat: rnd() < 0.75 ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)], age: 19 + Math.floor(rnd() * 14), r: null }); }
+    for (const pos of POS) { if (list.length >= 18) break; const l = ENGINE.LINE(pos); if (have(l) >= want[l]) continue; list.push({ pos, nat: rnd() < (L.wa ? 0.9 : 0.75) ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)], age: 19 + Math.floor(rnd() * 14), r: null }); }
     const known = list.filter(x => x.r != null).map(x => x.r).sort((a, b) => b - a).slice(0, 11);
     const shift = known.length >= 8 ? str - known.reduce((a, b) => a + b, 0) / known.length : 0;
     let gi = 0; const OFF = [2, 1.5, 1, 1, 0.5, 0, 0, -0.5, -1, -1.5, -2, -4, -5, -5, -6, -7, -7, -8];
@@ -1695,9 +1710,9 @@ Object.values(FDB0).forEach(toCF);
 const FDB = {};
 let EXTP = [], RET_S = {};
 function extYouth(club, old, season) {
-  const rnd = seeded('xy|' + club + '|' + old.name + '|' + season), L = LEAGUE_OF[club] || EXT_LEAGUES[0];
-  const nats = STYLE_NATS[(EXT_CLUB[club] || L).style] || STYLE_NATS.nord, nat = rnd() < 0.75 ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)];
-  const age = 17 + Math.floor(rnd() * 3), rating = Math.round(EXT_CLUB[club].str - 14 + rnd() * 8);
+  const rnd = seeded('xy|' + club + '|' + old.name + '|' + season), L = LEAGUE_OF[club] || EXT_LEAGUES[0], wb = waBoost(club, season);
+  const nats = STYLE_NATS[(EXT_CLUB[club] || L).style] || STYLE_NATS.nord, nat = rnd() < (L.wa ? 0.9 : 0.75) ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)];
+  const age = 17 + Math.floor(rnd() * 3), rating = Math.round(EXT_CLUB[club].str + wb - 14 + rnd() * 8);
   const o = extPlayer(club, nameFor(nat, rnd, club), old.pos, nat, age, rating, rnd); o.cGP = o.cG = o.cA = 0; o.youth = 1; o.rating0 = rating; o.age0 = age; o.s0 = season; o.stints = [[club, season]]; o.cEnd = season + 3; o.potFix = samplePA(seeded('xpa|' + club + '|' + old.name + '|' + season), acadQ(club));
   return o;
 }
@@ -2824,7 +2839,7 @@ function newsItems() {
     ((RET_LOG[SEASON - 1] || {}).youth || []).slice().sort((a, b) => b.pot - a.pot).slice(0, 2).forEach(x => add(-1, '新星', 'good', `${tm(x.team)} 青训提拔 ${esc(x.name)}（${x.age} 岁，潜力 ${x.pot}）`, 1));
   }
   try { Object.entries(S.ownx || {}).forEach(([t, L]) => L.filter(x => x.s === SEASON && TD[t]).forEach(x => add(Math.max(-1, (x.r || 0) - 1), '易主', 'gold', `${esc(x.name)}完成对 ${tm(t)} 的收购，成为球队新老板${x.prev ? `（前老板：${esc(x.prev)}）` : ''}`, 4))); } catch (e) { }
-  capitalHistory().ev.filter(e => e.s === SEASON).forEach(e => add(-1, e.kind === 'in' ? '资本入主' : '撤资', e.kind === 'in' ? 'gold' : 'bad', e.kind === 'in' ? `${esc(e.inv)}完成对 ${tm(e.team)} 的收购，承诺大手笔投入引援和青训` : `${esc(e.inv)}因${esc(e.why)}宣布从 ${tm(e.team)} 撤资（${SN(e.since)} 入主），球队陷入动荡`, 4));
+  capitalHistory().ev.filter(e => e.s === SEASON).forEach(e => add(-1, e.kind === 'in' ? '资本入主' : '撤资', e.kind === 'in' ? 'gold' : 'bad', e.kind === 'in' ? (e.wa ? `${esc(e.inv)}完成对 ${tm(e.team)} 的收购，要把球队打造成西亚球员的摇篮：青训改招西亚少年，转会优先引进西亚球员，目标是提升西亚各国国家队的实力` : `${esc(e.inv)}完成对 ${tm(e.team)} 的收购，承诺大手笔投入引援和青训`) : `${esc(e.inv)}因${esc(e.why)}宣布从 ${tm(e.team)} 撤资（${SN(e.since)} 入主），球队陷入动荡`, 4));
   try { Object.keys(TD).forEach(t => { if (!S.teams.includes(t) || !ownOn(SEASON)) return; boardPlan(t).log.filter(x => x.s === SEASON && !/入主/.test(x.txt)).forEach(x => add(-1, '董事会', /完工/.test(x.txt) ? 'good' : '', `${tm(t)} ${esc(x.txt)}`, 1));
       if (playedRounds() >= 8) { const m = fanMood(t); if (m.v < 30) add(Math.min(cur, 37) - 1, '球迷', 'bad', `${tm(t)} 球迷在主场外抗议（${esc(m.why.slice(0, 2).join('、') || '对球队现状不满')}），矛头指向老板${esc(ownerAt(t).name)}`, 2); } }); } catch (e) { console.error(e); }
   try { const M = (S.potm || {})[SEASON] || {}; Object.keys(M).forEach(k => { const x = M[k]; if (x.p) add(MONTHS[k][2], '月度最佳', 'gold', `${esc(x.lab)}最佳球员：${pl(x.p.team, x.p.name)}（${tm(x.p.team)}，场均 ${x.p.avg.toFixed(2)}，${x.p.g} 球 ${x.p.a} 助攻）；最佳主帅：${esc(x.c.name)}（${tm(x.c.team)}，${x.c.w}胜${x.c.d}平${x.c.l}负）`, 2); });
@@ -4009,11 +4024,11 @@ function honOf(t) {
 /* ---------- 赛事：世联赛、全联冠、全联杯、全协联、威联赛杯、社区杯 ---------- */
 const CUPS = [
   { k: '世联赛', tier: 'S', n: 20, fmt: 'league', note: '20 队双循环联赛', seats: { 威超: 4, 星煌: 3, 鹰超: 4, 犀甲: 3, 得甲: 2, 壹甲: 2, 阀甲: 1, 东海职联: 1 } },
-  { k: '全联冠', tier: 'S', n: 36, fmt: 'swiss', note: '36 队联赛阶段（每队 8 场）→ 附加赛 → 16 强起两回合淘汰 → 决赛', seats: { 威超: 4, 星煌: 3, 鹰超: 6, 犀甲: 5, 得甲: 5, 壹甲: 5, 阀甲: 4, 东海职联: 2, 其他: 2 } },
+  { k: '全联冠', tier: 'S', n: 36, fmt: 'swiss', note: '36 队联赛阶段（每队 8 场）→ 附加赛 → 16 强起两回合淘汰 → 决赛', seats: { 威超: 4, 星煌: 3, 鹰超: 6, 犀甲: 5, 得甲: 5, 壹甲: 5, 阀甲: 4, 东海职联: 2, 其他: 1, 西亚: 1 } },
   { k: '威超', tier: 'A+', n: 20, fmt: 'domestic', note: '20 队双循环，降 3 升 3' },
   { k: '威联赛', tier: 'A+', n: 20, fmt: 'history', note: '威超联赛的前身，20 队（历史赛事）' },
-  { k: '全联杯', tier: 'A', n: 36, fmt: 'swiss', note: '赛制同全联冠', seats: { 威超: 2, 星煌: 2, 鹰超: 2, 犀甲: 2, 得甲: 2, 壹甲: 2, 阀甲: 2, 东海职联: 2, 其他: 20 } },
-  { k: '全协联', tier: 'A-', n: 36, fmt: 'swiss', note: '赛制同全联冠', seats: { 威超: 1, 星煌: 1, 鹰超: 1, 犀甲: 1, 得甲: 1, 壹甲: 1, 阀甲: 1, 东海职联: 2, 其他: 27 } },
+  { k: '全联杯', tier: 'A', n: 36, fmt: 'swiss', note: '赛制同全联冠', seats: { 威超: 2, 星煌: 2, 鹰超: 2, 犀甲: 2, 得甲: 2, 壹甲: 2, 阀甲: 2, 东海职联: 2, 其他: 18, 西亚: 2 } },
+  { k: '全协联', tier: 'A-', n: 36, fmt: 'swiss', note: '赛制同全联冠', seats: { 威超: 1, 星煌: 1, 鹰超: 1, 犀甲: 1, 得甲: 1, 壹甲: 1, 阀甲: 1, 东海职联: 2, 其他: 25, 西亚: 2 } },
   { k: '威联赛杯', tier: 'B', n: 27, fmt: 'cup', note: '国内全部 27 支球队单场淘汰（强队首轮轮空）' },
   { k: '社区杯', tier: 'B-', n: 2, fmt: 'super', note: '上季威超冠军对阵上季威联赛杯冠军' },
   { k: '威冠联赛', tier: 'B', n: 20, fmt: 'league', note: '威超下面一级，20 队双循环。前 3 名升入威超，最后 4 名降入威甲' },
@@ -4051,7 +4066,7 @@ function cupFreeze() { if (!S || !S.teams || (S.cstr && S.cstr.s === SEASON)) re
 function clubStrAt(t, s) {
   if (PYR_SET.has(t)) return pyrStr(t) ?? 70;
   { const F = cupFrozen(s); if (F && F.v[t] != null) return F.v[t]; }
-  if (EXT_CLUB[t]) return EXT_CLUB[t].str + (s != null ? (ghash('drift|' + t + '|' + s) - 0.5) * 3 + (domTop(s) - DOM_REF - DOM_EDGE) : 0);
+  if (EXT_CLUB[t]) return EXT_CLUB[t].str + waBoost(t, s) + (s != null ? (ghash('drift|' + t + '|' + s) - 0.5) * 3 + (domTop(s) - DOM_REF - DOM_EDGE) : 0);
   const v = domStrAt(t, s);
   if (!(TD[t] && S && S.fx)) return v; const cap = capitalEffect(t, s); return v + (s === SEASON ? teamMorale(t).abil * 0.25 : 0) + (cap ? cap.d * 0.3 : 0);
 }
@@ -4831,7 +4846,7 @@ function vCups() {
   const stat = k => { if (L && L.st && L.st[k]) return L.st[k]; const r = last[k]; return r ? `${SN(all[0])} 冠军 ${esc(r.winner)}` : '尚未开赛'; };
   return `<section class="view"><div><div class="eyebrow">Competitions</div><h1>赛事</h1><p class="muted" style="margin:6px 0 0;font-size:13px">每项赛事都有单独的页面，点下面的卡片进入。个人奖项、历届冠军和金球奖在「奖项」页。</p></div>
   <div class="grid g-3" style="gap:12px">${CUP_KS.map(k => { const c = CUPS.find(x => x.k === k) || {}; return `<button class="panel cupcard" data-go="cups" data-cup="${k}" style="text-align:left;cursor:pointer;display:grid;gap:6px"><div class="split" style="margin:0"><b style="font-size:16px">${k}</b>${c.tier ? `<span class="chip ${TIER_CLS[c.tier]}">${c.tier} 级</span>` : ''}</div><span class="muted" style="font-size:12px">${esc(c.note || '')}</span><span style="font-size:13px">${stat(k)}</span></button>`; }).join('')}</div>
-  <div class="panel"><div class="ph"><div><div class="eyebrow">Tiers & slots</div><h2>赛事级别与席位</h2></div><span class="note">赛区实力：威超 ≥ 星煌 > 鹰超 > 犀甲 > 得甲 > 壹甲 > 阀甲 ≫ 东海职联</span></div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Tiers & slots</div><h2>赛事级别与席位</h2></div><span class="note">赛区实力：威超 ≥ 星煌 > 鹰超 > 犀甲 > 得甲 > 壹甲 > 阀甲 ≫ 东海职联 ≈ 西亚（西亚逐季变强）</span></div>
     <div class="tw"><table><thead><tr><th class="l">赛事</th><th>级别</th><th>球队数</th><th class="l">赛制</th><th class="l">席位</th></tr></thead><tbody>
     ${CUPS.map(c => `<tr><td class="l"><b>${esc(c.k)}</b></td><td><span class="chip ${TIER_CLS[c.tier]}">${c.tier} 级</span></td><td>${c.n}</td><td class="l muted" style="font-size:12px">${esc(c.note)}</td><td class="l muted" style="font-size:12px">${seats(c)}</td></tr>`).join('')}
     </tbody></table></div>
@@ -5552,6 +5567,10 @@ function capitalHistory() {
   const own = {}, ev = [], LW = '龙王宫殿', lwS = TD[LW] ? 3 + Math.floor(ghash('lwtk|' + saltOf(1)) * 9) : 99; /* 龙王宫殿：S03–S11 之间某季金主入驻，之后不撤资 */
   for (let s = 2; s <= SEASON; s++) {
     if (s === lwS && !own[LW]) { own[LW] = { inv: '中东王室财团', since: s, perm: 1 }; ev.push({ s, team: LW, kind: 'in', inv: '中东王室财团' }); continue; }
+    if (s === WA_TK_S) { const lg = (typeof teamsInSeason === 'function' && teamsInSeason(s)) || S.teams || [], tier = (typeof CLUB_TIER !== 'undefined' && CLUB_TIER.S) || [];
+      const pool = lg.filter(t => TD[t] && !own[t] && t !== LW && t !== '沃特梅兹' && !tier.includes(t) && !tid(t).takeover).sort(); const w = pool.map(t => { const b = clubBaseApprox(t); return b >= 76 && b <= 86 ? 3 : 1; });
+      const r0 = seeded('watk|' + saltOf(s))(); let x = r0 * w.reduce((a, b) => a + b, 0), k = 0; for (; k < pool.length - 1; k++) { x -= w[k]; if (x <= 0) break; }
+      const t = pool[k]; if (t) { own[t] = { inv: WA_INV, since: s, perm: 1 }; ev.push({ s, team: t, kind: 'in', inv: WA_INV, wa: 1 }); continue; } }
     const rnd = seeded('cap|' + s + saltOf(s)), r = rnd();
     if (r > 0.22) continue;
     const owned = Object.keys(own).filter(t => own[t] && !own[t].perm);
@@ -5596,7 +5615,7 @@ const OWN_NM = {
 };
 const OWN_IND = ['地产', '航运', '矿业', '零售', '建筑', '物流', '酒店', '电信'];
 /* 旧的资本事件里的投资方 → 老板类型 */
-const INV_TYPE = { '海湾主权投资基金': 'sovereign', '北美私募 Apex 资本': 'pe', '东方科技集团': 'tech', '本地地产大亨': 'tycoon', '欧洲能源巨头': 'corp', '亚洲电商集团': 'corp', '美国体育娱乐集团': 'group', '中东王室财团': 'sovereign', '北欧航运家族': 'family', '新加坡投资财团': 'pe' };
+const INV_TYPE = { '新月海湾体育集团': 'sovereign', '海湾主权投资基金': 'sovereign', '北美私募 Apex 资本': 'pe', '东方科技集团': 'tech', '本地地产大亨': 'tycoon', '欧洲能源巨头': 'corp', '亚洲电商集团': 'corp', '美国体育娱乐集团': 'group', '中东王室财团': 'sovereign', '北欧航运家族': 'family', '新加坡投资财团': 'pe' };
 function mkOwner(t, type, key, s, name) {
   const T = OWN_T[type], h = k => ghash('own|' + key + '|' + k), rg = ([a, b], k) => Math.round(a + (b - a) * h(k));
   let nm = name;
@@ -5816,7 +5835,7 @@ function natName(nat, rnd, k) { const g = NN_GRP[nat]; if (g) { const P = NN_POO
 /* 国内联赛补位球员：每个国家固定 23 个位置，每个位置一个人踢约 8 季后换人 */
 const NN_SLOTS = [['GK', 0], ['GK', 1], ['GK', 2], ['CB', 0], ['CB', 1], ['CB', 2], ['LB', 0], ['RB', 0], ['CB', 3], ['LB', 1], ['RB', 1], ['CDM', 0], ['CM', 0], ['CM', 1], ['CAM', 0], ['LM', 0], ['RM', 0], ['CM', 2], ['ST', 0], ['ST', 1], ['LW', 0], ['RW', 0], ['ST', 2]];
 function natFill(nat, s, u21) { const I = NAT_INFO[nat]; if (!I) return []; const used = new Set(); return NN_SLOTS.map(([pos, j], i) => { const len = 8, off = Math.floor(ghash('nnoff|' + nat + i) * len), gen = Math.floor((s + off) / len), id = 'NN|' + nat + '|' + i + '|' + gen + (u21 ? '|u' : ''), rnd = seeded(id);
-  const age = u21 ? 18 + Math.floor(rnd() * 4) : 22 + ((s + off) % len) + Math.floor(rnd() * 3), r = Math.round(I.base - 4 - i * 0.12 + (rnd() - 0.5) * 7 - (u21 ? 8 : 0) - (age >= 31 ? (age - 30) * 0.8 : 0));
+  const age = u21 ? 18 + Math.floor(rnd() * 4) : 22 + ((s + off) % len) + Math.floor(rnd() * 3), r = Math.round(I.base + waNatBoost(nat, s) - 4 - i * 0.12 + (rnd() - 0.5) * 7 - (u21 ? 8 : 0) - (age >= 31 ? (age - 30) * 0.8 : 0));
   let nm = natName(nat, rnd, i); for (let z = 0; z < 12 && used.has(nm); z++) nm = natName(nat, rnd, i + 50 + z); used.add(nm);
   return { uid: id, pid: null, name: nm, club: '国内联赛', pos, r: Math.max(50, Math.min(86, r)), age, syn: 1 }; }); }
 /* 现实球员池：威超各队、外赛区、（U21 时）青训梯队 */
@@ -7662,7 +7681,7 @@ function mktBuyers(p, t, C, relax) { MKP_NAT = p && p.nat; /* 记下正在找下
   return { dom, ext };
 }
 let MKP_NAT = null;
-function mktPick(list, rnd, C) { if (!list.length) return null; const nat = MKP_NAT; const w = list.map(t2 => (TD[t2] ? Math.pow(Math.max(1, C.str[t2] - 68), 2) * (S.teams.includes(t2) ? 2 : 1) : 60) * (tid(t2).asia && nat ? (EAST_ASIA.has(nat) ? 5 : ASIA_NATS.has(nat) ? 3 : 0.35) : 1)); let x = rnd() * w.reduce((a, b) => a + b, 0), k = 0; for (; k < list.length - 1; k++) { x -= w[k]; if (x <= 0) break; } return list[k]; }
+function mktPick(list, rnd, C) { if (!list.length) return null; const nat = MKP_NAT; const w = list.map(t2 => (TD[t2] ? Math.pow(Math.max(1, C.str[t2] - 68), 2) * (S.teams.includes(t2) ? 2 : 1) : 60) * (tid(t2).asia && nat ? (EAST_ASIA.has(nat) ? 5 : ASIA_NATS.has(nat) ? 3 : 0.35) : 1) * (nat && WA_NAT_SET.has(nat) && waClubAt(t2, SEASON) ? 6 : 1)); let x = rnd() * w.reduce((a, b) => a + b, 0), k = 0; for (; k < list.length - 1; k++) { x -= w[k]; if (x <= 0) break; } return list[k]; }
 // 球员对买方的转会意愿：球队实力、能不能踢上主力、球队成绩、外赛区、在原队的年数
 function willOf(p, from, to, C) {
   const r = C.ratN(p), a = C.ageN(p); let w = 0.5;
