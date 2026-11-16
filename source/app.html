@@ -1998,9 +1998,10 @@ function applyAllEdits() {
     if (e.name && e.name !== p.name) { if (dom) TD[team].roster.forEach(r => { if (r.name === p.name) r.name = e.name; }); p.name = e.name; }
     ['pos', 'nat', 'height', 'weight', 'no'].forEach(k => { if (e[k] != null && e[k] !== '') p[k] = k === 'pos' ? normPos(e[k]) : e[k]; });
     if (Array.isArray(e.alt)) { p.alt = e.alt.filter(x => x !== p.pos); p.altEd = 1; } if (Array.isArray(e.sk)) p.skEd = e.sk; if (e.foot) { p.foot = e.foot; p.footEd = 1; }
-    if (e.dr) { p.rating = Math.max(40, Math.min(RMAX, p.rating + e.dr)); p.value = 'ⰵ' + valueM(p.rating, p.age || 25) + 'M'; }
+    /* 内置设定（BASE_EDITS）是旧评分标准下定的：能力加减按同样的压缩比例换算（76 以上每 1 分算 0.62 分）。你之后在网站上改的照原样套用 */
+    let dsc = 1; if (e.dr) { const b0 = p.rating, nr = e === BASE_EDITS[p.uid] && !rzEx(p) ? Math.round(RZ(RZI(b0) + e.dr)) : b0 + e.dr; p.rating = Math.max(40, Math.min(RMAX, nr)); dsc = (p.rating - b0) / e.dr; p.value = 'ⰵ' + valueM(p.rating, p.age || 25) + 'M'; }
     if (e.la) p.attributes = Object.fromEntries(Object.entries(e.la.a).map(([k, v]) => [k, Math.max(20, Math.min(99, v + p.rating - e.la.r))]));
-    else if (e.da && p.attributes) Object.entries(e.da).forEach(([k, d]) => { if (p.attributes[k] != null) p.attributes[k] = Math.max(20, Math.min(99, p.attributes[k] + d)); });
+    else if (e.da && p.attributes) Object.entries(e.da).forEach(([k, d]) => { if (p.attributes[k] != null) p.attributes[k] = Math.max(20, Math.min(99, p.attributes[k] + Math.round(d * (e === BASE_EDITS[p.uid] ? dsc : 1)))); });
     if (dom) TD[team].roster.forEach(r => { if (r.name === p.name) r.rating = p.rating - (r.pen || 0); }); };
   Object.entries(PDB).forEach(([t, l]) => l.forEach(p => fix(p, t, true)));
   Object.entries(FDB).forEach(([c, l]) => l.forEach(p => fix(p, c, false)));
