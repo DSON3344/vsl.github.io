@@ -615,7 +615,7 @@ var CUT_INFO = {}, KEEP_PID = new Set((HIST.players || []).map((p, i) => p && p[
 (HIST.players || []).forEach(x => { if (x && typeof x[7] === 'number') x[7] = Math.round(RC(x[7])); });
 /* 威超历史资料里的同名（2026-11）：编号不同、名字一样的人，保留一个（剧本球员 > S18 名单上的 > 编号最小的），其余改成新名字；
    S18 名单（球员库、阵容）里对应的那一位也一起改。名字按编号固定生成；你手动改过名字的球员照你改的显示 */
-const HIST_RN = {"18":"斯图顿特","35":"席尔维拉","36":"路易斯·门多萨","53":"马伊德森","107":"奥利维里若","151":"德扬德赫","167":"内维托斯","172":"马里奥·纳瓦特斯","173":"哈维·巴尔德内斯","245":"斯通林斯","263":"哈弗克曼","265":"平托里拉","271":"福登德顿","274":"内维里卡","275":"卡特德利","311":"克里斯蒂安·奥德斯特伦","320":"马格努斯·约翰伦德","321":"哈里林特","324":"路易斯·伊格莱萨","329":"范戴德霍文","333":"凯恩尔伍德","336":"平托里伊拉","356":"威尔林利","364":"泰勒顿伍德","387":"沃克林尔","411":"韦伯克豪斯","444":"马里奥·费尔南内斯","445":"斯特凡·维达克","466":"德扬·约维夫","469":"科雷维达","475":"哈维·桑切诺","547":"安德烈斯·马丁内斯","563":"斯通林利","580":"埃米尔·奥德斯特伦","585":"克里斯蒂安·托尔贝克","590":"阿尔梅维罗","591":"格林尔利","594":"佩雷托达","631":"布朗林斯","636":"佩雷里卡","637":"鲁索维尔","642":"布朗德菲尔德","650":"拉斯穆斯·卡尔松","658":"阿尔梅维若","662":"加利莱利","666":"迭戈·伊格莱斯","669":"劳尔·纳瓦加","688":"贝尔纳里伊尼","689":"奥勒·霍尔姆松","702":"罗沙拉若","710":"佩雷拉斯","721":"塞尔吉·德尔加雷斯","728":"汤普德森","750":"斯图林顿","771":"桑巴维东","782":"贝内尔特","787":"何塞·桑切诺","789":"格林尔森","790":"格林顿菲尔德","794":"汤普林菲尔德","795":"米尔林森","1032":"斯图顿菲尔德","1051":"路易斯·卡斯特诺","1110":"克里斯蒂安·斯科斯塔德","1123":"托比亚斯·拉尔鲁德","1149":"图雷巴洛","1206":"克里斯蒂安·拉尔贝克"};
+const HIST_RN = {"18":"斯图顿特","35":"席尔维拉","36":"桑切斯加","53":"马伊德森","107":"奥利维里若","151":"德扬德赫","167":"内维托斯","172":"托雷罗索","173":"门多罗门","245":"斯通林斯","263":"哈弗克曼","265":"平托里拉","271":"福登德顿","274":"内维里卡","275":"卡特德利","311":"汉森达","320":"托尔森萨","321":"哈里林特","324":"加列萨塔","329":"范戴德霍文","333":"凯恩尔伍德","336":"平托里伊拉","356":"威尔林利","364":"泰勒顿伍德","387":"沃克林尔","411":"韦伯克豪斯","444":"门多门","445":"扎哈克多","466":"拉基克达","469":"科雷维达","475":"托雷多莫","531":"吉鲁蒂尔","547":"纳瓦萨门","563":"斯通林利","580":"奥德森维","585":"比约森莫","590":"阿尔梅维罗","591":"格林尔利","594":"佩雷托达","631":"布朗林斯","636":"佩雷里卡","637":"鲁索维尔","642":"布朗德菲尔德","650":"汉伦德索","658":"阿尔梅维若","662":"加利莱利","666":"佩德斯汉","669":"门多加拉","688":"贝尔纳里伊尼","689":"安德松斯","702":"罗沙拉若","710":"佩雷拉斯","721":"桑切萨里","728":"汤普德森","750":"斯图林顿","771":"桑巴维东","782":"贝内尔特","787":"索拉加罗","789":"格林尔森","790":"格林顿菲尔德","794":"汤普林菲尔德","795":"米尔林森","1032":"斯图顿菲尔德","1051":"纳瓦斯达","1078":"霍赫林曼","1110":"约翰森莫","1123":"维斯松索","1149":"图雷巴洛","1206":"汉松尼"};
 Object.entries(HIST_RN).forEach(([i, n]) => { const p = HIST.players[i]; if (!p) return; const old = p[0], cur = p[3]; p[0] = n;
   if (cur) { ((typeof PLAYER_DATABASE !== 'undefined' && PLAYER_DATABASE[cur]) || []).forEach(x => { if (x.name === old) x.name = n; }); const T = (window.TEAMS_DATA || {})[cur]; if (T) (T.roster || []).forEach(r => { if (r.name === old) r.name = n; }); const RL = HIST.rosterLinks || {}; if (RL[cur + '|' + old] === +i) { delete RL[cur + '|' + old]; RL[cur + '|' + n] = +i; } } });
 /* 司职位置：统一用参考 FIFA 的 15 个标准代码（GK CB LB RB LWB RWB CDM CM CAM LM RM LW RW CF ST），中英文名称都从这里取 */
@@ -1139,7 +1139,10 @@ const WA_NAT_SET = new Set(['沙特阿拉伯', '卡塔尔', '阿联酋', '伊拉
 const WA_NM = {
   arab: [['阿卜杜拉', '穆罕默德', '哈立德', '法赫德', '萨利赫', '阿里', '优素福', '纳赛尔', '萨米', '阿迈德', '塔米尔', '马吉德', '苏尔坦', '费萨尔', '奥马尔', '易卜拉欣', '哈桑', '贾西姆', '马赫迪', '拉希德', '扎耶德', '赛义夫', '穆萨', '伊萨', '巴德尔', '图尔基', '纳瓦夫', '马尔万', '萨尔曼', '哈马德', '塔里克', '亚西尔'], ['·阿尔', '·'], ['多萨里', '沙赫里', '加姆迪', '奥韦斯', '布赖克', '法拉杰', '穆尔塔达', '卡塔尼', '穆瓦拉德', '阿菲夫', '海多斯', '马布胡特', '卡比', '巴伊', '萨马尔', '塔马里', '阿迈里', '纳贾尔', '苏莱曼', '达瓦西', '奥泰比', '哈尔比', '穆特里', '扎赫拉尼', '马尔基', '贾布里', '舒马里', '奈米', '卡西米', '鲁韦利']],
   iran: [['阿里', '礼萨', '梅赫迪', '萨伊德', '莫尔塔扎', '阿米尔', '侯赛因', '卡里姆', '马苏德', '瓦希德', '贾瓦德', '鲁兹贝', '萨德格', '米拉德', '阿里亚', '沙赫里亚尔'], ['·'], ['塔雷米', '贾汉巴赫什', '阿兹蒙', '侯赛尼', '雷扎伊安', '莫哈迈迪', '诺鲁兹', '卡里米', '贝兰万德', '哈吉萨菲', '卡纳尼', '谢卡里', '戈多斯', '努拉拉希', '阿布拉希米', '安萨里法德', '莫拉迪', '法拉赫尼', '萨达吉', '霍斯拉维']] };
-function waName(nat, rnd) { const P = WA_NM[nat === '伊朗' ? 'iran' : 'arab'], one = a => a[Math.floor(rnd() * a.length)]; return P.map(one).join(''); }
+/* 只用姓（不用「名·姓」）：名字不够用时在姓后面加一两个音节，自己编一个新姓 */
+const SUR_SYL = ['恩', '罗', '维', '斯', '特', '尼', '达', '科', '雷', '诺', '萨', '加', '贝', '拉', '莫', '卡', '瓦', '里', '多', '汉', '塔', '门', '佩', '索'];
+const surExt = (n, rnd, k) => k <= 0 ? n : n + Array.from({ length: k > 12 ? 2 : 1 }, () => SUR_SYL[Math.floor(rnd() * SUR_SYL.length)]).join('');
+function waName(nat, rnd) { const P = WA_NM[nat === '伊朗' ? 'iran' : 'arab'], one = a => a[Math.floor(rnd() * a.length)], last = one(P[2]); return nat !== '伊朗' && rnd() < 0.35 ? '阿尔' + last : last; }
 function oneName0(nat, rnd, k) {
   const one = a => a[Math.floor(rnd() * a.length)];
   if (WA_NAT_SET.has(nat)) return waName(nat, rnd);
@@ -1152,7 +1155,7 @@ function oneName0(nat, rnd, k) {
 function freshName(nat, rnd, taken) {
   for (let k = 0; k < 400; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n) && !hasDup(n)) { YOUTH_USED.add(n); return n; } }
   for (let k = 400; k < 1600; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n)) { YOUTH_USED.add(n); return n; } } /* 名字不够用时多试几次，尽量不跟别人同名 */
-  { const gk = YP.NAT_GROUP[nat] || 'en', F = (YP.FIRST || {})[gk]; if (F && F.length) for (let k = 0; k < 600; k++) { const n = F[Math.floor(rnd() * F.length)] + '·' + oneName(nat, rnd, k); if (!YOUTH_USED.has(n)) { YOUTH_USED.add(n); return n; } } } /* 还是撞名：加个名字在前面 */
+  for (let k = 1; k < 600; k++) { const n = ddName(surExt(oneName(nat, rnd, k), rnd, k)); if (!YOUTH_USED.has(n)) { YOUTH_USED.add(n); return n; } } /* 还是撞名：不加名字，在姓后面加音节编一个新姓 */
   for (let k = 0; k < 400; k++) { const n = oneName(nat, rnd, k); if (!taken || !taken(n)) return n; }
   return oneName(nat, rnd, 999);
 }
@@ -1707,8 +1710,9 @@ const FDB = {};
 /* 外赛区同名：编号不同的两个人撞了名字 → 按外赛区球队的固定顺序，先出现的保留，后面的改名（按编号固定生成，同一人每次都改成同一个名字） */
 const EXT_RN = {};
 function extDedup() { const own = new Map(), X = [];
+  try { for (let i = 0; i < HIST_N0; i++) { const h = HIST.players[i]; if (h && !own.has(h[0])) own.set(h[0], 'H|' + i); } } catch (e) { } /* 历史球员的名字也算占用：外赛区新人不跟退役名宿同名 */
   Object.entries(PDB).forEach(([t, L]) => (L || []).forEach(p => { if (!p) return; if (String(p.uid || '').startsWith('X|')) X.push([t, p]); else own.set(p.name, p.uid || ('t|' + t + '|' + p.name)); })); /* 威超系的本土球员优先保留名字 */
-  const fix = (p, t, vesSide) => { if (!p || !p.uid) return; const old = p.name; const R0 = EXT_RN[p.uid]; if (R0 && p.name === R0.from) p.name = R0.to; /* 你手动改过名字的就不再动 */ const o = own.get(p.name); if (o && o !== p.uid) { const r = seeded('xdn|' + p.uid); let n2 = p.name; for (let k = 0; k < 80 && own.has(n2); k++) n2 = ddName(oneName(p.nat, r, k)); if (!own.has(n2)) { EXT_RN[p.uid] = { from: p.name, to: n2 }; p.name = n2; try { YOUTH_USED.add(n2); } catch (e) { } } }
+  const fix = (p, t, vesSide) => { if (!p || !p.uid) return; const old = p.name; const R0 = EXT_RN[p.uid]; if (R0 && p.name === R0.from) p.name = R0.to; /* 你手动改过名字的就不再动 */ try { p.name = xNm(p.uid, p.name, p.nat); } catch (e) { } const o = own.get(p.name); if (o && o !== p.uid && !(String(o).startsWith('H|') && UIDPID[p.uid] === +String(o).slice(2))) { const r = seeded('xdn|' + p.uid); let n2 = p.name; for (let k = 0; k < 160 && own.has(n2); k++) n2 = ddName(surExt(oneName(p.nat, r, k), r, k > 60 ? k - 60 : 0)); if (!own.has(n2)) { EXT_RN[p.uid] = { from: p.name, to: n2 }; p.name = n2; try { YOUTH_USED.add(n2); } catch (e) { } } }
     own.set(p.name, p.uid); if (vesSide && p.name !== old && BY_TN) { delete BY_TN[t + '|' + old]; BY_TN[t + '|' + p.name] = p; } };
   X.forEach(([t, p]) => fix(p, t, true)); Object.keys(EXT_CLUB).forEach(c => (FDB[c] || []).forEach(p => fix(p, c, false))); }
 let EXTP = [], RET_S = {};
@@ -1967,7 +1971,15 @@ function scrEdAlias(E) { if (!SCR_ED_PID) SCR_ED_PID = SCRIPT.P.filter(p => p.pi
 let SCR_ED_N = null;
 /* 剧本存档：旧存档里改在青训孩子身上的资料，名字现在是剧本球员 → 资料归那位剧本球员，这个孩子不再改名（免得出现两位同名） */
 const scrEdMoved = (u, e) => { if (!nm4() || !/^K\|A\|/.test(u) || !e) return false; if (!SCR_ED_N) SCR_ED_N = new Set(SCRIPT.P.map(p => p.n)); return SCR_ED_N.has(e.name) || SCR_ED_N.has(e.orig); };
+let XN_ST = null;
+/* 外赛区来的人（X|…）名字跟威超历史球员撞了：换一个编出来的姓（每次都一样） */
+function xNm(uid, name, nat) { if (!/^X\|/.test(String(uid || ''))) return name; const R0 = EXT_RN[uid]; if (R0 && name === R0.from) return R0.to; if (R0) return name;
+  if (!XN_ST) { const s = new Set(); for (let i = 0; i < HIST_N0; i++) if (HIST.players[i]) s.add(HIST.players[i][0]); XN_ST = s; } if (!XN_ST.has(name)) return name;
+  const used = new Set(XN_ST); HIST.players.forEach(p => p && used.add(p[0])); const r = seeded('xdn|' + uid); for (let k = 0; k < 160; k++) { const c = ddName(surExt(oneName(nat || '巴西', r, k), r, k > 60 ? k - 60 : 0)); if (!used.has(c)) { EXT_RN[uid] = { from: name, to: c }; try { YOUTH_USED.add(c); } catch (e) { } return c; } } return name; }
 function applyPLNames() {
+  try { Object.entries(EXT_RN).forEach(([uid, r]) => { const pid = UIDPID[uid]; if (pid != null && pid >= HIST_N0 && HIST.players[pid] && HIST.players[pid][0] === r.from) HIST.players[pid][0] = r.to; });
+    /* 已经离开（退役/不在名单上）的外赛区球员：名字跟威超历史球员撞了也改掉 */
+    for (let i = HIST_N0; i < HIST.players.length; i++) { const P = HIST.players[i], u = PID_UID[i]; if (P && u) P[0] = xNm(u, P[0], P[2]); } } catch (e) { }
   Object.entries(edAll()).forEach(([uid, e]) => { const pid = UIDPID[uid] ?? (uid.startsWith('H|') ? +uid.slice(2) : null); if (pid != null && HIST.players[pid]) { const P = HIST.players[pid]; if (e.orig == null) e.orig = P[0]; P[0] = (!e.name || e.name === e.orig) ? (DUP_FIX[e.orig] || e.name || e.orig) : e.name;
     if (e.origPos == null) e.origPos = P[1]; if (e.origNat == null) e.origNat = P[2]; P[1] = (e.ret && e.pos) || e.origPos; P[2] = (e.ret && e.nat) || e.origNat; } });
   try { Object.keys(_peak).forEach(k => delete _peak[k]); } catch (e) {}
@@ -2323,7 +2335,11 @@ function pidFor(team, name, slot, rating, uid) {
   if (uid && /^H\|\d+$/.test(uid) && PL[+uid.slice(2)]) { linkUid(uid, +uid.slice(2)); return +uid.slice(2); }
   let id = uid ? null : CUR_PID[team + '|' + name];
   if (id == null && !(uid && /^X\|/.test(uid))) { const h = histPidByName(team, name); if (h != null) { /* 外赛区来的球员（X|…）不按名字认人：外赛区常有跟威超历史球员同名的人 */ if (uid && PID_UID[h] == null) linkUid(uid, h); return h; } }
-  if (id == null && uid) { const info = BY_TN[team + '|' + name] || {}; id = PL.length; PL.push([name, info.pos || String(slot || '').replace(/-.*/, ''), info.nat || '', team, 'd', 1, '', info.rating0 || info.rating || rating || 0]); linkUid(uid, id); return id; }
+  if (id == null && uid) { const info = BY_TN[team + '|' + name] || {}; let nm = xNm(uid, name, info.nat);
+    if (PL.some(x => x && x[0] === nm)) { /* 新来的人跟已经有档案的人同名：给新来的人编一个新姓（场上的那位一起改） */ const r = seeded('pdn|' + uid); for (let k = 0; k < 200; k++) { const c = ddName(surExt(oneName(info.nat || PL.find(x => x && x[0] === nm)[2] || '巴西', r, k), r, k > 60 ? k - 60 : 0)); if (!PL.some(x => x && x[0] === c) && !YOUTH_USED.has(c)) { EXT_RN[uid] = { from: name, to: c }; const o = BY_TN[team + '|' + name]; if (o && o.uid === uid) { o.name = c; delete BY_TN[team + '|' + name]; BY_TN[team + '|' + c] = o; } nm = c; break; } } }
+    try { YOUTH_USED.add(nm); } catch (e) { } id = PL.length; PL.push([nm, info.pos || String(slot || '').replace(/-.*/, ''), info.nat || '', team, 'd', 1, '', info.rating0 || info.rating || rating || 0]); linkUid(uid, id); return id; }
+  if (id == null) { /* 没带 uid 的记录：先找已有档案的同名球员（同队优先），别把同一个人拆成两份 */ const c = []; for (let i = HIST_N0; i < PL.length; i++) if (PL[i] && PL[i][0] === name) c.push(i); Object.entries(EXT_RN).forEach(([u, r]) => { if (r.from === name && UIDPID[u] != null && !c.includes(UIDPID[u])) c.push(UIDPID[u]); });
+    const inT = c.filter(i => PL[i][3] === team); const h = inT.length === 1 ? inT[0] : c.length === 1 ? c[0] : null; if (h != null) { CUR_PID[team + '|' + name] = h; return h; } }
   if (id == null) { const info = (PDB[team] || []).find(p => p.name === name) || {}; id = PL.length; PL.push([name, info.pos || String(slot || '').replace(/-.*/, ''), info.nat || '', team, 'd', 1, '', info.rating || rating || 0]); CUR_PID[team + '|' + name] = id; }
   return id;
 }
@@ -5837,7 +5853,7 @@ const NN_POOL = {
 };
 const NN_GRP = { 沙特阿拉伯: 'arab', 卡塔尔: 'arab', 伊拉克: 'arab', 阿联酋: 'arab', 约旦: 'arab', 阿曼: 'arab', 巴林: 'arab', 埃及: 'arab', 伊朗: 'iran', 越南: 'sea', 泰国: 'thai', 马来西亚: 'malay', 印度尼西亚: 'indo', 乌兹别克斯坦: 'uz', 朝鲜: 'kp', 土耳其: 'tur', 希腊: 'gr', 罗马尼亚: 'ro', 匈牙利: 'hu', 捷克: 'cz', 斯洛伐克: 'cz', 乌克兰: 'ua' };
 const NN_OTHER = { 澳大利亚: '英格兰', 爱尔兰: '英格兰', 威尔士: '英格兰', 加拿大: '美国', 牙买加: '英格兰', 南非: '英格兰', 智利: '阿根廷', 秘鲁: '阿根廷', 厄瓜多尔: '哥伦比亚', 巴拉圭: '阿根廷', 委内瑞拉: '哥伦比亚', 玻利维亚: '阿根廷', 哥斯达黎加: '墨西哥', 巴拿马: '墨西哥', 佛得角: '葡萄牙', 安哥拉: '葡萄牙', 斯洛文尼亚: '克罗地亚', 以色列: '美国', 摩洛哥: '塞内加尔', 阿尔及利亚: '塞内加尔', 突尼斯: '塞内加尔', 加纳: '尼日利亚', 马里: '塞内加尔', 布基纳法索: '科特迪瓦', '刚果（金）': '科特迪瓦', 几内亚: '塞内加尔', 赞比亚: '尼日利亚', 加蓬: '喀麦隆', 喀麦隆: '尼日利亚' };
-function natName(nat, rnd, k) { const g = NN_GRP[nat]; if (g) { const P = NN_POOL[g], one = a => a[Math.floor(rnd() * a.length)]; return P.map(one).join(''); } return oneName(NN_OTHER[nat] || nat, rnd, k); }
+function natName(nat, rnd, k) { const g = NN_GRP[nat]; if (g) { const P = NN_POOL[g], one = a => a[Math.floor(rnd() * a.length)]; if (P[1].some(c => c.includes('·'))) { const L = one(P[P.length - 1]); return surExt(g === 'arab' && rnd() < 0.35 ? '阿尔' + L : L, rnd, k > 6 ? k : rnd() < 0.3 ? 1 : 0); } return P.map(one).join(''); } /* 只显示姓 */ return oneName(NN_OTHER[nat] || nat, rnd, k); }
 /* 国内联赛补位球员：每个国家固定 23 个位置，每个位置一个人踢约 8 季后换人 */
 const NN_SLOTS = [['GK', 0], ['GK', 1], ['GK', 2], ['CB', 0], ['CB', 1], ['CB', 2], ['LB', 0], ['RB', 0], ['CB', 3], ['LB', 1], ['RB', 1], ['CDM', 0], ['CM', 0], ['CM', 1], ['CAM', 0], ['LM', 0], ['RM', 0], ['CM', 2], ['ST', 0], ['ST', 1], ['LW', 0], ['RW', 0], ['ST', 2]];
 function natFill(nat, s, u21) { const I = NAT_INFO[nat]; if (!I) return []; const used = new Set(); return NN_SLOTS.map(([pos, j], i) => { const len = 8, off = Math.floor(ghash('nnoff|' + nat + i) * len), gen = Math.floor((s + off) / len), id = 'NN|' + nat + '|' + i + '|' + gen + (u21 ? '|u' : ''), rnd = seeded(id);
@@ -7600,7 +7616,7 @@ function synthExt() { if (SYNTH_X) return SYNTH_X; SYNTH_X = []; const POS = ['G
   /* 去重名（2026-11）：这批历史外援原本只在自己队里去重，跟别队、威超、剧本球员撞名的有好几百个。
      编号（uid）都不一样，确认是不同的人 → 后出现的改名。改名用独立的随机种子，不影响他们的能力、年龄等其他资料；编号不变，旧记录照样认得 */
   const taken = new Set(); try { Object.values(FDB0).forEach(L => L.forEach(p => taken.add(p.name))); (PL || []).forEach(x => { if (x && x[0]) taken.add(x[0]); }); ((typeof SCRIPT !== 'undefined' && SCRIPT.P) || []).forEach(p => taken.add(p.n)); } catch (e) { }
-  const seenU = new Map(); SYNTH_X.forEach(o => { const prev = seenU.get(o.name); if (taken.has(o.name) && prev !== o.uid) { const r = seeded('zxn|' + o.uid); let n2 = o.name; for (let k = 0; k < 80 && taken.has(n2); k++) n2 = ddName(oneName(o.nat, r, k)); if (!taken.has(n2)) { o.name = n2; o.renamed = 1; } } taken.add(o.name); try { YOUTH_USED.add(o.name); } catch (e) { } seenU.set(o.name, o.uid); });
+  const seenU = new Map(); SYNTH_X.forEach(o => { const prev = seenU.get(o.name); if (taken.has(o.name) && prev !== o.uid) { const r = seeded('zxn|' + o.uid); let n2 = o.name; for (let k = 0; k < 160 && taken.has(n2); k++) n2 = ddName(surExt(oneName(o.nat, r, k), r, k > 60 ? k - 60 : 0)); if (!taken.has(n2)) { o.name = n2; o.renamed = 1; } } taken.add(o.name); try { YOUTH_USED.add(o.name); } catch (e) { } seenU.set(o.name, o.uid); });
   return SYNTH_X; }
 function extTeamAt(L, s) { let t; (L || []).forEach(([e, to]) => { if (e <= s) t = to; }); return t; }
 function mktGet(s = MS()) {
