@@ -1128,8 +1128,8 @@ const EXT_CLUB = {}; EXT_LEAGUES.forEach(L => L.clubs.forEach(([c, st, sty]) => 
 const WA_FROM = 18;
 function waBoost(t, s) { const c = EXT_CLUB[t]; if (!c || c.league !== '西亚联赛' || s == null) return 0; return Math.max(0, Math.min(6, (s - WA_FROM) * 0.3)); }
 const waNatBoost = (nat, s) => s != null && WA_NAT_SET.has(nat) ? Math.max(0, Math.min(5, (s - WA_FROM) * 0.25)) : 0;
-/* 西亚资本收购威超球队（参照沃特梅兹被东亚资本收购）：S20 由「新月海湾体育集团」收购一支威超中游球队，之后青训以西亚球员为主、转会偏爱西亚球员 */
-const WA_TK_S = 20, WA_INV = '新月海湾体育集团';
+/* 西亚资本收购威超球队（参照沃特梅兹被东亚资本收购）：S18 由「新月海湾体育集团」收购一支威超中游球队，之后青训以西亚球员为主、转会偏爱西亚球员 */
+const WA_TK_S = 18, WA_INV = '新月海湾体育集团';
 function waClubAt(t, s) { if (s == null || s < WA_TK_S || typeof SEASON === 'undefined' || SEASON < WA_TK_S) return null; try { const e = capitalHistory().ev.find(x => x.wa); return e && e.team === t && s >= e.s ? e : null; } catch (er) { return null; } }
 const STYLE_NATS = { nord: ['丹麦', '瑞典', '挪威', '荷兰', '比利时', '克罗地亚', '塞尔维亚', '波兰'], en: ['英格兰', '英格兰', '苏格兰', '美国'], es: ['西班牙', '西班牙', '阿根廷', '乌拉圭', '哥伦比亚'], de: ['德国', '德国', '奥地利', '瑞士'], it: ['意大利', '意大利', '意大利', '克罗地亚'], fr: ['法国', '法国', '比利时', '塞内加尔', '科特迪瓦'], kr: ['韩国', '韩国', '日本'], cn: ['中国', '中国', '中国', '中国', '巴西'], sa: ['沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '巴西', '葡萄牙', '阿根廷'], qa: ['卡塔尔', '卡塔尔', '卡塔尔', '卡塔尔', '巴西', '西班牙'], ae: ['阿联酋', '阿联酋', '阿联酋', '阿联酋', '巴西', '阿根廷'], ir: ['伊朗', '伊朗', '伊朗', '伊朗', '伊朗', '伊拉克'], iq: ['伊拉克', '伊拉克', '伊拉克', '伊拉克', '约旦'], jo: ['约旦', '约旦', '约旦', '约旦', '伊拉克'] };
 // 名字只用一个词（不加名·姓）；两段式用完后用三段式，再不够就允许和别队重名（同队不重名）
