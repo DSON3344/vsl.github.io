@@ -7270,11 +7270,52 @@ function histFee(pid, ts) { let r = null; for (const k of [ts, ts - 1]) { const 
 const TRANSFERS = [], TR_BY_PID = {};
 function rebuildTransfers() {
   TRANSFERS.length = 0; Object.keys(TR_BY_PID).forEach(k => delete TR_BY_PID[k]);
-  (HIST.transfers || []).forEach(([s, pid, from, to]) => { if (s > SEASON) return; const fee = histFee(pid, s); const MK = S.market && S.market[s - 1]; if (MK && MK.done && (MK.offers.some(o => o.pid === pid) || (MK.hexp || []).some(h => h.pid === pid))) return; TRANSFERS.push({ s, pid, from, to, fee }); });
-  Object.entries(S.market || {}).forEach(([k, MK]) => { if (+k >= HIST_END || !MK.done || +k + 1 > SEASON) return; MK.done.forEach(x => TRANSFERS.push({ s: x.s, pid: x.pid, name: x.name, from: x.from, to: x.to, fee: x.fee, free: x.free, rel: x.rel, late: x.late, win: x.win, kid: x.kid })); });
-  Object.entries(TR_LOG).forEach(([s, l]) => l.forEach(x => TRANSFERS.push({ s: +s + 1, pid: UIDPID[x.uid], name: x.name, team: x.to, from: x.from, to: x.to, fee: x.fee, free: x.free, rel: x.rel, late: x.late, win: x.win })));
+  const N4 = nm4(), SPS = N4 ? scrPidSet() : null, NHP = (HIST.players || []).length;
+  const histPid = pid => pid != null && pid < NHP && !/^K\|/.test(String(PID_UID[pid] || ''));
+  /* 剧本存档 S01–S17：旧资料球员只照旧资料（含租借）换队，转会市场那几季的成交对他们不生效，所以转会记录也照他们实际待过的球队来写 */
+  const scrEra = s => N4 && s <= SCR_END, HQ = HIST.squads || {}, teamAt = {};
+  if (N4) Object.entries(HQ).forEach(([ss, T]) => { if (+ss > SCR_END) return; Object.entries(T).forEach(([t, L]) => L.forEach(x => { (teamAt[x[0]] = teamAt[x[0]] || {})[ss] = t; })); });
+  const LO = N4 ? allLoans() : [];
+  (HIST.transfers || []).forEach(([s, pid, from, to]) => { if (s > SEASON) return; if (CUT_PID.has(pid)) return;
+    if (scrEra(s)) { if (SPS.has(pid) || SCR_DROP.has(pid)) return; const m = teamAt[pid] || {}, a = m[s - 1], b = m[s]; if ((a && a !== from) || (b && b !== to) || (!a && !b && TD[from] && TD[to])) return; TRANSFERS.push({ s, pid, from, to, fee: histFee(pid, s) }); return; }
+    const fee = histFee(pid, s); const MK = S.market && S.market[s - 1]; if (MK && MK.done && (MK.offers.some(o => o.pid === pid) || (MK.hexp || []).some(h => h.pid === pid))) return; TRANSFERS.push({ s, pid, from, to, fee }); });
+  if (N4) Object.entries(teamAt).forEach(([pk, m]) => { const pid = +pk; if (CUT_PID.has(pid) || SPS.has(pid)) return; const ss = Object.keys(m).map(Number).sort((a, b) => a - b);
+    for (let i = 1; i < ss.length; i++) { const s = ss[i], pv = ss[i - 1], from = m[pv], to = m[s]; if (from === to || s > SEASON) continue; if (TRANSFERS.some(x => x.pid === pid && x.s > pv && x.s <= s && x.to === to)) continue;
+      const lo = LO.find(l => l.pid === pid && l.s0 === s && l.to === to), back = !lo && LO.find(l => l.pid === pid && l.until + 1 === s && l.from === to && l.to === from);
+      TRANSFERS.push({ s, pid, from, to, fee: lo ? lo.fee || 0 : back ? 0 : histFee(pid, s), loan: lo ? 1 : 0, back: back ? 1 : 0 }); } });
+  const fake = x => scrEra(x.s) && (histPid(x.pid) || (x.pid != null && SPS.has(x.pid)) || /^K\|X\|/.test(String(PID_UID[x.pid] || '')) || (x.pid == null && x.name && SCRIPT.P.some(sp => sp.n === x.name)));
+  Object.entries(S.market || {}).forEach(([k, MK]) => { if (+k >= HIST_END || !MK.done || +k + 1 > SEASON) return; MK.done.forEach(x => { if (fake(x)) return; TRANSFERS.push({ s: x.s, pid: x.pid, name: x.name, from: x.from, to: x.to, fee: x.fee, free: x.free, rel: x.rel, late: x.late, win: x.win, kid: x.kid }); }); });
+  Object.entries(TR_LOG).forEach(([s, l]) => l.forEach(x => { const t = { s: +s + 1, pid: UIDPID[x.uid], name: x.name, team: x.to, from: x.from, to: x.to, fee: x.fee, free: x.free, rel: x.rel, late: x.late, win: x.win }; if (fake(t)) return; TRANSFERS.push(t); }));
+  if (N4) scrTransfers().forEach(t => { if (t.s > SEASON) return; if (TRANSFERS.some(x => x.s === t.s && (x.name === t.name || (t.pid != null && x.pid === t.pid)) && x.to === t.to)) return; TRANSFERS.push(t); });
+  TRANSFERS.forEach(t => { if (t.pid == null && t.scr) t.pid = UIDPID['K|X|' + t.name] ?? null; });
+  trReconcile();
   TRANSFERS.forEach(t => { if (t.pid != null) (TR_BY_PID[t.pid] = TR_BY_PID[t.pid] || []).push(t); });
+  Object.values(TR_BY_PID).forEach(l => l.sort((a, b) => a.s - b.s));
 }
+/* 转会记录跟逐季记录对齐（2026-11）：已经踢完的赛季里，球员在哪队出场是实际结果。
+   跟实际出场球队对不上的转会（没真正成交的）拿掉；实际换了队却没有转会记录的（多半是青训租借、旧资料租借）补上。 */
+function trFeeOf(pid, uid, s) { try { const k = uid.startsWith('K|') && ACAD_ID[uid.slice(2)]; if (k) return Math.max(1, valueM(kidRating(k, s), kAge(k, s))); } catch (e) { } return histFee(pid, s); }
+function trReconcile() { const tm = {}; Object.entries(PSEASONS).forEach(([pk, L]) => { const m = tm[pk] = {}; L.forEach(([s, x]) => { if (x && x.team) (m[s] = m[s] || new Set()).add(x.team); }); });
+  for (let i = TRANSFERS.length - 1; i >= 0; i--) { const t = TRANSFERS[i]; if (t.pid == null || !tm[t.pid]) continue; const m = tm[t.pid], A = m[t.s - 1], B = m[t.s];
+    const bad = t.win ? (B && !B.has(t.from) && TD[t.from]) || (B && TD[t.to] && !B.has(t.to)) || (m[t.s + 1] && TD[t.to] && !m[t.s + 1].has(t.to) && !(B && B.has(t.to)))
+      : (A && TD[t.from] && !A.has(t.from) && !(B && B.has(t.from))) || (B && TD[t.to] && !B.has(t.to)) || (B && !TD[t.to] && B.has(t.from) && B.size === 1 && !t.rel);
+    if (bad) TRANSFERS.splice(i, 1); }
+  const by = {}; TRANSFERS.forEach(t => { if (t.pid != null) (by[t.pid] = by[t.pid] || []).push(t); });
+  Object.entries(tm).forEach(([pk, m]) => { const pid = +pk, ss = Object.keys(m).map(Number).sort((a, b) => a - b), L = by[pid] || [], uid = String(PID_UID[pid] || ''), ev = uid.startsWith('K|') ? ((S.acadDec || {})[uid.slice(2)] || []) : [];
+    for (let i = 1; i < ss.length; i++) { const pv = ss[i - 1], s = ss[i], P = m[pv], N = m[s]; const last = [...P].pop(); if ([...N].some(t => P.has(t))) continue; const to = [...N][0];
+      if (L.some(t => t.s > pv && t.s <= s && N.has(t.to)) || L.some(t => t.win && t.s === pv && N.has(t.to))) continue;
+      const lo = ev.find(e => e.act === 'loan' && e.to === to && e.s <= s && e.s > pv) || allLoans().find(l => l.pid === pid && l.s0 === s && l.to === to), back = !lo && L.concat(TRANSFERS.filter(t => t.pid === pid && t.loan)).some(t => t.loan && t.to === last && t.from === to);
+      const t = { s, pid, name: PL[pid] ? PL[pid][0] : undefined, team: to, from: last, to, fee: lo ? lo.fee || 0 : back ? 0 : trFeeOf(pid, uid, s), loan: lo ? 1 : 0, back: back ? 1 : 0, fix: 1 }; TRANSFERS.push(t); L.push(t); by[pid] = L; }
+    ss.forEach((s, i) => { const N = m[s]; if (N.size < 2) return; const P = i ? m[ss[i - 1]] : null, base = [...N].find(t => P && P.has(t)) || [...N].find(t => L.some(x => x.to === t && x.s <= s && !x.win)) || [...N][0]; /* 同一季在两队出场：冬窗转会 */
+      [...N].filter(t => t !== base).forEach(to => { if (L.some(x => x.to === to && x.s === s)) return; const t = { s, pid, name: PL[pid] ? PL[pid][0] : undefined, team: to, from: base, to, fee: trFeeOf(pid, uid, s), win: 1, fix: 1 }; TRANSFERS.push(t); L.push(t); by[pid] = L; }); }); }); }
+/* 剧本球员 S01–S17 的转会：照剧本里每次换队记录（第一次进一线队如果是自己青训那队就不算转会） */
+function scrTransfers() { const out = [];
+  SCRIPT.P.forEach(p => { if (p.pid != null && SCR_DROP.has(p.pid)) return; const home = TD[p.h] ? p.h : null; let prev = null;
+    p.ev.forEach(([s, tok], i) => { if (s > SCR_END) return; if (tok === 'RET') { prev = null; return; } const to = tok.startsWith('X:') ? scrDest(tok, p.n) : tok;
+      const from = prev != null ? prev : (i === 0 && home && home !== to ? home : null); prev = to; if (!from || from === to) return;
+      const r = p.r[s - 1] > 0 ? p.r[s - 1] : (p.r[s - 2] > 0 ? p.r[s - 2] : p.pk || 75), age = p.a1 >= 15 ? p.a1 + Math.floor((s - 1) / 2) : 20;
+      out.push({ s, pid: p.pid ?? null, name: p.n, team: to, from, to, fee: Math.max(1, Math.round(valueM(r, age) * (0.85 + ghash('st|' + p.n + '|' + s) * 0.35))), scr: 1, kid: i === 0 ? 1 : 0 }); }); });
+  return out; }
 rebuildTransfers();
 const feeTxt = (f, free) => free ? '自由转会' : 'ⰵ' + f + 'M';
 // 外赛区球队（不在威超、没有队徽）
@@ -7285,7 +7326,7 @@ const clubCell = (t, n = 18) => isExt(t) ? (EXT_CLUB[t] ? `<button class="lnk tn
 // 母队：第一笔转会的出发球队，没转会过就是第一次出场的球队
 const homeClub = pid => { const l = TR_BY_PID[pid]; if (l && l.length) return l.slice().sort((a, b) => a.s - b.s)[0].from; const r = (PSEASONS[pid] || [])[0]; return r ? r[1].team : null; };
 function transferRow(t, showName = true) {
-  return `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n">${SN(t.s)}</span><span class="tname" style="gap:6px;flex-wrap:wrap">${showName ? `<button class="lnk" ${t.pid != null ? `data-pid="${t.pid}"` : `data-player="${esc(t.team)}|${esc(t.name)}"`}><b>${esc(t.pid != null && PL[t.pid] ? PL[t.pid][0] : t.name || '')}</b></button>` : ''}${ecrest(t.from, 18)}<span class="dim">${esc(t.from)}${isExt(t.from) ? `（${esc(extTag(t.from))}）` : ''}</span><span class="dim">→</span>${ecrest(t.to, 18)}<span>${esc(t.to)}${isExt(t.to) ? `<span class="dim">（${esc(extTag(t.to))}）</span>` : ''}</span></span><span class="v">${feeTxt(t.fee, t.free)}</span></div>`;
+  return `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n">${SN(t.s)}</span><span class="tname" style="gap:6px;flex-wrap:wrap">${showName ? `<button class="lnk" ${t.pid != null ? `data-pid="${t.pid}"` : `data-player="${esc(t.team)}|${esc(t.name)}"`}><b>${esc(t.pid != null && PL[t.pid] ? PL[t.pid][0] : t.name || '')}</b></button>` : ''}${ecrest(t.from, 18)}<span class="dim">${esc(t.from)}${isExt(t.from) ? `（${esc(extTag(t.from))}）` : ''}</span><span class="dim">→</span>${ecrest(t.to, 18)}<span>${esc(t.to)}${isExt(t.to) ? `<span class="dim">（${esc(extTag(t.to))}）</span>` : ''}</span></span><span class="v">${t.loan ? '租借' : t.back ? '租借期满回归' : feeTxt(t.fee, t.free)}</span></div>`;
 }
 function transferHTML(pid) {
   const l = TR_BY_PID[pid]; if (!l || !l.length) return '';
