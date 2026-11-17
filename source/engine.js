@@ -466,7 +466,7 @@ const ENGINE = (() => {
         shots: stats.shots[i], ot: stats.onTarget[i], oppOt: stats.onTarget[o], gf: side === 'h' ? hg : ag, ga: side === 'h' ? ag : hg, poss: stats.poss[i],
         press: /防守|逼抢|压制|摆大巴|对抗/.test(TEAMS_DATA[t].style || ''),
       });
-      players[side] = rows.map((r, k) => ({ ...r, name: R[k].name, slot: R[k].slot }));
+      players[side] = rows.map((r, k) => ({ ...r, name: R[k].name, slot: R[k].slot, uid: (R[k].p && R[k].p.uid) || '' })); /* 球员 ID 跟着比赛记录走 */
       if (rateHook) players[side].forEach(p => { const b = rateHook(t, p.name, p); if (b) p.r = +Math.max(4.5, Math.min(10, p.r + b)).toFixed(1); }); /* 内定得奖的球员：表现评分 */
     });
     const sum = (k, f) => players[k].reduce((a, r) => a + r[f], 0);

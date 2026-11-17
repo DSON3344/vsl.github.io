@@ -831,10 +831,10 @@ const compact = res => ({
   motm: [res.motm.name, res.motm.team, res.motm.r],
   st: [res.stats.poss[0], res.stats.shots[0], res.stats.shots[1], res.stats.onTarget[0], res.stats.onTarget[1], res.stats.corners[0], res.stats.corners[1], res.stats.tackles[0], res.stats.tackles[1], res.stats.saves[0], res.stats.saves[1], res.stats.passes[0], res.stats.passes[1], res.stats.passesOk[0], res.stats.passesOk[1]],
   pl: ['h', 'a'].map(k => res.players[k].map(r => [r.sh, r.ot, r.tk, r.sv, Math.round(r.r * 10), r.min, r.kp, r.int, r.ps, r.pc, r.pg, r.pm, r.start, r.da || 0, r.ds || 0])),
-  lu: ['h', 'a'].map(k => res.players[k].map(r => [r.name, r.slot])),
+  lu: ['h', 'a'].map(k => res.players[k].map(r => r.uid ? [r.name, r.slot, r.uid] : [r.name, r.slot])), /* 第三项：球员 ID（2026-11 起只认 ID） */
 });
 // 某场比赛一方的出场名单（旧存档没有名单时按默认首发）
-const luOf = (m, i) => m.r.lu ? m.r.lu[i].map(([n, sl], k) => ({ name: n, slot: sl, start: m.r.pl && m.r.pl[i][k] && m.r.pl[i][k][12] != null ? m.r.pl[i][k][12] : 1 })) : ENGINE.lineup(i ? m.a : m.h).xi.map(x => ({ name: x.name, slot: x.slot, start: 1 }));
+const luOf = (m, i) => m.r.lu ? m.r.lu[i].map(([n, sl, u], k) => ({ name: n, slot: sl, uid: u || '', start: m.r.pl && m.r.pl[i][k] && m.r.pl[i][k][12] != null ? m.r.pl[i][k][12] : 1 })) : ENGINE.lineup(i ? m.a : m.h).xi.map(x => ({ name: x.name, slot: x.slot, start: 1 }));
 // 某队在第 ri 轮开赛前的伤停与连续首发情况，全部由已赛结果推出（伤病、红牌停赛、累计 5/10 张黄牌停赛）
 // 精力（0–100）：赛季开始满格；每场按上场分钟消耗（耐力属性高、年轻的消耗少），每轮之间恢复，没上场的恢复更多；冬歇期额外恢复
 const EN_COST = 20.5, EN_REC = 0.32, EN_REST = 10, EN_ALL = 4; // 每轮所有人先回 3 点，再恢复与满格差距的 30%；一直踢满全场的主力大约稳定在 59（会被轮换）
@@ -1427,6 +1427,8 @@ const nm2 = () => !!(S && S.nm2), nm3 = () => false, nm4 = () => !!(S && S.nm4);
    旧资料球员（S16、S17 名单、核心球员、旧资料摘要里的人）S01–S17 每季在哪队、能力多少都照 SCRIPT 走（锁定，转会市场不碰）；S18 起交给系统。
    威超 S01–S15 的排名（降级区以外）照文档：开季先把整季每场的赛果排好；S16、S17 只定冠军。 */
 const SCR_END = 17, SCR_DOC_TEAMS = new Set(Object.values(SCRIPT.order).flat().concat(SCRIPT.rt[16], SCRIPT.rt[17]));
+/* 剧本球员的 ID（K|X|名字）直接对到剧本指定的球员编号，不靠名字比对 */
+try { SCRIPT.P.forEach(p => { if (p.pid != null && UIDPID['K|X|' + p.n] == null) UIDPID['K|X|' + p.n] = p.pid; }); } catch (e) { }
 function scrDest(tok, name) { if (tok === 'X:LOW') { const L = Object.keys(TD).filter(t => !SCR_DOC_TEAMS.has(t) && !TD[t].gen).sort(); if (L.length) return L[Math.floor(ghash('lw|' + name) * L.length)]; }
   if (tok === 'X:EXT' || tok === 'X:LOW') { const L = Object.keys(EXT_CLUB).sort(); return L[Math.floor(ghash('ex|' + name) * L.length)]; } return tok.slice(2); }
 const scrBorn = a1 => a1 >= 15 ? 1 - a1 : 2 * (16 - a1) - 1 - 15;
@@ -2281,24 +2283,29 @@ function table(upto = 38, fx = S.fx, teams = S.teams) {
 const posOf = (t, n) => { const i = PINFO[t + '|' + n]; return i ? i.pos : null; };
 function playerStats(fx = S.fx) {
   const P = {};
-  const get = (n, t) => { n = NAME_AL[t + '|' + n] || n; return P[t + '|' + n] || (P[t + '|' + n] = { name: n, team: t, g: 0, a: 0, y: 0, r: 0, apps: 0, starts: 0, min: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, da: 0, ds: 0, line: '', pos: '' }); };
+  const get = (n, t, u) => { if (u) { const k = t + '|U|' + u, q = P[k]; if (q) { q.name = n; return q; } return (P[k] = { name: n, team: t, uid: u, g: 0, a: 0, y: 0, r: 0, apps: 0, starts: 0, min: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, da: 0, ds: 0, line: '', pos: '' }); } /* 有球员 ID 的比赛记录：按 ID 统计，撞名也分得开 */
+    n = NAME_AL[t + '|' + n] || n; return P[t + '|' + n] || (P[t + '|' + n] = { name: n, team: t, g: 0, a: 0, y: 0, r: 0, apps: 0, starts: 0, min: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: 0, rs: 0, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, da: 0, ds: 0, line: '', pos: '' }); };
   fx.forEach(rd => rd.forEach(m => {
     if (!m.r) return;
+    const U = [{}, {}]; [0, 1].forEach(i => { if (m.r.lu && m.r.lu[i]) m.r.lu[i].forEach(([n, , u]) => { if (u) U[i][n] = u; }); });
     [[m.h, 0, m.r.ag], [m.a, 1, m.r.hg]].forEach(([t, i, conc]) => luOf(m, i).forEach((x, k) => {
-      const q = get(x.name, t); q.apps++; q.pos = posOf(t, x.name) || String(x.slot).replace(/-.*/, ''); q.line = ENGINE.LINE(q.pos);
+      const q = get(x.name, t, x.uid); q.apps++; q.pos = posOf(t, x.name) || String(x.slot).replace(/-.*/, ''); q.line = ENGINE.LINE(q.pos);
       const row = m.r.pl && m.r.pl[i][k];
       if (row) { q.sh += row[0]; q.ot += row[1]; q.tk += row[2]; q.sv += row[3]; q.rs += row[4] / 10; q.min += row[5]; q.kp += row[6] || 0; q.int += row[7] || 0; q.ps += row[8] || 0; q.pc += row[9] || 0; q.starts += row[12] == null ? 1 : row[12]; q.da += row[13] || 0; q.ds += row[14] || 0; if (conc === 0 && row[5] >= 60 && (q.line === 'GK' || q.line === 'DF')) q.cs++; }
       else { q.min += 90; q.starts++; }
     }));
     m.r.ev.forEach(([min, type, side, pl, as, x]) => {
       const t = side === 'h' ? m.h : m.a;
-      if (type === 'goal') { const q = get(pl, t); q.g++; if (x) q.pg++; if (as) get(as, t).a++; }
-      if (type === 'pmiss') get(pl, t).pm++;
-      if (type === 'yellow') get(pl, t).y++;
-      if (type === 'red') get(pl, t).r++;
+      const u = U[side === 'h' ? 0 : 1];
+      if (type === 'goal') { const q = get(pl, t, u[pl]); q.g++; if (x) q.pg++; if (as) get(as, t, u[as]).a++; }
+      if (type === 'pmiss') get(pl, t, u[pl]).pm++;
+      if (type === 'yellow') get(pl, t, u[pl]).y++;
+      if (type === 'red') get(pl, t, u[pl]).r++;
     });
-    get(m.r.motm[0], m.r.motm[1]).motm++;
+    get(m.r.motm[0], m.r.motm[1], U[m.r.motm[1] === m.h ? 0 : 1][m.r.motm[0]]).motm++;
   }));
+  /* 同一场里事件对不到 ID 的（例如出场名单之外的人）：同队同名、已经有 ID 那一笔就并进去，不拆成两笔 */
+  Object.keys(P).forEach(k => { const q = P[k]; if (q.uid) return; const hit = Object.values(P).filter(x => x.uid && x.team === q.team && x.name === q.name); if (hit.length !== 1) return; const h = hit[0]; ['g', 'a', 'y', 'r', 'apps', 'starts', 'min', 'sh', 'ot', 'tk', 'sv', 'cs', 'motm', 'rs', 'kp', 'int', 'ps', 'pc', 'pg', 'pm', 'da', 'ds'].forEach(f => h[f] += q[f] || 0); if (!h.pos && q.pos) { h.pos = q.pos; h.line = q.line; } delete P[k]; });
   return Object.values(P).map(finishP);
 }
 const finishP = q => ({ ...q, ga: q.g + q.a, avg: q.apps ? q.rs / q.apps : 0, pacc: q.ps ? q.pc / q.ps * 100 : 0, dacc: q.da ? q.ds / q.da * 100 : 0, subs: q.apps - (q.starts ?? q.apps) });
@@ -2345,7 +2352,7 @@ const plink = (team, name, pid) => { const id = pid != null ? pid : pidOf(team, 
 const SN = s => 'S' + String(s).padStart(2, '0');
 function rowObj(r) { const [pid, team, apps, min, g, a, y, rc, sh, ot, tk, sv, cs, motm, rs10, kp = 0, int = 0, ps = 0, pc = 0, pg = 0, pm = 0, starts = apps, da = 0, ds = 0] = r; const p = PL[pid]; return finishP({ pid, name: p[0], pos: p[1], line: ENGINE.LINE(p[1]), team, apps, starts, min, g, a, y, r: rc, sh, ot, tk, sv, cs, motm, rs: rs10 / 10, kp, int, ps, pc, pg, pm, da, ds }); }
 const HPS = {};
-const liveStats = () => playerStats().map(p => ({ ...p, pid: pidOf(p.team, p.name) }));
+const liveStats = () => playerStats().map(p => ({ ...p, pid: (p.uid && UIDPID[p.uid] != null) ? UIDPID[p.uid] : pidOf(p.team, p.name) }));
 const SUMF = ['apps', 'starts', 'min', 'g', 'a', 'y', 'r', 'sh', 'ot', 'tk', 'sv', 'cs', 'motm', 'rs', 'kp', 'int', 'ps', 'pc', 'pg', 'pm', 'da', 'ds'];
 const sumRows = rows => { const o = Object.fromEntries(SUMF.map(f => [f, 0])); rows.forEach(r => SUMF.forEach(f => o[f] += r[f] || 0)); return finishP(o); };
 function statsFor(season) {
@@ -2381,7 +2388,7 @@ function pidFor(team, name, slot, rating, uid) {
   if (uid && UIDPID[uid] != null) return UIDPID[uid];
   if (uid && /^H\|\d+$/.test(uid) && PL[+uid.slice(2)]) { linkUid(uid, +uid.slice(2)); return +uid.slice(2); }
   let id = uid ? null : CUR_PID[team + '|' + name];
-  if (id == null && !(uid && /^X\|/.test(uid))) { const h = histPidByName(team, name); if (h != null) { /* 外赛区来的球员（X|…）不按名字认人：外赛区常有跟威超历史球员同名的人 */ if (uid && PID_UID[h] == null) linkUid(uid, h); return h; } }
+  if (id == null && !uid) { const h = histPidByName(team, name); /* 只认 ID：带 ID 的记录不按名字去找别人 */ if (h != null) { /* 外赛区来的球员（X|…）不按名字认人：外赛区常有跟威超历史球员同名的人 */ if (uid && PID_UID[h] == null) linkUid(uid, h); return h; } }
   if (id == null && uid) { const info = BY_TN[team + '|' + name] || {}; let nm = xNm(uid, name, info.nat);
     if (PL.some(x => x && x[0] === nm)) { /* 新来的人跟已经有档案的人同名：给新来的人编一个新姓（场上的那位一起改） */ const r = seeded('pdn|' + uid); for (let k = 0; k < 200; k++) { const c = ddName(surExt(oneName(info.nat || PL.find(x => x && x[0] === nm)[2] || '巴西', r, k), r, k > 60 ? k - 60 : 0)); if (!PL.some(x => x && x[0] === c) && !YOUTH_USED.has(c)) { EXT_RN[uid] = { from: name, to: c }; const o = BY_TN[team + '|' + name]; if (o && o.uid === uid) { o.name = c; delete BY_TN[team + '|' + name]; BY_TN[team + '|' + c] = o; } nm = c; break; } } }
     try { YOUTH_USED.add(nm); } catch (e) { } id = PL.length; PL.push([nm, info.pos || String(slot || '').replace(/-.*/, ''), info.nat || '', team, 'd', 1, '', info.rating0 || info.rating || rating || 0]); linkUid(uid, id); return id; }
@@ -2408,8 +2415,8 @@ function makeArchive() {
     rounds, club, xi,
     // 当季完整名单快照（所有球队）：[uid, 名, 位置, 号码, 年龄, 评分, 国籍]
     sq: Object.fromEntries(Object.keys(TD).filter(t => PDB[t] && PDB[t].length).map(t => [t, PDB[t].map(p => [p.uid || '', p.name, p.pos, p.no, p.age, p.rating, p.nat || ''])])),
-    ps: ps.map(p => [p.name, p.team, p.apps, p.min, p.g, p.a, p.y, p.r, p.sh, p.ot, p.tk, p.sv, p.cs, p.motm, Math.round(p.rs * 10), p.kp, p.int, p.ps, p.pc, p.pg, p.pm, p.starts, (BY_TN[p.team + '|' + p.name] || {}).uid || '', p.da || 0, p.ds || 0]),
-    xiUid: Object.fromEntries(S.teams.map(t => [t, ENGINE.lineup(t).xi.map(x => (BY_TN[t + '|' + x.name] || {}).uid || '')])),
+    ps: ps.map(p => [p.name, p.team, p.apps, p.min, p.g, p.a, p.y, p.r, p.sh, p.ot, p.tk, p.sv, p.cs, p.motm, Math.round(p.rs * 10), p.kp, p.int, p.ps, p.pc, p.pg, p.pm, p.starts, p.uid || (BY_TN[p.team + '|' + p.name] || {}).uid || '', p.da || 0, p.ds || 0]),
+    xiUid: Object.fromEntries(S.teams.map(t => [t, ENGINE.lineup(t).xi.map(x => (x.p && x.p.uid) || (BY_TN[t + '|' + x.name] || {}).uid || '')])),
   };
 }
 function registerArchive(A, preview) {
@@ -7565,6 +7572,7 @@ function finLedger(t, s) {
 /* 余额调节（从老板功能生效那季起）：存款超过 ⰵ1500M 的，董事会把超出部分的 30% 拿去再投资（设施、薪资结构）；
    赤字的球队，财力 45 以上的老板会注资补洞（最多补掉赤字的 40%）。避免有钱的越滚越多、穷的一直负债。 */
 function finBalAdj(t, s, L0, bal) { if (!ownOn(s)) return L0; const L = { ...L0, inc: { ...L0.inc }, exp: { ...L0.exp } }; const o = ownerAt(t, s);
+  if (bal < 0 && L.exp['股东分红']) { const d = L.exp['股东分红']; L.exp['股东分红'] = 0; L.te -= d; L.net += d; } /* 球队负债时，私募老板这季不抽分红 */
   if (bal > 1500) { const re = Math.round((bal - 1500) * 0.3); L.exp['盈余再投资'] = re; L.te += re; L.net -= re; }
   else if (bal < 0 && o && o.w >= 45) { const bail = Math.round(Math.min(-bal * 0.4, o.w * 5)); L.inc['老板注资'] = (L.inc['老板注资'] || 0) + bail; L.ti += bail; L.net += bail; }
   return L; }
@@ -7584,7 +7592,7 @@ const canAfford = (t, fee) => !TD[t] || (finState()[t] || { rem: 1e9 }).rem >= f
 function projSize(t) {
   if (mktLate()) return (PDB[t] || []).length;
   const MK = isPending(SEASON) ? mktGet() : null; let n = (PDB[t] || []).length; if (!MK) return n;
-  const C = mktCtx(SEASON); if (!C.hist) n -= 0; // S18 起退役的人由青训补上，人数不变
+  const C0 = mktCtx(SEASON), C = { ...C0, hist: C0.hist && !(nm4() && SEASON >= SCR_END) }; /* 剧本结束后：照实际名单加减（不再用旧资料的下季名单推算） */ if (!C.hist) n -= 0; // S18 起退役的人由青训补上，人数不变
   else { const nx = nextTeamMap(SEASON); n = Object.values(nx).filter(x => x === t).length; }
   const sd = {}; if (C.hist) MK.offers.forEach(o => { if (o.sched) sd[o.uid] = o.to; });
   const moves = MK.offers.filter(o => o.st === 'a' && !o.sched && !o.acad && !(C.hist && o.loan)).map(o => [sd[o.uid] || o.from, o.to]).concat((MK.free || []).filter(f => f.to).map(f => [f.from, f.to]));
@@ -7784,8 +7792,14 @@ function mktGenHist(MK, s, C, salt) {
   cand.sort((x, y) => y.r - x.r).slice(0, FULL ? Math.round(30 * HB) : 10).forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false), used = new Set(); for (let k = 0; k < 3; k++) { if (k && rnd() > 0.45) break; const to = mktPick(B.dom.filter(x => !used.has(x)), rnd, C); if (!to) break; used.add(to); mktOfferB(MK, p, t, to, C, rnd, FULL ? 0.92 : 0.85, FULL ? 1.2 : 1.15); } if (B.ext.length && rnd() < 0.4) mktOfferB(MK, p, t, B.ext[Math.floor(rnd() * B.ext.length)], C, rnd, 0.95, 1.3); });
   if (FULL) mktGenBench(MK, s, C, salt, HB);
   if (FULL && nm4() && s >= SCR_END) try { mktGenPromo(MK, s, C, salt); } catch (e) { console.error(e); }
+  if (FULL && nm4() && s >= SCR_END) try { mktGenGK(MK, s, C, salt); } catch (e) { console.error(e); }
   mktGenEco(MK, s, C, salt, nx);
 }
+/* 门将不到 2 名的球队：补一名替补门将（能力比主力低一些，年纪不限太死） */
+function mktGenGK(MK, s, C, salt) { (S.teams || []).forEach(t => { const G = (PDB[t] || []).filter(p => ENGINE.LINE(p.pos) === 'GK'); if (G.length >= 2 || MK.offers.some(o => o.to === t && o.kind === 'gk')) return; const top = G.length ? Math.max(...G.map(p => p.rating)) : 75, rnd = seeded('gk|' + t + '|' + s + salt), pool = [];
+    Object.entries(PDB).forEach(([f, L]) => { if (f === t || !TD[f]) return; (L || []).forEach(p => { if (ENGINE.LINE(p.pos) !== 'GK' || p.loanFrom || MK.offers.some(o => o.uid === p.uid)) return; const r = C.ratN(p), a = C.ageN(p); if (r < top - 12 || r > top - 2 || a > 34) return; pool.push({ p, f }); }); });
+    Object.entries(FDB).forEach(([c, L]) => { if (!EXT_CLUB[c]) return; (L || []).forEach(p => { if (ENGINE.LINE(p.pos) !== 'GK' || typeof p.age0 !== 'number' || MK.offers.some(o => o.uid === p.uid)) return; const r = C.ratN(p), a = C.ageN(p); if (r < top - 12 || r > top - 2 || a > 34) return; pool.push({ p, f: c }); }); });
+    for (let k = 0; k < 3 && pool.length; k++) { const pk = pool.splice(Math.floor(rnd() * pool.length), 1)[0]; const o = mktOfferB(MK, pk.p, pk.f, t, C, rnd, 0.9, 1.15); if (o) { o.kind = 'gk'; break; } } }); }
 /* 升班马 / 阵容几乎全是青训球员的球队：剧本结束后（S17 转会窗起），去威超其他球队和外赛区顶级联赛买已成名的球员补强。
    照一般规则：买得起才报价（预算），非卖品要付高价，卖方和球员都可能拒绝 */
 function mktGenPromo(MK, s, C, salt) {
@@ -7812,7 +7826,7 @@ function mktGenBench(MK, s, C, salt, HB = 1) {
    B 捡漏老将：豪门里 29–33 岁、或踢不上主力的球员，小球队低价买来当主力（球员想要上场时间，愿意去）
    C 潜力新星：小球队（尤其刚卖过天才、手里有钱的）去外赛区挖 21 岁以下的高潜力球员 */
 const BIG_STR = 84;
-const KIND_TXT = { promo: ['升班马补强', '刚升上来、阵容以青训球员为主的球队，去威超和外赛区顶级联赛买已成名的球员'], talent: ['天才出售', '小球队把培养出来的天才卖给豪门，转会费带天赋溢价'], vet: ['捡漏老将', '豪门的老将 / 替补，小球队低价买来当主力'], prospect: ['潜力新星', '小球队用卖人的钱去挖年轻的高潜力球员'], loan: ['租借', '租借一个赛季，期满可以选择回归或续租'], acadloan: ['青训租借', '青训球员外租历练'], acadsale: ['青训转会', '青训球员转会'] };
+const KIND_TXT = { gk: ['补门将', '门将不到 2 名的球队补一名替补门将'], promo: ['升班马补强', '刚升上来、阵容以青训球员为主的球队，去威超和外赛区顶级联赛买已成名的球员'], talent: ['天才出售', '小球队把培养出来的天才卖给豪门，转会费带天赋溢价'], vet: ['捡漏老将', '豪门的老将 / 替补，小球队低价买来当主力'], prospect: ['潜力新星', '小球队用卖人的钱去挖年轻的高潜力球员'], loan: ['租借', '租借一个赛季，期满可以选择回归或续租'], acadloan: ['青训租借', '青训球员外租历练'], acadsale: ['青训转会', '青训球员转会'] };
 const kindChip = o => (o.cont ? ` <span class="chip" title="这名球员之前被你改过去向（历史上他是从 ${esc(o.hfrom || '')} 转会）。现在历史轮到他转会去 ${esc(o.to)}：同意就回到历史轨道，拒绝就继续留在现在的球队。" style="font-size:10px;padding:0 5px;border-color:#b8f">历史延续</span>` : '') + (o.kind && KIND_TXT[o.kind] ? ` <span class="chip" title="${KIND_TXT[o.kind][1]}" style="font-size:10px;padding:0 5px;border-color:${o.kind === 'talent' ? 'var(--gold)' : o.kind === 'vet' ? '#7c9' : /loan/.test(o.kind) ? '#c9a' : '#8ad'}">${KIND_TXT[o.kind][0]}</span>` : '');
 function mktGenEco(MK, s, C, salt, nx) {
   const pidOf = p => UIDPID[p.uid] ?? (String(p.uid).startsWith('H|') ? +String(p.uid).slice(2) : null);
