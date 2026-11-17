@@ -7496,6 +7496,8 @@ function prizeOf(s) {
   if (ownOn(s) && (A.table || []).length) { tvSplit(A.table).forEach((x, i) => { add(x.t, '转播平分', x.eq, '每队一样'); add(x.t, '排名奖金', x.merit, `第 ${i + 1} 名`); add(x.t, '直播场次费', x.fac, `${x.tv} 场电视直播`); }); }
   else (A.table || []).forEach((r, i) => add(r.team, '威超联赛', pzLeague(i + 1), `第 ${i + 1} 名`));
   const C = A.cups || {};
+  /* 低级别联赛（威冠、威甲、威乙、威丙、业余）赛季结束也按排名发奖金 */
+  [['威冠联赛', (C['威冠联赛'] || {}).table, 160, 40], ['威甲联赛', ((A.pyr || {})['威甲'] || {}).table, 70, 15], ['威乙联赛', ((A.pyr || {})['威乙'] || {}).table, 30, 6], ['威丙联赛', ((A.pyr || {})['威丙'] || {}).table, 12, 3], ['业余联赛', ((A.pyr || {})['业余'] || {}).table, 4, 1]].forEach(([nm, T, hi, lo]) => { if (!T || !T.length) return; const n = T.length; T.forEach((r, i) => add(r[0], nm, Math.round(hi - (hi - lo) * i / Math.max(1, n - 1)), `第 ${i + 1} 名`)); });
   if (C['世联赛'] && C['世联赛'].table) C['世联赛'].table.forEach((r, i) => add(r[0], '世联赛', pzWorld(i + 1), `第 ${i + 1} 名`));
   const TN = ['冠军', '亚军', '4 强', '8 强', '16 强', '其他'];
   ['全联冠', '全联杯', '全协联'].forEach(k => { const c = C[k]; if (!c) return; (c.entrants || (c.table || []).map(x => x[0])).forEach(t => { const tr = koTier(c, t); add(t, k, PZ_KO[k][tr], TN[tr]); }); });
@@ -7527,7 +7529,8 @@ function wagesOf(s) {
   if (WAGE_C[ck]) return WAGE_C[ck];
   const k = wageScale(s), R = squadRatings(s), o = {}, W = {};
   const inc = t => { for (let q = s; q >= 1; q--) { const P = prizeOf(q); if (P) { const c = commOf(t, q); return (P[t] ? P[t].total : 0) + c.merch + c.invest + c.ads + c.stadium; } } const c = commOf(t, s); return (c.merch + c.invest + c.ads + c.stadium) * 1.6; };
-  Object.entries(R).forEach(([t, L]) => { W[t] = L.reduce((a, r) => a + wageW(r), 0); o[t] = Math.round(WAGE_A * W[t] * k + (1 - WAGE_A) * WAGE_P * inc(t)); });
+  const top = new Set(A ? (A.table || []).map(r => r.team) : (S.teams || []));
+  Object.entries(R).forEach(([t, L]) => { W[t] = L.reduce((a, r) => a + wageW(r), 0); o[t] = Math.round(WAGE_A * W[t] * k + (1 - WAGE_A) * WAGE_P * inc(t)); if (!top.has(t)) o[t] = Math.min(o[t], Math.round(0.5 * inc(t))); }); /* 威超以外的球队：工资总额压在收入的一半以内（其他开销约占三成），撑得住才发 */
   Object.values((S && S.pay) || {}).forEach(R => { if (o[R.t] != null && R.from <= s && s <= R.until && W[R.t]) o[R.t] = Math.max(0, Math.round(o[R.t] + (R.m - 1) * o[R.t] * wageW(R.r) / W[R.t])); });
   WAGE_C[ck] = o; Object.defineProperty(o, 'k', { value: k, enumerable: false }); Object.defineProperty(o, 'W', { value: W, enumerable: false }); return o;
 }
@@ -7542,7 +7545,7 @@ const finStart = t => { const v = (PDB0[t] || []).map(p => p.rating).sort((a, b)
 let FIN_C = null;
 // 每季账本：收入（卖人、周边商品、投资方赞助、广告、球场、比赛奖金）和支出（周边生产、税务、球场维护、买人、工资）。
 // 一季的商业收入、奖金、工资和税在 38 轮 + 杯赛踢完时结算；买卖球员记在球员加盟的那一季。
-const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资', '季前巡回'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款', '经纪人佣金', '职员薪水', '青训营运', '日常营运', '球员奖金', '盈余再投资'];
+const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资', '季前巡回', '升级奖金', '会员集资'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款', '经纪人佣金', '职员薪水', '青训营运', '日常营运', '球员奖金', '盈余再投资'];
 function finLedger(t, s) {
   const inc = {}, exp = {}; FIN_INC.forEach(k => inc[k] = 0); FIN_EXP.forEach(k => exp[k] = 0);
   TRANSFERS.forEach(x => { if (x.s !== s || !x.fee) return; if (x.to === t) exp['买人支出'] += x.fee; if (x.from === t) inc['卖人收入'] += x.fee; });
@@ -7550,7 +7553,8 @@ function finLedger(t, s) {
   const P = prizeOf(s), closed = !!P;
   if (closed) { const c = commOf(t, s); inc['周边商品营收'] = c.merch; inc['投资方赞助'] = c.invest; inc['广告营收'] = c.ads; inc['球场营收'] = c.stadium; inc['比赛奖金'] = P[t] ? P[t].total : 0;
     exp['周边商品生产'] = Math.round(c.merch * 0.4); exp['球场维护'] = c.maint; exp['球员工资'] = wagesOf(s)[t] || 0; exp['税务'] = Math.round((c.merch + c.invest + c.ads + c.stadium + inc['比赛奖金']) * 0.12);
-    try { const oc = ownerCash(t, s); if (oc > 0) inc['老板注资'] = oc; else if (oc < 0) exp['股东分红'] = -oc; exp['基建投资'] = Math.round(boardCost(t, s)); } catch (e) { } }
+    try { const oc = ownerCash(t, s); if (oc > 0) inc['老板注资'] = oc; else if (oc < 0) exp['股东分红'] = -oc; exp['基建投资'] = Math.round(boardCost(t, s)); } catch (e) { }
+    try { const A2 = (S.archive || []).find(x => x.s === s) || (s === SEASON && isPending(s) ? pendingArchive() : null); if (A2 && (A2.next || []).includes(t)) { inc['升级奖金'] = 250; const o = ownerAt(t, s); if (o && o.type === 'fans') inc['会员集资'] = 120; } } catch (e) { } } /* 升上威超：联赛发升级奖金（威超转播分成）；球迷持股会另外向会员集资 */
   { const R = S.scr && S.scr[s - 1] && S.scr[s - 1][t]; if (R && R.fine) exp['财务违规罚款'] = R.fine; } /* 上季超标的罚款在本季缴 */
   try { const tr = tourOf(t, s); if (tr) inc['季前巡回'] = tr.rev; exp['经纪人佣金'] = agentFees(t, s); } catch (e) { }
   if (closed && ownOn(s) && TD[t]) { try { const st = staffOf(t, s), size = Math.max(0, Math.min(20, clubBaseApprox(t) - 74)); exp['职员薪水'] = Math.round(st.reduce((a, x) => a + Math.max(2, (x.q - 50) * 0.28), 0) + 10); exp['青训营运'] = Math.round(14 + size * 1.2 + Math.min(2, projBuilt(t, 'acad', s)) * 8); exp['日常营运'] = Math.round(22 + size * 2.5); exp['球员奖金'] = Math.round((inc['比赛奖金'] || 0) * 0.08); } catch (e) { } } /* 职员薪水、青训、日常营运、球员奖金 */
