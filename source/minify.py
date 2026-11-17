@@ -13,9 +13,9 @@ def _run(code, loader):
 def minify_html(html):
     if not _esb(): return html
     out, pos = [], 0
-    for m in re.finditer(r'(<script>)(.*?)(</script>)|(<style>)(.*?)(</style>)', html, re.S):
+    for m in re.finditer(r'(<script(?: id="vesMain" type="text/ves")?>)(.*?)(</script>)|(<style>)(.*?)(</style>)', html, re.S):
         out.append(html[pos:m.start()])
-        if m.group(1): out.append('<script>' + _run(m.group(2), 'js').replace('</script', '<\\/script') + '</script>')
+        if m.group(1): out.append(m.group(1) + _run(m.group(2), 'js').replace('</script', '<\\/script') + '</script>')
         else: out.append('<style>' + _run(m.group(5), 'css') + '</style>')
         pos = m.end()
     out.append(html[pos:])

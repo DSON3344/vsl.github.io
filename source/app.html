@@ -535,7 +535,7 @@ th.sorted{color:var(--accent-2)}
 
 <script>/*__DATA__*/</script>
 <script>/*__ENGINE__*/</script>
-<script>
+<script id="vesMain" type="text/ves">
 (() => {
 'use strict';
 /* 能力上限 95：92 以上是超巨，很稀少 */
@@ -750,20 +750,32 @@ const DIRTY = new Set();
 let LS_WARNED = false;
 /* 本机存档：已经踢完的赛季（archive）每季单独压缩成一个键，只在第一次（或被瘦身后）写一次；
    主进度里只留赛季编号。这样每次保存只需要处理本季的数据，不用每次把十几季的历史重新压缩一遍 */
-const ARCH_W = new WeakMap(), archTagL = x => (x.cmp ? 'c' : '') + (x.ps ? x.ps.length : 0) + (x.intl ? 'i' + Object.keys(x.intl).length : '') + (x.slim ? 's' : ''); /* 存档内容变了（瘦身、补上国家队赛事）才重写 */
+const ARCH_W = new WeakMap(), archTagL = x => (x.cmp ? 'c' : '') + (x.ps ? x.ps.length : 0) + (x.intl ? 'i' + Object.keys(x.intl).length : '') + (x.slim ? 's' : '') + (x.awd ? 'w' : ''); /* 存档内容变了（瘦身、补上国家队赛事）才重写 */
 /* 本机空间不够时的精简：从最早的赛季开始，去掉逐场的红黄牌记录和助攻人名、预选赛和国家联赛的球员明细（比分、进球、积分榜、奖项都保留），腾出空间；最近 8 季不动 */
 function archSlimOne() { const A = ((S && S.archive) || []).filter(x => !x.slim).sort((a, b) => a.s - b.s), x = A.length > 8 ? A[0] : null; if (!x) return null;
   (x.rounds || []).forEach(rd => rd.forEach(m => { if (Array.isArray(m[7])) m[7] = []; if (Array.isArray(m[6])) m[6] = m[6].map(g => [g[0], g[1], g[2], '', g[4]]); }));
   if (x.intl) Object.values(x.intl).forEach(T => { if (T && (T.qual || T.k === 'nl')) { T.sq = {}; T.stats = {}; } }); x.slim = 1; return x.s; }
 let SLIM_TOLD = false;
 function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) throw e; const s2 = archSlimOne(); if (s2 == null) throw e; if (!SLIM_TOLD) { SLIM_TOLD = true; setTimeout(() => toast(`本机空间快满了：已把 ${SN(s2)} 等早期赛季的红黄牌和助攻明细精简掉（比分、进球、积分、奖项都还在）`), 0); } archSave((retry || 0) + 1); } }
+/* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
+   网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
+const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
+function idbTx(fn) { try { const rq = indexedDB.open('ves-store', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('kv'); rq.onsuccess = () => { try { const db = rq.result, tx = db.transaction('kv', 'readwrite'); fn(tx.objectStore('kv'), tx); tx.oncomplete = () => db.close(); tx.onerror = () => db.close(); } catch (e) { } }; } catch (e) { } }
+function aGet(k) { if (IDB_M && IDB_M.has(k)) return IDB_M.get(k); try { return localStorage.getItem(k); } catch (e) { return null; } }
+function aSet(k, v) { if (IDB_M) { IDB_M.set(k, v); idbTx((st, tx) => { st.put(v, k); tx.addEventListener('complete', () => { try { localStorage.removeItem(k); } catch (e) { } }); }); return; } localStorage.setItem(k, v); }
+function aDel(k) { if (IDB_M) { IDB_M.delete(k); idbTx(st => st.delete(k)); } try { localStorage.removeItem(k); } catch (e) { } }
+function aKeys(pre) { const o = new Set(); if (IDB_M) IDB_M.forEach((v, k) => { if (String(k).startsWith(pre)) o.add(k); }); try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(pre)) o.add(k); } } catch (e) { } return [...o]; }
+/* 旧存档搬家：localStorage 里的往季存档搬进 IndexedDB */
+function idbMigrate() { if (!IDB_M) return; try { aKeys(LKEY + '|a').forEach(k => { if (k === LKEY + '|atag') return; const v = IDB_M.has(k) ? IDB_M.get(k) : localStorage.getItem(k); if (v == null || String(v).startsWith('J:')) return; try { aSet(k, 'J:' + LZString.decompressFromUTF16(v)); } catch (e) { } }); } catch (e) { } } /* 搬进 IndexedDB，顺便改存成不用解压的 JSON（只做一次） */
 function archSave0() { const A = (S && S.archive) || [], keep = new Set(); let TG = null, tgCh = false; try { TG = JSON.parse(localStorage.getItem(LKEY + '|atag') || '{}'); } catch (e) { TG = {}; }
   /* 从云端读进来的存档没有「已写过」的记号：先对照本机记下的标签，内容没变就不重新压缩（以前每次打开网站后第一次保存都要把十几季全部重压一遍） */
-  A.forEach(x => { const k = LKEY + '|a' + x.s; keep.add(k); const tag = archTagL(x); if (ARCH_W.get(x) === tag) return; let ft = null; try { ft = archTag(x); } catch (e) { } if (ft && TG[x.s] === ft && localStorage.getItem(k) != null) { ARCH_W.set(x, tag); return; } localStorage.setItem(k, LZString.compressToUTF16(JSON.stringify(x))); ARCH_W.set(x, tag); if (ft) { TG[x.s] = ft; tgCh = true; } });
+  A.forEach(x => { const k = LKEY + '|a' + x.s; keep.add(k); const tag = archTagL(x); if (ARCH_W.get(x) === tag) return; let ft = null; try { ft = archTag(x); } catch (e) { } if (ft && TG[x.s] === ft && aGet(k) != null) { ARCH_W.set(x, tag); return; } aSet(k, IDB_M ? 'J:' + JSON.stringify(x) : LZString.compressToUTF16(JSON.stringify(x))); /* IndexedDB 空间够：直接存 JSON，打开网站时不用解压，快很多 */ ARCH_W.set(x, tag); if (ft) { TG[x.s] = ft; tgCh = true; } });
   if (tgCh) { Object.keys(TG).forEach(n => { if (!keep.has(LKEY + '|a' + n)) delete TG[n]; }); try { localStorage.setItem(LKEY + '|atag', JSON.stringify(TG)); } catch (e) { } }
-  for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith(LKEY + '|a') && k !== LKEY + '|atag' && !keep.has(k)) localStorage.removeItem(k); } }
+  aKeys(LKEY + '|a').forEach(k => { if (k !== LKEY + '|atag' && !keep.has(k)) aDel(k); }); }
 function localSave() {
-  try { archSave(); const o = {}; for (const k in S) if (k !== 'archive') o[k] = S[k]; o.__arch = (S.archive || []).map(x => x.s); localStorage.setItem(LKEY, JSON.stringify(o)); return true; } catch (e) { }
+  try { archSave(); const o = {}; for (const k in S) if (k !== 'archive') o[k] = S[k]; o.__arch = (S.archive || []).map(x => x.s); const js = JSON.stringify(o);
+    if (IDB_M) { IDB_M.set(LKEY, js); idbTx(st => st.put(js, LKEY)); try { localStorage.setItem(LKEY, js); } catch (e) { try { localStorage.removeItem(LKEY); } catch (e2) { } } return true; } /* 当季进度也存一份在 IndexedDB；localStorage 放得下就也放一份 */
+    localStorage.setItem(LKEY, js); return true; } catch (e) { }
   const str = JSON.stringify(S);
   try { localStorage.setItem(LKEY, str); return true; } catch (e) {}
   try { localStorage.setItem(LKEY, 'LZ:' + LZString.compressToUTF16(str)); return true; }
@@ -821,7 +833,7 @@ let SAVE_PEND = false;
 /* 多季推演中：每季只在季末真正存一次。以前一季要存 400 多次、每次把 8MB 的进度整份转成文字，内存来不及回收，推演到二十季左右浏览器就崩溃 */
 function save() { try { if (AUTO) { SAVE_PEND = true; return; } } catch (e) { } save0(); }
 function save0() { SAVE_PEND = false; if (S) { try { if (!S.init || (S.initV || 0) < 2) { S.init = initSnap(); S.initV = 2; } /* 2026-11-10：把你重置后调整好的设定一次性存为初始设定 */ else if (SEASON === 1 && !playedRounds()) S.init = initSnap(); /* S01 开赛前做的调整都自动算进初始设定 */ } catch (e) { } } S.updated = Date.now(); localSave(); cloudQueue(); }
-function load() { try { let raw = localStorage.getItem(LKEY); if (raw && raw.startsWith('LZ:')) raw = LZString.decompressFromUTF16(raw.slice(3)); const s = JSON.parse(raw); if (s && s.__arch) { const A = []; for (const n of s.__arch) { const z = localStorage.getItem(LKEY + '|a' + n); if (!z) throw new Error('arch ' + n); const x = JSON.parse(LZString.decompressFromUTF16(z)); A.push(x); ARCH_W.set(x, archTagL(x)); } s.archive = A; delete s.__arch; } if (s && s.fx && s.teams) return s; } catch (e) { console.error(e); } return null; }
+function load() { try { let raw = localStorage.getItem(LKEY); if (raw && raw.startsWith('LZ:')) raw = LZString.decompressFromUTF16(raw.slice(3)); let s = raw ? JSON.parse(raw) : null; const ir = IDB_M && IDB_M.get(LKEY); if (ir) { try { const si = JSON.parse(ir); if (!s || (si && (si.updated || 0) > (s.updated || 0))) s = si; } catch (e) { } } /* 本机两份（localStorage / IndexedDB）取比较新的 */ if (s && s.__arch) { const A = []; for (const n of s.__arch) { const z = aGet(LKEY + '|a' + n); if (!z) throw new Error('arch ' + n); const x = JSON.parse(z.startsWith('J:') ? z.slice(2) : LZString.decompressFromUTF16(z)); A.push(x); ARCH_W.set(x, archTagL(x)); } s.archive = A; delete s.__arch; } if (s && s.fx && s.teams) return s; } catch (e) { console.error(e); } return null; }
 // 比赛结果压缩存储。ev: [分钟, 类型, 主/客, 球员, 助攻者/被换下者, 附加值（点球=1 / 伤停轮数 / 被扑=1 / 直红=1）]
 // pl: [射门, 射正, 抢断, 扑救, 评分×10, 分钟, 关键传球, 拦截, 传球, 成功传球, 点球进球, 罚丢点球, 是否首发, 尝试过人, 成功过人]；lu: 出场名单 [球员, 位置]
 const compact = res => ({
@@ -898,7 +910,7 @@ const liveFxHTML = (m, ri) => { const mm = liveMin(m, ri), [h, a] = liveScore(m,
 const nextRound = () => S.fx.findIndex(r => r.some(m => !m.r));
 const playedRounds = () => S.fx.filter(r => r.every(m => m.r)).length;
 
-S = load();
+S = load(); try { idbMigrate(); } catch (e) { }
 if (!S) { S = newSeason(); S.updated = 0; localSave(); }
 // S18 参赛名单改过（泽尼联回到威超、飞鹰不升级）：旧名单的 S18 进度作废，重新开始
 const sameTeams = (a, b) => a && b && a.length === b.length && a.slice().sort().join() === b.slice().sort().join();
@@ -4611,6 +4623,7 @@ function bestGoalOf(s) {
 function awardsOf(s) {
   if (s === SEASON && !pendingArchive()) return null;
   if (AWARD_CACHE[s]) return AWARD_CACHE[s];
+  const AR = s < SEASON ? (S.archive || []).find(x => x.s === s) : null; if (AR && AR.awd) return (AWARD_CACHE[s] = AR.awd); /* 已经结束的赛季：奖项算过一次就存进那季的存档，之后直接读（打开网站快很多） */
   const rows = (HPS[s] || []).filter(p => p.apps >= 20);
   if (!rows.length) return null;
   const champ = HS[s].table[0].team, C = cupsOf(s) || {};
@@ -4673,6 +4686,7 @@ function awardsOf(s) {
       if (aw.glove) R.glove = fixRow(aw.glove, s, rows) || glove; if (aw.young) R.young = fixRow(aw.young, s, rows) || young;
       [R.ballonVotes, R.mvpVotes, R.defVotes, R.worldVotes].forEach(L => (L || []).forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
       const tie = (nm, k, cur) => { const r = fixRow(nm, s, HPS[s]); return r && cur && r[k] >= cur[k] ? r : cur; }; if (FX.boot) R.boot = tie(FX.boot, 'g', boot); if (FX.assist) R.assist = tie(FX.assist, 'a', assist); } }
+  if (AR && !AR.awd) AR.awd = R;
   return (AWARD_CACHE[s] = R);
 }
 const AWARD_NAMES = { ballon: '金球奖', world: '世界足球先生', def: '铁卫奖', goal: '最佳进球', mvp: '威超最佳球员', boot: '威超金靴', assist: '威超助攻王', glove: '威超金手套', young: '金童奖', xi: '年度最佳阵容' };
@@ -9765,7 +9779,7 @@ function sandboxBar() { if (document.getElementById('sbFab')) return; const b = 
   b.innerHTML = `<div class="sbpop" hidden><b>${ic('flask')} 试玩新存档</b><p>一份全新的联赛，只存在这台设备上，不会同步，也不会动到你的正式进度。</p><a class="btn primary" href="${location.pathname}">回到正式进度</a><button type="button" class="btn ghost" data-sb="reset">重新开一档</button></div><button type="button" class="sbbtn" aria-label="试玩新存档：点击查看或回到正式进度" title="试玩新存档 · 点击回到正式进度">${ic('flask', 18)}</button>`;
   document.body.appendChild(b); const pop = b.querySelector('.sbpop');
   b.querySelector('.sbbtn').onclick = ev => { ev.stopPropagation(); pop.hidden = !pop.hidden; };
-  b.querySelector('[data-sb="reset"]').onclick = () => { if (!confirm('清空这份试玩存档，重新从 S01 第 1 轮开始？')) return; try { localStorage.removeItem(LKEY); } catch (e) {} location.reload(); };
+  b.querySelector('[data-sb="reset"]').onclick = () => { if (!confirm('清空这份试玩存档，重新从 S01 第 1 轮开始？')) return; try { localStorage.removeItem(LKEY); aDel(LKEY); aKeys(LKEY + '|a').forEach(aDel); } catch (e) {} location.reload(); };
   document.addEventListener('click', ev => { if (!b.contains(ev.target)) pop.hidden = true; }); }
 async function cloudInit() {
   if (!window.claude || typeof window.claude.use !== 'function') return webInit();
@@ -9957,4 +9971,12 @@ if (/vesdebug/.test(location.hash)) window.__ves = {
   logs: () => ({ RET_LOG, TR_LOG }), future: () => FUTURE, chkGoals: () => { let bad = []; S.fx.forEach((rd, ri) => rd.forEach(m => { if (!m.r) return; const h = m.r.ev.filter(e => e[1] === 'goal' && e[2] === 'h').length, a = m.r.ev.filter(e => e[1] === 'goal' && e[2] === 'a').length; if (h !== m.r.hg || a !== m.r.ag) bad.push(ri + ':' + m.h + ' ' + m.r.hg + '-' + m.r.ag + ' ev ' + h + '-' + a); })); return bad; }, chkArch: () => { const bad = []; SEASONS.forEach(s => { const H = HS[s]; const pts = {}; H.rounds.forEach(rd => rd.forEach(m => { const a = H.teams[m[0]], b = H.teams[m[1]]; pts[a] = (pts[a] || 0) + (m[2] > m[3] ? 3 : m[2] === m[3] ? 1 : 0); pts[b] = (pts[b] || 0) + (m[3] > m[2] ? 3 : m[2] === m[3] ? 1 : 0); if (m[6].filter(g => g[1] === 0).length !== m[2] || m[6].filter(g => g[1] === 1).length !== m[3]) bad.push(s + ' goals ' + a + ' ' + m[2] + '-' + m[3]); })); H.table.forEach(r => { if (pts[r.team] !== r.pts) bad.push(s + ' pts ' + r.team); }); const C = cupsOf(s) || {}; Object.entries(C).forEach(([k, r]) => { if (r && r.ko) Object.entries(r.ko).forEach(([n, l]) => l.forEach(x => { const m2 = /^(\d+)–(\d+)/.exec(x.score || ''); if (m2 && +m2[1] < +m2[2]) bad.push(s + ' ' + k + n + ' ' + x.w + ' ' + x.score + ' ' + x.l); })); }); }); return bad; }, extClub: c => (FDB[c] || []).map(p => p.name + p.age + '/' + p.rating).join(' '), cap: () => capitalHistory().ev, benchCheck: () => { ensureTactics(); return Object.keys(TD).map(t => { const R = TD[t].roster, xi = R.map(r => r.name); const sq = PDB[t] || []; const b = sq.filter(p => !xi.includes(p.name) && R.some(r => { const q = sq.find(x => x.name === r.name); return q && slotVal(r.pos, p) - slotVal(r.pos, q) >= 3; })); return b.length ? t + ':' + b.map(p => p.name + p.rating + p.pos).join(',') : ''; }).filter(Boolean); },  card: pid => { openPerson(pid); return $('#dlg').innerText; }, cardP: (t, n) => { openPlayer(t, n); return $('#dlg').innerText; }, pids: () => PL.map((p, i) => p ? i : -1).filter(i => i >= 0), allp: () => ALL_PLAYERS.map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating, at: p.attributes ? Object.keys(p.attributes).length : 0, extra: p.extra, kind: p.uid ? p.uid[0] : '' })), ext: () => Object.values(FDB).flat().map(p => ({ name: p.name, team: p.team, nat: p.nat, age: p.age, h: p.height, w: p.weight, no: p.no, v: p.value, pos: p.pos, r: p.rating })), champ: s => HS[s] && HS[s].table.slice(0, 3).map(r => r.team + r.pts).join(' ') + ' | 降 ' + (S.archive.find(A => A.s === s) || {}).relegated + ' 升 ' + (S.archive.find(A => A.s === s) || {}).next, top: s => (HPS[s] || []).slice().sort((a, b) => b.g - a.g).slice(0, 4).map(p => p.name + '/' + p.team + '/' + p.g).join(' '), teams: () => S.teams.join(','),
 };
 })();
+</script>
+<script>
+/* 先读 IndexedDB 里的往季存档，再执行主程序（主程序开场就要同步读存档） */
+(function () { let done = false; const go = () => { if (done) return; done = true; const el = document.getElementById('vesMain'), sc = document.createElement('script'); sc.textContent = el.textContent; el.remove(); document.body.appendChild(sc); };
+  try { const rq = indexedDB.open('ves-store', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+    rq.onsuccess = () => { try { const db = rq.result, st = db.transaction('kv', 'readonly').objectStore('kv'), M = new Map(), ka = st.getAllKeys(), va = st.getAll(); va.onsuccess = () => { ka.result.forEach((k, i) => M.set(k, va.result[i])); window.__VES_IDB = M; db.close(); go(); }; va.onerror = () => go(); } catch (e) { go(); } };
+    rq.onerror = () => go(); rq.onblocked = () => go(); } catch (e) { go(); }
+  setTimeout(go, 4000); })();
 </script>
