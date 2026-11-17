@@ -517,7 +517,6 @@ th.sorted{color:var(--accent-2)}
     <a class="brand" href="#overview" data-go="overview"><img id="brandLogo" alt="VES 足球世界"><span><b>VES 足球世界</b><small>VES FOOTBALL WORLD</small></span></a>
     <nav class="tabs" aria-label="页面">
       <button data-go="overview">首页</button>
-      <button data-go="match">比赛</button>
       <button data-grp="lg" aria-haspopup="menu">威超<i class="caret"></i></button>
       <button data-go="ext">外赛区</button>
       <button data-go="cups">赛事</button>
@@ -530,7 +529,7 @@ th.sorted{color:var(--accent-2)}
   </div>
 </header>
 <main id="app"></main>
-<nav class="bnav glass" aria-label="页面"><button data-go="overview"><span class="bi"></span><b>首页</b></button><button data-grp="lg"><span class="bi"></span><b>威超</b></button><button data-go="match" class="bmain"><span class="bi"></span><b>比赛</b></button><button data-go="cups"><span class="bi"></span><b>赛事</b></button><button data-grp="more"><span class="bi"></span><b>更多</b></button></nav>
+<nav class="bnav glass" aria-label="页面"><button data-go="overview"><span class="bi"></span><b>首页</b></button><button data-grp="lg"><span class="bi"></span><b>威超</b></button><button data-go="table" class="bmain"><span class="bi"></span><b>积分榜</b></button><button data-go="cups"><span class="bi"></span><b>赛事</b></button><button data-grp="more"><span class="bi"></span><b>更多</b></button></nav>
 <div id="navSheet" aria-hidden="true"><div class="nsh-bg" data-act="navClose"></div><div class="nsh glass" role="menu"></div></div>
 <dialog id="dlg"></dialog>
 
@@ -2993,7 +2992,6 @@ function vOverview() {
       <div class="bar"><i style="width:${played / 38 * 100}%"></i></div></div>
     <div class="btns" style="justify-content:flex-end">
       <button class="btn primary" data-act="round" ${nr < 0 ? 'disabled' : ''}>模拟本轮</button>
-      <button class="btn" data-act="watch" ${nr < 0 ? 'disabled' : ''}>逐场观看</button>
       <button class="btn" data-act="rest" ${nr < 0 ? 'disabled' : ''}>模拟剩余赛季</button>
       <button class="btn" data-act="autoN">快速推演多个赛季</button>
       <button class="btn" data-act="fixDlg" title="指定本季或之后赛季的冠军、金靴、助攻王和个人奖项">${ic('trophy')} 内定结果${fixOf(SEASON) ? ' ·' : ''}</button>
@@ -3008,7 +3006,7 @@ function vOverview() {
         <div class="btns"><button class="btn ghost" data-act="prevR" ${showR <= 0 ? 'disabled' : ''} aria-label="上一轮">←</button><button class="btn ghost" data-act="nextR" ${showR >= 37 ? 'disabled' : ''} aria-label="下一轮">→</button></div></div>
       ${rnd.map((m, i) => fxRow(m, showR, i)).join('')}
       ${lazy(() => { try { return cupWeekHTML(showR + 1, cupP()); } catch (e) { return ''; } }, '')}
-      <p class="note" style="margin:10px 0 0">天气和时段在开球前随机抽出，会给双方带来加成或减益。点任意一场进入比赛模拟。</p>
+      <p class="note" style="margin:10px 0 0">天气和时段在开球前随机抽出，会给双方带来加成或减益。踢完的比赛可以点进去看完整过程。</p>
     </div>
     <div class="grid" style="align-content:start">
       <div class="panel"><div class="ph"><div><div class="eyebrow">Standings</div><h2>积分榜</h2></div><button class="btn ghost" data-go="table">完整榜单 →</button></div>
@@ -4917,7 +4915,7 @@ function navOpen(g, btn, hover) { clearTimeout(NAV_T);
     sh.classList.add('open'); sh.setAttribute('aria-hidden', 'false'); btn.setAttribute('aria-expanded', 'true'); return; }
   const m = navMenuEl(); if (NAV_OPEN === g && m.classList.contains('open')) { if (!hover) navClose(); return; } navClose(); NAV_OPEN = g;
   m.innerHTML = NAV_G[g][1].map(navItem).join(''); const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(innerWidth - 200, r.left)) + 'px'; m.style.top = (r.bottom + 8) + 'px'; m.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
-{ const BI = { overview: 'home', match: 'goal', lg: 'shirt', cups: 'trophy', more: 'more' }; document.querySelectorAll('.bnav button').forEach(b => { const k = b.dataset.go || b.dataset.grp, sp = b.querySelector('.bi'); if (sp) sp.innerHTML = ic(BI[k] || 'more', b.classList.contains('bmain') ? 24 : 21); }); }
+{ const BI = { overview: 'home', table: 'goal', lg: 'shirt', cups: 'trophy', more: 'more' }; document.querySelectorAll('.bnav button').forEach(b => { const k = b.dataset.go || b.dataset.grp, sp = b.querySelector('.bi'); if (sp) sp.innerHTML = ic(BI[k] || 'more', b.classList.contains('bmain') ? 24 : 21); }); }
 document.addEventListener('click', e => { const g = e.target.closest && e.target.closest('[data-grp]'); if (g) { e.preventDefault(); e.stopPropagation(); navOpen(g.dataset.grp, g); return; } if (e.target.closest && e.target.closest('[data-act="navClose"]')) { e.preventDefault(); e.stopPropagation(); navClose(); } }, true);
 document.addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return; const g = e.target.closest && e.target.closest('nav.tabs [data-grp]'); if (g) navOpen(g.dataset.grp, g, true); else if (NAV_OPEN && e.target.closest && e.target.closest('nav.tabs button')) navClose(); });
 document.addEventListener('pointerout', e => { if (e.pointerType === 'mouse' && e.target.closest && e.target.closest('nav.tabs [data-grp]') && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('#navMenu'))) navHoverClose(); });
@@ -9396,7 +9394,7 @@ document.addEventListener('click', e => {
   if (el.dataset.pyp) return openPyrPlayer(el.dataset.pyp);
   if (el.dataset.player) { const [t, n] = el.dataset.player.split('|'); return openPlayer(t, n); }
   if (el.dataset.team) { if (el.tagName === 'LABEL') return; teamSel = el.dataset.team; $('#dlg').open && $('#dlg').close(); return go('teams'); }
-  if (el.dataset.fx) { const [ri, mi] = el.dataset.fx.split(':').map(Number); const fm0 = S.fx[ri][mi]; if (fm0.r) return openLiveMatch(ri, mi); if (fm0.pr) { const fs0 = fxState(fm0); if (fs0 === 'wait') return toast(`${fm0.h} vs ${fm0.a} ${clk(fm0.ko)} 开球，到时可以点进来看直播`); if (fs0 === 'done') return toast('这场刚踢完，正在结算，稍等几秒'); return liveWatch(ri, mi); } M = null; initMatch([ri, mi]); return go('match'); }
+  if (el.dataset.fx) { const [ri, mi] = el.dataset.fx.split(':').map(Number); const fm0 = S.fx[ri][mi]; if (fm0.r) return openLiveMatch(ri, mi); if (fm0.pr) { const fs0 = fxState(fm0); if (fs0 === 'wait') return toast(`${fm0.h} vs ${fm0.a} ${clk(fm0.ko)} 开球，到时可以点进来看直播`); if (fs0 === 'done') return toast('这场刚踢完，正在结算，稍等几秒'); return liveWatch(ri, mi); } return toast(`${fm0.h} vs ${fm0.a} 还没开赛，踢完后可以点进来看完整比赛`); } /* 「比赛模拟」页已拿掉：比赛全自动模拟，踢完再点进来看 */
   if (el.dataset.tbl) { tblSeason = el.dataset.tbl; return render(); }
   if (el.dataset.w) { M.weather = el.dataset.w; M.fx = null; M.stored = false; return render(); }
   if (el.dataset.neutral) { M.neutral = el.dataset.neutral === '1'; M.fx = null; M.stored = false; M.L = null; return render(); }
