@@ -2576,7 +2576,7 @@ function pfSeason(s) {
     put(i, r.name, r.team, d, why, Math.round(r.avg * 100) / 100); });
   /* 训练成长：21 岁以下、离潜力还有距离的一线队球员，就算出场少也会在训练里慢慢长，主帅执教能力越强长得越多 */
   Object.entries(info).forEach(([k, i]) => { if (!i.uid || i.age > 21) return; const [t, n] = k.split('|'), pp = BY_TN[k]; let pot = i.rating + 6; try { if (pp) pot = potentialOf(pp); } catch (e) { } if (pot - i.rating <= 2) return;
-    const c = coachOf(t), ab = c ? (coachAbility(c, t) || 75) : 75, h = ghash('tr|' + s + '|' + i.uid), g = Math.min(pot - i.rating - 1, Math.round(1 + h * 1.6 + (ab - 75) / 12)); if (g > 0) put(i, n, t, g, '训练成长'); });
+    const c = coachOf(t), ab = c ? (coachAbRaw(c) || 75) : 75, h = ghash('tr|' + s + '|' + i.uid), g = Math.min(pot - i.rating - 1, Math.round(1 + h * 1.6 + (ab - 75) / 12)); if (g > 0) put(i, n, t, g, '训练成长'); });
   /* 重伤 / 长期伤缺：按伤病类型和缺阵轮数，有一定概率能力下滑 */
   if (s === SEASON) { const INJ = {}; const add = (t, n, dur, kind) => { const k = t + '|' + n; (INJ[k] = INJ[k] || []).push({ dur, kind }); };
     S.fx.forEach((R, ri) => R.forEach(m => { if (!m.r || !m.r.ev) return; m.r.ev.forEach(e => { if (e[1] !== 'inj') return; const t = e[2] === 'h' ? m.h : m.a, dur = e[5] || 1; add(t, e[3], dur, injKind(dur, s + '|' + ri + '|' + e[3])); }); }));
@@ -5153,7 +5153,16 @@ function legendInfluence(pid, pk, clubs) {
 }
 // 执教能力 = 基础能力 + 执教经验（名宿每执教一季 +1.5，最多 +14；职业教练本来就有经验）
 function coachSeasons(id, upto = SEASON) { let n = 0; coachHistory().stints.filter(x => x.id === id).forEach(st => { const a = st.s0, b = Math.min(st.s1 || upto, upto); for (let s = a; s <= b; s++) { const r0 = s === st.s0 ? st.r0 : 0, r1 = s === st.s1 ? st.r1 : (s === SEASON ? Math.max(0, playedRounds()) : 38); n += Math.max(0, r1 - r0) / 38; } }); return n; }
-function coachAbility(c) { if (!c) return 0; const C = COACH_REG[c.id] || c; if (C.kind === 'U21 提拔') return Math.round(Math.min(90, C.rep + Math.min(12, coachSeasons(C.id) * 1.6))); /* 梯队提拔的年轻主帅：执教越久越成熟 */ return C.kind === '名宿' ? Math.round(Math.min(95, C.rep + Math.min(14, coachSeasons(C.id) * 1.5))) : C.rep; }
+/* 教练团能力值的稀缺度（2026-11）：内部计算照旧用原始分（比赛、伤病、预算等效果不变，强弱格局不受影响），
+   显示出来的能力值按全联盟的排名换算成跟球员一样的稀缺分布：90+ 只有极少数传奇，85+ 是顶级，大部分落在 65–79。
+   曲线是用 S14–S20 全部教练、职员的原始分算出各分位后定的。 */
+const curveAt = (P, x) => { if (x <= P[0][0]) return P[0][1] + (x - P[0][0]); for (let i = 1; i < P.length; i++) if (x <= P[i][0]) { const [x0, y0] = P[i - 1], [x1, y1] = P[i]; return y0 + (x - x0) * (y1 - y0) / (x1 - x0); } const L = P[P.length - 1]; return L[1] + (x - L[0]) * 0.2; };
+const curveInv = (P, y) => curveAt(P.map(([a, b]) => [b, a]), y);
+const COACH_CURVE = [[60, 58], [70, 65], [76, 70], [83, 75], [85, 78], [87, 81], [89, 85], [90, 87], [92, 90], [95, 93]];
+const STAFF_CURVE = [[48, 48], [62, 58], [71.5, 65], [76.5, 70], [83.5, 75], [88.5, 80], [93, 85], [97, 90], [103, 93], [110, 95]];
+const coachShow = r => r ? Math.round(Math.max(45, Math.min(97, curveAt(COACH_CURVE, r)))) : 0;
+function coachAbility(c) { return coachShow(coachAbRaw(c)); }
+function coachAbRaw(c) { if (!c) return 0; const C = COACH_REG[c.id] || c; if (C.kind === 'U21 提拔') return Math.round(Math.min(90, C.rep + Math.min(12, coachSeasons(C.id) * 1.6))); /* 梯队提拔的年轻主帅：执教越久越成熟 */ return C.kind === '名宿' ? Math.round(Math.min(95, C.rep + Math.min(14, coachSeasons(C.id) * 1.5))) : C.rep; }
 function coachPool() {
   if (coachPool.L) return coachPool.L;
   const last = {}, clubs = {};
@@ -5396,7 +5405,7 @@ function openCoach(id) {
   const d = $('#dlg');
   d.innerHTML = `<div class="dlg" style="position:relative;max-width:820px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button>
     <div><div class="eyebrow">主帅档案 · ${esc(C.kind)}${C.nat ? ' · ' + esc(C.nat) : ''}</div><h2 style="font-size:24px;font-weight:900;margin:4px 0">${esc(C.name)}</h2>
-    <div class="btns" style="gap:6px"><span class="chip" title="${C.kind === '名宿' ? `基础 ${C.rep}（球员刚转教练，没有执教经验），执教经验 ${exp.toFixed(1)} 季 +${ab - C.rep}` : '职业教练'}">执教能力 ${ab}${C.kind === '名宿' && ab > C.rep ? ` <span class="dim" style="font-size:10.5px">基础 ${C.rep} + 经验 ${ab - C.rep}</span>` : ''}</span><span class="chip" title="${C.kind === '名宿' ? '影响力来自球员时代的成就：金球奖、名宿梯队、巅峰能力' : ''}">影响力 ${C.infl}</span><span class="chip">执教 ${exp.toFixed(1)} 季 · ${K.L.length} 段</span>${C.pid != null ? `<button class="chip lnk" data-pid="${C.pid}">球员时期资料 →</button>` : ''}</div></div>
+    <div class="btns" style="gap:6px"><span class="chip" title="${C.kind === '名宿' ? `基础 ${coachShow(C.rep)}（球员刚转教练，没有执教经验），执教经验 ${exp.toFixed(1)} 季 +${ab - coachShow(C.rep)}` : '职业教练'}">执教能力 ${ab}${C.kind === '名宿' && ab > coachShow(C.rep) ? ` <span class="dim" style="font-size:10.5px">基础 ${coachShow(C.rep)} + 经验 ${ab - coachShow(C.rep)}</span>` : ''}</span><span class="chip" title="${C.kind === '名宿' ? '影响力来自球员时代的成就：金球奖、名宿梯队、巅峰能力' : ''}">影响力 ${C.infl}</span><span class="chip">执教 ${exp.toFixed(1)} 季 · ${K.L.length} 段</span>${C.pid != null ? `<button class="chip lnk" data-pid="${C.pid}">球员时期资料 →</button>` : ''}</div></div>
     ${(() => { const X = coachTactics(id); return X ? `<div style="padding:10px 12px;border:1px solid var(--line-2,#333);border-radius:10px"><div class="eyebrow" style="margin-bottom:6px">战术打法 · 惯用阵型</div><div class="btns" style="gap:6px;flex-wrap:wrap"><span class="chip gold">${esc(X.style)}</span>${formsTxt(X).map(x => `<span class="chip">${esc(x.f)} · ${x.l}</span>`).join('')}</div><p class="note" style="margin:6px 0 0">每场比赛按对手强弱选阵型：对手首发均分高 3 分以上用偏防守的阵型，低 3 分以上用偏进攻的，其余用主打阵型。</p></div>` : ''; })()}
     <div class="stats3">${[[n, '执教场次'], [`${tot.w}-${tot.d}-${tot.l}`, '胜-平-负'], [pct(tot.w, n), '胜率'], [tot.gf, '进球'], [tot.ga, '失球'], [K.all.filter(x => x[0] === '威超冠军').length, '威超冠军']].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
     <div><div class="eyebrow" style="margin-bottom:8px">教练生涯荣誉 · ${K.all.length} 项</div><div class="btns" style="gap:6px">${honChips(K.all)}</div></div>
@@ -5825,13 +5834,14 @@ function staffOf(t, s = SEASON) {
     else { const ten = 3 + Math.floor(ghash('tn|' + t + k) * 4), s0o = o.s0 || 1, era = Math.floor((s - s0o) / ten); id = 'SC|' + t + '|' + k + '|' + oi + '|' + era + (fz ? '|f' + fz : ''); q = 56 + o.w * 0.2 + ghash(id) * 20 + (fz ? 7 : 0) + (o.type === 'group' && k === 'dof' ? 6 : 0) + (o.type === 'fans' && k === 'yth' ? 6 : 0); since = fl && fl.s > s0o + era * ten ? fl.s : s0o + era * ten; }
     const hn = ghash(id + 'n'), nat = c && c.nat && kind === 'coach' && hn < 0.55 ? c.nat : hn < 0.75 || !(typeof YP !== 'undefined' && YP.NATS) ? TEAM_NAT(t) : YP.NATS[Math.floor(ghash(id + 'nn') * YP.NATS.length)];
     if (!STAFF_NM[id]) STAFF_NM[id] = coachName(id, nat); /* 职员名字另外存，不占用主帅的名字池 */
-    const se = S && S.oedit && S.oedit[t] && S.oedit[t].st && S.oedit[t].st[id]; if (se) { if (se.q != null) q = se.q; }
-    out.push({ k, lab, id, name: se && se.name || STAFF_NM[id], nat: se && se.nat || nat, q: Math.round(se && se.q != null ? q : Math.max(48, Math.min(95, q))), since, eff, kind, ed: !!se });
+    const se = S && S.oedit && S.oedit[t] && S.oedit[t].st && S.oedit[t].st[id], qe = se && se.q != null; /* 手动改过的能力值就是显示值，效果按曲线反推回原始分 */
+    const qr = qe ? curveInv(STAFF_CURVE, se.q) : Math.max(48, Math.min(110, q)), qs = qe ? se.q : Math.round(Math.max(45, Math.min(95, curveAt(STAFF_CURVE, qr))));
+    out.push({ k, lab, id, name: se && se.name || STAFF_NM[id], nat: se && se.nat || nat, q: qs, qr: Math.min(qe ? 120 : 95, qr), since, eff, kind, ed: !!se });
   });
   return out;
 }
 const STAFF_NM = {};
-const staffQ = (t, k, s = SEASON) => { const x = staffOf(t, s).find(y => y.k === k); return x ? x.q : 70; };
+const staffQ = (t, k, s = SEASON) => { const x = staffOf(t, s).find(y => y.k === k); return x ? x.qr : 70; }; /* 效果用原始分 */
 let SFM_C = {};
 /* 伤病倍数：体能教练、队医主管、训练基地 */
 function injMul(t) { if (!TD[t] || !ownOn(SEASON)) return 1; const k = t + '|' + SEASON + '|' + MOD_VER_SEASON; if (SFM_C[k]) return SFM_C[k]; if (Object.keys(SFM_C).length > 400) SFM_C = {};
@@ -5874,7 +5884,7 @@ function staffPanel(t) {
   if (!TD[t]) return ''; const L = staffOf(t), on = ownOn(SEASON), im = injMul(t), mm = staffMatchMod(t);
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Backroom staff</div><h2>教练团队与职能部门 <button class="btn ghost" data-act="oEdit" data-t="${esc(t)}" style="font-size:12px;padding:4px 10px;vertical-align:middle">✎ 编辑</button></h2></div><span class="note">上面四位跟着主帅来去；下面四位属于俱乐部，几季一换，换老板时也会换人</span></div>
     <div class="tw"><table><thead><tr><th class="l">职务</th><th class="l">姓名</th><th class="l">国籍</th><th>能力</th><th class="l">在任</th><th class="l">影响</th></tr></thead><tbody>
-    ${L.map(x => `<tr><td class="l">${esc(x.lab)}</td><td class="l"><b>${esc(x.name)}</b>${x.ed ? ' <span class="chip">已改</span>' : ''}</td><td class="l">${esc(x.nat || '—')}</td><td class="mono" style="color:${x.q >= 80 ? 'var(--win,#3c9)' : x.q < 62 ? '#e93' : 'inherit'}">${x.q}</td><td class="l mono">${SN(x.since)} 起</td><td class="l dim" style="font-size:12px">${esc(x.eff)}</td></tr>`).join('')}
+    ${L.map(x => `<tr><td class="l">${esc(x.lab)}</td><td class="l"><b>${esc(x.name)}</b>${x.ed ? ' <span class="chip">已改</span>' : ''}</td><td class="l">${esc(x.nat || '—')}</td><td class="mono" style="color:${x.q >= 80 ? 'var(--win,#3c9)' : x.q < 60 ? '#e93' : 'inherit'}">${x.q}</td><td class="l mono">${SN(x.since)} 起</td><td class="l dim" style="font-size:12px">${esc(x.eff)}</td></tr>`).join('')}
     </tbody></table></div>
     <p class="note" style="margin:10px 0 0">${on ? `目前效果：比赛表现 ${mm >= 0 ? '+' : ''}${mm.toFixed(1)}% · 伤病率 ×${im.toFixed(2)} · 伤停时间 ×${injDurMul(t).toFixed(2)} · 青训提拔门槛${youthBoost(t) ? (youthBoost(t) > 0 ? ' 放宽 ' : ' 收紧 ') + Math.abs(youthBoost(t)) + ' 分' : '不变'}` : `这份进度从 ${SN(S.ownFrom)} 起计入效果`}</p></div>`;
 }
@@ -6410,7 +6420,7 @@ function formOf0(t) {
 const starPower = t => (PDB[t] || []).reduce((a, p) => a + (p.rating >= 90 ? 1 : p.rating >= 88 ? 0.5 : 0), 0);
 function dressingRoom(t, c) {
   const sp = starPower(t); if (!c || sp < 3) return null;
-  const need = Math.min(95, 74 + sp * 2.2), auth = 0.6 * (c.infl || 70) + 0.4 * coachAbility(c), gap = need - auth;
+  const need = Math.min(95, 74 + sp * 2.2), auth = 0.6 * (c.infl || 70) + 0.4 * coachAbRaw(c), gap = need - auth;
   if (gap > 0) return { d: -Math.min(6, 0.8 + gap * 0.6), sp, need: Math.round(need), auth: Math.round(auth), txt: `更衣室不服主帅（${sp} 名大牌，主帅威望 ${Math.round(auth)} 不到 ${Math.round(need)}）` };
   if (gap < -6) return { d: 0.6, sp, need: Math.round(need), auth: Math.round(auth), txt: '大牌球星信服主帅' };
   return null;
@@ -6424,7 +6434,7 @@ function teamMorale(t) {
   let mor = (ppg - 1.4) * 3 + dby; mor *= mor < 0 ? Math.max(0.35, 1.25 - infl / 100) : 0.6 + infl / 250; mor += (infl - 75) * 0.06;
   const played = f.length, since = c ? (c.s0 === SEASON ? f.filter(x => x.ri >= c.r0).length : 99) : 99;
   const bounce = c && c.s0 === SEASON && c.r0 > 0 && since < 5 ? 2.5 : 0;
-  const abil = c ? (coachAbility(c) - 78) * 0.22 : 0;
+  const abil = c ? (coachAbRaw(c) - 78) * 0.22 : 0;
   // 球队士气 = 全队球员士气的中位数（百分比）；比赛加成 = 中位数偏离 65% 的程度 + 主帅影响力
   let med = 65; try { med = teamMoraleMed(t); } catch (e) {}
   const x = med - 65, eff = x > 10 ? 10 + (x - 10) * 0.5 : x < -10 ? -10 + (x + 10) * 0.5 : x; // 收益递减：太高或太低都不会无限拉开差距
@@ -9566,7 +9576,7 @@ document.addEventListener('click', e => {
   if (act === 'takeOwn') return takeOwn(false);
   if (act === 'takeOwnForce') { const b = $('#takeForceBtn'); if (b && !b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '确定用这台覆盖？再按一次'; return; } return takeOwn(true); }
   if (act === 'syncPull') { (async () => { try { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); const m = r.ok ? await r.json() : null; if (!m) return toast('云端还没有进度'); const g = await ghLoad(); if (!validState(g.s) || g.key !== KEY) return toast('云端进度读不了'); baseSet(m.w); g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, '已载入云端进度'); } catch (e) { toast('读取云端失败，稍后再试'); } })(); return; }
-  if (act === 'syncPush') { const b = $('#syncPushBtn'); if (b && !b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '确定覆盖云端？再按一次'; return; } WEB.forceOnce = true; save(); clearTimeout(WEB.timer); webPush().then(() => toast('已用这台设备的进度覆盖云端')); const dd = $('#dlg'); if (dd.open) dd.close(); return; }
+  if (act === 'syncPush') { const b = $('#syncPushBtn'); if (b && !b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '确定覆盖云端？再按一次'; return; } forceSet(true, true); WEB.ro = false; WEB.fails = 0; save(); clearTimeout(WEB.timer); clearTimeout(WEB.retry); toast('正在用这台设备的进度覆盖云端…'); (async () => { for (let k = 0; k < 40 && WEB.busy; k++) await new Promise(r => setTimeout(r, 500)); await webPush(); toast(!WEB.forceOnce ? '已用这台设备的进度覆盖云端，这台现在是主控设备' : `覆盖还没成功（${WEB.lastErr || '连不上云端'}），会自动重试；重新整理网页也会接着用这台的进度上传`, 6000); })(); const dd = $('#dlg'); if (dd.open) dd.close(); return; } /* 以这台为准：同时接管主控；先等正在进行的上传结束，再用这台的进度强制上传，成功才提示成功 */
   if (act === 'sync') { if (SANDBOX) return toast('试玩新档只存在这台设备上，不会同步'); openSync(); }
   if (act === 'search') openSearch();
   if (act === 'wlTab') { WLV.tab = el.dataset.v; return render(); }
@@ -9731,7 +9741,7 @@ async function ghPayload() { const arch = [], files = {};
     if (!f || WEB.at[a.s] !== tag) { const txt = LZString.compressToEncodedURIComponent(JSON.stringify(a)); f = 's' + a.s + '-' + fnv36(txt) + '.lz'; WEB.af[a.s] = f; WEB.at[a.s] = tag; WEB.txt[f] = txt; }
     arch.push(f); if (!WEB.remote.has(f)) files[f] = WEB.txt[f] || LZString.compressToEncodedURIComponent(JSON.stringify(a)); });
   const o = {}; for (const k in S) if (k !== 'archive') o[k] = S[k];
-  const force = !!WEB.forceOnce; WEB.forceOnce = false;
+  const force = !!WEB.forceOnce; /* 「以这台为准」要一直保持到真的上传成功为止：中途失败、重试、补传旧赛季文件时都不能丢掉，否则重试会被当成普通上传、反过来被云端盖掉 */
   const js = JSON.stringify(o); let z = null, zg = null; if (GZ_OK) { try { zg = await gzB64(js); } catch (e) { zg = null; } } if (!zg) z = LZString.compressToEncodedURIComponent(js);
   const takeover = !!WEB.takeOnce;
   return { v: 2, key: KEY, base: WEB.base ?? null, force, takeover, dev: DEV, devName: DEV_NAME, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, files, z, zg }; }
@@ -9743,12 +9753,16 @@ async function ghPush() { const put = b => fetch('/api/progress', { method: 'PUT
   let r = await put(P);
   if (r.status === 409) { let o = {}; try { o = await r.clone().json(); } catch (e) { }
     if (o.error === 'notowner') { devOwnerSet(o.meta); try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, null); } } catch (e) { } setSync('follow'); toast(`主控设备是「${o.meta && o.meta.devName || '另一台设备'}」，这台改为跟随（只读）；要在这台继续玩，到同步设定按「改由这台设备主控」`); return { ok: true, status: 200, json: async () => ({}) }; }
-    if (o.error === 'conflict' && o.meta && o.meta.dev && o.meta.dev === DEV && !P.force) { /* 云端那一版也是这台主控设备自己传的（例如上一次上传途中重新整理了网页）：以这台为准，直接覆盖 */ WEB.forceOnce = true; P = await ghPayload(); r = await put(P); if (r.ok) { WEB.takeOnce = false; P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o2 = await r.clone().json(); if (o2.w) baseSet(o2.w); } catch (e) { } } return r; }
+    if (o.error === 'conflict' && o.meta && o.meta.dev && o.meta.dev === DEV && !P.force) { /* 云端那一版也是这台主控设备自己传的（例如上一次上传途中重新整理了网页）：以这台为准，直接覆盖 */ WEB.forceOnce = true; P = await ghPayload(); r = await put(P); if (r.ok) { forceSet(false); P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o2 = await r.clone().json(); if (o2.w) baseSet(o2.w); } catch (e) { } } return r; }
     if (o.error === 'conflict') { /* 云端已经被另一台设备更新过：以云端为准，同步过来，不覆盖 */ try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, '另一台设备的进度比较新，已同步过来'); } } catch (e) { } return { ok: true, status: 200, json: async () => ({}) }; }
     (o.need || []).forEach(f => WEB.remote.delete(f)); P = await ghPayload(); r = await put(P); }
-  if (r.ok) { WEB.takeOnce = false; WEB.owner = DEV; WEB.ownerName = DEV_NAME; WEB.ro = false; P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) baseSet(o.w); } catch (e) { } }
+  if (r.ok) { forceSet(false); WEB.owner = DEV; WEB.ownerName = DEV_NAME; WEB.ro = false; P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) baseSet(o.w); } catch (e) { } }
   return r; }
 try { WEB.key = localStorage.getItem('ves-sync-key') || ''; } catch (e) {}
+/* 「用这台覆盖云端 / 接管」的意图存在本机：上传还没成功就重新整理网页，下次打开会接着用这台的进度上传，而不是去载入云端 */
+const FORCE_K = () => 'ves-force|' + KEY;
+function forceSet(on, take) { if (on) { WEB.forceOnce = true; if (take) WEB.takeOnce = true; } else { WEB.forceOnce = false; WEB.takeOnce = false; } try { if (on) localStorage.setItem(FORCE_K(), take ? 't' : 'f'); else localStorage.removeItem(FORCE_K()); } catch (e) { } }
+try { const v = localStorage.getItem(FORCE_K()); if (v) { WEB.forceOnce = true; if (v === 't') WEB.takeOnce = true; } } catch (e) { }
 function setSync(st) {
   CLOUD.status = st;
   const el = $('#syncChip'); if (!el) return;
@@ -9845,6 +9859,7 @@ function adopt(st, msg) {
 }
 async function webPull(quiet) {
   if (!WEB.on || WEB.busy || WEB.pending) return;
+  if (WEB.forceOnce) { if (!WEB.fails || WEB.fails >= 8) webPush(); return; } /* 还在等「以这台为准」上传成功：不载入云端，改成再传一次 */
   try {
     const o = await webFetch(WEB.etag && !WEB.gh ? { 'If-None-Match': WEB.etag } : null);
     if (o.same) return;
@@ -9866,9 +9881,9 @@ async function webPush() {
     // 压缩后再上传（存档大了以后，原样上传会超过云端单次 4.5MB 的上限）。GitHub 存储：只传当季 + 还没传过的旧赛季
     const r = WEB.store === 'github' ? await ghPush() : await fetch('/api/progress', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-ves-key': WEB.key }, body: JSON.stringify({ key: KEY, z: LZString.compressToEncodedURIComponent(JSON.stringify(S)), season: S.season, played: countPlayed(S) }) });
     if (r.status === 401) { WEB.key = ''; try { localStorage.removeItem('ves-sync-key'); } catch (e) {} setSync('view'); toast('同步密码不对，进度只存在这台设备'); }
-    else if (!r.ok) { setSync('error'); WEB.fails = (WEB.fails || 0) + 1; if (r.status === 503) { if (WEB.fails === 1) toast('云端存储暂时拒绝访问（可能是本月用量用完），进度先存在这台设备'); WEB.fails = 8; } }
+    else if (!r.ok) { setSync('error'); WEB.fails = (WEB.fails || 0) + 1; try { const e = await r.clone().json(); WEB.lastErr = r.status + ' ' + (e.error || '') + (e.message ? ' · ' + e.message : ''); } catch (e) { WEB.lastErr = 'HTTP ' + r.status; } if (r.status === 503 && /quota|usage|max ?requests|exceeded|rate limit|limit reached/i.test(WEB.lastErr || '')) { if (WEB.fails === 1) toast('云端存储暂时拒绝访问（可能是本月用量用完），进度先存在这台设备'); WEB.fails = 8; } } /* 只有真的是用量用完才停；GitHub 偶尔超时、出错（也回 503）就照常过几秒重试 */
     else { const o = await r.json(); WEB.etag = o.etag || WEB.etag; setSync(WEB.ro ? 'follow' : 'cloud'); WEB.fails = 0; }
-  } catch (e) { setSync('error'); WEB.fails = (WEB.fails || 0) + 1; }
+  } catch (e) { setSync('error'); WEB.fails = (WEB.fails || 0) + 1; WEB.lastErr = String(e && e.message || e).slice(0, 120); }
   WEB.busy = false;
   if (WEB.fails && WEB.fails < 8) { clearTimeout(WEB.retry); WEB.retry = setTimeout(webPush, Math.min(60000, 5000 * WEB.fails)); }
   if (WEB.pending) { clearTimeout(WEB.timer); WEB.timer = setTimeout(webPush, 45000); }
@@ -9883,6 +9898,7 @@ async function webInit() {
   const lp = countPlayed(S);
   let st = o.state && o.state.key === KEY && validState(o.state.s) ? o.state.s : null;
   /* 重开网页时：这台设备上次对齐之后，云端被别的设备 / 自动模拟写过 → 以云端为准；云端没变过 → 本机较新就上传本机的 */
+  if (WEB.key && WEB.forceOnce) { if (o.meta) { baseSet(o.meta.w); devOwnerSet(o.meta); } WEB.ro = false; await webPush(); bindPull(); return; } /* 上次按了「以这台为准」但没传成功：接着传，不载入云端 */
   const lb = baseLoad(), mine = !!(o.meta && o.meta.dev && o.meta.dev === DEV), cloudMoved = !mine && o.meta && lb != null && (o.meta.w || 0) > lb; /* 云端最后一版是这台设备自己传的：不算「被别人改过」 */
   const resetNewer = !!(S.reset && o.meta && o.meta.key === KEY && S.reset >= (o.meta.t || 0) && (o.meta.played || 0) > 0); /* 这台刚「全部重来」、但重置还没传上去 */
   if (o.meta && o.meta.key === KEY && (cloudMoved || (o.meta.t || 0) > (S.updated || 0) || (lp === 0 && (o.meta.played || 0) > 0 && !(S.reset && S.reset >= (o.meta.t || 0))))) { try { const g = await ghLoad(); st = validState(g.s) ? g.s : null; if (st && cloudMoved) st.updated = Math.max(st.updated || 0, (S.updated || 0) + 1); } catch (e) { st = null; } }
@@ -9892,6 +9908,9 @@ async function webInit() {
   else if (WEB.ro) setSync('follow');
   else if (WEB.key && (lp > 0 || resetNewer)) { if (resetNewer) WEB.forceOnce = true; await webPush(); }
   else setSync(WEB.key ? 'cloud' : 'view');
+  bindPull();
+}
+function bindPull() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') webPull(); });
   window.addEventListener('focus', () => webPull());
   // 两台设备同时开着时，每 30 秒看一下云端有没有更新
@@ -9919,8 +9938,8 @@ function devBox() { if (WEB.store !== 'github') return ''; const mine = !WEB.own
     <div style="font-weight:800">${mine ? `这台是主控设备` : `这台是跟随设备（只读）`} <span class="dim" style="font-weight:400;font-size:12px">${esc(DEV_NAME)}</span></div>
     <p class="note" style="margin:0">${mine ? `进度只由这台设备写进云端。其他设备输入同步码后会自动变成跟随设备：只看、每分钟自动跟上这台的进度，不会互相覆盖。${WEB.owner ? '' : '（这台第一次上传后就成为主控）'}` : `主控设备是「${esc(WEB.ownerName || '另一台设备')}」。这台不会上传，每分钟自动载入主控的最新进度；模拟、全自动等按钮在这台暂时不能用。`}</p>
     ${mine ? '' : `<div class="btns"><button class="btn primary" data-act="takeOwn">改由这台设备主控（先载入云端最新进度）</button><button class="btn ghost" data-act="takeOwnForce" id="takeForceBtn">用这台的进度覆盖并接管</button></div><p class="note" style="margin:0">接管后，原来那台会自动变成跟随设备。</p>`}</div>`; }
-async function takeOwn(force) { try { if (!force) { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); const m = r.ok ? await r.json() : null; if (m) { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(m.w); g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, null); } } } else WEB.forceOnce = true;
-    WEB.ro = false; WEB.takeOnce = true; save(); clearTimeout(WEB.timer); await webPush(); if (!WEB.ro && WEB.owner === DEV) toast('这台已经是主控设备'); else toast('接管失败，稍后再试'); } catch (e) { toast('接管失败，稍后再试'); } const d = $('#dlg'); if (d.open) openSync(); }
+async function takeOwn(force) { try { if (!force) { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); const m = r.ok ? await r.json() : null; if (m) { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(m.w); g.s.updated = Math.max(g.s.updated || 0, (S.updated || 0) + 1); adopt(g.s, null); } } } if (force) forceSet(true, true); else WEB.takeOnce = true;
+    WEB.ro = false; WEB.fails = 0; save(); clearTimeout(WEB.timer); for (let k = 0; k < 40 && WEB.busy; k++) await new Promise(r => setTimeout(r, 500)); await webPush(); if (!WEB.ro && WEB.owner === DEV && !WEB.forceOnce && !WEB.takeOnce) toast('这台已经是主控设备'); else if (WEB.forceOnce || WEB.takeOnce) toast(`接管还没成功（${WEB.lastErr || '连不上云端'}），会自动重试`); else toast('接管失败，稍后再试'); } catch (e) { toast('接管失败，稍后再试'); } const d = $('#dlg'); if (d.open) openSync(); }
 const RO_ACTS = new Set(['round', 'rest', 'autoN', 'autoCfg', 'autoOn', 'autoGo', 'kick', 'instant', 'nextSeason', 'reset', 'resetAll', 'doReset', 'doResetAll', 'rewind', 'doRewind', 'undo', 'syncPush', 'mkBid', 'bidGo', 'sell', 'release', 'extend', 'loan', 'loanExt', 'promote', 'mkRenew', 'mkRel', 'mkLoan', 'undemote', 'edSave', 'kdSave', 'kdReset', 'fxSave', 'fxClear', 'xfSave', 'keepT', 'teSave', 'kitSave', 'oeSave']);
 
 function openSync() {

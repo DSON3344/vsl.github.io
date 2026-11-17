@@ -34,7 +34,11 @@ async function redis(cmds) {
 const GH_TOK = process.env.VES_GH_TOKEN || process.env.GH_TOKEN || '';
 const GH_REPO = process.env.VES_GH_REPO || 'DSON3344/vsl.github.io', GH_BR = process.env.VES_GH_BRANCH || 'data';
 const useGh = !!GH_TOK;
+/* GitHub 偶尔回 5xx 或连线中断：同一个请求最多再试两次，免得一次小故障就让整次同步失败 */
 async function gh(path, method = 'GET', body) {
+  for (let k = 0; ; k++) { try { return await gh1(path, method, body); } catch (e) { const m = String(e && e.message || e); if (k >= 2 || /github 4\d\d/.test(m)) throw e; await new Promise(r => setTimeout(r, 500 * (k + 1))); } }
+}
+async function gh1(path, method = 'GET', body) {
   const r = await fetch((process.env.VES_GH_API || 'https://api.github.com') + '/repos/' + GH_REPO + path, { method, headers: { Authorization: 'Bearer ' + GH_TOK, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'ves-league', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 404 && method === 'GET') return null;
   if (!r.ok) throw new Error('github ' + r.status + ' ' + (await r.text()).slice(0, 200));
@@ -49,7 +53,8 @@ async function ghPut(body) { let W_NOW = null;
     if (have['meta.json']) try { meta = JSON.parse(await blobText(have['meta.json'])); } catch (e) { }
     if (have['bak/index.json']) try { bak = JSON.parse(await blobText(have['bak/index.json'])); } catch (e) { } }
   const files = body.files && typeof body.files === 'object' ? body.files : {}, mk = async text => (await gh('/git/blobs', 'POST', { content: text, encoding: 'utf-8' })).sha;
-  const add = {}; for (const f of Object.keys(files)) { if (!okName(f) || typeof files[f] !== 'string') return { status: 400, body: { error: 'bad file ' + f } }; if (!have['a/' + f]) add['a/' + f] = await mk(files[f]); }
+  const add = {}; for (const f of Object.keys(files)) if (!okName(f) || typeof files[f] !== 'string') return { status: 400, body: { error: 'bad file ' + f } };
+  { const todo = Object.keys(files).filter(f => !have['a/' + f]); for (let i = 0; i < todo.length; i += 4) await Promise.all(todo.slice(i, i + 4).map(async f => { add['a/' + f] = await mk(files[f]); })); } /* 旧赛季文件 4 个一组并行上传，接管时要补传很多季也不会拖太久 */
   let tree = {}; // path -> sha
   if (body.filesOnly) { tree = { ...have, ...add }; }
   else {
