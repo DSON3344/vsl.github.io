@@ -1664,13 +1664,17 @@ const isProspect = k => k.age >= 15 && k.age <= 20 && k.rating < 88 && k.pot >= 
 // 外赛区之间的转会（S18 起由系统推算）：能力明显高过球队的年轻球员被强队买走，老将去实力较弱的球队
 function extWindow(s, log) {
   const ns = s + 1, rnd = seeded('xw|' + s), clubs = Object.keys(EXT_CLUB).filter(c => FDB[c]);
-  const moved = new Set();
+  const moved = new Set(), OUT = {}, INN = {};
   clubs.forEach(c => (FDB[c] || []).slice().forEach(p => {
     if (moved.has(p) || typeof p.age0 !== 'number' || (p.stints && p.stints.length && p.stints[p.stints.length - 1][1] === ns)) return; const a = pAge(p, s), r = growthOf(p).at(a), str = EXT_CLUB[c].str;
-    let to = null;
-    if (a <= 29 && r >= str + 3 && rnd() < 0.3) { const opts = clubs.filter(x => x !== c && EXT_CLUB[x].str >= str + 1.5 && EXT_CLUB[x].str <= r + 2); if (opts.length) to = opts[Math.floor(rnd() * opts.length)]; }
-    else if (a >= 32 && r < str - 1 && rnd() < 0.3) { const opts = clubs.filter(x => x !== c && EXT_CLUB[x].str < str - 2); if (opts.length) to = opts[Math.floor(rnd() * opts.length)]; }
-    if (!to || (FDB[to] || []).some(q => q.name === p.name)) return;
+    let to = null; const pick = f => { const opts = clubs.filter(x => x !== c && f(EXT_CLUB[x].str) && (INN[x] || 0) < 5), dom = opts.filter(x => LEAGUE_OF[x] === LEAGUE_OF[c]), L = dom.length && rnd() < 0.55 ? dom : opts; return L.length ? L[Math.floor(rnd() * L.length)] : null; }; /* 一半以上在本国联赛内转会 */
+    if ((OUT[c] || 0) >= 5 || (FDB[c] || []).length <= 16) return; /* 每队每个转会窗最多进出 5 人；剩 16 人的不再放人 */
+    /* 2026-11 加大流动：天才被强队挖走、替补去能踢上的球队、老将去弱队、合同到期正常换队；可以跨联赛 */
+    if (a <= 29 && r >= str + 2 && rnd() < 0.45) to = pick(x => x >= str + 1.5 && x <= r + 3);
+    else if (a >= 21 && a <= 30 && r <= str - 4 && rnd() < 0.12) to = pick(x => x <= r + 1 && x >= r - 6);
+    else if (a >= 31 && r < str - 1 && rnd() < 0.35) to = pick(x => x < str - 2);
+    else if (a >= 23 && a <= 31 && rnd() < 0.05) to = pick(x => Math.abs(x - r) <= 3);
+    if (!to || (FDB[to] || []).some(q => q.name === p.name)) return; OUT[c] = (OUT[c] || 0) + 1; INN[to] = (INN[to] || 0) + 1;
     const line = ENGINE.LINE(p.pos), back = (FDB[to] || []).filter(q => ENGINE.LINE(q.pos) === line && !moved.has(q)).sort((u, v) => u.rating - v.rating)[0];
     FDB[c].splice(FDB[c].indexOf(p), 1); FDB[to].push(p); p.team = to; (p.stints = p.stints || [[c, -99]]).push([to, ns]); moved.add(p);
     log.push({ uid: p.uid, name: p.name, pos: p.pos, age: a, rating: r, from: c, to, fee: valueM(r, a), free: false, ext: 1, xx: 1 });
@@ -2183,7 +2187,7 @@ function applyGrowth() {
   for (let s = 18; s < SEASON; s++) {
     if (SEASON < HIST_END) { /* 全程自主模拟：威超球队每季的名单由 setupHistoric 从上一季延续推算，这里只推进外赛区的新老交替和青训招生 */
       Object.entries(FDB).forEach(([c, l]) => l.slice().forEach(p => { if (typeof p.age0 !== 'number' || s < p.s0) return; const a = pAge(p, s), r = growthOf(p).at(a); if (!retiresAt(p, a, r)) return; l.splice(l.indexOf(p), 1); RET_S[p.uid] = s; RETIRED_UID.add(p.uid); if (EXT_CLUB[c]) { const y = extYouth(c, p, s + 1); l.push(y); EXTP.push(y); } }));
-      acadNext(s + 1); continue; }
+      acadNext(s + 1); try { extWindow(s, TR_LOG[s] = TR_LOG[s] || []); } catch (e) { console.error(e); } /* 外赛区各队之间的转会（全程自主模拟也要跑） */ continue; }
     applyWinterDeals(s);
     mentorTick(s);
     const log = RET_LOG[s] = { retired: [], youth: [] };
