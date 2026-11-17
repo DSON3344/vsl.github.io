@@ -9984,7 +9984,7 @@ if (/vesdebug/.test(location.hash)) window.__ves = {
 </script>
 <script>
 /* 先读 IndexedDB 里的往季存档，再执行主程序（主程序开场就要同步读存档） */
-(function () { let done = false; const go = () => { if (done) return; done = true; const el = document.getElementById('vesMain'), sc = document.createElement('script'); sc.textContent = el.textContent; el.remove(); document.body.appendChild(sc); };
+(function () { let done = false; const go = () => { if (done) return; done = true; const el = document.getElementById('vesMain'), sc = document.createElement('script'); if (el.dataset.src) { sc.src = el.dataset.src; sc.async = false; sc.onerror = () => { document.body.insertAdjacentHTML('beforeend', '<p style="padding:24px;color:#ccc">程序没下载成功，请检查网络后重新整理页面。</p>'); }; } else sc.textContent = el.textContent; el.remove(); document.body.appendChild(sc); };
   try { const rq = indexedDB.open('ves-store', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
     rq.onsuccess = () => { try { const db = rq.result, st = db.transaction('kv', 'readonly').objectStore('kv'), M = new Map(), ka = st.getAllKeys(), va = st.getAll(); va.onsuccess = () => { ka.result.forEach((k, i) => M.set(k, va.result[i])); window.__VES_IDB = M; db.close(); go(); }; va.onerror = () => go(); } catch (e) { go(); } };
     rq.onerror = () => go(); rq.onblocked = () => go(); } catch (e) { go(); }

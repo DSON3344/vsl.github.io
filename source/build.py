@@ -47,5 +47,27 @@ i = body.index('</style>') + len('</style>')
 html = head + body[:i] + '\n</head>\n<body>\n' + body[i:] + '\n</body>\n</html>\n'
 html = html.replace('__VES_BUILD__', hashlib.md5(html.encode()).hexdigest()[:10])  # 开站快取用的版本号
 html = minify_html(html)
+# 主程序拆成单独的 app.<hash>.js：浏览器能长期缓存它，还会存下编译结果，第二次打开起省掉大部分解析时间
+import re as _re
+_m = _re.search(r'<script id="vesMain" type="text/ves">(.*?)</script>', html, _re.S)
+_js = _m.group(1)
+for _f in os.listdir(d + '..'):
+    if _f.startswith('app.') and _f.endswith('.js'): os.remove(d + '../' + _f)
+app_url = 'app.' + hashlib.md5(_js.encode()).hexdigest()[:10] + '.js'
+open(d + '../' + app_url, 'w').write(_js)
+html = html[:_m.start()] + '<script id="vesMain" type="text/ves" data-src="' + app_url + '"></script>' + html[_m.end():]
+_pre = [app_url]
+# 资料（球员库等）和比赛引擎也拆出去，照原来的先后顺序同步执行
+def _ext(m):
+    js = m.group(1)
+    if len(js) < 10000: return m.group(0)
+    u = 'lib.' + hashlib.md5(js.encode()).hexdigest()[:10] + '.js'
+    open(d + '../' + u, 'w').write(js); _pre.append(u)
+    return '<script src="' + u + '"></script>'
+for _f in os.listdir(d + '..'):
+    if _f.startswith('lib.') and _f.endswith('.js'): os.remove(d + '../' + _f)
+html = _re.sub(r'<script>(.*?)</script>', _ext, html, flags=_re.S)
+html = html.replace('</head>', ''.join('<link rel="preload" as="script" href="' + u + '">\n' for u in _pre[1:] + _pre[:1]) + '</head>', 1)
+print(app_url, round(len(_js) / 1e6, 2), 'MB')
 open(d + '../index.html', 'w').write(html)
 print('index.html', round(len(html) / 1e6, 2), 'MB')
