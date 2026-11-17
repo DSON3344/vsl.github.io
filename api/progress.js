@@ -45,7 +45,7 @@ async function gh1(path, method = 'GET', body) {
   return r.json();
 }
 const blobText = async sha => { const b = await gh('/git/blobs/' + sha); return Buffer.from(b.content, 'base64').toString('utf8'); };
-const okName = f => typeof f === 'string' && /^s\d{1,4}-[0-9a-z]{4,16}\.lz$/.test(f);
+const okName = f => typeof f === 'string' && /^(s\d{1,4}|x[a-z]{2,12})-[0-9a-z]{4,16}\.lz$/.test(f); /* s<季>：旧赛季；x<栏位>：进度里很少变的大块（队徽图、初始设定），内容不变就不重传 */
 async function ghPut(body) { let W_NOW = null;
   const ref = await gh('/git/ref/heads/' + GH_BR);
   let have = {}, meta = null, bak = [];
@@ -59,17 +59,18 @@ async function ghPut(body) { let W_NOW = null;
   if (body.filesOnly) { tree = { ...have, ...add }; }
   else {
     const arch = Array.isArray(body.arch) ? body.arch : []; if (arch.some(f => !okName(f))) return { status: 400, body: { error: 'bad arch' } };
+    const side = body.side && typeof body.side === 'object' ? body.side : {}; if (Object.entries(side).some(([k, f]) => !/^[a-zA-Z]{1,20}$/.test(k) || !okName(f))) return { status: 400, body: { error: 'bad side' } };
     /* 版本检查：这台设备是基于云端哪个版本改的（base = 当时云端的写入时间）。云端在那之后已经被别的设备更新过，就不覆盖，让这台设备先同步 */
     /* 主控设备：云端记着哪台设备负责写进度。别台设备要写，得先「接管」（takeover），否则拒绝，避免两台互相覆盖 */
     if (meta && meta.dev && body.dev && body.dev !== meta.dev && !body.takeover) return { status: 409, body: { error: 'notowner', meta: { ...meta, key: undefined } } };
     if (meta && meta.w && body.base != null && body.base !== meta.w && !body.force) return { status: 409, body: { error: 'conflict', meta: { ...meta, key: undefined } } };
-    const need = arch.filter(f => !have['a/' + f] && !add['a/' + f]); if (need.length) return { status: 409, body: { error: 'need files', need } };
-    const now = Date.now(); W_NOW = now; const m2 = { v: 2, key: body.key, t: body.t || now, season: body.season ?? null, played: body.played ?? null, arch, w: now, dev: (typeof body.dev === 'string' && body.dev.slice(0, 40)) || (meta && meta.dev) || null, devName: (typeof body.devName === 'string' && body.devName.slice(0, 40)) || (meta && meta.devName) || null };
+    const need = [...arch, ...Object.values(side)].filter(f => !have['a/' + f] && !add['a/' + f]); if (need.length) return { status: 409, body: { error: 'need files', need } };
+    const now = Date.now(); W_NOW = now; const m2 = { v: 2, key: body.key, t: body.t || now, season: body.season ?? null, played: body.played ?? null, arch, side, w: now, dev: (typeof body.dev === 'string' && body.dev.slice(0, 40)) || (meta && meta.dev) || null, devName: (typeof body.devName === 'string' && body.devName.slice(0, 40)) || (meta && meta.devName) || null };
     if (meta && have['live.json'] && now - ((bak[0] && bak[0].w) || 0) > 3 * 3600e3) { bak.unshift({ ...meta, w: now, sha: have['live.json'] }); bak = bak.slice(0, 12); }
-    tree['live.json'] = await mk(JSON.stringify({ v: 2, key: body.key, t: m2.t, season: m2.season, played: m2.played, arch, ...(typeof body.zg === 'string' ? { zg: body.zg } : { z: body.z }) })); /* zg = 浏览器原生 gzip（较新版本），z = LZ（旧版本） */
+    tree['live.json'] = await mk(JSON.stringify({ v: 2, key: body.key, t: m2.t, season: m2.season, played: m2.played, arch, side, ...(typeof body.zg === 'string' ? { zg: body.zg } : { z: body.z }) })); /* zg = 浏览器原生 gzip（较新版本），z = LZ（旧版本） */
     tree['meta.json'] = await mk(JSON.stringify(m2));
     if (bak.length) { tree['bak/index.json'] = await mk(JSON.stringify(bak)); bak.forEach(b => { tree['bak/live-' + b.w + '.json'] = b.sha; }); }
-    const keep = new Set(arch); bak.forEach(b => (b.arch || []).forEach(f => keep.add(f)));
+    const keep = new Set([...arch, ...Object.values(side)]); bak.forEach(b => [...(b.arch || []), ...Object.values(b.side || {})].forEach(f => keep.add(f)));
     keep.forEach(f => { tree['a/' + f] = add['a/' + f] || have['a/' + f]; });
     tree = Object.fromEntries(Object.entries(tree).filter(([, v]) => v));
   }

@@ -9715,6 +9715,7 @@ const DEV = (() => { try { let d = localStorage.getItem('ves-dev'); if (!d) { d 
 const devLabel = () => { const u = navigator.userAgent || ''; const kind = /iPad|Tablet/i.test(u) ? '平板' : /Mobi|Android|iPhone/i.test(u) ? '手机' : '电脑'; const os = /iPhone|iPad/.test(u) ? 'iOS' : /Android/i.test(u) ? 'Android' : /Mac OS/i.test(u) ? 'Mac' : /Windows/i.test(u) ? 'Windows' : ''; const br = /Edg\//.test(u) ? 'Edge' : /Chrome\//.test(u) ? 'Chrome' : /Safari\//.test(u) ? 'Safari' : /Firefox\//.test(u) ? 'Firefox' : ''; return [kind, os, br].filter(Boolean).join(' · '); };
 const DEV_NAME = (() => { try { return localStorage.getItem('ves-dev-name') || (devLabel() + ' #' + DEV.slice(-4).toUpperCase()); } catch (e) { return devLabel(); } })();
 const devOwnerSet = m => { if (!m) return; WEB.owner = m.dev || null; WEB.ownerName = m.devName || ''; WEB.ro = !!(WEB.key && WEB.owner && WEB.owner !== DEV); };
+const SIDE_KEYS = ['tedit', 'init'], sideName = (k, js) => 'x' + k.toLowerCase() + '-' + fnv36(js) + '.lz';
 const WEB = { on: false, etag: null, timer: null, busy: false, pending: false, key: '', store: '', remote: new Set(), af: {}, at: {}, txt: {} };
 const GH_RAW = 'https://raw.githubusercontent.com/DSON3344/vsl.github.io/refs/heads/data/', GH_CDN = 'https://cdn.jsdelivr.net/gh/DSON3344/vsl.github.io@data/';
 try { const o = JSON.parse(localStorage.getItem('ves-af') || '{}'); WEB.af = o.af || {}; WEB.at = o.at || {}; } catch (e) {}
@@ -9735,28 +9736,34 @@ async function archFetch(f) { for (const b of [GH_RAW, GH_CDN]) { try { const r 
 async function ghLoad() { const r = await fetch(GH_RAW + 'live.json?ts=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw new Error('live ' + r.status); const L = await r.json();
   const s = JSON.parse(L.zg ? await gunzipB64(L.zg) : LZString.decompressFromEncodedURIComponent(L.z)), loc = {}; ((S && S.archive) || []).forEach(a => { loc[a.s] = a; });
   s.archive = await Promise.all((L.arch || []).map(async f => { const sn = +f.slice(1, f.indexOf('-')); if (WEB.af[sn] === f && loc[sn] && WEB.at[sn] === archTag(loc[sn])) return loc[sn]; return JSON.parse(LZString.decompressFromEncodedURIComponent(await archFetch(f))); }));
-  s.archive.forEach((a, i) => { WEB.af[a.s] = L.arch[i]; WEB.at[a.s] = archTag(a); }); afSave(); WEB.remote = new Set(L.arch || []); return { key: L.key, s, t: L.t }; }
+  s.archive.forEach((a, i) => { WEB.af[a.s] = L.arch[i]; WEB.at[a.s] = archTag(a); }); afSave();
+  for (const [k, f] of Object.entries(L.side || {})) { s[k] = S && S[k] != null && sideName(k, JSON.stringify(S[k])) === f ? S[k] : JSON.parse(LZString.decompressFromEncodedURIComponent(await archFetch(f))); } /* 本机那份内容跟云端一样就直接用，不用下载 */ /* 很少变的大块另外存成文件 */
+  WEB.remote = new Set([...(L.arch || []), ...Object.values(L.side || {})]); return { key: L.key, s, t: L.t }; }
 async function ghPayload() { const arch = [], files = {};
   (S.archive || []).forEach(a => { const tag = archTag(a); let f = WEB.af[a.s];
     if (!f || WEB.at[a.s] !== tag) { const txt = LZString.compressToEncodedURIComponent(JSON.stringify(a)); f = 's' + a.s + '-' + fnv36(txt) + '.lz'; WEB.af[a.s] = f; WEB.at[a.s] = tag; WEB.txt[f] = txt; }
     arch.push(f); if (!WEB.remote.has(f)) files[f] = WEB.txt[f] || LZString.compressToEncodedURIComponent(JSON.stringify(a)); });
-  const o = {}; for (const k in S) if (k !== 'archive') o[k] = S[k];
+  const o = {}, side = {}; for (const k in S) if (k !== 'archive') o[k] = S[k];
+  /* 队徽图（tedit）、初始设定快照（init）加起来常有 2MB，几乎不变：另外存成按内容命名的文件，只在改过时上传一次。当季进度因此小很多，不会超过云端单次 4.5MB 的上限 */
+  SIDE_KEYS.forEach(k => { if (o[k] == null) return; const js = JSON.stringify(o[k]); if (js.length < 60000) return; const f = sideName(k, js); delete o[k]; side[k] = f; if (!WEB.remote.has(f)) files[f] = WEB.txt[f] || (WEB.txt[f] = LZString.compressToEncodedURIComponent(js)); });
   const force = !!WEB.forceOnce; /* 「以这台为准」要一直保持到真的上传成功为止：中途失败、重试、补传旧赛季文件时都不能丢掉，否则重试会被当成普通上传、反过来被云端盖掉 */
   const js = JSON.stringify(o); let z = null, zg = null; if (GZ_OK) { try { zg = await gzB64(js); } catch (e) { zg = null; } } if (!zg) z = LZString.compressToEncodedURIComponent(js);
   const takeover = !!WEB.takeOnce;
-  return { v: 2, key: KEY, base: WEB.base ?? null, force, takeover, dev: DEV, devName: DEV_NAME, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, files, z, zg }; }
+  return { v: 2, key: KEY, base: WEB.base ?? null, force, takeover, dev: DEV, devName: DEV_NAME, t: S.updated || Date.now(), season: S.season, played: countPlayed(S), arch, side, files, z, zg }; }
 async function ghPush() { const put = b => fetch('/api/progress', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-ves-key': WEB.key }, body: JSON.stringify(b) });
-  let P = await ghPayload(); const names = Object.keys(P.files);
-  if ((P.zg || P.z).length + names.reduce((a, f) => a + P.files[f].length, 0) > 3e6) { /* 第一次搬家、旧赛季很多时：旧赛季文件分批先传（每批 3MB 以内） */
-    let B = {}, bs = 0; const flush = async () => { const r = await put({ v: 2, filesOnly: true, files: B }); if (!r.ok) return r; Object.keys(B).forEach(f => WEB.remote.add(f)); B = {}; bs = 0; return null; };
-    for (const f of names) { if (bs && bs + P.files[f].length > 3e6) { const e = await flush(); if (e) return e; } B[f] = P.files[f]; bs += P.files[f].length; } if (bs) { const e = await flush(); if (e) return e; } P.files = {}; }
+  const fake = (status, error) => ({ ok: false, status, json: async () => ({ error }), clone() { return this; } });
+  /* 旧赛季、大块文件分批先传（每批 3MB 以内），最后只传当季进度：任何一次请求都不会超过云端单次 4.5MB 的上限 */
+  const sendFiles = async F => { let B = {}, bs = 0; const flush = async () => { const r = await put({ v: 2, filesOnly: true, files: B }); if (!r.ok) return r; Object.keys(B).forEach(f => WEB.remote.add(f)); B = {}; bs = 0; return null; };
+    for (const f of Object.keys(F)) { if (bs && bs + F[f].length > 3e6) { const e = await flush(); if (e) return e; } B[f] = F[f]; bs += F[f].length; } if (bs) { const e = await flush(); if (e) return e; } return null; };
+  let P; const prep = async () => { P = await ghPayload(); const live = (P.zg || P.z).length; if (live > 4.2e6) return fake(413, '当季进度压缩后仍有 ' + (live / 1e6).toFixed(1) + 'MB'); if (live + Object.values(P.files).reduce((a, x) => a + x.length, 0) > 3e6) { const e = await sendFiles(P.files); if (e) return e; P.files = {}; } return null; };
+  { const e = await prep(); if (e) return e; }
   let r = await put(P);
   if (r.status === 409) { let o = {}; try { o = await r.clone().json(); } catch (e) { }
     if (o.error === 'notowner') { devOwnerSet(o.meta); try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, null); } } catch (e) { } setSync('follow'); toast(`主控设备是「${o.meta && o.meta.devName || '另一台设备'}」，这台改为跟随（只读）；要在这台继续玩，到同步设定按「改由这台设备主控」`); return { ok: true, status: 200, json: async () => ({}) }; }
-    if (o.error === 'conflict' && o.meta && o.meta.dev && o.meta.dev === DEV && !P.force) { /* 云端那一版也是这台主控设备自己传的（例如上一次上传途中重新整理了网页）：以这台为准，直接覆盖 */ WEB.forceOnce = true; P = await ghPayload(); r = await put(P); if (r.ok) { forceSet(false); P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o2 = await r.clone().json(); if (o2.w) baseSet(o2.w); } catch (e) { } } return r; }
+    if (o.error === 'conflict' && o.meta && o.meta.dev && o.meta.dev === DEV && !P.force) { /* 云端那一版也是这台主控设备自己传的（例如上一次上传途中重新整理了网页）：以这台为准，直接覆盖 */ WEB.forceOnce = true; { const e = await prep(); if (e) return e; } r = await put(P); if (r.ok) { forceSet(false); [...P.arch, ...Object.values(P.side || {})].forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o2 = await r.clone().json(); if (o2.w) baseSet(o2.w); } catch (e) { } } return r; }
     if (o.error === 'conflict') { /* 云端已经被另一台设备更新过：以云端为准，同步过来，不覆盖 */ try { const g = await ghLoad(); if (validState(g.s) && g.key === KEY) { baseSet(o.meta && o.meta.w); adopt(g.s, '另一台设备的进度比较新，已同步过来'); } } catch (e) { } return { ok: true, status: 200, json: async () => ({}) }; }
-    (o.need || []).forEach(f => WEB.remote.delete(f)); P = await ghPayload(); r = await put(P); }
-  if (r.ok) { forceSet(false); WEB.owner = DEV; WEB.ownerName = DEV_NAME; WEB.ro = false; P.arch.forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) baseSet(o.w); } catch (e) { } }
+    (o.need || []).forEach(f => WEB.remote.delete(f)); { const e = await prep(); if (e) return e; } r = await put(P); }
+  if (r.ok) { forceSet(false); WEB.owner = DEV; WEB.ownerName = DEV_NAME; WEB.ro = false; [...P.arch, ...Object.values(P.side || {})].forEach(f => WEB.remote.add(f)); WEB.txt = {}; afSave(); try { const o = await r.clone().json(); if (o.w) baseSet(o.w); } catch (e) { } }
   return r; }
 try { WEB.key = localStorage.getItem('ves-sync-key') || ''; } catch (e) {}
 /* 「用这台覆盖云端 / 接管」的意图存在本机：上传还没成功就重新整理网页，下次打开会接着用这台的进度上传，而不是去载入云端 */
@@ -9838,7 +9845,7 @@ async function cloudInit() {
 const countPlayed = st => (st && Array.isArray(st.fx) ? st.fx.filter(r => r.every(m => m.r)).length : 0);
 function validState(st) { return st && Array.isArray(st.fx) && st.fx.length === 38 && Array.isArray(st.teams); }
 async function webFetch(headers) {
-  try { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); /* 加时间戳绕过 GitHub 约 5 分钟的缓存，读到的才是最新进度 */ if (r.ok) { const m = await r.json(); if (m && m.v === 2) { WEB.gh = true; if (WEB.meta && WEB.meta.w === m.w) return { same: true }; WEB.meta = m; WEB.remote = new Set(m.arch || []); return { etag: m.w, meta: m }; } } else if (WEB.gh) throw new Error('meta ' + r.status); } catch (e) { if (WEB.gh) throw e; }
+  try { const r = await fetch(GH_RAW + 'meta.json?ts=' + Date.now(), { cache: 'no-store' }); /* 加时间戳绕过 GitHub 约 5 分钟的缓存，读到的才是最新进度 */ if (r.ok) { const m = await r.json(); if (m && m.v === 2) { WEB.gh = true; if (WEB.meta && WEB.meta.w === m.w) return { same: true }; WEB.meta = m; WEB.remote = new Set([...(m.arch || []), ...Object.values(m.side || {})]); return { etag: m.w, meta: m }; } } else if (WEB.gh) throw new Error('meta ' + r.status); } catch (e) { if (WEB.gh) throw e; }
   const r = await fetch('/api/progress', { cache: 'no-store', headers: headers || {} });
   if (r.status === 304) return { same: true };
   if (!r.ok) throw new Error('http ' + r.status);
