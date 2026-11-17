@@ -63,7 +63,7 @@ def _ext(m):
     if len(js) < 10000: return m.group(0)
     u = 'lib.' + hashlib.md5(js.encode()).hexdigest()[:10] + '.js'
     open(d + '../' + u, 'w').write(js); _pre.append(u)
-    return '<script src="' + u + '"></script>'
+    return '<script src="' + u + '" defer></script>'
 for _f in os.listdir(d + '..'):
     if _f.startswith('lib.') and _f.endswith('.js'): os.remove(d + '../' + _f)
 html = _re.sub(r'<script>(.*?)</script>', _ext, html, flags=_re.S)

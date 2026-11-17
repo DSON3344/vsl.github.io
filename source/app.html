@@ -658,14 +658,15 @@ try { setTheme(localStorage.getItem('ves_theme') || 'night', true); } catch (e) 
 /* 开场 / 登录界面：读条 → 点击开始 → 输入经理名进入（只存在这台设备上，不是真的账号）；#vesdebug 测试时跳过 */
 const MGR_K = 'ves_mgr', GSKIP_K = 'ves_gate_skip'; const lsg = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, lss = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
 function gateShow(force) {
-  const G = document.getElementById('gate'); if (!G) return; if (!force && (/vesdebug/.test(location.hash) || lsg(GSKIP_K) === '1')) return;
+  const G = document.getElementById('gate'); if (!G) return; const early = G.dataset.early; delete G.dataset.early;
+  if (!force && (/vesdebug/.test(location.hash) || lsg(GSKIP_K) === '1')) { if (early) { G.style.transition = 'opacity .35s'; G.classList.add('out'); document.body.style.overflow = ''; setTimeout(() => { G.hidden = true; G.classList.remove('out'); G.style.transition = ''; }, 400); } return; } /* 开场画面在程序载入时就先出来了：设了「直接进入」的，算完就淡出 */
   document.getElementById('gLogo').src = LOGO['ves-league-logo']; G.hidden = false; G.classList.remove('out', 'ready'); document.body.style.overflow = 'hidden';
   const bar = document.getElementById('gBar'), tip = document.getElementById('gTip'), nm = document.getElementById('gName');
   const TIPS = ['正在进入球场', '正在整理球员资料', '正在点亮泛光灯'];
   try { gateFill(); } catch (e) { }
   nm.value = lsg(MGR_K) || ''; document.getElementById('gSkip').checked = lsg(GSKIP_K) === '1';
   const ready = () => { G.classList.add('ready'); setTimeout(() => { try { nm.focus({ preventScroll: true }); } catch (e) { } }, 500); };
-  if (force) { bar.style.width = '100%'; ready(); } else { let p = 0, k = 0; const iv = setInterval(() => { p = Math.min(100, p + 6 + Math.random() * 10); bar.style.width = p + '%'; if (p > (k + 1) * 33 && k < TIPS.length - 1) tip.textContent = TIPS[++k]; if (p >= 100) { clearInterval(iv); setTimeout(ready, 200); } }, 90); }
+  if (force) { bar.style.width = '100%'; ready(); } else if (early) { bar.style.transition = 'width .3s'; bar.style.width = '100%'; tip.textContent = TIPS[TIPS.length - 1]; setTimeout(ready, 350); } /* 载入期间进度条已经在走，算完直接补满 */ else { let p = 0, k = 0; const iv = setInterval(() => { p = Math.min(100, p + 6 + Math.random() * 10); bar.style.width = p + '%'; if (p > (k + 1) * 33 && k < TIPS.length - 1) tip.textContent = TIPS[++k]; if (p >= 100) { clearInterval(iv); setTimeout(ready, 200); } }, 90); }
   const enter = guest => { const n = nm.value.trim(); if (!guest) { if (!n) { nm.classList.add('bad'); nm.focus(); return; } lss(MGR_K, n); } nm.classList.remove('bad'); lss(GSKIP_K, document.getElementById('gSkip').checked ? '1' : null); mgrChip(); G.classList.add('out'); document.body.style.overflow = ''; setTimeout(() => { G.hidden = true; }, 820); };
   document.getElementById('gPlay').onclick = () => enter(false); document.getElementById('gGuest').onclick = () => enter(true);
   nm.onkeydown = ev => { if (ev.key === 'Enter') enter(false); };
@@ -9984,7 +9985,12 @@ if (/vesdebug/.test(location.hash)) window.__ves = {
 </script>
 <script>
 /* 先读 IndexedDB 里的往季存档，再执行主程序（主程序开场就要同步读存档） */
-(function () { let done = false; const go = () => { if (done) return; done = true; const el = document.getElementById('vesMain'), sc = document.createElement('script'); if (el.dataset.src) { sc.src = el.dataset.src; sc.async = false; sc.onerror = () => { document.body.insertAdjacentHTML('beforeend', '<p style="padding:24px;color:#ccc">程序没下载成功，请检查网络后重新整理页面。</p>'); }; } else sc.textContent = el.textContent; el.remove(); document.body.appendChild(sc); };
+(function () { let done = false, early = false;
+  /* 程序还在下载、计算的时候就先把开场画面亮出来，不要一片空白 */
+  try { const th = localStorage.getItem('ves_theme'); if (th && th !== 'night') document.documentElement.setAttribute('data-theme', th);
+    const G = document.getElementById('gate'); if (G && !/vesdebug/.test(location.hash)) { early = true; G.dataset.early = localStorage.getItem('ves_gate_skip') === '1' ? 'skip' : '1'; G.hidden = false; document.body.style.overflow = 'hidden'; const e = document.getElementById('gEye'); if (e) e.textContent = ''; const b = document.getElementById('gBar'); if (b) { b.style.transition = 'width 2.4s cubic-bezier(.2,.7,.3,1)'; requestAnimationFrame(() => requestAnimationFrame(() => { b.style.width = '80%'; })); } } } catch (e) { }
+  const go = () => { if (done) return; done = true; if (early) return requestAnimationFrame(() => setTimeout(go0, 0)); go0(); };
+  const go0 = () => { if (document.readyState === 'loading') return document.addEventListener('DOMContentLoaded', go0, { once: true }); /* 资料和引擎（defer）要先跑完 */ const el = document.getElementById('vesMain'), sc = document.createElement('script'); if (el.dataset.src) { sc.src = el.dataset.src; sc.async = false; sc.onerror = () => { document.body.insertAdjacentHTML('beforeend', '<p style="padding:24px;color:#ccc">程序没下载成功，请检查网络后重新整理页面。</p>'); }; } else sc.textContent = el.textContent; el.remove(); document.body.appendChild(sc); };
   try { const rq = indexedDB.open('ves-store', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
     rq.onsuccess = () => { try { const db = rq.result, st = db.transaction('kv', 'readonly').objectStore('kv'), M = new Map(), ka = st.getAllKeys(), va = st.getAll(); va.onsuccess = () => { ka.result.forEach((k, i) => M.set(k, va.result[i])); window.__VES_IDB = M; db.close(); go(); }; va.onerror = () => go(); } catch (e) { go(); } };
     rq.onerror = () => go(); rq.onblocked = () => go(); } catch (e) { go(); }
