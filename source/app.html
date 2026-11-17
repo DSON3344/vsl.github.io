@@ -480,6 +480,7 @@ th.sorted{color:var(--accent-2)}
 #gate .gsw{display:flex;gap:8px}#gate .gsw button{width:20px;height:20px;border-radius:50%;border:0;padding:0;cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.18);transition:box-shadow .2s}#gate .gsw button.on{box-shadow:0 0 0 2px #0e0e0d,0 0 0 3.5px var(--accent)}
 #gate .gfoot{position:absolute;left:clamp(24px,7vw,120px);bottom:22px;font:500 10px var(--mono);letter-spacing:.22em;color:rgba(var(--tint),.3)}
 #gate .gprog{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(var(--tint),.08)}#gate .gprog i{display:block;height:100%;width:100%;background:var(--accent);transform:scaleX(0);transform-origin:0 50%;transition:transform .2s linear;position:relative;overflow:hidden}
+body.busy-sim .ovhero .btns .btn{pointer-events:none;opacity:.5}
 #gate .gprog i::after{content:"";position:absolute;top:0;bottom:0;left:0;width:25%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);transform:translateX(-100%);animation:gsweep 1.2s linear infinite}
 #gate.ready .gprog i::after{animation:none}
 #gate:not(.ready) .gtip{animation:gbreath 1.4s ease-in-out infinite alternate}
@@ -772,12 +773,22 @@ const VES_BUILD = '__VES_BUILD__';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
-function pcSet(name, key, val) { if (!IDB_M) return; try { const v = key + '\n' + JSON.stringify(val); IDB_M.set(PC_PRE + name, v); idbTx(st => st.put(v, PC_PRE + name)); } catch (e) { } }
+/* 写快取不马上做：同一项只留最新一份，等网页闲下来（2 秒没有新的）才转成文字存进去。
+   连续模拟很多轮时杯赛每轮都会重算，之前每轮都把约 2MB 的结果转文字再写一次，会把记忆体撑爆、让网页崩溃 */
+const PC_Q = new Map(); let PC_T = 0;
+function pcSet(name, key, val) { if (!IDB_M) return; PC_Q.set(name, [key, val]); clearTimeout(PC_T); PC_T = setTimeout(pcFlush, 2000); }
+function pcFlush() { if (typeof AUTO !== 'undefined' && AUTO) { PC_T = setTimeout(pcFlush, 3000); return; } PC_Q.forEach(([key, val], name) => { try { const v = key + '\n' + JSON.stringify(val); IDB_M.set(PC_PRE + name, v); idbQ(PC_PRE + name, v); } catch (e) { } }); PC_Q.clear(); }
 const pcBase = () => VES_BUILD + '|' + LKEY + '|' + ((typeof S !== 'undefined' && S && S.reset) || '');
 function idbTx(fn) { try { const rq = indexedDB.open('ves-store', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('kv'); rq.onsuccess = () => { try { const db = rq.result, tx = db.transaction('kv', 'readwrite'); fn(tx.objectStore('kv'), tx); tx.oncomplete = () => db.close(); tx.onerror = () => db.close(); } catch (e) { } }; } catch (e) { } }
 function aGet(k) { if (IDB_M && IDB_M.has(k)) return IDB_M.get(k); try { return localStorage.getItem(k); } catch (e) { return null; } }
-function aSet(k, v) { if (IDB_M) { IDB_M.set(k, v); idbTx((st, tx) => { st.put(v, k); tx.addEventListener('complete', () => { try { localStorage.removeItem(k); } catch (e) { } }); }); return; } localStorage.setItem(k, v); }
-function aDel(k) { if (IDB_M) { IDB_M.delete(k); idbTx(st => st.delete(k)); } try { localStorage.removeItem(k); } catch (e) { } }
+/* IndexedDB 写入排队：同一个键只写最新一份，攒一下一次写完。
+   连续模拟时每轮都会存档（当季进度约 3MB），网页忙着算的时候写入没法进行，之前会一份份堆在记忆体里，几十轮就把网页撑到崩溃 */
+const IDBQ = new Map(); let IDBQ_T = 0;
+function idbQ(k, v, rmLS) { IDBQ.set(k, { v, rmLS }); if (!IDBQ_T) IDBQ_T = setTimeout(idbQFlush, 60); }
+function idbQFlush() { IDBQ_T = 0; if (!IDBQ.size) return; const ops = [...IDBQ.entries()]; IDBQ.clear(); idbTx((st, tx) => { ops.forEach(([k, o]) => o.del ? st.delete(k) : st.put(o.v, k)); tx.addEventListener('complete', () => ops.forEach(([k, o]) => { if (o.rmLS) try { localStorage.removeItem(k); } catch (e) { } })); }); }
+try { addEventListener('pagehide', idbQFlush); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') idbQFlush(); }); } catch (e) { }
+function aSet(k, v) { if (IDB_M) { IDB_M.set(k, v); idbQ(k, v, true); return; } localStorage.setItem(k, v); }
+function aDel(k) { if (IDB_M) { IDB_M.delete(k); IDBQ.set(k, { del: true }); if (!IDBQ_T) IDBQ_T = setTimeout(idbQFlush, 60); } try { localStorage.removeItem(k); } catch (e) { } }
 function aKeys(pre) { const o = new Set(); if (IDB_M) IDB_M.forEach((v, k) => { if (String(k).startsWith(pre)) o.add(k); }); try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(pre)) o.add(k); } } catch (e) { } return [...o]; }
 /* 旧存档搬家：localStorage 里的往季存档搬进 IndexedDB */
 function idbMigrate() { if (!IDB_M) return; try { aKeys(LKEY + '|a').forEach(k => { if (k === LKEY + '|atag') return; const v = IDB_M.has(k) ? IDB_M.get(k) : localStorage.getItem(k); if (v == null || String(v).startsWith('J:')) return; try { aSet(k, 'J:' + LZString.decompressFromUTF16(v)); } catch (e) { } }); } catch (e) { } } /* 搬进 IndexedDB，顺便改存成不用解压的 JSON（只做一次） */
@@ -788,7 +799,7 @@ function archSave0() { const A = (S && S.archive) || [], keep = new Set(); let T
   aKeys(LKEY + '|a').forEach(k => { if (k !== LKEY + '|atag' && !keep.has(k)) aDel(k); }); }
 function localSave() {
   try { archSave(); const o = {}; for (const k in S) if (k !== 'archive') o[k] = S[k]; o.__arch = (S.archive || []).map(x => x.s); const js = JSON.stringify(o);
-    if (IDB_M) { IDB_M.set(LKEY, js); idbTx(st => st.put(js, LKEY)); try { localStorage.setItem(LKEY, js); } catch (e) { try { localStorage.removeItem(LKEY); } catch (e2) { } } return true; } /* 当季进度也存一份在 IndexedDB；localStorage 放得下就也放一份 */
+    if (IDB_M) { IDB_M.set(LKEY, js); idbQ(LKEY, js); try { localStorage.setItem(LKEY, js); } catch (e) { try { localStorage.removeItem(LKEY); } catch (e2) { } } return true; } /* 当季进度也存一份在 IndexedDB；localStorage 放得下就也放一份 */
     localStorage.setItem(LKEY, js); return true; } catch (e) { }
   const str = JSON.stringify(S);
   try { localStorage.setItem(LKEY, str); return true; } catch (e) {}
@@ -845,7 +856,8 @@ document.addEventListener('pointerout', e => { const pt = e.target.closest && e.
 document.addEventListener('click', e => { const pt = e.target.closest && e.target.closest('.gc-pt'); if (pt) { gcTip(pt); e.stopPropagation(); } }, true);
 let SAVE_PEND = false;
 /* 多季推演中：每季只在季末真正存一次。以前一季要存 400 多次、每次把 8MB 的进度整份转成文字，内存来不及回收，推演到二十季左右浏览器就崩溃 */
-function save() { try { if (AUTO) { SAVE_PEND = true; return; } } catch (e) { } save0(); }
+let SAVE_T = 0;
+function save() { try { if (AUTO) { SAVE_PEND = true; return; } if (BATCH || PILOT) { SAVE_PEND = true; if (!SAVE_T) SAVE_T = setTimeout(() => { SAVE_T = 0; if (SAVE_PEND && !AUTO) save0(); }, 0); return; } } catch (e) { } save0(); } /* 全自动整理名单、转会小助手批量处理时：做完再存一次（之前每个动作都存一次约 3MB 的进度） */
 function save0() { SAVE_PEND = false; if (S) { try { if (!S.init || (S.initV || 0) < 2) { S.init = initSnap(); S.initV = 2; } /* 2026-11-10：把你重置后调整好的设定一次性存为初始设定 */ else if (SEASON === 1 && !playedRounds()) S.init = initSnap(); /* S01 开赛前做的调整都自动算进初始设定 */ } catch (e) { } } S.updated = Date.now(); localSave(); cloudQueue(); }
 function load() { try { let raw = localStorage.getItem(LKEY); if (raw && raw.startsWith('LZ:')) raw = LZString.decompressFromUTF16(raw.slice(3)); let s = raw ? JSON.parse(raw) : null; const ir = IDB_M && IDB_M.get(LKEY); if (ir) { try { const si = JSON.parse(ir); if (!s || (si && (si.updated || 0) > (s.updated || 0))) s = si; } catch (e) { } } /* 本机两份（localStorage / IndexedDB）取比较新的 */ if (s && s.__arch) { const A = []; for (const n of s.__arch) { const z = aGet(LKEY + '|a' + n); if (!z) throw new Error('arch ' + n); const x = JSON.parse(z.startsWith('J:') ? z.slice(2) : LZString.decompressFromUTF16(z)); A.push(x); ARCH_W.set(x, archTagL(x)); } s.archive = A; delete s.__arch; } if (s && s.fx && s.teams) return s; } catch (e) { console.error(e); } return null; }
 // 比赛结果压缩存储。ev: [分钟, 类型, 主/客, 球员, 助攻者/被换下者, 附加值（点球=1 / 伤停轮数 / 被扑=1 / 直红=1）]
@@ -1356,7 +1368,14 @@ function loans18() { // 历史时期谈好、跨到 S18 的租借
     if (p && t === l.from && PDB[l.to]) { PDB[t].splice(PDB[t].indexOf(p), 1); PDB[l.to].push(p); p.team = l.to; p.loanFrom = l.from; p.loanUntil = l.until; } });
 }
 // 下季预计人数里青训和租借的变化
-function kidLoanDelta(t, hist) {
+/* 各队「青训孩子下季会不会在一线队 / 租借」的人数变化：转会窗、名单整理时每队要问好几百次，每次都把两千个孩子从头算一遍（夏窗光这个就十几秒）。
+   改成一次算好所有球队，青训决定（S.acadDec）没变就直接用 */
+let KLD_C = null;
+function kldSig() { let n = 0, h = 0; const D = S.acadDec || {}; for (const k in D) { const a = D[k]; n++; if (Array.isArray(a)) { h += a.length * 31; for (const e of a) if (e) h += (e.s || 0) * 7 + (e.until || 0) * 13 + String(e.act || '').length * 3 + (e.to ? String(e.to).length : 0); } else if (a) h += 1; } let g = 0; for (const k in ACAD_ID) g++; return SEASON + '|' + n + '|' + h + '|' + g + '|' + (S.dkf || 0); }
+function kidLoanDelta(t, hist) { const sig = kldSig(); if (!KLD_C || KLD_C.sig !== sig) KLD_C = { sig, d: kidLoanDeltaAll(false), h: kidLoanDeltaAll(true) }; return (hist ? KLD_C.h : KLD_C.d)[t] || 0; }
+function kidLoanDeltaAll(hist) { const s = SEASON, out = {}; const on = x => (x.at === 'first' || x.at === 'loan') && x.team ? x.team : null;
+  kidIdsAll().forEach(id => { const k = ACAD_ID[id]; if (!k) return; const b = on(kidWhere(k, s + 1)); if (hist) { if (b && !kidRetired(k, s + 1)) out[b] = (out[b] || 0) + 1; return; } const a = on(kidWhere(k, s)); if (b) out[b] = (out[b] || 0) + 1; if (a) out[a] = (out[a] || 0) - 1; }); return out; }
+function kidLoanDelta0(t, hist) {
   let n = 0; const s = SEASON;
   kidIdsAll().forEach(id => { const k = ACAD_ID[id]; if (!k) return; const a = kidWhere(k, s), b = kidWhere(k, s + 1); const at = x => (x.at === 'first' || x.at === 'loan') && x.team === t;
     if (hist) { if (at(b) && !kidRetired(k, s + 1)) n++; } else n += (at(b) ? 1 : 0) - (at(a) ? 1 : 0); });
@@ -7594,7 +7613,7 @@ function payMul(p, t, s = SEASON) { const R = payRec(p, t, s); return R ? R.m : 
 const wageP = (p, t) => Math.max(1, Math.round(wageOf(p.rating, t) * payMul(p, t)));
 const finStart = t => { const v = (PDB0[t] || []).map(p => p.rating).sort((a, b) => b - a).slice(0, 11); const str = v.length ? v.reduce((a, b) => a + b, 0) / v.length : 78; return Math.max(100, Math.round((300 + (str - 82) * 45) * (tid(t).budget || 1))); };
 // 俱乐部在第 s 季转会窗时的财务：余额（开局资金 + 历年奖金 + 卖人 − 买人）、管理层给的转会预算、本窗剩余
-let FIN_C = null;
+let FIN_C = null, FIN_P = null;
 // 每季账本：收入（卖人、周边商品、投资方赞助、广告、球场、比赛奖金）和支出（周边生产、税务、球场维护、买人、工资）。
 // 一季的商业收入、奖金、工资和税在 38 轮 + 杯赛踢完时结算；买卖球员记在球员加盟的那一季。
 const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资', '季前巡回', '升级奖金', '会员集资', '新老板注资'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款', '经纪人佣金', '职员薪水', '青训营运', '日常营运', '球员奖金', '盈余再投资'];
@@ -7626,8 +7645,11 @@ function finState() {
   const MK = isPending(SEASON) && S.market ? S.market[SEASON] : null;
   const ck = [SEASON, S.archive.length, isPending(SEASON), TRANSFERS.length, MOD_VER_SEASON, (S.relFee || []).length, MK ? MK.offers.filter(o => o.st === 'a').length + '|' + (MK.free || []).length + '|' + MK.seq : 0].join('/');
   if (FIN_C && FIN_C.k === ck) return FIN_C.v;
+  /* 往季的帐跟这次转会窗做了什么无关：算一次存起来。之前转会窗每成交一笔就把所有球队、所有赛季的帐整个重算，夏窗全自动要多花好几秒 */
+  const pk = ck.split('/').slice(0, 6).join('/'); if (!FIN_P || FIN_P.k !== pk) FIN_P = { k: pk, m: {} };
   const F = {}; Object.keys(TD).forEach(t => F[t] = { start: finStart(t), prize: 0, sell: 0, buy: 0, wage: 0, seasonPrize: 0, seasonWage: 0, hist: [], led: [] });
-  Object.entries(F).forEach(([t, f]) => { let bal = f.start; for (let s = 1; s <= SEASON; s++) { let L = finLedger(t, s); if (!L.closed && !L.ti && !L.te) continue; if (L.closed) { try { L = finBalAdj(t, s, L, bal); } catch (e) { } } f.led.push(L); bal += L.net; f.prize += L.inc['比赛奖金']; f.wage += L.exp['球员工资']; f.sell += L.inc['卖人收入']; f.buy += L.exp['买人支出']; if (L.closed) f.hist.push([s, L.inc['比赛奖金'], L.exp['球员工资'], L.net]); if (s === SEASON) { f.seasonPrize = L.inc['比赛奖金']; f.seasonWage = L.exp['球员工资']; f.seasonNet = L.net; } }
+  Object.entries(F).forEach(([t, f]) => { let bal = f.start, s0 = 1; const P0 = FIN_P.m[t]; if (P0) { Object.assign(f, { prize: P0.prize, wage: P0.wage, sell: P0.sell, buy: P0.buy, hist: P0.hist.slice(), led: P0.led.slice() }); bal = P0.bal; s0 = SEASON; }
+    for (let s = s0; s <= SEASON; s++) { if (s === SEASON && !P0) FIN_P.m[t] = { prize: f.prize, wage: f.wage, sell: f.sell, buy: f.buy, hist: f.hist.slice(), led: f.led.slice(), bal }; let L = finLedger(t, s); if (!L.closed && !L.ti && !L.te) continue; if (L.closed) { try { L = finBalAdj(t, s, L, bal); } catch (e) { } } f.led.push(L); bal += L.net; f.prize += L.inc['比赛奖金']; f.wage += L.exp['球员工资']; f.sell += L.inc['卖人收入']; f.buy += L.exp['买人支出']; if (L.closed) f.hist.push([s, L.inc['比赛奖金'], L.exp['球员工资'], L.net]); if (s === SEASON) { f.seasonPrize = L.inc['比赛奖金']; f.seasonWage = L.exp['球员工资']; f.seasonNet = L.net; } }
     f.bal0 = bal; f.frac = (0.35 + ghash('bud|' + t + '|' + SEASON) * 0.35) * (() => { try { return budgetMul(t); } catch (e) { return 1; } })(); f.budget = Math.max(0, Math.round(bal * f.frac)); f.wBuy = 0; f.wSell = 0; });
   if (MK) MK.offers.filter(o => o.st === 'a').forEach(o => { if (F[o.to]) F[o.to].wBuy += o.fee; if (F[o.from]) F[o.from].wSell += o.fee; });
   Object.values(F).forEach(f => { f.bal = f.bal0 - f.wBuy + f.wSell; f.rem = Math.round(f.budget + f.wSell * 0.5 - f.wBuy); });
@@ -8644,7 +8666,11 @@ function bidRespond(B) {
   B.counter = null; o.st = 'r'; o.log.push(`${T.from} 拒绝：报价太低`); save(); return { res: 'reject', why: `${T.from} 拒绝：报价太低，连还价都不想谈` + (B.n >= 3 ? `（已经谈了 ${B.n} 轮，最多 4 轮）` : '') };
 }
 // 时间推进：到期的报价收到回复（一键规划里的自动谈判：还价在上限内就接受，被拒就出到上限再试）
-function bidTick(force) {
+/* 一次回复好几个报价时：成交后的名单重算（winApply 约 1 秒）等全部回复完只做一次，不是每成交一笔做一次 */
+function bidTick(force) { if (BATCH) return bidTick0(force); BATCH = 1; let n = 0; try { n = bidTick0(force); } finally { BATCH = 0; }
+  if (BATCH_W) { BATCH_W = 0; winApply(); } else if (BATCH_L != null) { const s0 = BATCH_L; BATCH_L = null; mktLateApply(s0); } else if (SAVE_PEND) save();
+  return n; }
+function bidTick0(force) {
   const c = mktClock(); let n = 0;
   Object.values(S.bids || {}).forEach(B => { if (!B.wait || B.season !== SEASON || (B.wait.manual && !force)) return; if (!force && (B.wait.mode !== c.mode || c.now < B.wait.due)) return;
     const r = bidRespond(B); n++;
@@ -9312,10 +9338,19 @@ function autoSquad(phase) {
 }
 /* 全自动模式下的转会、续约：开窗时让小助手把所有球队的事一次办完——
    报价（接受 / 要求加价 / 拒绝）、合同到期的续约（需要时加薪）或挂牌、按需求买人、提拔青训；夏窗再一天天推进到对方回复完 */
-function autoMarket(win) { const T = { acc: 0, ren: 0, renF: 0, list: 0, bought: 0, promo: 0, gave: 0 }; PILOT = 1; AUTO_DEC = 1;
-  try { for (let i = 0; i < (win ? 1 : 10); i++) { const P = batchPlan(win), R = batchExec(win, P, true); T.acc += R.acc.length; T.ren += R.ren; T.renF += R.renF; T.list += R.list; T.bought += R.bought.length; T.promo += R.promo; T.gave += R.gave;
-      if (win) break; const MK = mktGet(), waiting = Object.values(S.bids || {}).some(B => B.season === SEASON && B.wait) || MK.offers.some(o => o.st === 'p' && o.ctrWait); if (!waiting && i > 0) break; MK.day = (MK.day || 1) + 1; try { bidTick(); } catch (e) { } } }
-  finally { PILOT = 0; }
+/* 一个回合：出价、回复、执行；夏窗还要推进一天。回传 false = 不用再继续 */
+function autoMarketStep(win, T, i) { PILOT = 1; AUTO_DEC = 1;
+  try { const P = batchPlan(win), R = batchExec(win, P, true); T.acc += R.acc.length; T.ren += R.ren; T.renF += R.renF; T.list += R.list; T.bought += R.bought.length; T.promo += R.promo; T.gave += R.gave;
+    if (win) return false; const MK = mktGet(), waiting = Object.values(S.bids || {}).some(B => B.season === SEASON && B.wait) || MK.offers.some(o => o.st === 'p' && o.ctrWait); if (!waiting && i > 0) return false; MK.day = (MK.day || 1) + 1; try { bidTick(); } catch (e) { } return true; }
+  finally { PILOT = 0; } }
+const autoMarketT0 = () => ({ acc: 0, ren: 0, renF: 0, list: 0, bought: 0, promo: 0, gave: 0 });
+function autoMarket(win) { const T = autoMarketT0(); for (let i = 0; i < (win ? 1 : 10); i++) if (!autoMarketStep(win, T, i)) break; return autoMarketEnd(win, T); }
+/* 同上，但每个回合之间让浏览器喘口气（画面、进度提示照常更新），不会一口气卡住几十秒 */
+async function autoMarketA(win, prog) { const T = autoMarketT0(); for (let i = 0; i < (win ? 1 : 10); i++) { if (prog) prog(i); await uiYield(); if (!autoMarketStep(win, T, i)) break; } await uiYield(); return autoMarketEnd(win, T); }
+const uiYield = () => new Promise(r => setTimeout(r, 0));
+/* 合同到期的续约 / 放人：一次处理几百人，之前每处理一个就重画一次首页、跳一个提示（单这一步就卡住网页约 30 秒）——改成全部处理完才存档、重画 */
+function autoMarketEnd(win, T) { const b0 = BATCH; BATCH = 1; let r; try { r = autoMarketEnd0(win, T); } finally { BATCH = b0; } if (!b0) { if (BATCH_L != null) { const s0 = BATCH_L; BATCH_L = null; mktLateApply(s0); } else if (SAVE_PEND) save(); } return r; }
+function autoMarketEnd0(win, T) { AUTO_DEC = 1;
   /* 合同到期：按留队意愿处理（见 autoOfferDec 上面的说明） */
   if (!win) { try { const MK = mktGet(), C = mktCtx(MS()); const EXP = batchPlan(false).exp; EXP.filter(x => keepUid(x.p.uid) && !(MK.renew[x.p.uid] && MK.renew[x.p.uid].ok)).forEach(x => { mktAct('renew', x.p.uid, { force: true, yrs: x.a >= 32 ? 1 : x.a >= 29 ? 2 : 3 }); T.ren++; }); /* 锁定留队：一定续约 */
       const cand = EXP.filter(x => x.d === 'skip' && !scrLockedUid(x.p.uid) && !keepUid(x.p.uid) && !MK.renew[x.p.uid] && !mktSold(MK, x.p.uid)), byT = {}, go = new Set();
@@ -9341,12 +9376,12 @@ function autoStep(now) { const C = AUTO_C(); if (!C.on || WEB.ro) return false; 
     Rr.forEach(m => { if (!m.r && m.pr && m.ko + m.du <= now) { simFx(m, nr); AUTO_REV.push(m); ch = true; } });
     if (Rr.every(m => m.r)) { DIRTY.add(nr); MOD_VER++; postRound(nr); S.demo = false; return true; }
     if (ch) { DIRTY.add(nr); MOD_VER++; S.demo = false; } return ch; }
-  if (C.sqK !== 'sum' + SEASON && mktActive() && !mktLate()) { C.sqK = 'sum' + SEASON; try { autoSquad('sum'); } catch (e) { console.error(e); } try { autoMarket(false); } catch (e) { console.error(e); } return true; }
+  if (C.sqK !== 'sum' + SEASON && mktActive() && !mktLate()) { C.sqK = 'sum' + SEASON; AUTO_SUM = true; return true; } /* 夏窗：交给 autoRun 分段做（夏窗转会要算十几二十秒，一口气做会卡住网页） */
   const end = autoEnd(); if (now < end + C.Sm) { return false; }
   QUIET_END = true; try { maybeEndSeason(true); } finally { QUIET_END = false; } C.an = { s: SEASON, base: 0, t: end + C.Sm }; return true; }
-async function autoRun(force) { if (AUTO_BUSY || !S || !S.auto || !S.auto.on) return 0; if (!force && !autoCan()) return 0; if (M && (M.phase === 'live' || M.phase === 'rolling')) return 0; /* 正在看直播时先不打扰，看完再补 */
+async function autoRun(force) { if (AUTO_BUSY || REST_RUN || AUTO || !S || !S.auto || !S.auto.on) return 0; if (!force && !autoCan()) return 0; if (M && (M.phase === 'live' || M.phase === 'rolling')) return 0; /* 正在看直播时先不打扰，看完再补 */
   if (!force && WEB.on && nextDue()) { try { const r = await webFetch(WEB.etag ? { 'If-None-Match': WEB.etag } : {}); if (r && !r.same && r.state && r.state.s && (r.state.s.updated || 0) > (S.updated || 0)) return 0; } catch (e) { } } /* 先看云端是不是已经被别的设备（或后台任务）推进了，免得两边各踢一次 */
-  AUTO_BUSY = true; AUTO_REV = []; let n = 0; try { for (let k = 0; k < 600; k++) { if (!autoStep(Date.now())) break; n++; if (n % 5 === 0) await new Promise(r => setTimeout(r, 0)); } } finally { AUTO_BUSY = false; }
+  AUTO_BUSY = true; AUTO_REV = []; let n = 0; try { for (let k = 0; k < 600; k++) { if (!autoStep(Date.now())) break; n++; if (AUTO_SUM) { AUTO_SUM = false; await uiYield(); try { autoSquad('sum'); } catch (e) { console.error(e); } try { await autoMarketA(false); } catch (e) { console.error(e); } } if (n % 3 === 0) await uiYield(); } } finally { AUTO_BUSY = false; AUTO_SUM = false; }
   if (n) { save(); try { render(); } catch (e) { } const rv = AUTO_REV.slice(); toast(n <= 2 && rv.length === 1 ? `终场：${rv[0].h} ${rv[0].r.hg}:${rv[0].r.ag} ${rv[0].a}` : n <= 2 && rv.length > 1 ? `${rv.length} 场比赛已经踢完，赛果已计入积分榜` : n <= 2 && !rv.length ? '新一轮比赛开始了，按开球时间一场一场踢' : `全自动模拟：补上了 ${n} 步（比赛 / 转会窗）`); }
   const el = document.getElementById('autoLn'); if (el) el.textContent = autoStatus(); return n; }
 function autoDlg() { const C = AUTO_C(), d = $('#dlg'), h = x => +(x / H_MS).toFixed(2);
@@ -9367,14 +9402,24 @@ function autoFastSeason() { const c = mktCfg(), prev = { auto: c.auto, pilot: c.
       playRound(i); });
     if (mktActive() && !mktLate()) { try { autoSquad('sum'); autoMarket(false); } catch (e) { console.error(e); } }
   } finally { c.auto = prev.auto; c.pilot = prev.pilot; } }
+/* 「模拟剩余赛季」：跟 autoFastSeason 做一样的事，但一轮一轮来，中间让浏览器喘口气，顶部显示进度。
+   之前一口气算完剩下的 30 轮加冬窗、夏窗（夏窗转会要算两三分钟），整段时间网页完全卡住，手机上很容易被浏览器判定没反应而关掉 */
+let REST_RUN = false, AUTO_SUM = false;
+async function autoFastSeasonA(prog) { const c = mktCfg(), prev = { auto: c.auto, pilot: c.pilot }; c.auto = true; c.pilot = false; let sq = null; AUTO = AUTO || { rest: true };
+  try { for (let i = 0; i < S.fx.length; i++) { const r = S.fx[i]; if (!r.some(m => !m.r)) continue;
+      const ph = i >= WIN_A && winActive() ? 'win' : i < WIN_A ? 'start' : null;
+      if (ph && sq !== ph) { sq = ph; prog(ph === 'win' ? '冬窗转会' : '开季整理名单'); await uiYield(); try { if (ph === 'win') winGen(); autoSquad(ph); if (ph === 'win') await autoMarketA(true); } catch (e) { console.error(e); } }
+      prog('第 ' + (i + 1) + ' / ' + S.fx.length + ' 轮'); await uiYield(); playRound(i); }
+    if (mktActive() && !mktLate()) { prog('夏窗：整理名单'); await uiYield(); try { autoSquad('sum'); await autoMarketA(false, k => prog('夏窗转会（第 ' + (k + 1) + ' 天）')); } catch (e) { console.error(e); } }
+  } finally { c.auto = prev.auto; c.pilot = prev.pilot; if (AUTO && AUTO.rest) AUTO = null; } }
 /* 快速推演多个赛季：目标存进进度（S.autoTo），中途网页被重新整理或关掉，下次打开会接着推演；出错会停下并告诉你 */
 function autoSimTo(target) {
   if (AUTO) return; AUTO = { target }; S.autoTo = target; try { save0(); } catch (e) { }
-  const step = () => {
+  const step = async () => {
     if (!AUTO) return;
     if (SEASON >= AUTO.target) { AUTO = null; S.target = null; S.autoTo = null; save(); render(); toast(`已推演到 ${SN(SEASON)}`); return; }
     const chip = $('#roundChip'); if (chip) chip.innerHTML = `自动推演中 · ${SN(SEASON)} → ${SN(AUTO.target)}`;
-    try { autoFastSeason(); QUIET_END = true; maybeEndSeason(true); save0(); }
+    try { await autoFastSeasonA(m => { const c2 = $('#roundChip'); if (c2) c2.innerHTML = `自动推演中 · ${SN(SEASON)} → ${SN(AUTO.target)} · ${esc(m)}`; }); if (!AUTO) return; QUIET_END = true; maybeEndSeason(true); save0(); }
     catch (e) { console.error(e); QUIET_END = false; AUTO = null; S.autoTo = null; try { save0(); render(); } catch (e2) { } toast(`推演在 ${SN(SEASON)} 出错停下了：${String(e && e.message || e).slice(0, 80)}`); return; }
     finally { QUIET_END = false; }
     setTimeout(step, 30);
@@ -9447,9 +9492,11 @@ document.addEventListener('click', e => {
   if (el.dataset.scat != null) { SM.cat = el.dataset.scat || null; SM.limit = 50; if (!SM.cat) { SM.team = ''; SM.line = ''; } render(); return window.scrollTo(0, 0); }
   if (el.dataset.sline != null) { SM.line = el.dataset.sline; SM.limit = 50; return render(); }
   const act = el.dataset.act;
+  if ((REST_RUN || AUTO) && RO_ACTS.has(act)) { toast(REST_RUN ? '正在模拟剩余赛季，等跑完再操作' : '正在快速推演，等跑完再操作'); return; }
   if (WEB.ro && RO_ACTS.has(act)) { toast(`这台是跟随设备，进度由「${WEB.ownerName || '主控设备'}」负责；要在这台玩，请先接管`); return openSync(); }
   if (act === 'round') { const nr = nextRound(); if (nr < 0) return; playRound(nr); S.demo = false; save(); ovRound = null; render(); toast(nextRound() < 0 ? `${SN(SEASON)} 全部踢完，看完满意后点「进入 ${SN(SEASON + 1)}」` : `第 ${nr + 1} 轮已模拟`); }
-  if (act === 'rest') { const n0 = playedRounds(); autoFastSeason(); const n = playedRounds() - n0; S.demo = false; save(); ovRound = null; render(); toast(`已模拟剩余 ${n} 轮，冬窗与夏窗的转会、续约、解约、名单整理都已由系统处理 · 看完满意后点「进入 ${SN(SEASON + 1)}」`); } /* 跟快速推演一样：不管转会窗设成哪种处理方式，都全部自动 */
+  if (act === 'rest') { if (REST_RUN || AUTO) return; if (AUTO_BUSY) { toast('全自动模拟正在补进度，等它跑完再按'); return; } REST_RUN = true; const n0 = playedRounds(), chip = $('#roundChip'), chip0 = chip ? chip.innerHTML : ''; document.body.classList.add('busy-sim'); const prog = m => { const c = $('#roundChip'); if (c) c.innerHTML = '模拟中 · ' + esc(m); };
+    autoFastSeasonA(prog).catch(e => { console.error(e); toast('模拟途中出错停下了：' + String(e && e.message || e).slice(0, 80)); }).finally(() => { REST_RUN = false; document.body.classList.remove('busy-sim'); const n = playedRounds() - n0; S.demo = false; SAVE_PEND = false; save(); ovRound = null; render(); const c = $('#roundChip'); if (c && c.innerHTML.startsWith('模拟中')) c.innerHTML = chip0; toast(`已模拟剩余 ${n} 轮，冬窗与夏窗的转会、续约、解约、名单整理都已由系统处理 · 看完满意后点「进入 ${SN(SEASON + 1)}」`); }); return; } /* 跟快速推演一样：不管转会窗设成哪种处理方式，都全部自动 */
   if (act === 'watch') { M = null; initMatch(); go('match'); }
   if (act === 'prevR') { ovRound = Math.max(0, (ovRound ?? Math.max(0, nextRound())) - 1); render(); }
   if (act === 'nextR') { ovRound = Math.min(37, (ovRound ?? Math.max(0, nextRound())) + 1); render(); }
