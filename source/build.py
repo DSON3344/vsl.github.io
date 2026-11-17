@@ -45,6 +45,7 @@ head = '''<!doctype html>
 '''
 i = body.index('</style>') + len('</style>')
 html = head + body[:i] + '\n</head>\n<body>\n' + body[i:] + '\n</body>\n</html>\n'
+html = html.replace('__VES_BUILD__', hashlib.md5(html.encode()).hexdigest()[:10])  # 开站快取用的版本号
 html = minify_html(html)
 open(d + '../index.html', 'w').write(html)
 print('index.html', round(len(html) / 1e6, 2), 'MB')
