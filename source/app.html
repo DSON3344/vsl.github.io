@@ -2720,6 +2720,7 @@ function maybeEndSeason(force) {
   const A = pendingArchive(); PEND = null;
   const tb = A.table, rl = A.relegated || tb.slice(-3).map(r => r.team), stay = tb.map(r => r.team).filter(t => !rl.includes(t)), promoted = A.next;
   S.archive.push(A); registerArchive(A);
+  try { ownDistress(SEASON); } catch (e) { console.error(e); } /* 负债太深：老板转卖股权 */
   try { scrCheck(SEASON); } catch (e) { console.error(e); }
   try { intlSeasonEnd(SEASON); } catch (e) { console.error(e); } /* 国家队大赛在季末的夏天进行 */
   try { pyrAdvance(A, S.teams.filter(t => !stay.includes(t))); } catch (e) { console.error(e); }
@@ -7552,7 +7553,7 @@ const finStart = t => { const v = (PDB0[t] || []).map(p => p.rating).sort((a, b)
 let FIN_C = null;
 // 每季账本：收入（卖人、周边商品、投资方赞助、广告、球场、比赛奖金）和支出（周边生产、税务、球场维护、买人、工资）。
 // 一季的商业收入、奖金、工资和税在 38 轮 + 杯赛踢完时结算；买卖球员记在球员加盟的那一季。
-const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资', '季前巡回', '升级奖金', '会员集资'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款', '经纪人佣金', '职员薪水', '青训营运', '日常营运', '球员奖金', '盈余再投资'];
+const FIN_INC = ['卖人收入', '周边商品营收', '投资方赞助', '广告营收', '球场营收', '比赛奖金', '老板注资', '季前巡回', '升级奖金', '会员集资', '新老板注资'], FIN_EXP = ['周边商品生产', '税务', '球场维护', '买人支出', '球员工资', '解约赔偿', '基建投资', '股东分红', '财务违规罚款', '经纪人佣金', '职员薪水', '青训营运', '日常营运', '球员奖金', '盈余再投资'];
 function finLedger(t, s) {
   const inc = {}, exp = {}; FIN_INC.forEach(k => inc[k] = 0); FIN_EXP.forEach(k => exp[k] = 0);
   TRANSFERS.forEach(x => { if (x.s !== s || !x.fee) return; if (x.to === t) exp['买人支出'] += x.fee; if (x.from === t) inc['卖人收入'] += x.fee; });
@@ -7561,6 +7562,7 @@ function finLedger(t, s) {
   if (closed) { const c = commOf(t, s); inc['周边商品营收'] = c.merch; inc['投资方赞助'] = c.invest; inc['广告营收'] = c.ads; inc['球场营收'] = c.stadium; inc['比赛奖金'] = P[t] ? P[t].total : 0;
     exp['周边商品生产'] = Math.round(c.merch * 0.4); exp['球场维护'] = c.maint; exp['球员工资'] = wagesOf(s)[t] || 0; exp['税务'] = Math.round((c.merch + c.invest + c.ads + c.stadium + inc['比赛奖金']) * 0.12);
     try { const oc = ownerCash(t, s); if (oc > 0) inc['老板注资'] = oc; else if (oc < 0) exp['股东分红'] = -oc; exp['基建投资'] = Math.round(boardCost(t, s)); } catch (e) { }
+    try { ((S.ownx || {})[t] || []).forEach(x => { if (x.auto && x.s === s + 1 && x.inj) inc['新老板注资'] = (inc['新老板注资'] || 0) + x.inj; }); } catch (e) { } /* 新老板接手：补平债务 + 启动资金 */
     try { const A2 = (S.archive || []).find(x => x.s === s) || (s === SEASON && isPending(s) ? pendingArchive() : null); if (A2 && (A2.next || []).includes(t)) { inc['升级奖金'] = 250; const o = ownerAt(t, s); if (o && o.type === 'fans') inc['会员集资'] = 120; } } catch (e) { } } /* 升上威超：联赛发升级奖金（威超转播分成）；球迷持股会另外向会员集资 */
   { const R = S.scr && S.scr[s - 1] && S.scr[s - 1][t]; if (R && R.fine) exp['财务违规罚款'] = R.fine; } /* 上季超标的罚款在本季缴 */
   try { const tr = tourOf(t, s); if (tr) inc['季前巡回'] = tr.rev; exp['经纪人佣金'] = agentFees(t, s); } catch (e) { }
@@ -7791,10 +7793,24 @@ function mktGenHist(MK, s, C, salt) {
     const pr = FULL ? (a <= 31 && r >= C.str[t] + 4 ? 0.34 : a <= 29 && r >= C.str[t] + 1 ? 0.1 : a <= 30 && r >= 88 ? 0.08 : a <= 24 && r >= C.str[t] - 2 ? 0.06 : a <= 27 && r >= 82 ? 0.04 : HB > 1 && a <= 28 && r >= 77 ? 0.03 : 0) * HB /* 全程模拟：年轻好手也会被球探盯上 */ : a <= 31 && r >= C.str[t] + 4 ? 0.2 : a <= 29 && r >= C.str[t] + 1 ? 0.04 : 0; if (rnd() < pr) cand.push({ p, t, r, rnd }); }); });
   cand.sort((x, y) => y.r - x.r).slice(0, FULL ? Math.round(30 * HB) : 10).forEach(({ p, t, rnd }) => { const B = mktBuyers(p, t, C, false), used = new Set(); for (let k = 0; k < 3; k++) { if (k && rnd() > 0.45) break; const to = mktPick(B.dom.filter(x => !used.has(x)), rnd, C); if (!to) break; used.add(to); mktOfferB(MK, p, t, to, C, rnd, FULL ? 0.92 : 0.85, FULL ? 1.2 : 1.15); } if (B.ext.length && rnd() < 0.4) mktOfferB(MK, p, t, B.ext[Math.floor(rnd() * B.ext.length)], C, rnd, 0.95, 1.3); });
   if (FULL) mktGenBench(MK, s, C, salt, HB);
+  if (FULL && nm4() && s >= SCR_END) try { mktGenDebt(MK, s, C, salt); } catch (e) { console.error(e); }
   if (FULL && nm4() && s >= SCR_END) try { mktGenPromo(MK, s, C, salt); } catch (e) { console.error(e); }
   if (FULL && nm4() && s >= SCR_END) try { mktGenGK(MK, s, C, salt); } catch (e) { console.error(e); }
   mktGenEco(MK, s, C, salt, nx);
 }
+/* 负债的球队：只能卖人回血。按身价从高往低挑（非卖品除外、门将留够 2 名），卖到大约能补上赤字为止，买方是付得起的威超球队或外赛区 */
+/* 极端情况：负债超过 ⰵ800M，或连续 3 季负债且超过 ⰵ300M，老板转卖球队股权。新老板接手时先把债务补平，另外带一笔启动资金 */
+function ownDistress(s) { if (!nm4() || s < SCR_END) return; FIN_C = null; const F = finState(); S.debtRun = S.debtRun || {}; S.ownx = S.ownx || {};
+  Object.keys(TD).forEach(t => { const f = F[t]; if (!f) return; const bal = f.bal; S.debtRun[t] = bal < 0 ? (S.debtRun[t] || 0) + 1 : 0;
+    const o0 = ownerAt(t, s); if (!o0 || o0.w >= 70) return; if (!(bal < -800 || (S.debtRun[t] >= 3 && bal < -300))) return; if ((S.ownx[t] || []).some(x => x.s === s + 1)) return;
+    const y = ghash('ownsell|' + t + '|' + s), ty = y < 0.12 ? 'sovereign' : y < 0.32 ? 'tech' : y < 0.55 ? 'group' : y < 0.78 ? 'corp' : 'tycoon', o = mkOwner(t, ty, t + '|sell|' + s, s + 1);
+    S.ownx[t] = (S.ownx[t] || []).concat([{ s: s + 1, r: 0, type: ty, name: o.name, chair: o.chair, prev: o0.name, auto: 1, why: '负债', inj: Math.round(-bal + 150 + ghash('inj|' + t + s) * 150) }]); S.debtRun[t] = 0; OWN_C = null; }); }
+function mktGenDebt(MK, s, C, salt) { if (MK.debtDone) return; MK.debtDone = 1; const F = finState();
+  Object.keys(PDB).filter(t => TD[t] && F[t] && F[t].bal < 0).forEach(t => { const need = -F[t].bal, rnd = seeded('debt|' + t + '|' + s + salt); let got = 0, n = 0;
+    const gk = (PDB[t] || []).filter(p => ENGINE.LINE(p.pos) === 'GK').length;
+    const L = (PDB[t] || []).filter(p => !p.loanFrom && !p.kidLoan && !nfsOf(t, p) && !MK.offers.some(o => o.uid === p.uid && o.st !== 'r' && o.st !== 'x') && !(ENGINE.LINE(p.pos) === 'GK' && gk <= 2) && C.ageN(p) <= 32).map(p => ({ p, v: valueM(C.ratN(p), C.ageN(p)) })).sort((a, b) => b.v - a.v);
+    for (const { p, v } of L) { if (got >= need * 0.8 || n >= 3) break; const B = mktBuyers(p, t, C, false), dom = B.dom.filter(x => (C.str[x] || 0) >= (C.str[t] || 0) - 2 && canAfford(x, v)), to = mktPick(dom, rnd, C) || (B.ext.length ? B.ext[Math.floor(rnd() * B.ext.length)] : null); if (!to) continue;
+      const o = mktOfferB(MK, p, t, to, C, rnd, 0.95, 1.15); if (!o) continue; o.kind = 'debt'; if (o.will != null) o.will = Math.min(0.95, o.will + 0.15); o.log = (o.log || []).concat([`${t} 负债 ⰵ${Math.round(need)}M，需要卖人回血`]); got += o.fee; n++; } }); }
 /* 门将不到 2 名的球队：补一名替补门将（能力比主力低一些，年纪不限太死） */
 function mktGenGK(MK, s, C, salt) { (S.teams || []).forEach(t => { const G = (PDB[t] || []).filter(p => ENGINE.LINE(p.pos) === 'GK'); if (G.length >= 2 || MK.offers.some(o => o.to === t && o.kind === 'gk')) return; const top = G.length ? Math.max(...G.map(p => p.rating)) : 75, rnd = seeded('gk|' + t + '|' + s + salt), pool = [];
     Object.entries(PDB).forEach(([f, L]) => { if (f === t || !TD[f]) return; (L || []).forEach(p => { if (ENGINE.LINE(p.pos) !== 'GK' || p.loanFrom || MK.offers.some(o => o.uid === p.uid)) return; const r = C.ratN(p), a = C.ageN(p); if (r < top - 12 || r > top - 2 || a > 34) return; pool.push({ p, f }); }); });
@@ -7826,7 +7842,7 @@ function mktGenBench(MK, s, C, salt, HB = 1) {
    B 捡漏老将：豪门里 29–33 岁、或踢不上主力的球员，小球队低价买来当主力（球员想要上场时间，愿意去）
    C 潜力新星：小球队（尤其刚卖过天才、手里有钱的）去外赛区挖 21 岁以下的高潜力球员 */
 const BIG_STR = 84;
-const KIND_TXT = { gk: ['补门将', '门将不到 2 名的球队补一名替补门将'], promo: ['升班马补强', '刚升上来、阵容以青训球员为主的球队，去威超和外赛区顶级联赛买已成名的球员'], talent: ['天才出售', '小球队把培养出来的天才卖给豪门，转会费带天赋溢价'], vet: ['捡漏老将', '豪门的老将 / 替补，小球队低价买来当主力'], prospect: ['潜力新星', '小球队用卖人的钱去挖年轻的高潜力球员'], loan: ['租借', '租借一个赛季，期满可以选择回归或续租'], acadloan: ['青训租借', '青训球员外租历练'], acadsale: ['青训转会', '青训球员转会'] };
+const KIND_TXT = { debt: ['负债卖人', '球队亏损负债，只能卖人回血'], gk: ['补门将', '门将不到 2 名的球队补一名替补门将'], promo: ['升班马补强', '刚升上来、阵容以青训球员为主的球队，去威超和外赛区顶级联赛买已成名的球员'], talent: ['天才出售', '小球队把培养出来的天才卖给豪门，转会费带天赋溢价'], vet: ['捡漏老将', '豪门的老将 / 替补，小球队低价买来当主力'], prospect: ['潜力新星', '小球队用卖人的钱去挖年轻的高潜力球员'], loan: ['租借', '租借一个赛季，期满可以选择回归或续租'], acadloan: ['青训租借', '青训球员外租历练'], acadsale: ['青训转会', '青训球员转会'] };
 const kindChip = o => (o.cont ? ` <span class="chip" title="这名球员之前被你改过去向（历史上他是从 ${esc(o.hfrom || '')} 转会）。现在历史轮到他转会去 ${esc(o.to)}：同意就回到历史轨道，拒绝就继续留在现在的球队。" style="font-size:10px;padding:0 5px;border-color:#b8f">历史延续</span>` : '') + (o.kind && KIND_TXT[o.kind] ? ` <span class="chip" title="${KIND_TXT[o.kind][1]}" style="font-size:10px;padding:0 5px;border-color:${o.kind === 'talent' ? 'var(--gold)' : o.kind === 'vet' ? '#7c9' : /loan/.test(o.kind) ? '#c9a' : '#8ad'}">${KIND_TXT[o.kind][0]}</span>` : '');
 function mktGenEco(MK, s, C, salt, nx) {
   const pidOf = p => UIDPID[p.uid] ?? (String(p.uid).startsWith('H|') ? +String(p.uid).slice(2) : null);
@@ -7963,7 +7979,7 @@ function mktSysResolve(MK, all, s) {
   return n;
 }
 // 卖方俱乐部按常规挑买方：历史转会照历史；否则只考虑球员愿意去的买方，报价不低于身价时选「报价 × 球员意愿」最好的那家
-function sysDecide(L, s) { try { clauseTrigger(L, s); } catch (e) { } { const nf = o => TD[o.from] && nfsUid(o.from, o.uid) && o.fee < o.v * NFS_MULT; const sc = L.find(o => o.sched && !nf(o)); const ok = L.filter(o => !nf(o) && (o.will == null || willNow(o) >= WILL_MIN) && !isRival(o.from, o.to) && (relOf(o.from, o.to) !== 'comp' || o.fee >= o.v * 1.15)); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || L.find(o => o.rc) || ok[0]; L.forEach(o => { if (o === best && (o.sched || o.rc || ((s > 17 || HIST_END > 1e8) && o.fee >= o.v * (o.kind === 'vet' ? 0.55 : o.loan ? 0.05 : 0.95)))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : o.rc ? '买方支付解约金，卖方不能拒绝 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
+function sysDecide(L, s) { try { clauseTrigger(L, s); } catch (e) { } { const nf = o => TD[o.from] && nfsUid(o.from, o.uid) && o.fee < o.v * NFS_MULT; const sc = L.find(o => o.sched && !nf(o)); const ok = L.filter(o => !nf(o) && (o.will == null || willNow(o) >= WILL_MIN) && !isRival(o.from, o.to) && (relOf(o.from, o.to) !== 'comp' || o.fee >= o.v * 1.15)); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || L.find(o => o.rc) || ok[0]; L.forEach(o => { if (o === best && (o.sched || o.rc || !TD[o.to] || canAfford(o.to, o.fee)) && (o.sched || o.rc || ((s > 17 || HIST_END > 1e8) && o.fee >= o.v * (o.kind === 'vet' ? 0.55 : o.loan ? 0.05 : 0.95)))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : o.rc ? '买方支付解约金，卖方不能拒绝 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
 // 历史时期：把和历史不同的决定记成叠加层 ov，实际发生的转会记成 done（转会窗延续期间新成交的也会重新算）
 function mktCompute(s) {
   if (s >= HIST_END) return; const MK = mktGet(s);
