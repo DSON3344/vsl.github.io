@@ -1635,10 +1635,11 @@ function scrKey(team, name) { if (!nm4() || SEASON > SCR_END) return null; const
 let SCR_CORE = null;
 function scrCore(name) { if (!nm4() || SEASON > 16) return false; if (!SCR_CORE || SCR_CORE.s !== SEASON) { const set = new Set(); Object.values(PDB).forEach(L => { const sc = L.filter(p => scrLockedUid(p.uid) && p.line !== 'GK' && ENGINE.LINE(p.pos) !== 'GK'); const top = Math.max(0, ...sc.map(p => p.rating)); sc.forEach(p => { if ((p.rating === top && top >= 84) || p.rating >= 92) set.add(p.name); }); }); SCR_CORE = { s: SEASON, set }; } return SCR_CORE.set.has(name); }
 STAR_W.core = 1.6; Object.entries(KEY_W).forEach(([t, w]) => { STAR_W['k' + t] = w; });
-ENGINE.setPickHook((k, team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); let w = X ? fixPickBase(X, k, name) : 1; const kt = scrKey(team, name), st = ((X && X.stars && X.stars[name]) || []).concat(kt ? ['k' + kt] : scrCore(name) ? ['core'] : []);
-  if (st.length && (!X || name !== (k === 'g' ? X.F.boot : X.F.assist))) { let m = Math.max(...st.map(x => STAR_W[x] || 1)); const me = X ? ((X.tally[name] || {})[k] || 0) : 0, top = !X ? null : k === 'g' ? (X.F.boot ? X.myG : null) : (X.F.assist ? X.myA : null); if (top != null && me >= top - 3) m = Math.min(m, me >= top - 1 ? 0.15 : 0.4); if (kt && k === 'g') { const pp = BY_TN[team + '|' + name], ps = pp ? String(pp.pos || '') : ''; if (/^(LW|RW|LM|RM|LF|RF)$/.test(ps)) m *= kt === 'S++' ? 3 : 1.7; else if (/^(CAM|AM|SS|CF)$/.test(ps)) m *= 1.25; else if (/^(ST|CF)$/.test(ps) && kt === 'S++') m *= 1.6; /* 顶级中锋是球队的进球核心：巅峰期进球不该比同级的边锋少 */ /* 核心边锋 / 前腰也能进很多球（像 C 罗、梅西） */ const g = scrTally(name), cap = KEY_CAP[kt]; if (g >= cap + 6) m = Math.min(m, 0.4); else if (g >= cap) m = Math.min(m, 1); } w *= m; }
-  return w; });
+const scrPickW = (k, team, name) => { const X = FIXC && FIXC.F === fixOf(SEASON) ? FIXC : fixLg(); let w = X ? fixPickBase(X, k, name) : 1; const kt = scrKey(team, name), st = ((X && X.stars && X.stars[name]) || []).concat(kt ? ['k' + kt] : scrCore(name) ? ['core'] : []);
+  if (st.length && (!X || name !== (k === 'g' ? X.F.boot : X.F.assist))) { let m = Math.max(...st.map(x => STAR_W[x] || 1)); const me = X ? ((X.tally[name] || {})[k] || 0) : 0, top = !X ? null : k === 'g' ? (X.F.boot ? X.myG : null) : (X.F.assist ? X.myA : null); if (top != null && me >= top - 3) m = Math.min(m, me >= top - 1 ? 0.15 : 0.4); if (kt && k === 'g') { const pp = BY_TN[team + '|' + name], ps = pp ? String(pp.pos || '') : ''; if (/^(LW|RW|LM|RM|LF|RF)$/.test(ps)) m *= WING_M[kt] || 1.7; else if (/^(CAM|AM|SS|CF)$/.test(ps)) m *= 1.25; else if (/^(ST|CF)$/.test(ps) && kt === 'S++') m *= 2; /* 顶级中锋是球队的进球核心：巅峰期进球不该比同级的边锋少 */ /* 核心边锋 / 前腰也能进很多球（像 C 罗、梅西） */ const g = scrTally(name), cap = KEY_CAP[kt]; if (g >= cap + 6) m = Math.min(m, 0.4); else if (g >= cap) m = Math.min(m, 1); } w *= m; }
+  return w; }; ENGINE.setPickHook(scrPickW);
 /* 核心球员一季进球的大概上限：到了就不再额外加成，免得弱队核心一季进 60 多球 */
+const WING_M = { 'S++': 3, 'S+': 1.85, 'S': 1.8, 'A+': 1.75, 'A': 1.7 }; /* 核心边锋的进球加成：顶级边锋一季也该有 20～30 球 */
 const KEY_CAP = { 'S++': 58, 'S+': 38, 'S': 30, 'A+': 25, 'A': 20 };
 let SCR_TL = null;
 function scrTally(name) { const k = SEASON + '|' + playedRounds(); if (!SCR_TL || SCR_TL.k !== k) { const g = {}; try { liveStats().forEach(x => { g[x.name] = (g[x.name] || 0) + (x.g || 0); }); } catch (e) { } SCR_TL = { k, g }; } return SCR_TL.g[name] || 0; }
@@ -5746,7 +5747,7 @@ function coachTactics(id) {
 const slotPen = (sl, pos) => { const c = ENGINE.fitCost(sl, pos); return c >= 30 ? 48 : c >= 10 ? 12 : Math.round(Math.min(8, c * 0.8)); }; // 跨线（后卫↔中场↔前锋）打折 12，门将和场上球员不互换
 /* 剧本故事：雷欧到罗联的第一季（S10）先当替补前锋，第 13 轮当家前锋赛季报销后顶上，之后在队内表现出色、坐稳主力 */
 const STORY_INJ_R = 12; const storyB = p => { if (!p || p.name !== '雷欧' || p.team !== '罗联' || !nm4() || typeof SEASON === 'undefined') return 0; if (SEASON === 10) { let r = 0; try { r = nextRound(); } catch (e) { } return r >= 0 && r < STORY_INJ_R ? -15 : 2; } return SEASON >= 11 && SEASON <= 13 ? 3 : 0; };
-const slotVal = (sl, p) => p.rating + (p.yb || 0) + storyB(p) - slotPen(sl, p) * 1.25; /* yb：给高潜力年轻人的上场机会加分 */
+const slotVal = (sl, p) => p.rating + (p.yb || 0) + storyB(p) - slotPen(sl, p) * 1.25 + (ENGINE.fitCost(sl, p.pos) === 0 ? 2.5 : ENGINE.LINE(String(sl).replace(/-.*/, '')) !== ENGINE.LINE(p.pos || '') ? -3 : 0); /* 主位置优先；跨线踢（边锋去踢后腰之类）再扣分，免得为了一点总分把球星放错位置 */ /* yb：给高潜力年轻人的上场机会加分 */
 function bestXI(t, slots) {
   const RL = ((S && S.roles) || {})[t] || {}, key = p => p.uid || p.name;
   const sq = (PDB[t] || []).filter(p => RL[key(p)] !== 'bench'); if (!sq.length) return null; // 你安排的轮换球员不进首发
