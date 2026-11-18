@@ -857,7 +857,7 @@ function localSave() {
 }
 /* 初始设定：球员资料、阵型、首发安排、队内职务（队长、主罚等）、球衣颜色、非卖品、转会设置。
    第一次存档时自动记下一份；「全部重来」会套回这份，不用再调一遍。可以在重来的确认框里改成「现在的设定」。 */
-const INIT_KEYS = ['edits', 'formSet', 'xio', 'roles', 'kits', 'nfs', 'mktCfg', 'tedit', 'acadDec', 'oedit'];
+const INIT_KEYS = ['edits', 'formSet', 'formSetBy', 'xio', 'roles', 'kits', 'nfs', 'mktCfg', 'tedit', 'acadDec', 'oedit'];
 function initSnap() { const o = {}; INIT_KEYS.forEach(k => { if (S[k] != null) o[k] = JSON.parse(JSON.stringify(S[k])); }); o.at = { s: SEASON, r: playedRounds(), t: Date.now() }; return o; }
 function teamEditDlg(t) { const d = $('#dlg'), e = tEd(t) || {}, cur = tImg(t), base = TD[t] ? `<img class="crest" src="${LOGO[t] || ''}" width="72" height="72" alt="">` : ecrest.call(null, t, 72);
   d.innerHTML = `<div class="dlg" data-noalias style="position:relative;max-width:520px"><button class="btn ghost dlg-x" data-act="close" aria-label="关闭">✕</button><div class="eyebrow">编辑球队信息</div><h2 style="margin:4px 0 12px">${esc(t)}${e.zh ? ` <span class="note">（现在显示为「${esc(e.zh)}」）</span>` : ''}</h2>
@@ -4881,8 +4881,8 @@ function awardsOf(s) {
       if (r.mvp === p.name && r.winner === t) { sc += k === '世联赛' || k === '全联冠' ? 6 : 2; L.push(k + ' MVP'); }
       });
     const majors = L.filter(x => /冠军$/.test(x) && !/威联赛杯|社区杯|全协联|亚军|东海职联|列国|西亚/.test(x)).length;
-    if (!majors) sc -= 3; else sc += (majors - 1) * 2.5; // 双冠、三冠王额外加分
-    return { sc: sc * 0.75, L }; };
+    if (!majors) sc -= 14; else sc += (majors - 1) * 2.5; // 一项大赛冠军（世联赛、全联冠、联赛冠军、全联杯）都没有：大幅扣分，除非个人表现远远领先，否则拿不到金球；双冠、三冠王额外加分
+    return { sc: sc * 0.75, L, maj: majors }; };
   const base = p => p.avg * 10 + p.g * 0.45 + p.a * 0.35 + p.motm * 0.35 + (p.line === 'GK' ? p.cs * 0.3 - 2 : p.line === 'DF' ? p.cs * 0.15 : 0);
   // 金球奖和世界足球先生看全赛季：联赛数据 + 杯赛 / 洲际赛的进球和助攻（洲际赛进球分量更高）
   const CW = { 世联赛: 1.3, 全联冠: 1.3, 全联杯: 1, 全协联: 0.8, 威联赛杯: 0.6, 社区杯: 0.4 };
@@ -4897,27 +4897,29 @@ function awardsOf(s) {
   const mvpSc = p => base(p) + rkBonus(p.team) + (p.g === gMax ? 1.5 : 0) + (p.a === aMax ? 1 : 0) + (p.motm === mMax ? 1 : 0);
   const lgTags = p => { const r = rk[p.team], L = [r === 1 ? '威超冠军' : `威超第 ${r} 名`]; if (p.g === gMax) L.push('威超射手榜第一'); if (p.a === aMax) L.push('威超助攻榜第一'); if (p.motm === mMax) L.push('全场最佳次数最多'); return L; };
   const mvpVotes = voteShares(capTeam(pick(rows, mvpSc), 6, 2), mvpSc, 3).map(p => ({ ...p, _lg: lgTags(p), _rk: rk[p.team] }));
-  const ext = extRowsFor(s).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: bsc(p) * (xCoef(p.team, s)) + h.sc, _hon: h.L, _honSc: h.sc }; });
+  const ext = extRowsFor(s).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: bsc(p) * (xCoef(p.team, s)) + h.sc - (h.maj ? 0 : 12), _hon: h.L, _honSc: h.sc, _maj: h.maj }; });
   const fxMvp = ((fixOf(s) || {}).aw || {}).mvp, fxRow = fxMvp && rows.find(p => p.name === fxMvp), mvpId = fxRow ? fxRow.pid : mvpVotes[0] && mvpVotes[0].pid, bootG = gMax, astA = aMax; /* 内定的 MVP 也算进金球奖的个人荣誉 */
   /* 个人荣誉：威超 MVP、金靴、助攻王（外赛区的联赛金靴 / 助攻王 / MVP 在 extAw 里） */
   const indiv = p => { const L = [], sc = (p.pid != null && p.pid === mvpId ? (L.push('威超 MVP'), 4) : 0) + (p.g === bootG ? (L.push('威超金靴'), 2) : 0) + (p.a === astA ? (L.push('威超助攻王'), 1.5) : 0); return { sc, L }; };
-  const mkB = p => { if (!TD[p.team]) { const e = ext.find(x => x.uid === p.uid); if (e) return e; } const h = honOfP(p, false), I = indiv(p); return { ...p, _sc: bsc(p) + h.sc + I.sc, _hon: I.L.concat(h.L), _honSc: h.sc }; };
+  const mkB = p => { if (!TD[p.team]) { const e = ext.find(x => x.uid === p.uid); if (e) return e; } const h = honOfP(p, false), I = indiv(p); return { ...p, _sc: bsc(p) + h.sc + I.sc - (h.maj ? 0 : 12), _hon: I.L.concat(h.L), _honSc: h.sc, _maj: h.maj }; }; /* 四大皆空（没有任何大赛冠军）再扣一次 */
   let ballon = rows.map(mkB).concat(ext).sort((a, b) => b._sc - a._sc);
   // 提名名单每队最多 3 人（世界足球先生 3 人、MVP 和铁卫奖 2 人），避免整队包揽；队内第二、三人的团队荣誉加成打折
   { const seen = {}; ballon.forEach(p => { const k = seen[p.team] = (seen[p.team] || 0) + 1; if (k > 1) p._sc -= (p._honSc || 0) * (k === 2 ? 0.25 : 0.4); }); ballon.sort((a, b) => b._sc - a._sc); }
   { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
   ballon = capTeam(ballon, 10, 3);
-  const ballonVotes = voteShares(ballon, p => p._sc, 6);
-  ballon = ballon.slice(0, 3);
+  /* 四大皆空的人不拿金球：提名里只要有人拿过大赛冠军，就由其中分数最高的人得奖 */
+  const needMaj = (L, f) => { if (!L.length || L[0]._maj) return voteShares(L, f, 6); const q = L.find(p => p._maj); return q ? fixVotesSc(L, q.name, s, L, f, 6) : voteShares(L, f, 6); };
+  const ballonVotes = needMaj(ballon, p => p._sc);
+  ballon = ballonVotes.slice(0, 3);
   const mvp = mvpVotes[0];
   const goal = bestGoalOf(s);
   const defSc = p => p.avg * 10 + p.cs * 0.35 + p.tk * 0.03 + p.int * 0.04 + p.g * 0.3 + p.a * 0.15 + (p.team === champ ? 1.5 : 0);
   const defVotes = voteShares(capTeam(pick(rows.filter(p => p.line === 'DF'), defSc), 5, 2), defSc, 2.5), def = defVotes[0] || null;
   const wsc = p => p._w;
   /* 世界足球先生：同样看数据、场均评分、团队荣誉和个人荣誉，只是团队荣誉的分量比金球奖轻一些 */
-  const mkW = p => { if (!TD[p.team]) { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; return { ...p, _w: bsc(p) * xCoef(p.team, s) + h.sc * 0.6 + (x ? x.sc : 0), _hon: h.L.concat(x ? x.L : []) }; } const h = honOfP(p, false), I = indiv(p); return { ...p, _w: bsc(p) + h.sc * 0.6 + I.sc, _hon: I.L.concat(h.L) }; };
+  const mkW = p => { if (!TD[p.team]) { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; return { ...p, _w: bsc(p) * xCoef(p.team, s) + h.sc * 0.6 + (x ? x.sc : 0) - (h.maj ? 0 : 14), _hon: h.L.concat(x ? x.L : []), _maj: h.maj }; } const h = honOfP(p, false), I = indiv(p); return { ...p, _w: bsc(p) + h.sc * 0.6 + I.sc - (h.maj ? 0 : 14), _hon: I.L.concat(h.L), _maj: h.maj }; };
   const worldPool = rows.map(mkW).concat(extRowsFor(s).filter(p => p.apps >= 20).map(mkW));
-  const worldVotes = voteShares(capTeam(pick(worldPool, wsc), 8, 3), wsc, 6), world = worldVotes[0] || null;
+  const worldVotes = needMaj(capTeam(pick(worldPool, wsc), 8, 3), wsc), world = worldVotes[0] || null;
   [ballonVotes, mvpVotes, defVotes, worldVotes].forEach(L => L.forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
   const boot = pick((HPS[s] || []), p => p.g * 1000 - p.apps)[0];
   const assist = pick((HPS[s] || []), p => p.a * 1000 - p.apps)[0];
@@ -5019,7 +5021,7 @@ function awardBlock(title, L, kind) {
 const cupMvpLine = m => `${m.name}（${m.team}）· ${m.apps ? m.apps + ' 场 ' : ''}${m.line === 'GK' ? `${m.cs ?? 0} 场零封` : `${m.g} 球 ${m.a} 助攻`}${m.avg != null ? ` · 评分 ${m.avg.toFixed(2)}` : ''}${m.motm ? ` · ${m.motm} 次全场最佳` : ''}`;
 const AWARD_RULES = [
   ['最佳球队', '看该赛季拿到的冠军和它们的含金量，威超球队和外赛区球队一起比。每座冠军按赛事级别计分：S 级（世联赛、全联冠）10 分 > A+（威超、星煌和外赛区五大联赛）6.5 分 > A（全联杯）4 分 > A-（全协联、东海职联、列国、西亚联赛）2.5 分 > B（威联赛杯、威冠联赛）1.2 分 > B-（社区杯）0.6 分。所以两个 S 级冠军胜过一个 A+ 加两个 B 级；总分相同才比冠军数量。'],
-  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（按冠军的含金量计分：S 级世联赛、全联冠 > A+ 威超和外赛区五大联赛、星煌 > A 全联杯 > A- 全协联、东海职联 / 列国 / 西亚 > B 威联赛杯 > B- 社区杯，两个 S 级冠军胜过一个 A+ 加两个 B 级；杯赛 MVP、双冠/三冠另加分；一项大赛冠军都没有会扣分）＋ 个人荣誉（威超 MVP、金靴、助攻王；外赛区球员算他联赛的 MVP、金靴、助攻王）。提名 10 人，每队最多 3 人，同队第 2、3 人的团队荣誉加分打折。'],
+  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（按冠军的含金量计分：S 级世联赛、全联冠 > A+ 威超和外赛区五大联赛、星煌 > A 全联杯 > A- 全协联、东海职联 / 列国 / 西亚 > B 威联赛杯 > B- 社区杯，两个 S 级冠军胜过一个 A+ 加两个 B 级；杯赛 MVP、双冠/三冠另加分；一项大赛冠军（世联赛、全联冠、联赛冠军、全联杯）都没有会大幅扣分，除非个人数据远远领先，否则拿不到金球）＋ 个人荣誉（威超 MVP、金靴、助攻王；外赛区球员算他联赛的 MVP、金靴、助攻王）。提名 10 人，每队最多 3 人，同队第 2、3 人的团队荣誉加分打折。'],
   ['威超 MVP', '只看威超联赛。候选：联赛出场 ≥ 20 场的威超球员。计分：联赛场均评分、进球、助攻、全场最佳（门将/后卫计零封）＋ 球队联赛名次（冠军最多，前四递减，降级区扣分）＋ 联赛射手榜、助攻榜、全场最佳次数第一各加分。不计任何杯赛。提名 6 人，每队最多 2 人。'],
   ['世界足球先生', '威超球员和外赛区球员放在一起比。候选：各联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：全赛季个人数据和场均评分（联赛 + 杯赛 / 洲际赛）为主，加上个人荣誉（MVP、金靴、助攻王）和团队荣誉；团队荣誉同样按冠军含金量计分，但分量是金球奖的六成。比金球奖更看个人表现。提名 8 人，每队最多 3 人。'],
   ['各杯赛 MVP（世联赛、全联冠、全联杯、全协联、威联赛杯、社区杯）', '只看该项赛事本身。候选：冠军队和亚军队在这项赛事里出场的球员（亚军队打八折）。计分：这项赛事的进球 ×2、助攻 ×1.3、全场最佳次数、场均评分（高于 7 分加、低于扣，按出场数放大）、门将/后卫的零封。冠亚军里有外赛区球队时，外赛区球员只有进球和助攻的数据，这时双方都只比进球和助攻，保持公平。'],
@@ -5743,7 +5745,7 @@ function coachTactics(id) {
   const fs = BASE_FORMS, rnd = seeded('tac|' + id);
   C.form = fs[Math.floor(rnd() * fs.length)]; C.style = STYLE_LIST[Math.floor(rnd() * STYLE_LIST.length)];
   /* 球队会找符合自己气质的主帅：新聘的教练七成会打这支球队一贯的风格 */
-  { const t = String(id).startsWith('G|') ? String(id).split('|')[1] : C.clubs && [...C.clubs][0], ST = t && tid(t).styles; if (ST && rnd() < 0.7) C.style = ST[Math.floor(rnd() * ST.length)]; }
+  { const t = String(id).startsWith('G|') ? String(id).split('|')[1] : C.clubs && [...C.clubs][0], ST = t && tid(t).styles; if (ST && rnd() < 0.4) C.style = ST[Math.floor(rnd() * ST.length)]; }
   coachForms(C); return C;
 }
 // 按阵型挑最强的 11 人：先贪心分配，再反复尝试“替补换上 / 两人互换位置”，直到总分不能再提高（明星不会被埋没在替补席）
@@ -5899,13 +5901,21 @@ function reslot(t, form) {
 // 传统上偏爱进攻三叉戟的球队：主帅的阵型没有三名前锋时改用三前锋阵型，防守型打法改成进攻打法
 const TRIDENT = new Set(['威龙', '猎豹', '猛龙', '威尔福特', '罗联']);
 const isTrident = f => FORMS[f] && FORMS[f].slots.filter(x => ENGINE.LINE(x) === 'FW').length >= 3;
-function tacFor(t, id) { const X = tacFor0(t, id); const f = ((S && S.formSet) || {})[t]; if (!X || !f || !FORMS[f]) return X; return { ...X, coachForm: X.form, form: f, forms: [f].concat((X.forms || []).slice(1).map(g => g === X.form ? f : g)), set: 1 }; } // 对强队 / 对弱队原本也是主帅主打阵型的，跟着换成你设定的
+/* 你设定的主打阵型只属于设定当时的那位主帅（新主帅上任会带来自己的阵型）；预设名单里的阵型（DEF_SET，照 S16、S17 的资料）只给 S16 起在任的主帅 */
+function formSetOwns(t, id) { const by = ((S && S.formSetBy) || {})[t]; if (by) return by === id; try { const st = coachHistory().stints.filter(x => x.team === t && x.id === id); return st.some(x => !x.s1 || x.s1 >= 16); } catch (e) { return false; } }
+function tacFor(t, id) { const X = tacFor0(t, id); const f = ((S && S.formSet) || {})[t]; if (!X || !f || !FORMS[f] || !formSetOwns(t, id)) return X; return { ...X, coachForm: X.form, form: f, forms: [f].concat((X.forms || []).slice(1).map(g => g === X.form ? f : g)), set: 1 }; } // 对强队 / 对弱队原本也是主帅主打阵型的，跟着换成你设定的
+const TAC0_C = new Map();
+function tacPrev(t, id) { try { const L = coachHistory().stints.filter(x => x.team === t); const i = L.findIndex(x => x.id === id); for (let j = i - 1; j >= 0; j--) if (L[j].id !== id) return L[j].id; } catch (e) { } return null; }
 function tacFor0(t, id) {
   const C = coachTactics(id); if (!C) return null;
   if (!TRIDENT.has(t)) { const I = tid(t); let style = C.style, form = C.form, forms = C.forms || [C.form];
     /* 球队气质：泽尼联照猛龙的打法踢；有一贯风格的球队，主帅多半会顺着球队的传统来（六成） */
     if (I.force) { style = I.force.style || style; if (I.force.form && FORMS[I.force.form]) { form = I.force.form; forms = [form].concat(forms.slice(1)); } }
-    else if (I.styles && !I.styles.includes(style) && ghash('idst|' + id + '|' + t) < 0.6) style = I.styles[Math.floor(ghash('idsx|' + id + '|' + t) * I.styles.length)];
+    else if (I.styles && !I.styles.includes(style) && ghash('idst|' + id + '|' + t) < 0.4) style = I.styles[Math.floor(ghash('idsx|' + id + '|' + t) * I.styles.length)];
+    /* 每位主帅有自己的一套：打法和主打阵型都不跟前任一样 */
+    if (!I.force) { const pv = tacPrev(t, id); if (pv) { const mk = t + '|' + id + '|' + (S && S.reset || ''); let P = TAC0_C.get(mk + '|p'); if (!P) { TAC0_C.set(mk + '|p', { style: null, form: null }); P = tacFor0(t, pv) || {}; TAC0_C.set(mk + '|p', P); }
+      if (P.style === style) { const L = ((I.styles || []).filter(x => x !== P.style).length && ghash('tvs|' + id) < 0.5 ? I.styles : STYLE_LIST).filter(x => x !== P.style); if (L.length) style = L[Math.floor(ghash('tvx|' + id + '|' + t) * L.length)]; }
+      if (P.form === form) { const L = BASE_FORMS.filter(f => f !== P.form && !(P.forms || []).includes(f)); if (L.length) { const nf = L[Math.floor(ghash('tvf|' + id + '|' + t) * L.length)]; forms = [nf].concat(forms.slice(1).map(g => g === nf ? form : g)); form = nf; } } } }
     return { style, form, forms }; }
   const tri = f => isTrident(f) ? f : (/^3/.test(f) && FORMS['3-4-3'] ? '3-4-3' : '4-3-3');
   const form = tri(C.form), forms = (C.forms || [C.form]).map(tri);
@@ -9785,8 +9795,8 @@ document.addEventListener('click', e => {
   if (act === 'recOpen') return recDlg(el.dataset.t);
   if (act === 'recPrev') { XI_PREV = { t: el.dataset.t, f: el.dataset.f }; $('#dlg').close(); render(); const x = document.querySelector('.xied'); if (x) x.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if (act === 'pfReset') { Object.assign(PF, { src: '', pos: '', alt: false, rmin: '', rmax: '', amin: '', amax: '', potmin: '', appmin: '', limit: 60 }); return render(); }
-  if (act === 'recUse') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; S.formSet[t] = f; if (S.xio && S.xio[t]) delete S.xio[t][f]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; save(); $('#dlg').close(); toast(`${t} 采用推荐阵型 ${f}`); return render(); }
-  if (act === 'formSet') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; if (f) S.formSet[t] = f; else delete S.formSet[t]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; toast(f ? `${t} 改用 ${f} 作为主打阵型（对强队 / 对弱队仍按主帅安排）` : `${t} 恢复主帅的主打阵型`); save(); return render(); }
+  if (act === 'recUse') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; S.formSet[t] = f; S.formSetBy = S.formSetBy || {}; { const c = coachOf(t); if (c) S.formSetBy[t] = c.id; } if (S.xio && S.xio[t]) delete S.xio[t][f]; XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; save(); $('#dlg').close(); toast(`${t} 采用推荐阵型 ${f}`); return render(); }
+  if (act === 'formSet') { const t = el.dataset.t, f = el.dataset.f; S.formSet = S.formSet || {}; S.formSetBy = S.formSetBy || {}; if (f) { S.formSet[t] = f; const c = coachOf(t); if (c) S.formSetBy[t] = c.id; } else { delete S.formSet[t]; delete S.formSetBy[t]; } XI_PREV = { t: null, f: null }; TAC_KEY = null; ensureTactics(); ENGINE.clearCache(); MOD_VER++; toast(f ? `${t} 改用 ${f} 作为主打阵型（对强队 / 对弱队仍按主帅安排）` : `${t} 恢复主帅的主打阵型`); save(); return render(); }
   if (act === 'rpOpen') return replayOpen(+el.dataset.ri, +el.dataset.mi);
   if (act === 'rpClose') { if (RP && RP.raf) cancelAnimationFrame(RP.raf); RP = null; $('#dlg').close(); return; }
   if (act === 'rpPlay') { if (RP) { RP.play = !RP.play; el.textContent = RP.play ? '❚❚ 暂停' : '▶ 播放'; } return; }
