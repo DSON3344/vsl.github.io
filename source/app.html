@@ -4583,7 +4583,8 @@ function allComps(s, p) {
 function cupRowsFor(s) {
   const m = seasonAll(s); if (!m) return [];
   const byTN = {}; (HPS[s] || []).forEach(p => byTN[p.team + '|' + p.name] = p);
-  return Object.entries(m).filter(([k, o]) => k !== '__partial' && TD[o.team]).map(([k, o]) => { const L = byTN[k]; const pos = L ? L.pos : (o.sum.pos || ((PL[pidOf(o.team, o.name)] || [])[1]) || ''); return { ...o.sum, name: o.name, team: o.team, pid: L ? L.pid : pidOf(o.team, o.name), pos, line: ENGINE.LINE(pos) }; });
+  /* 威冠联赛是第二级联赛，不是杯赛：威超的「全部赛事」统计（历史射手榜等）不算进去 */
+  return Object.entries(m).filter(([k, o]) => k !== '__partial' && TD[o.team]).map(([k, o]) => { const cs = Object.entries(o.cups).filter(([c]) => c !== '威冠联赛').map(([, v]) => v); if (!cs.length) return null; const sum = cs.length === Object.keys(o.cups).length ? o.sum : sumRows(cs); const L = byTN[k]; const pos = L ? L.pos : (sum.pos || ((PL[pidOf(o.team, o.name)] || [])[1]) || ''); return { ...sum, name: o.name, team: o.team, pid: L ? L.pid : pidOf(o.team, o.name), pos, line: ENGINE.LINE(pos) }; }).filter(Boolean);
 }
 // 把杯赛行并进联赛行（按 pid，没有 pid 用 队|名）
 function mergeComps(base, extra, keepTeams) {
