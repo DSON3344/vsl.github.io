@@ -4837,6 +4837,11 @@ function galacticoHTML() {
 }
 // 投票：按评分换算成得票率（第一名通常 30–50%）
 const capTeam = (list, n, k) => { const c = {}, out = []; for (const p of list) { if (out.length >= n) break; if ((c[p.team] = (c[p.team] || 0) + 1) <= k) out.push(p); } return out; };
+/* 内定得主：照样按真实的数据和荣誉打分，只把他的分数抬到刚好超过第一名一点；其他人的名次和得票率照真实表现 */
+function fixVotesSc(list, nm, s, pool, f, T) { if (!nm || !list || !list.length) return list; let L = list.slice(), i = L.findIndex(p => p.name === nm), w;
+  if (i < 0) { const r = fixRow(nm, s, pool); if (!r) return list; w = { ...r }; L.pop(); } else w = L.splice(i, 1)[0];
+  const sc = q => { try { return f(q) || 0; } catch (e) { return 0; } }, top = Math.max(...L.map(sc)), mine = sc(w), boost = Math.max(mine, top + 1.2);
+  const g = q => q === w ? boost : sc(q); return voteShares([w].concat(L.sort((a, b) => sc(b) - sc(a))), g, T); }
 function voteShares(list, f, T) {
   if (!list.length) return [];
   const top = f(list[0]), w = list.map(p => Math.exp((f(p) - top) / T)), sum = w.reduce((a, b) => a + b, 0);
@@ -4884,8 +4889,11 @@ function awardsOf(s) {
   const lgTags = p => { const r = rk[p.team], L = [r === 1 ? '威超冠军' : `威超第 ${r} 名`]; if (p.g === gMax) L.push('威超射手榜第一'); if (p.a === aMax) L.push('威超助攻榜第一'); if (p.motm === mMax) L.push('全场最佳次数最多'); return L; };
   const mvpVotes = voteShares(capTeam(pick(rows, mvpSc), 6, 2), mvpSc, 3).map(p => ({ ...p, _lg: lgTags(p), _rk: rk[p.team] }));
   const ext = extRowsFor(s).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: bsc(p) * (xCoef(p.team, s)) + h.sc, _hon: h.L, _honSc: h.sc }; });
-  const mvpId = mvpVotes[0] && mvpVotes[0].pid, bootG = gMax;
-  let ballon = rows.map(p => { const h = honOfP(p, false); if (p.pid === mvpId) h.L.unshift('威超 MVP'); if (p.g === bootG) h.L.push('威超金靴'); return { ...p, _sc: bsc(p) + h.sc + (p.pid === mvpId ? 4 : 0) + (p.g === bootG ? 2 : 0), _hon: h.L, _honSc: h.sc }; }).concat(ext).sort((a, b) => b._sc - a._sc);
+  const mvpId = mvpVotes[0] && mvpVotes[0].pid, bootG = gMax, astA = aMax;
+  /* 个人荣誉：威超 MVP、金靴、助攻王（外赛区的联赛金靴 / 助攻王 / MVP 在 extAw 里） */
+  const indiv = p => { const L = [], sc = (p.pid != null && p.pid === mvpId ? (L.push('威超 MVP'), 4) : 0) + (p.g === bootG ? (L.push('威超金靴'), 2) : 0) + (p.a === astA ? (L.push('威超助攻王'), 1.5) : 0); return { sc, L }; };
+  const mkB = p => { if (!TD[p.team]) { const e = ext.find(x => x.uid === p.uid); if (e) return e; } const h = honOfP(p, false), I = indiv(p); return { ...p, _sc: bsc(p) + h.sc + I.sc, _hon: I.L.concat(h.L), _honSc: h.sc }; };
+  let ballon = rows.map(mkB).concat(ext).sort((a, b) => b._sc - a._sc);
   // 提名名单每队最多 3 人（世界足球先生 3 人、MVP 和铁卫奖 2 人），避免整队包揽；队内第二、三人的团队荣誉加成打折
   { const seen = {}; ballon.forEach(p => { const k = seen[p.team] = (seen[p.team] || 0) + 1; if (k > 1) p._sc -= (p._honSc || 0) * (k === 2 ? 0.25 : 0.4); }); ballon.sort((a, b) => b._sc - a._sc); }
   { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
@@ -4897,7 +4905,9 @@ function awardsOf(s) {
   const defSc = p => p.avg * 10 + p.cs * 0.35 + p.tk * 0.03 + p.int * 0.04 + p.g * 0.3 + p.a * 0.15 + (p.team === champ ? 1.5 : 0);
   const defVotes = voteShares(capTeam(pick(rows.filter(p => p.line === 'DF'), defSc), 5, 2), defSc, 2.5), def = defVotes[0] || null;
   const wsc = p => p._w;
-  const worldPool = rows.map(p => ({ ...p, _w: bsc(p) + bonus(p.team) * 0.4 })).concat(extRowsFor(s).filter(p => p.apps >= 20).map(p => ({ ...p, _w: bsc(p) * (xCoef(p.team, s)) + (extLeagueChamp[p.team] ? 2.5 : 0) + bonus(p.team) * 0.4 })));
+  /* 世界足球先生：同样看数据、场均评分、团队荣誉和个人荣誉，只是团队荣誉的分量比金球奖轻一些 */
+  const mkW = p => { if (!TD[p.team]) { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; return { ...p, _w: bsc(p) * xCoef(p.team, s) + h.sc * 0.6 + (x ? x.sc : 0), _hon: h.L.concat(x ? x.L : []) }; } const h = honOfP(p, false), I = indiv(p); return { ...p, _w: bsc(p) + h.sc * 0.6 + I.sc, _hon: I.L.concat(h.L) }; };
+  const worldPool = rows.map(mkW).concat(extRowsFor(s).filter(p => p.apps >= 20).map(mkW));
   const worldVotes = voteShares(capTeam(pick(worldPool, wsc), 8, 3), wsc, 6), world = worldVotes[0] || null;
   [ballonVotes, mvpVotes, defVotes, worldVotes].forEach(L => L.forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
   const boot = pick((HPS[s] || []), p => p.g * 1000 - p.apps)[0];
@@ -4910,10 +4920,10 @@ function awardsOf(s) {
   take(p => p.line === 'GK', 1); take(p => /CB/.test(p.pos), 2); take(p => /LB|RB|WB/.test(p.pos), 2); take(p => p.line === 'MF', 3); take(p => p.line === 'FW', 3);
   let R = { ballon, ballonVotes, mvp, mvpVotes, goal, def, defVotes, world, worldVotes, boot, assist, glove, young, xi };
   { const FX = fixOf(s); if (FX) { const aw = FX.aw || {}, pool = rows.concat(ballonVotes, worldVotes); /* 内定的个人奖项 */
-      if (aw.ballon) { R.ballonVotes = fixVotes(ballonVotes, aw.ballon, s, pool); R.ballon = fixVotes(ballon, aw.ballon, s, pool).slice(0, 3); }
+      if (aw.ballon) { R.ballonVotes = fixVotesSc(ballonVotes, aw.ballon, s, pool, p => (p._sc != null ? p : mkB(p))._sc, 6); R.ballon = R.ballonVotes.slice(0, 3); }
       if (aw.mvp) { R.mvpVotes = fixVotes(mvpVotes, aw.mvp, s, rows); R.mvp = R.mvpVotes[0]; }
       if (aw.def) { R.defVotes = fixVotes(defVotes, aw.def, s, rows); R.def = R.defVotes[0]; }
-      if (aw.world) { R.worldVotes = fixVotes(worldVotes, aw.world, s, pool); R.world = R.worldVotes[0]; }
+      if (aw.world) { R.worldVotes = fixVotesSc(worldVotes, aw.world, s, rows.concat(worldPool), p => (p._w != null ? p : mkW(p))._w, 6); R.world = R.worldVotes[0]; }
       if (aw.glove) R.glove = fixRow(aw.glove, s, rows) || glove; if (aw.young) R.young = fixRow(aw.young, s, rows) || young;
       [R.ballonVotes, R.mvpVotes, R.defVotes, R.worldVotes].forEach(L => (L || []).forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
       const tie = (nm, k, cur) => { const r = fixRow(nm, s, HPS[s]); return r && cur && r[k] >= cur[k] ? r : cur; }; if (FX.boot) R.boot = tie(FX.boot, 'g', boot); if (FX.assist) R.assist = tie(FX.assist, 'a', assist); } }
