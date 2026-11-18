@@ -5747,7 +5747,10 @@ function coachTactics(id) {
 const slotPen = (sl, pos) => { const c = ENGINE.fitCost(sl, pos); return c >= 30 ? 48 : c >= 10 ? 12 : Math.round(Math.min(8, c * 0.8)); }; // 跨线（后卫↔中场↔前锋）打折 12，门将和场上球员不互换
 /* 剧本故事：雷欧到罗联的第一季（S10）先当替补前锋，第 13 轮当家前锋赛季报销后顶上，之后在队内表现出色、坐稳主力 */
 const STORY_INJ_R = 12; const storyB = p => { if (!p || p.name !== '雷欧' || p.team !== '罗联' || !nm4() || typeof SEASON === 'undefined') return 0; if (SEASON === 10) { let r = 0; try { r = nextRound(); } catch (e) { } return r >= 0 && r < STORY_INJ_R ? -15 : 2; } return SEASON >= 11 && SEASON <= 13 ? 3 : 0; };
-const slotVal = (sl, p) => p.rating + (p.yb || 0) + storyB(p) - slotPen(sl, p) * 1.25 + (ENGINE.fitCost(sl, p.pos) === 0 ? 2.5 : ENGINE.LINE(String(sl).replace(/-.*/, '')) !== ENGINE.LINE(p.pos || '') ? -3 : 0); /* 主位置优先；跨线踢（边锋去踢后腰之类）再扣分，免得为了一点总分把球星放错位置 */ /* yb：给高潜力年轻人的上场机会加分 */
+/* 排阵一律以主位置优先（主帅改造过的球员，主位置就是改造后的新位置）：主位置 +15、登记的副位置 +4、其他同一条线 −6、跨线 −18。
+   宁可整体实力弱一点，也不让球员在不擅长的位置上踢；只有某个位置实在没有合适的人，才会让别人客串 */
+const slotFit = (sl, p) => { if (ENGINE.fitCost(sl, p.pos) === 0) return 15; if (ENGINE.fitCost(sl, p) === 0) return 4; return ENGINE.LINE(String(sl).replace(/-.*/, '')) !== ENGINE.LINE(p.pos || '') ? -18 : -6; };
+const slotVal = (sl, p) => p.rating + (p.yb || 0) + storyB(p) - slotPen(sl, p) * 1.25 + slotFit(sl, p); /* yb：给高潜力年轻人的上场机会加分 */
 function bestXI(t, slots) {
   const RL = ((S && S.roles) || {})[t] || {}, key = p => p.uid || p.name;
   const sq = (PDB[t] || []).filter(p => RL[key(p)] !== 'bench'); if (!sq.length) return null; // 你安排的轮换球员不进首发

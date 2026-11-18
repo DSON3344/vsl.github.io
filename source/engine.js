@@ -64,7 +64,7 @@ const ENGINE = (() => {
   }
   /* 换人 / 伤停顶替的代价：除了位置适配，跨线再额外扣分——前锋顶中卫、后卫顶前锋几乎不会发生，
      宁可派一个能力差一点的本位替补；中场补后防、后防补中场代价中等 */
-  function subCost(slot, p) { const c = fitCost(slot, p), a = LINE(String(slot).replace(/-.*/, '')), b = LINE(p.pos || ''); if (c >= 30) return 60; const far = (a === 'FW' && b === 'DF') || (a === 'DF' && b === 'FW'); return c * 1.5 + (a === b ? 0 : far ? 30 : 9); }
+  function subCost(slot, p) { const c = fitCost(slot, p), a = LINE(String(slot).replace(/-.*/, '')), b = LINE(p.pos || ''); if (c >= 30) return 60; const nat = fitCost0(slot, p.pos) === 0 ? 0 : 6; /* 替补也先找主位置就是这个位置的人 */ const far = (a === 'FW' && b === 'DF') || (a === 'DF' && b === 'FW'); return c * 1.5 + nat + (a === b ? 0 : far ? 30 : 9); }
   function fitCost0(slot, pos) {
     if (!pos) return 6;
     const a = String(slot).replace(/-.*/, ''), b = String(pos);
