@@ -2645,7 +2645,7 @@ function pendingArchive() {
   const key = SEASON + '|' + saltOf(SEASON) + '|' + (S.reset || '') + '|' + S.teams.join(',');
   if (PEND && PEND.key === key) return PEND.A;
   const A = makeArchive(); let CD0 = null; { const keep = CUPD; CUPD = {}; try { A.cups = simulateCups(SEASON); } finally { CD0 = CUPD; CUPD = keep; } } /* 顺便收下威冠逐轮比分，给威冠金靴、助攻王用 */
-  A.relegated = A.table.slice(-3).map(r => r.team); { const T2 = A.cups && A.cups['威冠联赛']; const top = T2 && T2.table ? T2.table.map(r => r[0]) : []; A.next = top.length >= 3 ? top.slice(0, 3) : pickPromoted(3, S.teams); if (nm4() && SCRIPT.rt[A.s + 1]) { const nx = SCRIPT.rt[A.s + 1]; A.relegated = A.table.map(r => r.team).filter(t => !nx.includes(t)); A.next = nx.filter(t => !A.teams.includes(t)); } } /* 剧本：S16、S17 的球队按名单；威冠联赛前 3 名升级（下级球队升上来会自动生成完整名单） */
+  A.relegated = A.table.slice(-3).map(r => r.team); { const T2 = A.cups && A.cups['威冠联赛']; const top = T2 && T2.table ? T2.table.map(r => r[0]) : []; A.next = top.length >= 3 ? [...new Set(top)].slice(0, 3) : pickPromoted(3, S.teams); if (nm4() && SCRIPT.rt[A.s + 1]) { const nx = SCRIPT.rt[A.s + 1]; A.relegated = A.table.map(r => r.team).filter(t => !nx.includes(t)); A.next = nx.filter(t => !A.teams.includes(t)); } } /* 剧本：S16、S17 的球队按名单；威冠联赛前 3 名升级（下级球队升上来会自动生成完整名单） */
   try { A.pyr = pyrArchive(); } catch (e) { console.error(e); }
   try { A.extl = {}; EXT_LEAGUES.forEach(L => { const F = extFinal(L, A.s), sl = q => q ? { uid: q.uid, pid: q.pid ?? null, name: q.name, team: q.team, g: q.g, a: q.a } : null; A.extl[L.short] = { champ: F.o.champ, aw: { boot: sl(F.aw.boot), assist: sl(F.aw.assist), mvp: sl(F.aw.mvp) }, top: F.o.order.slice(0, 8), ord: F.o.order.slice() }; }); } catch (e) { console.error(e); }
   try { A.pyrl = {}; ['威冠'].concat(PYR_LOW).forEach(k => { A.pyrl[k] = pyrAwards(k === '威冠' ? pyrRows(k, SEASON, (CD0 && CD0.t2) || [], null) : pyrFullRows(k)); }); } catch (e) { console.error(e); } /* 下级联赛金靴、助攻王 */
@@ -2907,7 +2907,7 @@ function maybeEndSeason(force) {
   try { intlSeasonEnd(SEASON); } catch (e) { console.error(e); } /* 国家队大赛在季末的夏天进行 */
   try { pyrAdvance(A, S.teams.filter(t => !stay.includes(t))); } catch (e) { console.error(e); }
   try { promoted.forEach(t => { if (!TD[t]) { S.gen = S.gen || {}; S.gen[t] = { s0: SEASON + 1, str: pyrStr(t) ?? 76 }; } }); genEnsure(); } catch (e) { console.error(e); }
-  const teams = stay.concat(promoted);
+  const teams = [...new Set(stay.concat(promoted))]; if (teams.length < 20) { const W2 = ((A.cups && A.cups['威冠联赛'] && A.cups['威冠联赛'].table) || []).map(r => r[0]); W2.concat(rl).forEach(t => { if (teams.length < 20 && !teams.includes(t)) teams.push(t); }); } /* 保险：不会有同一支球队出现两次 */
   try { u21Sync(); kidSeasonPf(SEASON); } catch (e) { console.error(e); }
   try { pfSeason(SEASON); } catch (e) { console.error(e); }
   try { compactSave(SEASON); } catch (e) { console.error(e); }
@@ -4362,10 +4362,13 @@ function genEnsure() { if (typeof S === 'undefined' || !S || !S.gen) return; con
     if (!LOGO[t]) LOGO[t] = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 3 58 12v20c0 15-11 25-26 29C17 57 6 47 6 32V12Z" fill="${col}" stroke="#f4f2ec" stroke-width="3"/><text x="32" y="42" font-size="26" font-weight="800" text-anchor="middle" fill="#fff" font-family="sans-serif">${t[0]}</text></svg>`);
     if (!ALL_TEAMS.includes(t)) ALL_TEAMS.push(t); PDB[t] = PDB[t] || []; PYR_SET.delete(t); }); }
 function genAcad() { if (!S || !S.gen) return; Object.keys(S.gen).forEach(t => { if (!ACAD[t]) ACAD[t] = []; genKids(t).forEach(k => { if (ACAD_ID[k.id]) return; kidEd(k); ACAD[t].push(k); ACAD_ID[k.id] = k; }); }); }
-function pyrInit() { if (typeof S === 'undefined' || !S) return null; if (S.pyr && S.pyr.v === 2) return S.pyr;
+let PYR_DD = null;
+function pyrInit() { if (typeof S === 'undefined' || !S) return null; if (S.pyr && S.pyr.v === 2) { if (!S.pyr.dd || PYR_DD !== S.pyr) { PYR_DD = S.pyr; pyrDedupe(S.pyr); } return S.pyr; }
   if (S.pyr && S.pyr.v === 1) { S.pyr.T['威冠'] = Object.keys(TD).filter(t => !S.teams.includes(t)).concat(S.pyr.T['威冠'].filter(t => !TD[t])); S.pyr.v = 2; return S.pyr; } /* 旧存档：有完整名单的球队也正式放进威冠名单 */ const r = seeded('pyr0|v1'), L = PYR_NAMES.slice(); for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [L[i], L[j]] = [L[j], L[i]]; }
   const T = {}, str = {}; let i = 0; const nLic = Math.max(0, Object.keys(TD).length - 20); PYR_TIERS.forEach(([k, n]) => { const m = k === '威冠' ? n - nLic : n; T[k] = L.slice(i, i + m); i += m; const [lo, hi] = PYR_BAND[k]; T[k].forEach(t => str[t] = Math.round((lo + r() * (hi - lo)) * 10) / 10); });
-  T['威冠'] = Object.keys(TD).filter(t => !S.teams.includes(t)).concat(T['威冠']); S.pyr = { v: 2, k: 0, T, str }; return S.pyr; }
+  T['威冠'] = Object.keys(TD).filter(t => !S.teams.includes(t) && !TD[t].gen).concat(T['威冠']); S.pyr = { v: 2, k: 0, T, str }; pyrDedupe(S.pyr, S.teams); return S.pyr; }
+/* 同一支球队只能在一个级别出现一次：旧存档在读档时顺便修好 */
+function pyrDedupe(P, excl) { const seen = new Set(excl || []); PYR_TIERS.forEach(([k]) => { P.T[k] = (P.T[k] || []).filter(t => { if (seen.has(t)) return false; seen.add(t); return true; }); }); P.dd = 1; }
 function pyrTierOf(t) { if (S.teams.includes(t)) return '威超'; const P = pyrInit(); if (!P) return null; for (const k in P.T) if (P.T[k].includes(t)) return k; return null; }
 function pyrMembers(k) { const P = pyrInit(); if (!P) return []; return (P.T[k] || []).filter(t => !S.teams.includes(t)); }
 function pyrMatch(a, b, rnd, neutral) { const d0 = pyrStrAny(a) - pyrStrAny(b), d = d0 / (1 + Math.abs(d0) / 15), adv = neutral ? 1 : 1.15; /* 强弱差距收敛（同威超的调整）：大比分少一些 */ return [pois(1.35 * Math.exp(0.08 * d) * adv, rnd), pois(1.35 * Math.exp(-0.08 * d) / adv, rnd)]; }
@@ -4387,7 +4390,7 @@ function pyrAdvance(A, rel) { const P = pyrInit(); if (!P || !A || !A.pyr) retur
   const ord = k => k === '威冠' ? (W2.length ? W2 : P.T['威冠'].slice()) : ((A.pyr[k] && A.pyr[k].table) || []).map(r => r[0]);
   const upOf = k => { if (k === '威冠') return (A.next || []).slice(); const x = A.pyr[k]; if (PYR_PO[k] && x && x.sf) return [x.sf[0][0], x.sf[0][1], x.sf[1][0], x.sf[1][1]]; return ord(k).slice(0, 4); }, dnOf = k => k === '业余' ? [] : ord(k).filter(t => !(k === '威冠' && (A.next || []).includes(t))).slice(-4);
   const ks = PYR_TIERS.map(x => x[0]), UP = {}, DN = {}; ks.forEach(k => { UP[k] = upOf(k); DN[k] = dnOf(k); });
-  const NT = {}; ks.forEach((k, i) => { const rm = new Set(UP[k].concat(DN[k])); NT[k] = P.T[k].filter(t => !rm.has(t)).concat(i + 1 < ks.length ? UP[ks[i + 1]] : [], i > 0 ? DN[ks[i - 1]] : [], i === 0 ? (rel || []) : []); });
+  const NT = {}; ks.forEach((k, i) => { const rm = new Set(UP[k].concat(DN[k])); NT[k] = [...new Set(P.T[k].filter(t => !rm.has(t)).concat(i + 1 < ks.length ? UP[ks[i + 1]] : [], i > 0 ? DN[ks[i - 1]] : [], i === 0 ? (rel || []) : []))]; });
   const moved = {}; ks.forEach((k, i) => { UP[k].forEach(t => moved[t] = 1.5); DN[k].forEach(t => moved[t] = -1.5); });
   ks.forEach(k => { const [lo, hi] = PYR_BAND[k]; NT[k].forEach(t => { if (TD[t]) return; let v = (P.str[t] ?? (lo + hi) / 2) + (rnd() - 0.5) * 2.4 + (moved[t] || 0); if (v < lo) v += (lo - v) * 0.5; if (v > hi) v -= (v - hi) * 0.5; P.str[t] = Math.round(v * 10) / 10; }); });
   P.T = NT; P.k = (P.k || 0) + 1; P.last = { s: A.s, up: UP, dn: DN }; PYR_C = null; }
