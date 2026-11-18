@@ -1815,11 +1815,13 @@ const LG_SLOTS = (() => { const ent = Object.values(EXT_NAT).map(N => ({ k: N.na
   ent.forEach(e => e.v = (PREF.includes(e.k) ? 100 - PREF.indexOf(e.k) : 0) + e.c.reduce((a, b) => a + b, 0) / Math.max(1, e.c.length) / 100); ent.sort((a, b) => b.v - a.v); const o = {}; ent.forEach(e => o[e.k] = 1); let left = 32 - ent.length; for (let i = 0; left > 0; i = (i + 1) % ent.length, left--) o[ent[i].k]++; return { o, ent: ent.map(e => e.k) }; })();
 const LO_SEA = new Map();
 /* 只按实力踢的联赛（下级联赛、各国国内联赛）：双循环 */
+const STR_K = { lo: { k: 0.045, m: 14 }, nat: { k: 0.12, m: 24 } }; /* 国内联赛更看实力，强队较稳定拿到列国名额 */
 function strSeason(key, T, s) { const k = key + '|' + s + '|' + saltOf(s) + '|' + (S && S.reset || '') + '|' + T.join(','); if (LO_SEA.has(k)) return LO_SEA.get(k); if (LO_SEA.size > 120) LO_SEA.clear();
   const rnd = seeded('xl|' + k), str = {}; T.forEach(c => str[c] = clubStrAt(c, s));
-  const days = ENGINE.fixtures(T.slice().sort(() => rnd() - 0.5)).map(R => R.map(({ h, a }) => { const d = Math.max(-14, Math.min(14, str[h] - str[a])); return [h, a, pois(1.3 * Math.exp(0.045 * d) * 1.12, rnd), pois(1.3 * Math.exp(-0.045 * d) / 1.12, rnd)]; }));
+  const K = /^nat\|/.test(key) ? STR_K.nat : STR_K.lo, M = K.m;
+  const days = ENGINE.fixtures(T.slice().sort(() => rnd() - 0.5)).map(R => R.map(({ h, a }) => { const d = Math.max(-M, Math.min(M, str[h] - str[a])); return [h, a, pois(1.3 * Math.exp(K.k * d) * 1.12, rnd), pois(1.3 * Math.exp(-K.k * d) / 1.12, rnd)]; }));
   const table = pyrTable(T, days), o = { T, s, days, table, order: table.map(r => r[0]) }; LO_SEA.set(k, o); return o; }
-function extMClean() { if (!S) return; S.extM = S.extM || {}; if (S.extB == null) S.extB = SEASON > 1 ? SEASON : 1; Object.keys(S.extM).forEach(k => { if (+k > SEASON) delete S.extM[k]; }); }
+function extMClean() { if (!S) return; S.extM = S.extM || {}; if (S.extB == null || SEASON <= 1) S.extB = SEASON > 1 ? SEASON : 1; Object.keys(S.extM).forEach(k => { if (+k > SEASON) delete S.extM[k]; }); }
 /* 第 s 季各级的球队：s=1 用初始名单；之后由上一季的最终排名决定（算过的季存进 S.extM） */
 const extB = () => { extMClean(); return S ? S.extB || 1 : 1; };
 function famMembers(fn, s) { const F = EXT_FAM[fn]; if (!F) return null; if (s <= 1 || !S || s <= extB()) return { top: F.L.clubs.map(c => c[0]), lo: F.lo.clubs.map(c => c[0]) }; const hit = S.extM[s] && S.extM[s][fn]; if (hit) return hit;
