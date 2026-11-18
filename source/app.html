@@ -1810,8 +1810,8 @@ Object.entries(EXT_LO_DEF).forEach(([fn, [ln, ls, cl]]) => { const L = EXT_LEAGU
     add.forEach((c, i) => { EXT_CLUB[c] = { league: LG_NAME, style: NAT_STYLE[nat] || 'nord', str: Math.round((mn - 2 - i * 0.9) * 10) / 10, lo: 1, nat }; if (LG) LEAGUE_OF[c] = LG; T.push(c); });
     exs.forEach(c => EXT_CLUB[c].nat = nat); EXT_NAT[nat] = { nat, name: nat + '联赛', clubs: T }; }); }
 /* 名额：每个国家（加上东海职联、西亚联赛）先 1 个，按实力排序后多出来的名额给最强的几个 */
-const LG_SLOTS = (() => { const ent = Object.values(EXT_NAT).map(N => ({ k: N.nat, c: N.clubs.map(c => EXT_CLUB[c].str).sort((a, b) => b - a).slice(0, 3) })).concat(['东海职联', '西亚联赛'].map(n => ({ k: n, c: (EXT_LEAGUES.find(x => x.name === n) || { clubs: [] }).clubs.map(c => EXT_CLUB[c[0]].str).sort((a, b) => b - a).slice(0, 3) })));
-  const PREF = ['葡萄牙', '荷兰', '巴西', '阿根廷', '土耳其', '西亚联赛', '东海职联', '比利时', '苏格兰']; /* 多拿名额的顺序：按足球传统强弱定，不只看球队数值 */
+const LG_SLOTS = (() => { const ent = Object.values(EXT_NAT).map(N => ({ k: N.nat, c: N.clubs.map(c => EXT_CLUB[c].str).sort((a, b) => b - a).slice(0, 3) }));
+  const PREF = ['葡萄牙', '荷兰', '巴西', '阿根廷', '土耳其', '比利时', '苏格兰', '奥地利', '希腊']; /* 多拿名额的顺序：按足球传统强弱定，不只看球队数值 */
   ent.forEach(e => e.v = (PREF.includes(e.k) ? 100 - PREF.indexOf(e.k) : 0) + e.c.reduce((a, b) => a + b, 0) / Math.max(1, e.c.length) / 100); ent.sort((a, b) => b.v - a.v); const o = {}; ent.forEach(e => o[e.k] = 1); let left = 32 - ent.length; for (let i = 0; left > 0; i = (i + 1) % ent.length, left--) o[ent[i].k]++; return { o, ent: ent.map(e => e.k) }; })();
 const LO_SEA = new Map();
 /* 只按实力踢的联赛（下级联赛、各国国内联赛）：双循环 */
@@ -1829,7 +1829,7 @@ function famMembers(fn, s) { const F = EXT_FAM[fn]; if (!F) return null; if (s <
   const down = tt.slice(-k), up = lt.slice(0, k), o = { top: p.top.filter(c => !down.includes(c)).concat(up), lo: p.lo.filter(c => !up.includes(c)).concat(down), up, down };
   if (s <= SEASON) (S.extM[s] = S.extM[s] || {})[fn] = o; return o; }
 const natSeason = (nat, s) => strSeason('nat|' + nat, EXT_NAT[nat].clubs, s);
-/* 列国联赛第 s 季的 32 队：按上季各国国内联赛（以及东海职联、西亚联赛）的名次取名额 */
+/* 列国联赛第 s 季的 32 队：按上季各国国内联赛的名次取名额 */
 function lgQual(s) { const B = extB(); if (B > 1 && s <= B) return EXT_LEAGUES.find(x => x.name === LG_NAME).clubs.map(c => c[0]); const hit = S && s > 1 && S.extM[s] && S.extM[s][LG_NAME]; if (hit) return hit;
   const out = []; LG_SLOTS.ent.forEach(k => { const n = LG_SLOTS.o[k]; let order;
     if (EXT_NAT[k]) order = s <= 1 ? EXT_NAT[k].clubs.slice().sort((a, b) => EXT_CLUB[b].str - EXT_CLUB[a].str) : natSeason(k, s - 1).order;
@@ -5325,8 +5325,7 @@ function extLowerHTML(L) { const p = cupP(), F = EXT_FAM[L.name];
     return `<div class="panel"><div class="ph"><div><div class="eyebrow">${SN(SEASON)} · 第 ${md} / ${o.days.length} 轮 · 按球队实力模拟</div><h2>${esc(F.lo.name)}</h2></div><span class="note">${m.lo.length} 队 · 双循环 · 前 ${F.k} 名升级</span></div>${moved}${strTblHTML(tb, i => i < F.k ? 'z1' : '', 520)}<p class="note" style="margin:6px 0 0">绿色：升级区（下季升上${esc(L.name)}）。下级联赛的球队升上去后才有完整名单。</p></div>`; }
   if (L.name === LG_NAME) { const cards = LG_SLOTS.ent.filter(k => EXT_NAT[k]).map(k => { const N = EXT_NAT[k], o = natSeason(k, SEASON), { tb } = strRevealTbl(o, p), n = LG_SLOTS.o[k];
       return `<details style="border:1px solid rgba(var(--tint),.1);border-radius:10px;padding:10px 12px"><summary style="cursor:pointer;display:flex;align-items:center;gap:8px"><b>${esc(N.name)}</b><span class="dim" style="margin-left:auto;font-size:12px">${N.clubs.length} 队 · 列国名额 ${n}</span></summary><div style="margin-top:8px">${strTblHTML(tb, i => i < n ? 'z2' : '', 360)}</div></details>`; }).join('');
-    const ex = ['东海职联', '西亚联赛'].map(k => `${esc(k)} ${LG_SLOTS.o[k]} 个`).join('、');
-    return `<div class="panel"><div class="ph"><div><div class="eyebrow">${SN(SEASON)} · 各国国内联赛 · 按球队实力模拟</div><h2>列国联赛的名额</h2></div><span class="note">32 队 · 每国至少 1 个</span></div><p class="note" style="margin:0 0 10px">五大联赛以外的国家各有国内联赛，本季国内联赛排进蓝色区的球队拿到下季列国联赛的名额；另外 ${ex} 按联赛名次参加。${extB() > 1 && SEASON <= extB() ? `本季列国联赛还是旧赛制（${clubsAt(L, SEASON).length} 队），${SN(extB() + 1)} 起改为 32 队。` : ''}</p><div class="grid g-2" style="gap:10px;align-items:start">${cards}</div></div>`; }
+    return `<div class="panel"><div class="ph"><div><div class="eyebrow">${SN(SEASON)} · 各国国内联赛 · 按球队实力模拟</div><h2>列国联赛的名额</h2></div><span class="note">32 队 · 每国至少 1 个</span></div><p class="note" style="margin:0 0 10px">五大联赛以外的国家各有国内联赛，本季国内联赛排进蓝色区的球队拿到下季列国联赛的名额（东海职联、西亚联赛的国家不参加列国联赛）。${extB() > 1 && SEASON <= extB() ? `本季列国联赛还是旧赛制（${clubsAt(L, SEASON).length} 队），${SN(extB() + 1)} 起改为 32 队。` : ''}</p><div class="grid g-2" style="gap:10px;align-items:start">${cards}</div></div>`; }
   return ''; }
 /* 外赛区球队这一季的实际名单（模拟比赛用的那份，含系统补上的球员）；之前这里只列资料库里有名有姓的几个人，看起来像凑不齐 11 人 */
 function extRosterNow(cl) { let SQ = {}; try { SQ = extSquadsAt(SEASON); } catch (e) { } const L = (SQ[cl] || []).map(q => ({ name: q.name, pos: q.pos, age: (() => { try { return pAge(q.p, SEASON); } catch (e) { return q.p && q.p.age; } })(), rating: Math.round(q.r) })); if (!L.length) return (FDB[cl] || []).slice().sort((a, b) => b.rating - a.rating); const ord = { GK: 0, DF: 1, MF: 2, FW: 3 }; return L.sort((a, b) => b.rating - a.rating); }
