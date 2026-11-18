@@ -4286,15 +4286,19 @@ function honOf(t) {
   return o;
 }
 /* 年度最佳球队：该赛季拿到荣誉最多的球队（威超、外赛区顶级联赛冠军、各项杯赛冠军都算，威超系和外赛区一起比）；数量相同时比荣誉的分量 */
-const BT_W = { 世联赛: 10, 全联冠: 9, 全联杯: 6, 全协联: 5, 威联赛杯: 4, 社区杯: 2, 威冠联赛: 2 }, BT_XL = { 星煌: 7, 鹰超: 7, 犀甲: 7, 得甲: 6.5, 壹甲: 6.5, 阀甲: 6, 东海职联: 4, 列国: 4, 其他: 4, 西亚: 4 };
+/* 冠军的含金量（按赛事级别）：S 世联赛、全联冠 > A+ 威超和外赛区五大联赛、星煌 > A 全联杯 > A- 全协联、东海职联 / 列国 / 西亚 > B 威联赛杯、威冠联赛 > B- 社区杯。两个 S 级冠军大于一个 A+ 加两个 B 级 */
+const TIER_PTS = { S: 10, 'A+': 6.5, A: 4, 'A-': 2.5, B: 1.2, 'B-': 0.6 };
+const CUP_TIER = { 世联赛: 'S', 全联冠: 'S', 全联杯: 'A', 全协联: 'A-', 威联赛杯: 'B', 威冠联赛: 'B', 社区杯: 'B-' }, XL_TIER = { 星煌: 'A+', 鹰超: 'A+', 犀甲: 'A+', 得甲: 'A+', 壹甲: 'A+', 阀甲: 'A+', 东海职联: 'A-', 列国: 'A-', 其他: 'A-', 西亚: 'A-' };
+const cupPts = k => TIER_PTS[CUP_TIER[k]] || 0, xlPts = sh => TIER_PTS[XL_TIER[sh] || 'A-'];
+const BT_W = Object.fromEntries(Object.keys(CUP_TIER).map(k => [k, cupPts(k)])), BT_XL = Object.fromEntries(Object.keys(XL_TIER).map(k => [k, xlPts(k)]));
 const BT_C = new Map();
 function bestTeamOf(s) { if (!S || !(s < SEASON || (s === SEASON && isPending(SEASON)))) return null; const A = (S.archive || []).find(x => x.s === s) || (s === SEASON ? pendingArchive() : null); if (!A || !A.table || !A.table.length) return null;
   const key = s + '|' + saltOf(s) + '|' + (S.reset || '') + '|' + ((S.archive || []).includes(A) ? 'a' : 'p'); if (BT_C.has(key)) return BT_C.get(key);
   const H = {}, add = (t, lab, w) => { if (!t) return; const o = H[t] = H[t] || { team: t, n: 0, w: 0, list: [] }; o.n++; o.w += w; o.list.push(lab); };
-  add(A.table[0].team, '威超冠军', 8);
+  add(A.table[0].team, '威超冠军', TIER_PTS['A+']);
   Object.entries(A.cups || {}).forEach(([k, r]) => { if (r && r.winner && BT_W[k]) add(r.winner, CUP_TROPHY[k] || k, BT_W[k]); });
   Object.entries(A.extl || {}).forEach(([sh, x]) => { if (x && x.champ) add(x.champ, ((LEAGUE_OF_SHORT[sh] || {}).name || (sh === '其他' ? '其他赛区' : sh)) + '冠军', BT_XL[sh] || 4); });
-  const R = Object.values(H).sort((a, b) => b.n - a.n || b.w - a.w).slice(0, 5); BT_C.set(key, R); return R; }
+  const R = Object.values(H).sort((a, b) => b.w - a.w || b.n - a.n).slice(0, 5); BT_C.set(key, R); return R; }
 const bestTeamSeasons = t => { const out = []; for (let s = 1; s <= SEASON; s++) { const R = bestTeamOf(s); if (R && R[0] && R[0].team === t) out.push(s); } return out; };
 /* ---------- 赛事：世联赛、全联冠、全联杯、全协联、威联赛杯、社区杯 ---------- */
 const CUPS = [
@@ -4867,11 +4871,12 @@ function awardsOf(s) {
   // 金球奖的团队荣誉：联赛冠军、洲际杯赛冠军/亚军、杯赛 MVP、杯赛进球；一项大赛冠军都没有的会被扣分
   const second = HS[s].table[1] && HS[s].table[1].team;
   const honOfP = (p, extChamp) => { const L = [], t = p.team; let sc = 0;
-    if (extChamp) { sc += 14; L.push(LEAGUE_SHORT_OF(t) + '冠军'); } else if (t === champ) { sc += 14; L.push('威超冠军'); } else if (t === second) { sc += 4; L.push('威超亚军'); }
-    Object.entries(C).forEach(([k, r]) => { if (!r) return; if (r.winner === t) { sc += CUP_BONUS[k] || 0; L.push(k + '冠军'); } else if (r.runner === t && (k === '世联赛' || k === '全联冠')) { sc += 4; L.push(k + '亚军'); }
+    const HK = 1.6; /* 冠军按含金量（赛事级别）计分 */
+    if (extChamp) { const sh = (extLgAtM(t, s) || {}).short || LEAGUE_SHORT_OF(t); sc += xlPts(sh) * HK; L.push(sh + '冠军'); } else if (t === champ) { sc += TIER_PTS['A+'] * HK; L.push('威超冠军'); } else if (t === second) { sc += 4; L.push('威超亚军'); }
+    Object.entries(C).forEach(([k, r]) => { if (!r) return; if (r.winner === t) { if (k === '威冠联赛') return; sc += cupPts(k) * HK; L.push(k + '冠军'); } else if (r.runner === t && (k === '世联赛' || k === '全联冠')) { sc += 4; L.push(k + '亚军'); }
       if (r.mvp === p.name && r.winner === t) { sc += k === '世联赛' || k === '全联冠' ? 6 : 2; L.push(k + ' MVP'); }
       });
-    const majors = L.filter(x => /冠军$/.test(x) && !/威联赛杯|社区杯|全协联|亚军/.test(x)).length;
+    const majors = L.filter(x => /冠军$/.test(x) && !/威联赛杯|社区杯|全协联|亚军|东海职联|列国|西亚/.test(x)).length;
     if (!majors) sc -= 3; else sc += (majors - 1) * 2.5; // 双冠、三冠王额外加分
     return { sc: sc * 0.75, L }; };
   const base = p => p.avg * 10 + p.g * 0.45 + p.a * 0.35 + p.motm * 0.35 + (p.line === 'GK' ? p.cs * 0.3 - 2 : p.line === 'DF' ? p.cs * 0.15 : 0);
@@ -4889,7 +4894,7 @@ function awardsOf(s) {
   const lgTags = p => { const r = rk[p.team], L = [r === 1 ? '威超冠军' : `威超第 ${r} 名`]; if (p.g === gMax) L.push('威超射手榜第一'); if (p.a === aMax) L.push('威超助攻榜第一'); if (p.motm === mMax) L.push('全场最佳次数最多'); return L; };
   const mvpVotes = voteShares(capTeam(pick(rows, mvpSc), 6, 2), mvpSc, 3).map(p => ({ ...p, _lg: lgTags(p), _rk: rk[p.team] }));
   const ext = extRowsFor(s).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: bsc(p) * (xCoef(p.team, s)) + h.sc, _hon: h.L, _honSc: h.sc }; });
-  const mvpId = mvpVotes[0] && mvpVotes[0].pid, bootG = gMax, astA = aMax;
+  const fxMvp = ((fixOf(s) || {}).aw || {}).mvp, fxRow = fxMvp && rows.find(p => p.name === fxMvp), mvpId = fxRow ? fxRow.pid : mvpVotes[0] && mvpVotes[0].pid, bootG = gMax, astA = aMax; /* 内定的 MVP 也算进金球奖的个人荣誉 */
   /* 个人荣誉：威超 MVP、金靴、助攻王（外赛区的联赛金靴 / 助攻王 / MVP 在 extAw 里） */
   const indiv = p => { const L = [], sc = (p.pid != null && p.pid === mvpId ? (L.push('威超 MVP'), 4) : 0) + (p.g === bootG ? (L.push('威超金靴'), 2) : 0) + (p.a === astA ? (L.push('威超助攻王'), 1.5) : 0); return { sc, L }; };
   const mkB = p => { if (!TD[p.team]) { const e = ext.find(x => x.uid === p.uid); if (e) return e; } const h = honOfP(p, false), I = indiv(p); return { ...p, _sc: bsc(p) + h.sc + I.sc, _hon: I.L.concat(h.L), _honSc: h.sc }; };
@@ -5009,10 +5014,10 @@ function awardBlock(title, L, kind) {
 }
 const cupMvpLine = m => `${m.name}（${m.team}）· ${m.apps ? m.apps + ' 场 ' : ''}${m.line === 'GK' ? `${m.cs ?? 0} 场零封` : `${m.g} 球 ${m.a} 助攻`}${m.avg != null ? ` · 评分 ${m.avg.toFixed(2)}` : ''}${m.motm ? ` · ${m.motm} 次全场最佳` : ''}`;
 const AWARD_RULES = [
-  ['最佳球队', '该赛季拿到荣誉最多的球队，威超球队和外赛区球队一起比。算进去的荣誉：威超冠军、外赛区各顶级联赛冠军、世联赛、全联冠、全联杯、全协联、威联赛杯、社区杯、威冠联赛冠军。数量相同时比荣誉的分量（世联赛 > 全联冠 > 威超 > 外赛区顶级联赛 > 全联杯 > 全协联 > 威联赛杯 > 社区杯、威冠联赛）。'],
-  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（联赛冠军、世联赛、全联冠最重，全联杯次之；杯赛 MVP、双冠/三冠另加分；一项大赛冠军都没有会扣分）＋ 威超 MVP 和威超金靴加分。提名 10 人，每队最多 3 人，同队第 2、3 人的团队荣誉加分打折。'],
+  ['最佳球队', '看该赛季拿到的冠军和它们的含金量，威超球队和外赛区球队一起比。每座冠军按赛事级别计分：S 级（世联赛、全联冠）10 分 > A+（威超、星煌和外赛区五大联赛）6.5 分 > A（全联杯）4 分 > A-（全协联、东海职联、列国、西亚联赛）2.5 分 > B（威联赛杯、威冠联赛）1.2 分 > B-（社区杯）0.6 分。所以两个 S 级冠军胜过一个 A+ 加两个 B 级；总分相同才比冠军数量。'],
+  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（按冠军的含金量计分：S 级世联赛、全联冠 > A+ 威超和外赛区五大联赛、星煌 > A 全联杯 > A- 全协联、东海职联 / 列国 / 西亚 > B 威联赛杯 > B- 社区杯，两个 S 级冠军胜过一个 A+ 加两个 B 级；杯赛 MVP、双冠/三冠另加分；一项大赛冠军都没有会扣分）＋ 个人荣誉（威超 MVP、金靴、助攻王；外赛区球员算他联赛的 MVP、金靴、助攻王）。提名 10 人，每队最多 3 人，同队第 2、3 人的团队荣誉加分打折。'],
   ['威超 MVP', '只看威超联赛。候选：联赛出场 ≥ 20 场的威超球员。计分：联赛场均评分、进球、助攻、全场最佳（门将/后卫计零封）＋ 球队联赛名次（冠军最多，前四递减，降级区扣分）＋ 联赛射手榜、助攻榜、全场最佳次数第一各加分。不计任何杯赛。提名 6 人，每队最多 2 人。'],
-  ['世界足球先生', '威超球员和外赛区球员放在一起比。候选：各联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：全赛季个人数据（联赛 + 杯赛 / 洲际赛）为主，团队荣誉只占小部分（约金球奖的四成），外赛区联赛冠军另加少量分。比金球奖更看个人表现。提名 8 人，每队最多 3 人。'],
+  ['世界足球先生', '威超球员和外赛区球员放在一起比。候选：各联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：全赛季个人数据和场均评分（联赛 + 杯赛 / 洲际赛）为主，加上个人荣誉（MVP、金靴、助攻王）和团队荣誉；团队荣誉同样按冠军含金量计分，但分量是金球奖的六成。比金球奖更看个人表现。提名 8 人，每队最多 3 人。'],
   ['各杯赛 MVP（世联赛、全联冠、全联杯、全协联、威联赛杯、社区杯）', '只看该项赛事本身。候选：冠军队和亚军队在这项赛事里出场的球员（亚军队打八折）。计分：这项赛事的进球 ×2、助攻 ×1.3、全场最佳次数、场均评分（高于 7 分加、低于扣，按出场数放大）、门将/后卫的零封。冠亚军里有外赛区球队时，外赛区球员只有进球和助攻的数据，这时双方都只比进球和助攻，保持公平。'],
   ['铁卫奖', '威超最佳后卫，只看联赛：零封、抢断、拦截、场均评分，进球助攻少量加分，冠军队小幅加分。'],
   ['金靴 / 助攻王 / 金手套', '威超联赛进球最多 / 助攻最多 / 零封最多的球员（同数时出场少者优先；金手套同零封看评分）。'],
