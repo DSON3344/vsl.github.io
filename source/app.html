@@ -1562,7 +1562,9 @@ const kidPotR = (k, s) => k.lock ? kidPot0(k, s) : kidPot0(k, s) + Math.max(0, M
 const kidPot0 = (k, s) => { const a = kAge(k, s); if (k.bg && a >= k.bga) return k.pot + k.bg * Math.min(1, (a - k.bga + 1) / 3); return !k.bt || a < k.ba ? k.pot : k.pot - (k.bt === 1 ? k.loss : k.loss * Math.min(1, (a - k.ba + 1) / 3)); };
 /* 剧本结束后接着剧本的最后一季走：以 S17 的剧本能力为起点，只加上成长曲线从 S17 到这季的变化。
    之前 S18 起直接改用成长模型重算，模型对 17–21 岁的估值比剧本低很多，年轻剧本球员一进 S18 就无故掉 5–9 分 */
-const kidRating = (k, s) => { if (k.rs && s <= SCR_END && k.rs[s - 1] > 0) return k.rs[s - 1]; /* 剧本里定好的能力 */ let v = kidRating0(k, s); if (k.rs && s > SCR_END && k.rs[SCR_END - 1] > 0) v = Math.max(40, Math.min(RMAX, k.rs[SCR_END - 1] + v - kidRating0(k, SCR_END))); if (k.scr) { const c = scrCapOf({ uid: 'K|' + k.id }); return c ? Math.min(c, v) : v; } return Math.round(RZ(v)); };
+const kidRating = (k, s) => { if (k.rs && s <= SCR_END && k.rs[s - 1] > 0) return k.rs[s - 1]; /* 剧本里定好的能力 */ let v = kidRating0(k, s);
+  /* 剧本球员还在青训（剧本的能力还没开始）：能力一路爬升到剧本里他第一季的能力，不会在青训时就超过升上一线队后的水平 */
+  if (k.rs && s <= SCR_END) { const d = k.rs.findIndex(x => x > 0); if (d >= 0 && s - 1 < d) v = Math.min(v, k.rs[d] - (d - (s - 1)) * 2); } if (k.rs && s > SCR_END && k.rs[SCR_END - 1] > 0) v = Math.max(40, Math.min(RMAX, k.rs[SCR_END - 1] + v - kidRating0(k, SCR_END))); if (k.scr) { const c = scrCapOf({ uid: 'K|' + k.id }); return c ? Math.min(c, v) : v; } return Math.round(RZ(v)); };
 const kidRating0 = (k, s) => { const pt = kidPotR(k, s), base = pt - Math.max(0, 22 - kAge(k, s)) * 2.6 + (ghash(k.id + 'r' + s) - 0.5) * 2 - (k.dec && kAge(k, s) > k.dec ? (kAge(k, s) - k.dec) * 2 : 0), f = k.lock ? 0 : kpfOf(k.id, s); /* U21 表现带来的提升最多只到潜力值，不会越过天花板 */ return Math.round(Math.max(40, Math.min(RMAX, f > 0 ? Math.max(base, Math.min(pt + 1, base + f)) : base + f))); };
 function kidAttrs(k, s) { const r = kidRating(k, s), o = {}; Object.entries(ATTR_TPL[k.line]).forEach(([a, d]) => o[a] = Math.max(20, Math.min(99, Math.round(r + d + (k.prof[a] || 0))))); return o; }
 /* 青训球员的自定义资料（存在 S.edits['K|' + 青训编号]，升上一线队后同一份资料继续沿用）：名字、位置、国籍、身高体重、惯用脚、潜力 */
