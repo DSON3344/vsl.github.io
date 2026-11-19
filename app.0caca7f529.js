@@ -224,7 +224,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = 'cf80c0b6e1';
+const VES_BUILD = '30edbc46b5';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -619,6 +619,9 @@ const EXT_LEAGUES = [
   { name: '西亚联赛', short: '西亚', style: 'sa', wa: 1, clubs: [['利雅德新悦', 80], ['利雅德胜立', 79], ['吉答联合', 78], ['吉答国名', 76.5], ['撒德', 74.5, 'qa'], ['卡迪西娅', 74], ['艾茵', 73, 'ae'], ['杜海乐', 72.5, 'qa'], ['协做', 72], ['迪拜国名青年', 71.5, 'ae'], ['利雅德青年仁', 71], ['赖洋', 71, 'qa'], ['波斯珀利斯', 70.5, 'ir'], ['德黑兰独力', 70, 'ir'], ['阿布扎比团洁', 69.5, 'ae'], ['塞帕寒', 68, 'ir'], ['巴格达警查', 67, 'iq'], ['安曼费萨利', 66, 'jo']] }
 ];
 const EXT_CLUB = {}; EXT_LEAGUES.forEach(L => L.clubs.forEach(([c, st, sty]) => EXT_CLUB[c] = { league: L.name, style: sty || L.style, str: Math.round(RC(st) * 10) / 10 }));
+const DOM_REF = 90.4, DOM_EDGE = 1.6, DOM_CACHE = {}; /* 放在前面：开机时 loActive → clubStrAt 会早于后面的代码用到 */
+const EXT_TOP_OFF = { 星煌: 0.3, 犀甲: 0.9, 鹰超: 1.4, 得甲: 1.9, 壹甲: 2.3, 阀甲: 2.7, 列国: 3.6, 西亚: 3.2, 东海职联: 3.2 }; /* 列国在全联杯有 18 个名额、机会多，头部球队压低一点 */
+let EXT_SHIFT = null;
 /* 西亚联赛（2026-11 加入）：S18 起逐季变强，每季 +0.3，最多 +6；西亚各国国家队的国内球员也跟着变强 */
 const WA_FROM = 18;
 function waBoost(t, s) { const c = EXT_CLUB[t]; if (!c || c.league !== '西亚联赛' || s == null) return 0; return Math.max(0, Math.min(2.5, (s - WA_FROM) * 0.3)); } /* 西亚崛起：最多 +2.5，头部球队仍在中上游 */
@@ -1264,7 +1267,7 @@ function extLeagueAt(c, s) { const X = EXT_CLUB[c]; if (!X) return null; const F
 const LO_ACT = new Map();
 function loActive(s) { const k = s + '|' + saltOf(s) + '|' + saltOf(s - 1) + '|' + (S && S.reset || '') + '|' + (S && S.extB || 0); if (LO_ACT.has(k)) return LO_ACT.get(k); if (LO_ACT.size > 60) LO_ACT.clear(); const A = new Set(); LO_ACT.set(k, A);
   EXT_LEAGUES.forEach(L => clubsAt(L, s).concat(s > 1 ? clubsAt(L, s - 1) : []).forEach(c => { if (EXT_CLUB[c] && EXT_CLUB[c].lo) A.add(c); })); /* 上季在顶级、这季降下去的：这季的洲际杯赛照上季名次参赛，也要有名单 */
-  try { const B = extB(); if (B <= 1 || s > B) { const P = lgPad(s - 1), n = LG_SEATS() - lgQual(Math.max(1, s - 1)).filter(c => !P.home.has(c)).length; lgQual(Math.max(1, s - 1)).concat(P.a.slice(0, Math.max(0, n))).forEach(c => { if (EXT_CLUB[c] && EXT_CLUB[c].lo) A.add(c); }); } } catch (e) { console.error(e); } return A; }
+  try { const B = extB(); if (B <= 1 || s > B) { const P = lgPad(s - 1), n = LG_SEATS() - lgQual(Math.max(1, s - 1)).filter(c => !P.home.has(c)).length; lgQual(Math.max(1, s - 1)).concat(P.a.slice(0, Math.max(0, n))).forEach(c => { if (EXT_CLUB[c] && EXT_CLUB[c].lo) A.add(c); }); } } catch (e) { LO_ACT.delete(k); if (!(e instanceof ReferenceError)) console.error(e); } /* 开机太早（后面的代码还没载入）算不了：这次先不缓存，之后再算 */ return A; }
 /* 下级球队的名单：用到才产生（固定种子，每次产生的都一样）；取名只避开既有的球员名，不受产生先后影响 */
 const SYNTH_LO = new Map(); let SYNTH_TAKEN = null;
 function synthLo(c) { if (SYNTH_LO.has(c)) return SYNTH_LO.get(c); const X = EXT_CLUB[c]; if (!X || !X.lo) return []; synthExt(); const out = synthClub(c, X); 
@@ -3729,7 +3732,6 @@ const LEAGUE_OF_SHORT = {}; EXT_LEAGUES.forEach(L => LEAGUE_OF_SHORT[L.short] = 
 let CUP_S = null, CUP_QUOTA = null;
 const xiAvgAt = (t, s) => { const l = HS[s] && HS[s].xi && HS[s].xi[t]; return l ? l.reduce((a, x) => a + x[2], 0) / l.length : null; };
 // 外赛区实力跟着威超顶级球队的水平浮动（威超强队老化、换血时，外赛区不会原地不动地变成更强），并整体比威超略低一点
-const DOM_REF = 90.4, DOM_EDGE = 1.6, DOM_CACHE = {};
 function domTop(s) { const k = s + '|' + GROWN + '|' + SEASON + (cupFrozen(s) ? '|f' : ''); if (DOM_CACHE[k] != null) return DOM_CACHE[k]; const v = Object.keys(TD).map(t => domStrAt(t, s)).sort((a, b) => b - a).slice(0, 4); return DOM_CACHE[k] = v.reduce((a, b) => a + b, 0) / v.length; }
 /* 本季杯赛用的实力在开季时定格（S.cstr），之后整季的杯赛赛果都按这份实力推演：赛季中可以一轮一轮揭晓，季末存档的结果也跟赛季中看到的一样 */
 function cupFrozen(s) { return typeof S !== 'undefined' && S && S.cstr && S.cstr.s === s && s === SEASON ? S.cstr : null; }
@@ -3755,11 +3757,9 @@ function cupWeeks(t) { try { if (CUPD) return null; } catch (e) { return null; }
 function cupFreeze() { if (!S || !S.teams || (S.cstr && S.cstr.s === SEASON)) return; S.cstr = null; const v = {}, d = {}; Object.keys(TD).forEach(t => { try { d[t] = Math.round(domStrAt(t, SEASON) * 10) / 10; v[t] = Math.round(clubStrAt(t, SEASON) * 10) / 10; } catch (e) { } }); const sq = {}; S.teams.forEach(t => { try { const xi = ENGINE.lineup(t).xi, inXI = new Set(xi.map(x => x.name)); sq[t] = xi.map(x => [x.name, x.slot, x.rating]).concat((PDB[t] || []).filter(p => !inXI.has(p.name) && !p.loanFrom && !p.kidLoan && p.rating >= 60).sort((a, b) => b.rating - a.rating).slice(0, 9).map(p => [p.name, String(p.pos), p.rating])); } catch (e) { } }); S.cstr = { s: SEASON, v, d, sq }; Object.keys(DOM_CACHE).forEach(k => delete DOM_CACHE[k]); }
 /* 外赛区头部球队的综合硬实力：跟威超 BIG 6 差不多，排序 威超 > 星煌 > 犀甲 > 鹰超 > 得甲 > 壹甲 > 阀甲；列国、西亚、东海的头部球队在这些联赛头部球队的中上游。
    做法：每个联赛的榜首球队对齐到「威超前四平均」减去下面的差距；只抬头部球队（离榜首 10 分以内按比例），中下游球队不变 */
-const EXT_TOP_OFF = { 星煌: 0.3, 犀甲: 0.9, 鹰超: 1.4, 得甲: 1.9, 壹甲: 2.3, 阀甲: 2.7, 列国: 3.6, 西亚: 3.2, 东海职联: 3.2 }; /* 列国在全联杯有 18 个名额、机会多，头部球队压低一点 */
-let EXT_SHIFT = null;
 function extShift(c) { const X = EXT_CLUB[c]; if (!X) return 0;
   if (!EXT_SHIFT) { EXT_SHIFT = {}; EXT_LEAGUES.forEach(L => { const v = L.clubs.map(x => x[1]).sort((a, b) => b - a), top = v[0], off = EXT_TOP_OFF[L.short]; EXT_SHIFT[L.name] = { d: off == null ? 0 : DOM_REF + DOM_EDGE - off - top, top }; }); }
-  const S0 = EXT_SHIFT[X.league] || (X.nat ? EXT_SHIFT[LG_NAME] : null); if (!S0 || !S0.d) return 0; return S0.d * Math.max(0, Math.min(1, (X.str - (S0.top - 10)) / 10)); }
+  const S0 = EXT_SHIFT[X.league] || (X.nat ? EXT_SHIFT['列国联赛'] : null); if (!S0 || !S0.d) return 0; return S0.d * Math.max(0, Math.min(1, (X.str - (S0.top - 10)) / 10)); }
 function clubStrAt(t, s) {
   if (PYR_SET.has(t)) return pyrStr(t) ?? 70;
   { const F = cupFrozen(s); if (F && F.v[t] != null) return F.v[t]; }
@@ -4354,8 +4354,8 @@ function awardsOf(s) {
   const base = p => p.avg * 10 + p.g * 0.45 + p.a * 0.35 + p.motm * 0.35 + (p.line === 'GK' ? p.cs * 0.3 - 2 : p.line === 'DF' ? p.cs * 0.15 : 0);
   // 金球奖和世界足球先生看全赛季：联赛数据 + 杯赛 / 洲际赛的进球和助攻（洲际赛进球分量更高）
   const CW = { 世联赛: 1.3, 全联冠: 1.3, 全联杯: 1, 全协联: 0.8, 威联赛杯: 0.6, 社区杯: 0.4 };
-  const cupPts = p => { const T = allComps(s, p); return Object.entries(T.cups).reduce((a, [k, c]) => a + (c.g * 0.75 + c.a * 0.45) * (CW[k] || 1), 0); };
-  const bsc = p => base(p) + p.g * 0.35 + p.a * 0.15 + cupPts(p);
+  const cupStatPts = p => { const T = allComps(s, p); return Object.entries(T.cups).reduce((a, [k, c]) => a + (c.g * 0.75 + c.a * 0.45) * (CW[k] || 1), 0); };
+  const bsc = p => base(p) + p.g * 0.35 + p.a * 0.15 + cupStatPts(p); /* 名字不能叫 cupPts：会盖掉外面按赛事级别给冠军计分的 cupPts，杯赛冠军就变成 0 分 */
   const pick = (l, f) => l.slice().sort((a, b) => f(b) - f(a));
   const extLeagueChamp = {}, extAw = {}; EXT_LEAGUES.forEach(L => { const F = extFinal(L, s); if (L.short !== '列国') extLeagueChamp[F.o.champ] = 1; [['boot', '金靴', 4], ['assist', '助攻王', 2.5], ['mvp', '联赛 MVP', 5]].forEach(([k, lab, v]) => { const q = F.aw[k]; if (q) { const e = extAw[q.uid] = extAw[q.uid] || { L: [], sc: 0 }; e.L.push(L.short + lab); e.sc += v * (LEAGUE_COEF[L.short] || 0.85); } }); });
   // 威超 MVP 只看威超联赛：个人联赛数据 + 球队联赛名次 + 联赛单项榜首，不计杯赛和洲际赛
