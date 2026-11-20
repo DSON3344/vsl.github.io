@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = 'e7dfd4eb9a';
+const VES_BUILD = 'ce0ea6ef20';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -5049,7 +5049,9 @@ const COACH_REG = {};
 let COACH_CACHE = null;
 // 球员用过的名字（威超、外赛区、历史球员）：职业教练不取这些名字，免得和还在踢球的人撞名
 let PNAME_SET = null; const playerNames = () => { if (PNAME_SET) return PNAME_SET; PNAME_SET = new Set(); [PDB0, FDB0, PDB, FDB].forEach(D => Object.values(D || {}).forEach(L => (L || []).forEach(p => p && p.name && PNAME_SET.add(p.name)))); (HIST.players || []).forEach(x => x && PNAME_SET.add(x[0])); return PNAME_SET; };
-const coachName = (seed, nat) => { const rnd = seeded('coach|' + seed), PN = playerNames(); for (let k = 0; k < 200; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n) && !PN.has(n) && !Object.values(COACH_REG).some(c => c.name === n)) return n; } return oneName(nat, rnd, 999) + '·' + (seed.length % 9 + 1); };
+const coachName = (seed, nat) => { const rnd = seeded('coach|' + seed), PN = playerNames(); for (let k = 0; k < 200; k++) { const n = oneName(nat, rnd, k); if (!YOUTH_USED.has(n) && !PN.has(n) && !Object.values(COACH_REG).some(c => c.name === n)) return n; } /* 名字都被用光了：在姓后面加一两个音节，自己编一个新姓（以前是加「·数字」编号，看起来像 bug） */
+  for (let k = 0; k < 400; k++) { const n = ddName(surExt(oneName(nat, rnd, k % 40), rnd, k < 200 ? 1 : 13)); if (!/\d/.test(n) && !YOUTH_USED.has(n) && !PN.has(n) && !Object.values(COACH_REG).some(c => c.name === n)) return n; }
+  return ddName(surExt(oneName(nat, rnd, 7), rnd, 13)); };
 // 球员转教练：没有执教经验，起步能力偏弱（随执教季数成长）；影响力看球员时代的成就（金球、梯队、名宿身份、巅峰）
 const wlHonOf2 = pid => WL && WL.byPid[pid] != null ? wlCareer(WL.byPid[pid]).hon.filter(h => h[0] === '金球奖').length : 0;
 function legendInfluence(pid, pk, clubs) {
