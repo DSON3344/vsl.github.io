@@ -184,6 +184,7 @@ button.lnk:hover span,a.lnk:hover{color:var(--accent-2)}
 
 /* tables */
 .tw{overflow-x:auto;margin-inline:-4px}
+@media (max-width:600px){.fin-hide{display:none}}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.12em;color:var(--fg-3);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 td{padding:7px 8px;border-bottom:1px solid rgba(var(--tint),0.048);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -569,7 +570,7 @@ body.busy-sim .ovhero .btns .btn{pointer-events:none;opacity:.5}
 </style>
 <link rel="preload" as="script" href="lib.47a97d5fbf.js">
 <link rel="preload" as="script" href="lib.e7d92d2e84.js">
-<link rel="preload" as="script" href="app.7c5f440eec.js">
+<link rel="preload" as="script" href="app.edc7b866df.js">
 </head>
 <body>
 
@@ -609,7 +610,7 @@ body.busy-sim .ovhero .btns .btn{pointer-events:none;opacity:.5}
 
 <script src="lib.47a97d5fbf.js" defer></script>
 <script src="lib.e7d92d2e84.js" defer></script>
-<script id="vesMain" type="text/ves" data-src="app.7c5f440eec.js"></script>
+<script id="vesMain" type="text/ves" data-src="app.edc7b866df.js"></script>
 <script>
 /* 先读 IndexedDB 里的往季存档，再执行主程序（主程序开场就要同步读存档） */
 (function () { let done = false, early = false;
