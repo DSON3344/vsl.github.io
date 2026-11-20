@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '4d8a7ddcdd';
+const VES_BUILD = 'e523b51b95';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -634,7 +634,9 @@ function waBoost(t, s) { const c = EXT_CLUB[t]; if (!c || c.league !== '西亚�
 const waNatBoost = (nat, s) => s != null && WA_NAT_SET.has(nat) ? Math.max(0, Math.min(5, (s - WA_FROM) * 0.25)) : 0;
 /* 西亚资本收购威超球队（参照沃特梅兹被东亚资本收购）：S18 由「新月海湾体育集团」收购炎狼，之后青训以西亚球员为主、转会偏爱西亚球员 */
 const WA_TK_S = 18, WA_INV = '新月海湾体育集团', WA_TEAM = '炎狼'; /* 被收购的球队：DSON 指定炎狼 */
-function waClubAt(t, s) { if (s == null || s < WA_TK_S || typeof SEASON === 'undefined' || SEASON < WA_TK_S) return null; try { const e = capitalHistory().ev.find(x => x.wa); return e && e.team === t && s >= e.s ? e : null; } catch (er) { return null; } }
+/* 被收购的球队是固定的（DSON 指定炎狼），这里直接判断，不再依赖资本动态：
+   以前要等资本动态算出来才认得，开站时青训孩子已经先生成好了，结果收购后进青训的孩子还是各国混搭 */
+function waClubAt(t, s) { if (s == null || s < WA_TK_S || t !== WA_TEAM || typeof TD === 'undefined' || !TD[WA_TEAM]) return null; return { s: WA_TK_S, team: t, kind: 'in', inv: WA_INV, wa: 1 }; }
 const STYLE_NATS = { nord: ['丹麦', '瑞典', '挪威', '荷兰', '比利时', '克罗地亚', '塞尔维亚', '波兰'], en: ['英格兰', '英格兰', '苏格兰', '美国'], es: ['西班牙', '西班牙', '阿根廷', '乌拉圭', '哥伦比亚'], de: ['德国', '德国', '奥地利', '瑞士'], it: ['意大利', '意大利', '意大利', '克罗地亚'], fr: ['法国', '法国', '比利时', '塞内加尔', '科特迪瓦'], kr: ['韩国', '韩国', '日本'], cn: ['中国', '中国', '中国', '中国', '巴西'], sa: ['沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '巴西', '葡萄牙', '阿根廷'], qa: ['卡塔尔', '卡塔尔', '卡塔尔', '卡塔尔', '巴西', '西班牙'], ae: ['阿联酋', '阿联酋', '阿联酋', '阿联酋', '巴西', '阿根廷'], ir: ['伊朗', '伊朗', '伊朗', '伊朗', '伊朗', '伊拉克'], iq: ['伊拉克', '伊拉克', '伊拉克', '伊拉克', '约旦'], jo: ['约旦', '约旦', '约旦', '约旦', '伊拉克'] };
 // 名字只用一个词（不加名·姓）；两段式用完后用三段式，再不够就允许和别队重名（同队不重名）
 var DUP_FIX = {"凯斯斯坦": "凯斯坦", "巴巴莱": "巴莱", "韦伯伯格": "韦伯格", "奥尔尔贝克": "奥尔贝克", "沃尔尔": "沃尔", "德尔加加": "德尔加", "拉尔尔斯塔德": "拉尔斯塔德", "奥尔特特斯": "奥尔特斯", "加利利": "加利", "米尔尔": "米尔", "巴巴乌": "巴乌", "安德德斯塔德": "安德斯塔德", "马丁内内斯": "马丁内兹", "巴巴耶": "巴耶", "霍尔尔": "霍尔", "巴巴尔": "巴尔", "巴巴巴": "巴克斯"}; /* 历史资料里改掉叠字的名字：旧存档的球员修改记录里还是旧名，载入时换成新名 */
@@ -1614,6 +1616,7 @@ function pinNames(rec) { let PS; try { PS = PSEASONS; } catch (e) { return; } co
       /* 有往季记录：照记录上的名字；没有：照这个存档第一次见到他时的名字（存进 S.nmPin，之后不再变） */
       let nm = arch ? PL[pid][0] : NP[p.uid]; if (!nm) { if (rec && dom && auto(p.uid)) NP[p.uid] = p.name; return; }
       if (nm === p.name || names.has(nm) || (G.has(nm) && G.get(nm) !== p.uid)) { if (nm === p.name) { p.pinNm = 1; if (rec && dom && auto(p.uid) && NP[p.uid] !== nm) NP[p.uid] = nm; } return; }
+      if (WA_NAT_SET.has(p.nat) && String(p.uid).startsWith('K|A|' + WA_TEAM + '|')) { const u = String(p.uid).split('|'); try { const x = seeded('acad|' + u[2] + '|' + u[3] + '|' + u[4])(); p.nat = YP.NATS[Math.floor(x * YP.NATS.length)]; } catch (e) { } } /* 西亚青训规则修好之前已经出场、名字固定了的孩子：名字照旧，国籍也照旧（不然会变成欧洲名字配西亚国籍） */
       const old = p.name; NAME_AL[t + '|' + old] = nm; if (dom && TD[t]) TD[t].roster.forEach(r => { if (r.name === old) r.name = nm; }); names.delete(old); names.add(nm); p.name = nm; p.pinNm = 1; BY_TN[t + '|' + nm] = p; BY_TN[t + '|' + old] = p; if (rec && dom && auto(p.uid)) NP[p.uid] = nm; try { YOUTH_USED.add(nm); } catch (e) { } }); };
   const n0 = Object.keys(NAME_AL).length; Object.entries(PDB).forEach(([t, L]) => pin(t, L || [], true)); Object.entries(FDB).forEach(([c, L]) => pin(c, L || [], false));
   if (Object.keys(NAME_AL).length !== n0) { try { extDedup(); Object.entries(FDB).forEach(([c, l]) => (l || []).forEach(p => { BY_TN[c + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = c; })); } catch (e) { console.error(e); } } /* 固定名字以后，跟没有往季记录的外赛区球员撞名的，由他们改名 */
@@ -7674,6 +7677,18 @@ function mktGenExtBuys(MK, s, C, salt) {
     Object.entries(FDB).forEach(([c, L]) => { if (!EXT_CLUB[c]) return; L.forEach(p => { if (typeof p.age0 !== 'number') return; const a = C.ageN(p), r = C.ratN(p); if (posGroup(p.pos) !== g.gi || r < bar || r > bar + 6 || a > (big ? 27 : 30)) return; pool.push({ p, c, r }); }); });
     pool.sort((x, y) => y.r - x.r); const pk = pool.slice(0, 5)[Math.floor(rnd() * Math.min(5, pool.length))]; if (!pk) return; const o = mktOfferB(MK, pk.p, pk.c, t, C, rnd, 0.9, 1.2); if (o) o.ext = 1; });
 }
+/* 西亚资本（新月海湾体育集团）出资引援：收购后的每个夏窗，炎狼从外赛区引进西亚球员（第一个窗口 5 人，之后每窗 3 人；西亚球员占到四分之三以后每窗 1 人）。
+   老板出钱，不受球队预算限制；球员愿意加盟西亚老板的球队 */
+function mktGenWaBuys(MK, s, C, salt) {
+  const t = WA_TEAM; if (!TD[t] || s < WA_TK_S - 1 || !PDB[t] || MK.waDone) return; MK.waDone = 1;
+  const sq = PDB[t], waN = sq.filter(p => WA_NAT_SET.has(p.nat)).length, rnd = seeded('wab|' + s + salt); let n = s === WA_TK_S - 1 ? 5 : 3; if (waN >= sq.length * 0.75) n = 1;
+  const str = C.str[t] || 72, have = new Set(sq.map(p => p.uid)), pool = [];
+  Object.entries(FDB).forEach(([c, L]) => { if (!EXT_CLUB[c]) return; L.forEach(p => { if (!WA_NAT_SET.has(p.nat) || typeof p.age0 !== 'number' || have.has(p.uid)) return; const a = C.ageN(p), r = C.ratN(p); if (a < 18 || a > 30 || r < str - 4 || r > str + 7) return; pool.push({ p, c, r, a }); }); });
+  if (!pool.length) return; let R = []; try { R = squadReport(t); } catch (e) { }
+  const gs = R.map(g => g.gi).concat([0, 1, 2, 3]), used = new Set();
+  for (let i = 0; i < n; i++) { const gi = gs[i % gs.length], cand = pool.filter(x => !used.has(x.p.uid) && posGroup(x.p.pos) === gi), L = (cand.length ? cand : pool.filter(x => !used.has(x.p.uid))).sort((x, y) => (y.r - y.a * 0.3) - (x.r - x.a * 0.3)); const pk = L[Math.floor(rnd() * Math.min(4, L.length))]; if (!pk) break; used.add(pk.p.uid);
+    const o = mktOffer(MK, pk.p, pk.c, t, C, rnd, 1.1, 1.4); if (o.st === 'x') continue; Object.assign(o, { bud: 1, ext: 1, wa: 1, will: Math.max(o.will || 0, 0.9) }); o.log.push(`${WA_INV}出资，优先引进西亚球员`); }
+}
 // S01–S17：从外赛区签来的球员（X| 开头）在之后各季的去向，由各转会窗成交 / 解约推出：{uid: [[生效赛季, 球队或 null], ...]}
 function extMoves() { const M = {}; Object.entries((S && S.market) || {}).forEach(([k, MK]) => { const w = k[0] === 'w', s = +(w ? k.slice(1) : k); if (!(s < HIST_END)) return; const eff = w ? s : s + 1;
     (MK.offers || []).forEach(o => { if (o.st !== 'a' || o.loan || !String(o.uid || '').startsWith('X|')) return; (M[o.uid] = M[o.uid] || []).push([eff, TD[o.to] ? o.to : null, w ? 1 : 0]); });
@@ -7701,7 +7716,7 @@ function extTeamAt(L, s) { let t; (L || []).forEach(([e, to]) => { if (e <= s) t
 function mktGet(s = MS()) {
   S.market = S.market || {}; if (S.market[s]) { const MK0 = S.market[s]; if (!MK0.relDone && s >= HIST_END - 1e9 && s === SEASON && isPending(SEASON)) { MK0.relDone = 1; try { relOffers(MK0, mktCtx(s), saltOf(s)); } catch (e) { console.error(e); } save(); } if (!MK0.lbDone && s === SEASON && isPending(SEASON)) { try { mktGenLoanEnd(MK0, s, mktCtx(s), saltOf(s)); } catch (e) { console.error(e); } save(); } if (!MK0.promoDone && nm4() && s >= SCR_END && s === SEASON && isPending(SEASON)) { try { mktGenPromo(MK0, s, mktCtx(s), saltOf(s)); } catch (e) { console.error(e); } save(); } /* 升班马确定后补强 */ return MK0; } /* 市场比降级早生成：降级确定后补上降级出走的报价（只补一次） */
   const MK = S.market[s] = { offers: [], renew: {}, listed: {}, free: [], seq: 0 }, C = mktCtx(s), salt = saltOf(s);
-  if (s < HIST_END) { mktGenHist(MK, s, C, salt); try { mktGenExtBuys(MK, s, C, salt); } catch (e) { console.error(e); } save(); return MK; }
+  if (s < HIST_END) { mktGenHist(MK, s, C, salt); try { mktGenExtBuys(MK, s, C, salt); } catch (e) { console.error(e); } try { mktGenWaBuys(MK, s, C, salt); } catch (e) { console.error(e); } save(); return MK; }
   const cand = [];
   Object.keys(PDB).forEach(t => { if (!TD[t]) return; PDB[t].forEach(p => { if (!C.alive(p) || p.cEnd <= s) return; const a = C.ageN(p), r = C.ratN(p), rnd = seeded('mo|' + p.uid + '|' + s + salt);
     const pr = a <= 31 && r >= C.str[t] + 4 ? 0.34 : a <= 29 && r >= C.str[t] + 1 ? 0.08 : a <= 30 && r >= 89 ? 0.07 : a <= 27 && r >= 84 ? 0.03 : 0;
@@ -7963,11 +7978,11 @@ const mktManaged = t => { const c = mktCfg(); return !c.auto && (!c.teams || c.t
 const mktManual = t => mktManaged(t) && !mktCfg().pilot; // 托管时卖方由小助手处理，不用你去卖方页面决定
 function mktSysResolve(MK, all, s) {
   const by = {}; MK.offers.filter(o => o.st === 'p' && !o.user && (all || !mktManaged(o.from))).forEach(o => (by[o.uid] = by[o.uid] || []).push(o));
-  let n = 0; Object.values(by).forEach(L => { L.forEach(o => { if (!o.sched && TD[o.to] && !canAfford(o.to, o.fee)) { o.st = 'r'; o.log.push('买方预算不足'); } }); const P = L.filter(o => o.st === 'p'); if (P.length) { sysDecide(P, s); n += P.length; } });
+  let n = 0; Object.values(by).forEach(L => { L.forEach(o => { if (!o.sched && !o.wa && TD[o.to] && !canAfford(o.to, o.fee)) { o.st = 'r'; o.log.push('买方预算不足'); } }); const P = L.filter(o => o.st === 'p'); if (P.length) { sysDecide(P, s); n += P.length; } });
   return n;
 }
 // 卖方俱乐部按常规挑买方：历史转会照历史；否则只考虑球员愿意去的买方，报价不低于身价时选「报价 × 球员意愿」最好的那家
-function sysDecide(L, s) { try { clauseTrigger(L, s); } catch (e) { } { const nf = o => TD[o.from] && nfsUid(o.from, o.uid) && o.fee < o.v * NFS_MULT; const sc = L.find(o => o.sched && !nf(o)); const ok = L.filter(o => !nf(o) && (o.will == null || willNow(o) >= WILL_MIN) && !isRival(o.from, o.to) && (relOf(o.from, o.to) !== 'comp' || o.fee >= o.v * 1.15)); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || L.find(o => o.rc) || ok[0]; L.forEach(o => { if (o === best && (o.sched || o.rc || !TD[o.to] || canAfford(o.to, o.fee)) && (o.sched || o.rc || ((s > 17 || HIST_END > 1e8) && o.fee >= o.v * (o.kind === 'vet' ? 0.55 : o.loan ? 0.05 : 0.95)))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : o.rc ? '买方支付解约金，卖方不能拒绝 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
+function sysDecide(L, s) { try { clauseTrigger(L, s); } catch (e) { } { const nf = o => TD[o.from] && nfsUid(o.from, o.uid) && o.fee < o.v * NFS_MULT; const sc = L.find(o => o.sched && !nf(o)); const ok = L.filter(o => !nf(o) && (o.will == null || willNow(o) >= WILL_MIN) && !isRival(o.from, o.to) && (relOf(o.from, o.to) !== 'comp' || o.fee >= o.v * 1.15)); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || L.find(o => o.rc) || ok[0]; L.forEach(o => { if (o === best && (o.sched || o.rc || o.wa || !TD[o.to] || canAfford(o.to, o.fee)) && (o.sched || o.rc || ((s > 17 || HIST_END > 1e8) && o.fee >= o.v * (o.kind === 'vet' ? 0.55 : o.loan ? 0.05 : 0.95)))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : o.rc ? '买方支付解约金，卖方不能拒绝 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
 // 历史时期：把和历史不同的决定记成叠加层 ov，实际发生的转会记成 done（转会窗延续期间新成交的也会重新算）
 function mktCompute(s) {
   if (s >= HIST_END) return; const MK = mktGet(s);
