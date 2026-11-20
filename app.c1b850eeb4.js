@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = 'eb1e6f5df0';
+const VES_BUILD = 'e7dfd4eb9a';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -6533,12 +6533,14 @@ function clubLegends(t) {
   const R = L.map(o => {
     const titles = o.ws.filter(w => WCH[w] === t).length + o.ss.filter(s => s < SEASON || isPending(s)).filter(s => champS(s) === t).length;
     const pk = legendPeak(o);
+    /* 杯赛冠军（DSON 2026-11）：效力期间球队拿的杯赛冠军，按赛事级别折算，联赛冠军（A+ 级）= 45 分 → S 级 69、A 级 28、A- 级 17、B 级 8、B- 级 4 */
+    let cupN = 0, cupSc = 0; o.ss.filter(s => s < SEASON || isPending(s)).forEach(s => { let C = null; try { C = cupsOf(s); } catch (e) { } Object.entries(C || {}).forEach(([k, r]) => { if (r && r.winner === t && CUP_TIER[k]) { cupN++; cupSc += (TIER_PTS[CUP_TIER[k]] || 0) / TIER_PTS['A+'] * 45; } }); });
     const yrs = o.ws.length + o.ss.length;
     const line = o.line || (o.pos ? ENGINE.LINE(o.pos) : (o.pid != null && PL[o.pid] ? ENGINE.LINE(PL[o.pid][1]) : 'MF'));
     const att = line === 'GK' ? o.apps * 0.5 : line === 'DF' ? o.g * 2 + o.a * 1.5 : o.g + o.a * 0.9;
-    const score = o.apps * 0.55 + att + titles * 45 + yrs * 6 + Math.max(0, pk - 82) * 14;
-    return { ...o, titles, pk, yrs, line, score, cur: o.pid != null ? curSet.has(PL[o.pid] && PL[o.pid][0]) : curSet.has(o.name) };
-  }).filter(o => o.apps >= 40 || o.titles).sort((a, b) => b.score - a.score);
+    const score = o.apps * 0.55 + att + titles * 45 + cupSc + yrs * 6 + Math.max(0, pk - 82) * 14;
+    return { ...o, titles, cupN, pk, yrs, line, score, cur: o.pid != null ? curSet.has(PL[o.pid] && PL[o.pid][0]) : curSet.has(o.name) };
+  }).filter(o => o.apps >= 40 || o.titles || o.cupN).sort((a, b) => b.score - a.score);
   const top = R.slice(0, 12); if (!top.length) return [];
   const best = top[0].score;
   top.forEach((o, i) => { const q = o.score / best; o.tag = i === 0 || (i < 3 && q >= 0.7) ? '队史传奇' : i < 8 && q >= 0.4 ? '名宿' : '功勋球员'; });
@@ -6549,9 +6551,9 @@ function clubLegendsPanel(t) {
   const span = o => { const a = o.ws.length ? WN(Math.min(...o.ws)) : SN(Math.min(...o.ss)); const b = o.ss.length ? SN(Math.max(...o.ss)) : WN(Math.max(...o.ws)); return a === b ? a : a + '–' + b; };
   const link = o => o.pid != null ? `<button class="lnk" data-pid="${o.pid}"><b>${esc(o.name)}</b></button>` : o.wl != null ? `<button class="lnk" data-wl="${o.wl}"><b>${esc(o.name)}</b></button>` : `<button class="lnk" data-player="${esc(t)}|${esc(o.name)}"><b>${esc(o.name)}</b></button>`;
   const LN = { GK: '门将', DF: '后卫', MF: '中场', FW: '前锋' };
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club legends</div><h2>球队名宿</h2></div><span class="note">只看在${esc(t)}的贡献：出场、进球助攻、联赛冠军、效力年数和巅峰能力 · 威联赛 + 威超 · 全部赛事 · 巅峰是真正踢出来的最高能力，威联赛时代按当季表现推算</span></div>
-    <div class="tw"><table><thead><tr><th>#</th><th class="l">球员</th><th class="l">位置</th><th class="l">效力</th><th>出场</th><th>进球</th><th>助攻</th><th>联赛冠军</th><th>巅峰</th><th class="l">地位</th></tr></thead><tbody>
-    ${L.map((o, i) => `<tr><td class="dim">${i + 1}</td><td class="l">${link(o)}${o.cur ? ' <span class="chip good" style="font-size:10px;padding:0 5px">现役</span>' : ''}</td><td class="l muted">${LN[o.line] || ''}</td><td class="l mono" style="font-size:12px">${span(o)}</td><td>${o.apps}</td><td>${o.g}</td><td>${o.a}</td><td>${o.titles || '<span class="dim">–</span>'}</td><td>${o.pk ? `<span class="rt-pill" style="background:${rtColor(o.pk)}">${o.pk}</span>` : '–'}</td><td class="l"><span class="chip ${o.tag === '队史传奇' ? 'gold' : ''}" style="font-size:11px">${o.tag}</span></td></tr>`).join('')}
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Club legends</div><h2>球队名宿</h2></div><span class="note">只看在${esc(t)}的贡献：出场、进球助攻、联赛冠军、杯赛冠军（按赛事级别折算）、效力年数和巅峰能力 · 威联赛 + 威超 · 全部赛事 · 巅峰是真正踢出来的最高能力，威联赛时代按当季表现推算</span></div>
+    <div class="tw"><table><thead><tr><th>#</th><th class="l">球员</th><th class="l">位置</th><th class="l">效力</th><th>出场</th><th>进球</th><th>助攻</th><th>联赛冠军</th><th>杯赛冠军</th><th>巅峰</th><th class="l">地位</th></tr></thead><tbody>
+    ${L.map((o, i) => `<tr><td class="dim">${i + 1}</td><td class="l">${link(o)}${o.cur ? ' <span class="chip good" style="font-size:10px;padding:0 5px">现役</span>' : ''}</td><td class="l muted">${LN[o.line] || ''}</td><td class="l mono" style="font-size:12px">${span(o)}</td><td>${o.apps}</td><td>${o.g}</td><td>${o.a}</td><td>${o.titles || '<span class="dim">–</span>'}</td><td>${o.cupN || '<span class="dim">–</span>'}</td><td>${o.pk ? `<span class="rt-pill" style="background:${rtColor(o.pk)}">${o.pk}</span>` : '–'}</td><td class="l"><span class="chip ${o.tag === '队史传奇' ? 'gold' : ''}" style="font-size:11px">${o.tag}</span></td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 const CLUB_AGG = {};
