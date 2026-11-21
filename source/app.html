@@ -688,7 +688,7 @@ Object.values(PLAYER_DATABASE).forEach(L => L.forEach(q => { if (q && q.pos) { q
 const $ = (s, r = document) => r.querySelector(s);
 // 手机上对话框里的表格改成卡片：每格带上表头文字
 function dlgLabel(root) { root.querySelectorAll('.tw table').forEach(tb => { const hs = [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim()); tb.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (hs[i] && !td.dataset.l) td.dataset.l = hs[i]; })); }); }
-document.addEventListener('change', e => { const t = e.target; if (t && (t.id === 'cmpA' || t.id === 'cmpB')) { if (t.id === 'cmpA') CMP_A = t.value; else CMP_B = t.value; if (CMP_A === CMP_B) { const o = [...t.options].find(x => x.value !== t.value); if (t.id === 'cmpA') CMP_B = o.value; else CMP_A = o.value; } render(); return; } });
+document.addEventListener('change', e => { const t = e.target; if (t && t.dataset && t.dataset.ndsel && teamSel) { const F = ND_F && ND_F.t === teamSel ? ND_F : (ND_F = { t: teamSel, cont: 'all', sub: 'all', nat: '*' }); F[t.dataset.ndsel] = t.value; if (t.dataset.ndsel === 'cont') { F.sub = 'all'; F.nat = '*'; } if (t.dataset.ndsel === 'sub') F.nat = '*'; render(); return; } if (t && (t.id === 'cmpA' || t.id === 'cmpB')) { if (t.id === 'cmpA') CMP_A = t.value; else CMP_B = t.value; if (CMP_A === CMP_B) { const o = [...t.options].find(x => x.value !== t.value); if (t.id === 'cmpA') CMP_B = o.value; else CMP_A = o.value; } render(); return; } });
 document.addEventListener('change', e => { const el = e.target.closest && e.target.closest('[data-xisel]'); if (!el) return; XI_PREV = { t: el.dataset.xisel, f: el.value || null }; render(); });
 setTimeout(function dlgObs() { const d = document.getElementById('dlg'); if (!d) return setTimeout(dlgObs, 300); new MutationObserver(() => dlgLabel(d)).observe(d, { childList: true, subtree: true }); }, 0);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -1244,7 +1244,10 @@ function waClubAt(t, s) { if (s == null || s < WA_TK_S || typeof TD === 'undefin
   if (t === WA_TEAM) return { s: WA_TK_S, team: t, kind: 'in', inv: WA_INV, wa: 1 };
   const m = waOwnMap(), L = m && m[t]; if (!L) return null; let st = null; L.forEach(([s0, on, inv]) => { if (s0 <= s) st = on ? { s: Math.max(s0, WA_TK_S), team: t, inv, wa: 1 } : null; }); return st; }
 /* 资本地区决定引援方向（S18 起）：西亚资本 → 西亚球员；沃特梅兹（东亚资本）→ 东亚球员；龙王宫殿（北美资本）→ 北美球员 */
-function capRegion(t, s) { if (s == null || s < WA_TK_S || typeof TD === 'undefined' || !TD[t]) return null; const wa = waClubAt(t, s); if (wa) return { set: WA_NAT_SET, wa, lab: '西亚', inv: wa.inv || WA_INV };
+/* 自订培养方向（DSON 在球队页设定）：从设定后的下一季起，青训和引援以指定地区 / 国家的球员为主；优先于资本规则 */
+const NAME_NATS = () => Object.keys(YP.NAT_GROUP).concat(['韩国', '日本', '中国'], [...WA_NAT_SET]);
+function natDirAt(t, s) { const L = (S && S.natDir && S.natDir[t]) || []; let r = null; L.forEach(x => { if (x.s <= s) r = x; }); return r && r.nats && r.nats.length ? r : null; }
+function capRegion(t, s) { if (s == null || typeof TD === 'undefined' || !TD[t]) return null; { const d = natDirAt(t, s); if (d) return { set: new Set(d.nats), lab: d.lab, inv: '俱乐部', own: 1 }; } if (s < WA_TK_S) return null; const wa = waClubAt(t, s); if (wa) return { set: WA_NAT_SET, wa, lab: '西亚', inv: wa.inv || WA_INV };
   if (tid(t).asia) return { set: EAST_ASIA, lab: '东亚', inv: '东亚资本老板' }; if (t === '龙王宫殿') return { set: NA_NATS, lab: '北美', inv: LW_INV }; return null; }
 const STYLE_NATS = { nord: ['丹麦', '瑞典', '挪威', '荷兰', '比利时', '克罗地亚', '塞尔维亚', '波兰'], en: ['英格兰', '英格兰', '苏格兰', '美国'], es: ['西班牙', '西班牙', '阿根廷', '乌拉圭', '哥伦比亚'], de: ['德国', '德国', '奥地利', '瑞士'], it: ['意大利', '意大利', '意大利', '克罗地亚'], fr: ['法国', '法国', '比利时', '塞内加尔', '科特迪瓦'], kr: ['韩国', '韩国', '日本'], cn: ['中国', '中国', '中国', '中国', '巴西'], sa: ['沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '沙特阿拉伯', '巴西', '葡萄牙', '阿根廷'], qa: ['卡塔尔', '卡塔尔', '卡塔尔', '卡塔尔', '巴西', '西班牙'], ae: ['阿联酋', '阿联酋', '阿联酋', '阿联酋', '巴西', '阿根廷'], ir: ['伊朗', '伊朗', '伊朗', '伊朗', '伊朗', '伊拉克'], iq: ['伊拉克', '伊拉克', '伊拉克', '伊拉克', '约旦'], jo: ['约旦', '约旦', '约旦', '约旦', '伊拉克'] };
 // 名字只用一个词（不加名·姓）；两段式用完后用三段式，再不够就允许和别队重名（同队不重名）
@@ -1293,7 +1296,7 @@ function nameFor_old(nat, rnd) {
 }
 function youthName(team, rnd, sj) {
   const one = a => a[Math.floor(rnd() * a.length)];
-  const nat = sj >= WA_TK_S && waClubAt(team, sj) ? (x => x < 0.4 ? '沙特阿拉伯' : x < 0.55 ? '伊朗' : x < 0.7 ? '伊拉克' : x < 0.8 ? '卡塔尔' : x < 0.9 ? '阿联酋' : '约旦')(rnd()) /* 被西亚资本收购后：青训以西亚球员为主 */ : tid(team).asia ? (x => x < 0.4 ? '韩国' : x < 0.75 ? '日本' : '中国')(rnd()) : one(YP.NATS); /* 沃特梅兹：青训以东亚球员为主 */
+  const nd = natDirAt(team, sj); const nat = nd ? nd.nats[Math.floor(rnd() * nd.nats.length)] /* 自订培养方向 */ : sj >= WA_TK_S && waClubAt(team, sj) ? (x => x < 0.4 ? '沙特阿拉伯' : x < 0.55 ? '伊朗' : x < 0.7 ? '伊拉克' : x < 0.8 ? '卡塔尔' : x < 0.9 ? '阿联酋' : '约旦')(rnd()) /* 被西亚资本收购后：青训以西亚球员为主 */ : tid(team).asia ? (x => x < 0.4 ? '韩国' : x < 0.75 ? '日本' : '中国')(rnd()) : one(YP.NATS); /* 沃特梅兹：青训以东亚球员为主 */
   return { name: freshName(nat, rnd, n => (PDB[team] || []).some(p => p.name === n) || TD[team].roster.some(r => r.name === n)), nat };
 }
 function youthName_old(team, rnd) {
@@ -1554,7 +1557,7 @@ function acadBase(t) { const v = ((typeof PDB0 !== 'undefined' && PDB0[t]) || PD
 /* 青训少年的生成很慢（取名要避开所有已用的名字），而且每次重算都完全一样：第一次生成后记下来，之后直接复制（同时把名字标记为已用） */
 var KID_MEMO = new Map(), KID_MEMO_K = null, KID_MEMO_N = 0;
 /* 青训孩子的名字要试很多次才不撞名，算一次很花时间：结果存进开站快取，同一赛季、球员资料没改过就直接用 */
-const kidMemoKey = () => pcBase() + '|' + SEASON + '|' + ghash(JSON.stringify((S && S.edits) || {}));
+const kidMemoKey = () => pcBase() + '|' + SEASON + '|' + ghash(JSON.stringify((S && S.edits) || {})) + '|' + ghash(JSON.stringify((S && S.natDir) || {}));
 function kidMemoLoad() { const k = kidMemoKey(); if (KID_MEMO_K === k) return; KID_MEMO_K = k; if (KID_MEMO.size) return; const v = pcGet('kid', k); if (Array.isArray(v)) { v.forEach(([a, b]) => KID_MEMO.set(a, b)); KID_MEMO_N = KID_MEMO.size; } }
 function kidMemoSave() { try { if (!KID_MEMO.size || KID_MEMO.size === KID_MEMO_N) return; const k = kidMemoKey(); if (k !== KID_MEMO_K) return; KID_MEMO_N = KID_MEMO.size; pcSet('kid', k, [...KID_MEMO]); } catch (e) { } }
 /* 旧资料球员：只保留名字（和国籍）。新规则（S.nm2，从 S01 新开的进度）下，他们的名字随机分给各队青训：约三分之一是 S01 时已在梯队的大孩子，其余是 S01–S18 各批新进梯队的新人，
@@ -1583,7 +1586,7 @@ const scrNo = (() => { let M = null; return n => { if (!M) { M = {}; Object.valu
 const scrPidSet = (() => { let C = null; return () => C || (C = new Set(SCRIPT.P.filter(p => p.pid != null).map(p => p.pid))); })();
 const oldSlots = () => ({}), oldCnt = () => 0; /* 旧版存档（nm2/nm3 时代）的青训名额对照，2026-11 起所有进度都是 nm4，已删除 */
 
-function acadKid(t, born, k, gold) { if (KID_MEMO_K === null) kidMemoLoad(); const mk = t + '|' + born + '|' + k + '|' + gold + '|' + YOUTH_USED.size + (nm2() ? '|n2' : '') + (nm3() ? '3' : ''), hit = KID_MEMO.get(mk); if (hit && !YOUTH_USED.has(hit.name)) { YOUTH_USED.add(hit.name); return JSON.parse(hit.j); }
+function acadKid(t, born, k, gold) { if (KID_MEMO_K === null) kidMemoLoad(); const mk = t + '|' + born + '|' + k + '|' + gold + '|' + YOUTH_USED.size + (nm2() ? '|n2' : '') + (nm3() ? '3' : '') + ((S && S.natDir && S.natDir[t]) ? '|nd' + ((natDirAt(t, born + 15) || {}).lab || '') : ''), hit = KID_MEMO.get(mk); if (hit && !YOUTH_USED.has(hit.name)) { YOUTH_USED.add(hit.name); return JSON.parse(hit.j); }
   const o = acadKid0(t, born, k, gold); KID_MEMO.set(mk, { name: o.name, j: JSON.stringify(o) }); return o; }
 function acadKid0(t, born, k, gold) {
   const rnd = seeded('acad|' + t + '|' + born + '|' + k);
@@ -6413,6 +6416,23 @@ const youthBoost = t => ownOn(SEASON) ? Math.round((staffQ(t, 'yth') - 70) / 8) 
 const commMul = (t, s) => ownOn(s) ? 1 + Math.min(2, projBuilt(t, 'comm', s)) * 0.1 + (ownerAt(t, s).type === 'corp' ? 0.06 : 0) : 1;
 function stadMul(t, s) { if (!ownOn(s)) return 1; const A = attendance(t, s), c0 = stadCap0(t); return Math.max(0.6, Math.min(2.4, (A.att / (c0 * 0.9)) * TICK_LV[A.tk][1])); }
 function ownBar(lab, v, col) { return `<div style="display:grid;grid-template-columns:64px minmax(0,1fr) 30px;gap:8px;align-items:center;font-size:12px"><span class="muted">${lab}</span><span style="height:6px;border-radius:3px;background:var(--line);overflow:hidden"><span style="display:block;height:100%;width:${v}%;background:${col || 'var(--gold)'}"></span></span><span class="mono">${v}</span></div>`; }
+let ND_F = null;
+function natDirPanel(t) {
+  const L = (S.natDir && S.natDir[t]) || [], cur = natDirAt(t, SEASON), nxt = natDirAt(t, SEASON + 1), avail = new Set(NAME_NATS()), F = ND_F && ND_F.t === t ? ND_F : { t, cont: 'all', sub: 'all' };
+  const capR = (() => { try { const r = capRegion(t, SEASON + 1); return r && !r.own ? r : null; } catch (e) { return null; } })();
+  const natsIn = (c, sb) => [...avail].filter(n => (c === 'all' || regOf(n)[0] === c) && (sb === 'all' || regOf(n)[1] === sb));
+  const subs = F.cont === 'all' ? [] : [...new Set(natsIn(F.cont, 'all').map(n => regOf(n)[1]))];
+  const sel = (id, opts, v) => `<select data-ndsel="${id}">${opts.map(([k, n]) => `<option value="${esc(k)}" ${k === v ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+  const pick = natsIn(F.cont, F.sub);
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Youth & recruitment</div><h2>培养方向</h2></div><span class="note">${nxt ? `${SN(SEASON + 1)} 起：${esc(nxt.lab)}` : capR ? `资本规则：${esc(capR.lab)}` : '各国混搭（默认）'}</span></div>
+    <p class="muted" style="margin:0 0 10px;font-size:13px">设定后，从下一季（${SN(SEASON + 1)}）起：进青训的孩子以这些国籍为主，每个夏窗也会优先去外赛区引进这些国家的球员（每窗 1–2 人，用球队自己的预算）。已经在队里的球员不受影响。设定会优先于资本规则（西亚资本、东亚资本等）。</p>
+    <div class="btns" style="gap:8px;align-items:center;flex-wrap:wrap">
+      ${sel('cont', [['all', '全部洲际']].concat(CONTS.filter(c => natsIn(c, 'all').length).map(c => [c, c])), F.cont)}
+      ${F.cont !== 'all' ? sel('sub', [['all', `${F.cont}全部分区`]].concat(subs.map(x => [x, x])), F.sub) : ''}
+      ${sel('nat', [['*', F.cont === 'all' ? '请先选洲际 / 分区，或直接选国家' : `整个${F.sub !== 'all' ? F.sub : F.cont}（${pick.length} 国）`]].concat(pick.map(n => [n, n])), F.nat || '*')}
+      <button class="btn" data-act="ndSet" data-t="${esc(t)}">设为培养方向</button>${nxt || L.length ? `<button class="btn ghost" data-act="ndClear" data-t="${esc(t)}">恢复默认</button>` : ''}</div>
+    ${L.length ? `<div class="rank-list" style="margin-top:10px">${L.slice().reverse().map(x => `<div class="rk" style="grid-template-columns:52px minmax(0,1fr)"><span class="n mono">${SN(x.s)} 起</span><span>${x.nats && x.nats.length ? esc(x.lab) + `<span class="dim" style="font-size:11px"> · ${esc(x.nats.join('、'))}</span>` : '恢复默认（各国混搭 / 资本规则）'}</span></div>`).join('')}</div>` : ''}
+    <p class="note" style="margin:8px 0 0">只列网站有名字库的国家，名字才会合乎国籍。</p></div>`; }
 function boardPanel(t) {
   if (!TD[t]) return ''; const o = ownerAt(t), L = ownerHist(t), B = boardPlan(t), A = attendance(t), m = fanMood(t), F = (() => { try { return finState()[t]; } catch (e) { return null; } })(), cash = ownerCash(t, SEASON), on = ownOn(SEASON);
   const T = OWN_T[o.type], prj = B.proj.filter(p => p.s1 > SEASON);
@@ -7509,7 +7529,7 @@ function teamDetail(t) {
   ${clubLeaders(t)}
   ${wlTeamPanel(t)}` : ''}
   ${TEAM_TAB === 'fin' ? teamFinPanel(t) : ''}
-  ${TEAM_TAB === 'board' ? boardPanel(t) + staffPanel(t) : ''}
+  ${TEAM_TAB === 'board' ? boardPanel(t) + natDirPanel(t) + staffPanel(t) : ''}
   ${TEAM_TAB === 'legend' ? `${clubLegendsPanel(t)}${clubCoachesPanel(t)}${coachPanel(t)}` : ''}
   ${TEAM_TAB === 'acad' ? u21Panel(t) + (academyPanel(t) || '') || '<div class="panel"><p class="note" style="margin:0">这支球队暂时没有青训资料。</p></div>' : ''}
   </div></section>`;
@@ -8363,13 +8383,13 @@ function mktGenExtBuys(MK, s, C, salt) {
 function mktGenWaBuys(MK, s, C, salt) {
   if (MK.waDone || s < WA_TK_S - 1) return; MK.waDone = 1; const taken = new Set();
   Object.keys(TD).forEach(t => { const RG = capRegion(t, s + 1); if (!PDB[t] || !RG) return; const NS = RG.set, wa = RG.wa;
-  const sq = PDB[t], waN = sq.filter(p => NS.has(p.nat)).length, rnd = seeded('wab|' + (t === WA_TEAM ? '' : t + '|') + s + salt); let n = wa ? (!waClubAt(t, s) ? 5 : 3) : (waN < sq.length * 0.6 ? 3 : 2); if (waN >= sq.length * 0.75) n = 1;
+  const sq = PDB[t], waN = sq.filter(p => NS.has(p.nat)).length, rnd = seeded('wab|' + (t === WA_TEAM ? '' : t + '|') + s + salt); let n = wa ? (!waClubAt(t, s) ? 5 : 3) : RG.own ? (waN < sq.length * 0.5 ? 2 : 1) : (waN < sq.length * 0.6 ? 3 : 2); if (waN >= sq.length * 0.75) n = 1;
   const str = C.str[t] || 72, have = new Set(sq.map(p => p.uid)), pool = [];
   Object.entries(FDB).forEach(([c, L]) => { if (!EXT_CLUB[c]) return; L.forEach(p => { if (!NS.has(p.nat) || typeof p.age0 !== 'number' || have.has(p.uid)) return; const a = C.ageN(p), r = C.ratN(p); if (a < 18 || a > 30 || r < str - 4 || r > str + 7 || taken.has(p.uid)) return; pool.push({ p, c, r, a }); }); });
   if (!pool.length) return; let R = []; try { R = squadReport(t); } catch (e) { }
   const gs = R.map(g => g.gi).concat([0, 1, 2, 3]), used = new Set();
   for (let i = 0; i < n; i++) { const gi = gs[i % gs.length], cand = pool.filter(x => !used.has(x.p.uid) && posGroup(x.p.pos) === gi), L = (cand.length ? cand : pool.filter(x => !used.has(x.p.uid))).sort((x, y) => (y.r - y.a * 0.3) - (x.r - x.a * 0.3)); const pk = L[Math.floor(rnd() * Math.min(4, L.length))]; if (!pk) break; used.add(pk.p.uid); taken.add(pk.p.uid);
-    const o = mktOffer(MK, pk.p, pk.c, t, C, rnd, 1.1, 1.4); if (o.st === 'x') continue; Object.assign(o, { bud: 1, ext: 1, wa: 1, will: Math.max(o.will || 0, 0.9) }); o.log.push(`${RG.inv}出资，优先引进${RG.lab}球员`); }
+    const o = mktOffer(MK, pk.p, pk.c, t, C, rnd, 1.1, 1.4); if (o.st === 'x') continue; if (RG.own) { Object.assign(o, { ext: 1, will: Math.max(o.will || 0, 0.75) }); o.log.push(`球队的培养方向：优先引进${RG.lab}球员`); } else { Object.assign(o, { bud: 1, ext: 1, wa: 1, will: Math.max(o.will || 0, 0.9) }); o.log.push(`${RG.inv}出资，优先引进${RG.lab}球员`); } }
   });
 }
 // S01–S17：从外赛区签来的球员（X| 开头）在之后各季的去向，由各转会窗成交 / 解约推出：{uid: [[生效赛季, 球队或 null], ...]}
@@ -10275,6 +10295,10 @@ document.addEventListener('click', e => {
   if (act === 'backTeams') { teamSel = null; render(); }
   if (act === 'xTab') { XTAB = el.dataset.tab; render(); return; }
   if (act === 'rkTab') { RKTAB = el.dataset.tab; render(); return; }
+  if (act === 'ndSet' || act === 'ndClear') { const t = el.dataset.t, F = ND_F && ND_F.t === t ? ND_F : { cont: 'all', sub: 'all' }; let nats = null, lab = '';
+    if (act === 'ndSet') { const all = NAME_NATS().filter(n => (F.cont === 'all' || regOf(n)[0] === F.cont) && (F.sub === 'all' || regOf(n)[1] === F.sub)); if (F.nat && F.nat !== '*') { nats = [F.nat]; lab = F.nat; } else if (F.cont !== 'all') { nats = all; lab = F.sub !== 'all' ? F.sub : F.cont; } else { toast('先选洲际、分区或国家'); return; } }
+    S.natDir = S.natDir || {}; const L = (S.natDir[t] = (S.natDir[t] || []).filter(x => x.s !== SEASON + 1)); L.push({ s: SEASON + 1, nats, lab }); L.sort((a, b) => a.s - b.s); ND_F = null;
+    save(); try { KID_MEMO_K = null; GROWN = 0; applyGrowth(); } catch (e) { console.error(e); } toast(nats ? `${t} 从 ${SN(SEASON + 1)} 起以${lab}球员为主` : `${t} 从 ${SN(SEASON + 1)} 起恢复默认`); render(); return; }
   if (act === 'finRow') { const r = document.querySelector(`tr.finx[data-fs="${el.dataset.s}"]`); if (r) r.hidden = !r.hidden; return; }
   if (act === 'cmpSwap') { [CMP_A, CMP_B] = [CMP_B, CMP_A]; render(); return; }
   if (act === 'rkF') { RKF = el.dataset.tab; render(); return; }
