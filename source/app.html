@@ -4519,8 +4519,10 @@ const EXT_PO = { 星煌联赛: 1, 列国联赛: 1 };
 let EXT_SQ_C = null, EXT_SEA_C = new Map();
 /* 已经卖到威伊士球队的外赛区球员：从加盟那季起不再算进原外赛区球队（以前会两边都在踢，例如亚玛尔 S29 加盟狂蜂，犀甲射手榜还把他算在巴瑟雷纳） */
 function tdJoined(uid, s) { const pid = UIDPID[uid]; if (pid == null) return null; let last = null; (TR_BY_PID[pid] || []).forEach(x => { if (x.s <= s && (!last || x.s >= last.s)) last = x; }); return last && TD[last.to] ? last.to : null; }
-function extSquadsAt(s) { const key = s + '|' + saltOf(s) + '|' + (S && S.reset || '') + '|' + TRANSFERS.length; if (EXT_SQ_C && EXT_SQ_C.key === key) return EXT_SQ_C.M; const M = {};
-  EXTP.concat(synthExt(), synthActive(s)).forEach(p => { if (typeof p.age0 !== 'number' && p.sa == null) return; if (!p.synth && tdJoined(p.uid, s)) return; const c = p.synth ? (p.stints && p.stints[0] ? p.stints[0][0] : p.team) : clubAt(p, s); if (!c || TD[c] || !EXT_CLUB[c]) return; if (RET_S[p.uid] != null && s > RET_S[p.uid]) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return;
+/* 该季在威伊士球队名单里的球员（本季看现在的名单，往季看赛季档案） */
+function tdUidsAt(s) { const U = new Set(); if (s >= SEASON) Object.values(PDB).forEach(L => (L || []).forEach(p => U.add(p.uid))); else { const A = (S.archive || []).find(x => x.s === s); if (A && A.sq) Object.values(A.sq).forEach(L => L.forEach(r => U.add(r[0]))); } return U; }
+function extSquadsAt(s) { const key = s + '|' + saltOf(s) + '|' + (S && S.reset || '') + '|' + TRANSFERS.length + '|' + (S.archive || []).length; if (EXT_SQ_C && EXT_SQ_C.key === key) return EXT_SQ_C.M; const M = {}, TDU = tdUidsAt(s);
+  EXTP.concat(synthExt(), synthActive(s)).forEach(p => { if (typeof p.age0 !== 'number' && p.sa == null) return; if (!p.synth && (TDU.has(p.uid) || tdJoined(p.uid, s))) return; const c = p.synth ? (p.stints && p.stints[0] ? p.stints[0][0] : p.team) : clubAt(p, s); if (!c || TD[c] || !EXT_CLUB[c]) return; if (RET_S[p.uid] != null && s > RET_S[p.uid]) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return;
     let r; try { r = s >= p.s0 ? growthOf(p).at(a) : growthOf(p).past(a); } catch (e) { r = p.rating; } (M[c] = M[c] || []).push({ uid: p.uid, name: p.name, pos: p.pos, line: ENGINE.LINE(p.pos), r, p }); });
   EXT_SQ_C = { key, M }; return M; }
 function extSeason(L, s) { const key = L.name + '|' + s + '|' + saltOf(s) + '|' + (S && S.reset || ''); if (EXT_SEA_C.has(key)) return EXT_SEA_C.get(key); if (EXT_SEA_C.size > 40) EXT_SEA_C.clear();
