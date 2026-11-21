@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '65cac7037b';
+const VES_BUILD = '73a7977ec6';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -8962,6 +8962,19 @@ function allTimePool(withExt) {
   if (withExt) EXTP.forEach(p => { if (typeof p.age0 !== 'number') return; const ageNow = pAge(p, SEASON); if (ageNow < 17) return; const g = growthOf(p); let pk = 0, pkAge = p.age0; for (let a = 17; a <= ageNow; a++) { const r = a <= p.age0 ? g.past(a) : g.at(a); if (r > pk) { pk = r; pkAge = a; } } const club = clubAt(p, p.s0 + (pkAge - p.age0)) || p.team; add(p.name, { pid: null, name: p.name, pos: p.pos, rating: pk, team: club, nat: p.nat, ext: 1 }); });
   return Object.values(M);
 }
+/* 国家 → [洲, 分区]（最强阵容「国家队」按洲际区筛选用） */
+const NAT_REG = (() => { const m = {}, add = (c, sub, L) => L.split(' ').forEach(n => m[n] = [c, sub]);
+  add('欧洲', '北欧', '瑞典 丹麦 挪威 芬兰 冰岛'); add('欧洲', '西欧', '英格兰 苏格兰 威尔士 北爱尔兰 爱尔兰 法国 比利时 荷兰 卢森堡');
+  add('欧洲', '中欧', '德国 瑞士 奥地利 波兰 捷克 斯洛伐克 匈牙利 斯洛文尼亚'); add('欧洲', '南欧', '西班牙 葡萄牙 意大利 希腊 克罗地亚 塞尔维亚 波黑 黑山 阿尔巴尼亚 科索沃 北马其顿 马耳他');
+  add('欧洲', '东欧', '俄罗斯 乌克兰 白俄罗斯 罗马尼亚 保加利亚 摩尔多瓦 格鲁吉亚 亚美尼亚 阿塞拜疆 土耳其');
+  add('美洲', '北美', '美国 加拿大 墨西哥'); add('美洲', '中美洲及加勒比', '哥斯达黎加 巴拿马 洪都拉斯 牙买加 海地');
+  add('美洲', '南美', '巴西 阿根廷 乌拉圭 哥伦比亚 厄瓜多尔 智利 秘鲁 巴拉圭 委内瑞拉 玻利维亚');
+  add('亚洲', '东亚', '中国 日本 韩国 朝鲜'); add('亚洲', '西亚', '沙特阿拉伯 伊朗 伊拉克 约旦 阿联酋 卡塔尔 阿曼 巴林 科威特 叙利亚 黎巴嫩 以色列 巴勒斯坦');
+  add('亚洲', '东南亚', '泰国 越南 马来西亚 印度尼西亚 新加坡 菲律宾'); add('亚洲', '南亚', '印度 巴基斯坦 孟加拉国'); add('亚洲', '中亚', '乌兹别克斯坦 哈萨克斯坦');
+  add('非洲', '北非', '埃及 摩洛哥 阿尔及利亚 突尼斯 利比亚'); add('非洲', '西非', '塞内加尔 尼日利亚 科特迪瓦 加纳 马里 几内亚 布基纳法索 冈比亚 佛得角');
+  add('非洲', '中非', '喀麦隆 加蓬 刚果民主共和国 刚果'); add('非洲', '东非', '肯尼亚 埃塞俄比亚 坦桑尼亚 乌干达'); add('非洲', '南部非洲', '南非 赞比亚 津巴布韦 安哥拉');
+  add('大洋洲', '大洋洲', '澳大利亚 新西兰'); return m; })();
+const CONTS = ['欧洲', '美洲', '亚洲', '非洲', '大洋洲'], regOf = n => NAT_REG[n] || ['其他', '其他'];
 function vXI() {
   const F = FORMS[XIF.form] || FORMS['4-3-3'] || Object.values(FORMS)[0];
   const hist = XIF.era === 'all';
@@ -8971,11 +8984,18 @@ function vXI() {
   else pool = hist ? allTimePool(true) : liveCands('world');
   const natAvg = l => { const v = l.slice().sort((a, b) => b - a).slice(0, 11); return v.reduce((a, b) => a + b, 0) / 11; };
   const natMap = {}; if (XIF.scope === 'nat') pool.forEach(p => { if (p.nat && p.nat !== '—') (natMap[p.nat] = natMap[p.nat] || []).push(p.rating); });
-  const nats = Object.entries(natMap).map(([n, l]) => [n, natAvg(l), l.length]).sort((a, b) => b[1] - a[1]);
-  if (XIF.scope === 'nat' && !nats.some(([n]) => n === XIF.nat)) XIF.nat = nats[0] ? nats[0][0] : '';
-  const cands = XIF.scope === 'nat' ? pool.filter(p => p.nat === XIF.nat) : pool;
+  const natsAll = Object.entries(natMap).map(([n, l]) => [n, natAvg(l), l.length]).sort((a, b) => b[1] - a[1]);
+  /* 洲际区：先选洲、再选分区，国家名单跟着缩小；也可以直接看整个洲 / 分区的联队 */
+  if (!XIF.cont || (XIF.cont !== 'all' && !CONTS.concat(['其他']).includes(XIF.cont))) XIF.cont = 'all';
+  const subs = XIF.cont === 'all' ? [] : [...new Set(natsAll.filter(([n]) => regOf(n)[0] === XIF.cont).map(([n]) => regOf(n)[1]))];
+  if (!XIF.sub || (XIF.sub !== 'all' && !subs.includes(XIF.sub))) XIF.sub = 'all';
+  const inReg = n => (XIF.cont === 'all' || regOf(n)[0] === XIF.cont) && (XIF.sub === 'all' || regOf(n)[1] === XIF.sub);
+  const nats = natsAll.filter(([n]) => inReg(n)), regLab = XIF.sub !== 'all' ? XIF.sub : XIF.cont !== 'all' ? XIF.cont : '';
+  if (XIF.scope === 'nat' && XIF.nat !== '*' && !nats.some(([n]) => n === XIF.nat)) XIF.nat = nats[0] ? nats[0][0] : '';
+  if (XIF.scope === 'nat' && XIF.nat === '*' && !regLab) XIF.nat = nats[0] ? nats[0][0] : '';
+  const cands = XIF.scope === 'nat' ? pool.filter(p => XIF.nat === '*' ? p.nat && inReg(p.nat) : p.nat === XIF.nat) : pool;
   const R = bestXIFrom(cands, F.slots), avg = R.xi.length ? R.xi.reduce((a, p) => a + p.rating, 0) / R.xi.length : 0;
-  const what = { league: '威超联赛', world: '全球（含外赛区）', club: XIF.team, nat: XIF.nat + ' 国家队' }[XIF.scope];
+  const what = { league: '威超联赛', world: '全球（含外赛区）', club: XIF.team, nat: XIF.nat === '*' ? regLab + ' 联队' : XIF.nat + ' 国家队' }[XIF.scope];
   const title = `${what}${hist ? `史上最强阵容（S01–${SN(SEASON)}）` : ` ${SN(SEASON)} 现役最强阵容`}`;
   const sel = (id, opts, v) => `<select id="${id}">${opts.map(([k, n]) => `<option value="${esc(k)}" ${k === v ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
   const who = p => `${p.pid != null ? `<button class="lnk" data-pid="${p.pid}">${esc(p.name)}</button>` : p.wl != null ? `<button class="lnk" data-wl="${p.wl}">${esc(p.name)}</button>` : p.ext ? `<button class="lnk" data-ext="${esc(p.team)}">${esc(p.name)}</button>` : `<button class="lnk" data-player="${esc(p.team)}|${esc(p.name)}">${esc(p.name)}</button>`}`;
@@ -8984,7 +9004,9 @@ function vXI() {
     ${sel('xiScope', [['league', '威超联赛'], ['world', '全球（含外赛区）'], ['club', '俱乐部'], ['nat', '国家队']], XIF.scope)}
     ${sel('xiEra', [['now', '现役最强'], ['all', '历史最强']], XIF.era)}
     ${XIF.scope === 'club' ? sel('xiTeam', ALL_TEAMS.map(t => [t, t]), XIF.team) : ''}
-    ${XIF.scope === 'nat' ? sel('xiNat', nats.map(([n, v, c]) => [n, `${n}（${c} 人 · 前 11 人均分 ${v.toFixed(1)}）`]), XIF.nat) : ''}
+    ${XIF.scope === 'nat' ? sel('xiCont', [['all', '全部洲际']].concat(CONTS.concat(['其他']).filter(c => natsAll.some(([n]) => regOf(n)[0] === c)).map(c => [c, c])), XIF.cont) : ''}
+    ${XIF.scope === 'nat' && XIF.cont !== 'all' ? sel('xiSub', [['all', `${XIF.cont}全部分区`]].concat(subs.map(x => [x, x])), XIF.sub) : ''}
+    ${XIF.scope === 'nat' ? sel('xiNat', (regLab ? [['*', `${regLab}联队（${nats.length} 国合选）`]] : []).concat(nats.map(([n, v, c]) => [n, `${n}（${c} 人 · 前 11 人均分 ${v.toFixed(1)}）`])), XIF.nat) : ''}
     ${sel('xiForm', Object.keys(FORMS).map(f => [f, f]), XIF.form)}</div></div>
   <div class="grid g-main" style="align-items:start">
     <div class="panel"><div class="ph"><div><div class="eyebrow">${esc(XIF.form)}</div><h2>${esc(title)}</h2></div><span class="note mono">首发均分 ${avg.toFixed(1)}${R.xi.length < 11 ? ` · 只有 ${R.xi.length} 人` : ''}</span></div>${R.xi.length ? xiPitch(R.xi, F.coords) : '<div class="empty">没有符合条件的球员</div>'}</div>
@@ -8993,7 +9015,7 @@ function vXI() {
       ${R.bench.length ? `<div class="eyebrow" style="margin:10px 0 4px">替补</div>${R.bench.map(p => `<div class="rk" style="grid-template-columns:44px minmax(0,1fr) auto"><span class="n mono" style="font-size:11px">${esc(p.pos)}</span><span>${who(p)} <span class="sub">${esc(p.team)}</span></span><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></div>`).join('')}` : ''}</div></div>
   </div></section>`;
 }
-after.xi = () => { [['xiScope', 'scope'], ['xiEra', 'era'], ['xiTeam', 'team'], ['xiNat', 'nat'], ['xiForm', 'form']].forEach(([id, k]) => { const e = $('#' + id); e && e.addEventListener('change', ev => { XIF[k] = ev.target.value; render(); }); }); };
+after.xi = () => { [['xiScope', 'scope'], ['xiEra', 'era'], ['xiTeam', 'team'], ['xiNat', 'nat'], ['xiCont', 'cont'], ['xiSub', 'sub'], ['xiForm', 'form']].forEach(([id, k]) => { const e = $('#' + id); e && e.addEventListener('change', ev => { XIF[k] = ev.target.value; render(); }); }); };
 /* ---------- 数据体检：检查名单、赛果、积分榜、个人数据和奖项是否自相矛盾 ---------- */
 function healthReport() {
   const err = [], warn = [], add = (L, cat, msg) => L.push({ cat, msg });
