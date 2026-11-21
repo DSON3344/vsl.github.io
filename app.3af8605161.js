@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = 'df161a12de';
+const VES_BUILD = '65cac7037b';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -826,8 +826,9 @@ let KLAST = null;
 function kidLastSeen() { const n = (S.archive || []).length + '|' + (S.archive || []).filter(A => A.sq).length; if (KLAST && KLAST.n === n) return KLAST.m; const m = {}; (S.archive || []).forEach(A => Object.entries(A.sq || {}).forEach(([t, L]) => L.forEach(r => { const o = m[r[0]]; if (!o || o[0] < A.s) m[r[0]] = [A.s, t]; }))); KLAST = { n, m }; return m; }
 function kidAbroadOf(k, s) { if (s <= SCR_END) return null; const st = kidWhere(k, s); if (st.at !== 'gone' || st.team) return null; const ls = kidLastSeen()['K|' + k.id]; if (!ls || ls[0] >= s || ls[0] < SCR_END) return null; const g = ls[0] + 1;
   if (k._ab && k._ab.g === g) return k._ab; const club = kidAbroadDest(k, g); if (!club) return null; k._ab = { g, club, from: ls[1] }; return k._ab; }
-function kidAbroad(s) { kidIdsAll().forEach(id => { const k = ACAD_ID[id]; if (!k || k.lock) return; Object.keys(FDB).forEach(c => { const L = FDB[c], i = L.findIndex(q => q.acad === k.id && q.kab); if (i >= 0) L.splice(i, 1); });
-  if (kidRetired(k, s) || kAge(k, s) > 36) return; { const st = kidWhere(k, s); if ((st.at === 'first' || st.at === 'loan') && st.team && !TD[st.team] && !(FDB[st.team] || []).some(q => q.acad === k.id)) { const p = kidPlayer(k, st.team, s, st); p.kab = 1; (FDB[st.team] = FDB[st.team] || []).push(p); return; } } /* 去了没有完整名单的低级别球队：放进那支球队的名单 */ const ab = kidAbroadOf(k, s); if (!ab) return; const p = kidPlayer(k, ab.club, s, { at: 'gone' }); p.kab = 1; p.stints = [[ab.from, 1], [ab.club, ab.g]]; (FDB[ab.club] = FDB[ab.club] || []).push(p); ABROAD[p.uid] = { club: ab.club, s: ab.g }; }); }
+const KAB_AT = new Map(); /* 放出去的球员现在在哪队：只查那一队，不用每次翻遍所有外赛区名单 */
+function kidAbroad(s) { kidIdsAll().forEach(id => { const k = ACAD_ID[id]; if (!k || k.lock) return; { const c = KAB_AT.get(k.id); if (c) { const L = FDB[c] || [], i = L.findIndex(q => q.acad === k.id && q.kab); if (i >= 0) L.splice(i, 1); KAB_AT.delete(k.id); } }
+  if (kidRetired(k, s) || kAge(k, s) > 36) return; { const st = kidWhere(k, s); if ((st.at === 'first' || st.at === 'loan') && st.team && !TD[st.team] && !(FDB[st.team] || []).some(q => q.acad === k.id)) { const p = kidPlayer(k, st.team, s, st); p.kab = 1; (FDB[st.team] = FDB[st.team] || []).push(p); KAB_AT.set(k.id, st.team); return; } } /* 去了没有完整名单的低级别球队：放进那支球队的名单 */ const ab = kidAbroadOf(k, s); if (!ab) return; const p = kidPlayer(k, ab.club, s, { at: 'gone' }); p.kab = 1; p.stints = [[ab.from, 1], [ab.club, ab.g]]; (FDB[ab.club] = FDB[ab.club] || []).push(p); KAB_AT.set(k.id, ab.club); ABROAD[p.uid] = { club: ab.club, s: ab.g }; }); }
 // S18：历史时期定下的去向带进威超时期的成长推算
 function kidsCarry18() {
   Object.keys((S && S.acadDec) || {}).forEach(id => { const k = ACAD_ID[id]; if (!k) return; const st = kidWhere(k, 18);
@@ -1370,11 +1371,17 @@ function extDedup() { const own = new Map(), X = [];
     own.set(p.name, p.uid); if (vesSide && p.name !== old && BY_TN) { delete BY_TN[t + '|' + old]; BY_TN[t + '|' + p.name] = p; } };
   X.forEach(([t, p]) => fix(p, t, true)); Object.keys(EXT_CLUB).forEach(c => (FDB[c] || []).forEach(p => fix(p, c, false))); }
 let EXTP = [], RET_S = {};
+const XYN = new Map();
 function extYouth(club, old, season) {
   const rnd = seeded('xy|' + club + '|' + old.name + '|' + season), L = LEAGUE_OF[club] || EXT_LEAGUES[0], wb = waBoost(club, season);
   const nats = STYLE_NATS[(EXT_CLUB[club] || L).style] || STYLE_NATS.nord, nat = rnd() < (L.wa ? 0.9 : 0.75) ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)];
   const age = 17 + Math.floor(rnd() * 3), rating = Math.round(EXT_CLUB[club].str + wb - 14 + rnd() * 8);
-  const o = extPlayer(club, nameFor(nat, rnd, club), old.pos, nat, age, rating, rnd); o.cGP = o.cG = o.cA = 0; o.youth = 1; o.rating0 = rating; o.age0 = age; o.s0 = season; o.stints = [[club, season]]; o.cEnd = season + 3; o.potFix = samplePA(seeded('xpa|' + club + '|' + old.name + '|' + season), acadQ(club));
+  /* 每次整体重算（applyGrowth）都会从头再取一次名字；名字快用完时一个名字要试上千次。
+     同一次开站里，同一个位置、同样的已用名字数量，结果一定一样：直接用上次的结果（只存在记忆体，不跨设备） */
+  const nk = club + '|' + old.name + '|' + season + '|' + YOUTH_USED.size, hit = XYN.get(nk); let nm;
+  if (hit && !YOUTH_USED.has(hit[0])) { for (let i = 0; i < hit[1]; i++) rnd(); nm = hit[0]; YOUTH_USED.add(nm); }
+  else { let cnt = 0; const r2 = () => { cnt++; return rnd(); }; nm = nameFor(nat, r2, club); XYN.set(nk, [nm, cnt]); }
+  const o = extPlayer(club, nm, old.pos, nat, age, rating, rnd); o.cGP = o.cG = o.cA = 0; o.youth = 1; o.rating0 = rating; o.age0 = age; o.s0 = season; o.stints = [[club, season]]; o.cEnd = season + 3; o.potFix = samplePA(seeded('xpa|' + club + '|' + old.name + '|' + season), acadQ(club));
   return o;
 }
 const clubAt = (p, s) => { let c = null; (p.stints || []).forEach(([cl, from]) => { if (from <= s) c = cl; }); return c; };
@@ -6413,6 +6420,7 @@ const MOVED = new Set();
 function tierCal(force, i) {
   const ri = i != null ? i : (typeof nextRound === 'function' ? nextRound() : 0), ph = SEASON + (ri >= WIN_B ? 'w' : ri >= LATE_R ? 'l' : ''); /* 开季前、夏窗延长期结束后、冬窗关闭后各一次 */
   if (!S || !S.teams || (!force && S.tcal === ph)) return; if (nm4() && SEASON <= SCR_END) return; /* 剧本赛季：能力照剧本，不做强弱校准 */ S.tcal = ph; S.pf = S.pf || {};
+  let anyMoved = 0;
   for (let pass = 0; pass < 3; pass++) { let moved = 0;
     const todo = pass ? [...MOVED] : Object.keys(TD); MOVED.clear();
     todo.forEach(t => { const L = (PDB[t] || []).filter(p => p.uid); if (L.length < 11) return; const X = strongXI(t); if (!X) return; const xi = X.avg;
@@ -6421,7 +6429,9 @@ function tierCal(force, i) {
       const ids = new Set(X.xi.map(p => p.uid)), XI = L.filter(p => ids.has(p.uid)); let need = Math.round(d * XI.length);
       for (let k = 0; k < 400 && need !== 0; k++) { const up = need > 0, cand = XI.slice().sort((a, b) => up ? (a.rating + (S.pf[a.uid] || 0) * 0) - b.rating : b.rating - a.rating); const p = up ? cand.find(q => q.rating + 1 <= 96) : cand[0]; if (!p) break; S.pf[p.uid] = (S.pf[p.uid] || 0) + (up ? 1 : -1); p.rating += up ? 1 : -1; need += up ? -1 : 1; }
       moved++; MOVED.add(t); });
-    if (!moved) break; GROWN = 0; applyGrowth(); TAC_KEY = null; try { ensureTactics(); } catch (e) { } }
+    if (!moved) break; anyMoved = 1; }
+  /* 以前每一轮校准后都整个重算一次（applyGrowth，S29 时一次要一两秒，最多 3 次）；能力已经直接改在名单上了，最后统一重算一次就好 */
+  if (anyMoved) { GROWN = 0; applyGrowth(); TAC_KEY = null; try { ensureTactics(); } catch (e) { } }
 }
 function tierAdj(t) {
   const tr = clubTier(t); if (!tr || !S || !S.teams || !S.teams.includes(t)) return 0;
@@ -8134,7 +8144,10 @@ function teamFinPanel(t) {
 let TRS = null;
 /* ---------- 转会故事：从每个转会窗的成交里挑出值得一说的 ----------
    破纪录、死敌之间的交易、多家争抢、被挂牌卖掉、青训出品、重返旧主、远走外赛区 / 外援驾到、自由身…… */
-function tfStories(sel) {
+/* 首页每次重绘都要算一遍转会新闻（S29 时一次一百多毫秒）：同一季、转会名单没变就直接用上次的结果 */
+const TFS_C = new Map();
+function tfStories(sel) { const k = sel + '|' + TRANSFERS.length + '|' + (TRANSFERS[TRANSFERS.length - 1] || {}).fee + '|' + SEASON + '|' + MOD_VER; const c = TFS_C.get(sel); if (c && c.k === k) return c.v; const v = tfStories0(sel); TFS_C.set(sel, { k, v }); return v; }
+function tfStories0(sel) {
   const L = TRANSFERS.filter(x => x.s === sel && !x.rel && x.to && x.to !== '解约'); if (!L.length) return [];
   const prevMax = Math.max(0, ...TRANSFERS.filter(x => x.s < sel && !x.rel).map(x => x.fee || 0));
   const nm = x => x.kid && x.name ? x.name : x.pid != null && PL[x.pid] ? PL[x.pid][0] : x.name || '?';
