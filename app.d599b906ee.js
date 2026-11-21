@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '3e1afe83d6';
+const VES_BUILD = 'f3c9188b2e';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -650,7 +650,7 @@ function waClubAt(t, s) { if (s == null || s < WA_TK_S || typeof TD === 'undefin
   const m = waOwnMap(), L = m && m[t]; if (!L) return null; let st = null; L.forEach(([s0, on, inv]) => { if (s0 <= s) st = on ? { s: Math.max(s0, WA_TK_S), team: t, inv, wa: 1 } : null; }); return st; }
 /* 资本地区决定引援方向（S18 起）：西亚资本 → 西亚球员；沃特梅兹（东亚资本）→ 东亚球员；龙王宫殿（北美资本）→ 北美球员 */
 /* 自订培养方向（DSON 在球队页设定）：从设定后的下一季起，青训和引援以指定地区 / 国家的球员为主；优先于资本规则 */
-const NAME_NATS = () => Object.keys(YP.NAT_GROUP).concat(['韩国', '日本', '中国'], [...WA_NAT_SET]);
+const NAME_NATS = () => Object.keys(YP.NAT_GROUP).concat(['韩国', '日本', '中国'], [...WA_NAT_SET], ['越南', '泰国', '马来西亚', '印度尼西亚', '新加坡', '菲律宾']);
 function natDirAt(t, s) { const L = (S && S.natDir && S.natDir[t]) || []; let r = null; L.forEach(x => { if (x.s <= s) r = x; }); return r && r.nats && r.nats.length ? r : null; }
 function capRegion(t, s) { if (s == null || typeof TD === 'undefined' || !TD[t]) return null; { const d = natDirAt(t, s); if (d) return { set: new Set(d.nats), lab: d.lab, inv: '俱乐部', own: 1 }; } if (s < WA_TK_S) return null; const wa = waClubAt(t, s); if (wa) return { set: WA_NAT_SET, wa, lab: '西亚', inv: wa.inv || WA_INV };
   if (tid(t).asia) return { set: EAST_ASIA, lab: '东亚', inv: '东亚资本老板' }; if (t === '龙王宫殿') return { set: NA_NATS, lab: '北美', inv: LW_INV }; return null; }
@@ -670,13 +670,20 @@ const WA_NM = {
 const SUR_SYL = ['恩', '罗', '维', '斯', '特', '尼', '达', '科', '雷', '诺', '萨', '加', '贝', '拉', '莫', '卡', '瓦', '里', '多', '汉', '塔', '门', '佩', '索'];
 const surExt = (n, rnd, k) => k <= 0 ? n : n + Array.from({ length: k > 12 ? 2 : 1 }, () => SUR_SYL[Math.floor(rnd() * SUR_SYL.length)]).join('');
 function waName(nat, rnd) { const P = WA_NM[nat === '伊朗' ? 'iran' : 'arab'], one = a => a[Math.floor(rnd() * a.length)], last = one(P[2]); return nat !== '伊朗' && rnd() < 0.35 ? '阿尔' + last : last; }
+/* 东南亚球员名字（培养方向选东南亚时用）：越南用汉越姓名，泰国、马来西亚、印尼用音译；新加坡沿用华人名字，菲律宾沿用西语名字 */
+const SEA_NM = {
+  越南: [['阮', '陈', '黎', '范', '黄', '潘', '武', '邓', '裴', '杜', '胡', '吴', '杨', '丁', '郑', '何'], ['文', '德', '光', '春', '清', '功', '进', '明', '友', '庭', '玉', '公', '金', '世'], ['海', '雄', '龙', '勇', '忠', '英', '孝', '俊', '山', '达', '福', '安', '平', '强', '荣', '凤', '豪', '泰', '辉', '全']],
+  泰国: [['颂', '提', '差', '披', '素', '巴', '阿', '纳', '他', '猜', '沙', '威', '占', '汶', '乍', '帕', '吉', '塔'], ['拉通', '克拉辛', '差纳', '蓬', '猜', '西', '瓦', '功', '那隆', '塔普', '披', '空', '萨', '帕', '迪', '翁'], ['蓬', '萨', '空', '猜', '那']],
+  马来西亚: [['阿兹', '法伊', '哈里', '萨法', '阿凡', '诺', '阿里', '哈基', '莫哈', '阿米', '希扎', '费萨', '依兹', '鲁斯', '沙菲', '达尼'], ['兰', '米', '斯', '维', '迪', '丁', '尔', '鲁', '曼', '汉', '里', '林', '扎', '德', '宁', '尔丁'], ['丁', '曼', '汉', '利']],
+  印度尼西亚: [['埃吉', '阿斯', '维塔', '普拉', '德威', '里兹', '苏', '阿里', '巴贡', '因德', '马尔', '耶', '拉赫', '弗里', '萨迪'], ['马', '托诺', '扬托', '萨普', '尤迪', '瓦恩', '迪', '诺', '曼', '卡', '斯', '普特拉', '拉', '萨', '里'], ['托', '诺', '马', '迪']] };
 function oneName0(nat, rnd, k) {
   const one = a => a[Math.floor(rnd() * a.length)];
   if (WA_NAT_SET.has(nat)) return waName(nat, rnd);
   if (nat === '韩国') return one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]);
   if (nat === '日本') return one(YP.JP[0]) + one(YP.JP[1]);
-  if (nat === '中国') return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
-  const gk = YP.NAT_GROUP[nat] || 'en', g = YP.NG[gk];
+  if (nat === '中国' || nat === '新加坡') return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
+  { const q = SEA_NM[nat]; if (q) return nat === '越南' ? one(q[0]) + one(q[1]) + one(q[2]) : one(q[0]) + one(q[1]) + (k >= 60 ? one(q[2]) : ''); } /* 东南亚 */
+  const gk = nat === '菲律宾' ? 'es' : YP.NAT_GROUP[nat] || 'en', g = YP.NG[gk];
   return k < 60 ? one(g[0]) + one(g[1]) : one(g[0]) + one(YP.MID[gk]) + one(g[1]);
 }
 function freshName(nat, rnd, taken) {
