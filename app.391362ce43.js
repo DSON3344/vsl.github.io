@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '450b40cdec';
+const VES_BUILD = '9ae28aaef9';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -683,7 +683,7 @@ function oneName0(nat, rnd, k) {
   if (nat === '韩国') return one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]);
   if (nat === '日本') return one(YP.JP[0]) + one(YP.JP[1]);
   if (nat === '马来西亚' || nat === '新加坡') { const x = rnd(), cn = nat === '新加坡' ? 0.7 : 0.25, ml = nat === '新加坡' ? 0.15 : 0.6; /* 多元族群：华人、马来人、印度人名字按人口比例 */
-    if (x < cn) return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
+    if (x < cn) return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.97 ? one(YP.CN[2]) : ''); /* 大马、新加坡华人几乎都是三个字的名字 */
     const q = x < cn + ml ? SEA_NM['马来西亚'] : SEA_NM['印度裔']; return one(q[0]) + one(q[1]) + (k >= 60 ? one(q[2]) : ''); }
   if (nat === '中国') return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
   { const q = nat !== '印度裔' && SEA_NM[nat]; if (q) return nat === '越南' ? one(q[0]) + one(q[1]) + one(q[2]) : one(q[0]) + one(q[1]) + (k >= 60 ? one(q[2]) : ''); } /* 东南亚 */

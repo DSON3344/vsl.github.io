@@ -1278,7 +1278,7 @@ function oneName0(nat, rnd, k) {
   if (nat === '韩国') return one(YP.KR[0]) + one(YP.KR[1]) + one(YP.KR[2]);
   if (nat === '日本') return one(YP.JP[0]) + one(YP.JP[1]);
   if (nat === '马来西亚' || nat === '新加坡') { const x = rnd(), cn = nat === '新加坡' ? 0.7 : 0.25, ml = nat === '新加坡' ? 0.15 : 0.6; /* 多元族群：华人、马来人、印度人名字按人口比例 */
-    if (x < cn) return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
+    if (x < cn) return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.97 ? one(YP.CN[2]) : ''); /* 大马、新加坡华人几乎都是三个字的名字 */
     const q = x < cn + ml ? SEA_NM['马来西亚'] : SEA_NM['印度裔']; return one(q[0]) + one(q[1]) + (k >= 60 ? one(q[2]) : ''); }
   if (nat === '中国') return one(YP.CN[0]) + one(YP.CN[1]) + (rnd() < 0.55 ? one(YP.CN[2]) : '');
   { const q = nat !== '印度裔' && SEA_NM[nat]; if (q) return nat === '越南' ? one(q[0]) + one(q[1]) + one(q[2]) : one(q[0]) + one(q[1]) + (k >= 60 ? one(q[2]) : ''); } /* 东南亚 */
