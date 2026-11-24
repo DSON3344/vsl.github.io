@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '8182e6e80d';
+const VES_BUILD = '107cf7a8bb';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -9840,8 +9840,8 @@ const DEV = (() => { try { let d = localStorage.getItem('ves-dev'); if (!d) { d 
 const devLabel = () => { const u = navigator.userAgent || ''; const kind = /iPad|Tablet/i.test(u) ? '平板' : /Mobi|Android|iPhone/i.test(u) ? '手机' : '电脑'; const os = /iPhone|iPad/.test(u) ? 'iOS' : /Android/i.test(u) ? 'Android' : /Mac OS/i.test(u) ? 'Mac' : /Windows/i.test(u) ? 'Windows' : ''; const br = /Edg\//.test(u) ? 'Edge' : /Chrome\//.test(u) ? 'Chrome' : /Safari\//.test(u) ? 'Safari' : /Firefox\//.test(u) ? 'Firefox' : ''; return [kind, os, br].filter(Boolean).join(' · '); };
 const DEV_NAME = (() => { try { return localStorage.getItem('ves-dev-name') || (devLabel() + ' #' + DEV.slice(-4).toUpperCase()); } catch (e) { return devLabel(); } })();
 const devOwnerSet = m => { if (!m) return; WEB.owner = m.dev || null; WEB.ownerName = m.devName || ''; WEB.ro = !!(WEB.key && WEB.owner && WEB.owner !== DEV); };
-const SIDE_KEYS = ['tedit', 'init'], sideName = (k, js) => 'x' + k.toLowerCase() + '-' + fnv36(js) + '.lz';
-const WEB = { on: false, etag: null, timer: null, busy: false, pending: false, key: '', store: '', remote: new Set(), af: {}, at: {}, txt: {} };
+const SIDE_KEYS = ['tedit', 'init'], sideName = (k, js) => 'x' + k.toLowerCase() + '-' + fnv36(js) + '.lz'; const SIDE_CH = 2.4e6, sideHash = f => f.slice(f.indexOf('-'));
+const WEB = { on: false, etag: null, timer: null, busy: false, pending: false, key: '', store: '', remote: new Set(), af: {}, at: {}, txt: {}, sideParts: {} };
 const GH_RAW = 'https://raw.githubusercontent.com/DSON3344/vsl.github.io/refs/heads/data/', GH_CDN = 'https://cdn.jsdelivr.net/gh/DSON3344/vsl.github.io@data/';
 try { const o = JSON.parse(localStorage.getItem('ves-af') || '{}'); WEB.af = o.af || {}; WEB.at = o.at || {}; } catch (e) {}
 /* 这台设备最后一次跟云端对齐的版本（云端写入时间），存在本机，重开网页时用来判断云端是不是被别的设备改过 */
@@ -9862,7 +9862,9 @@ async function ghLoad() { const r = await fetch(GH_RAW + 'live.json?ts=' + Date.
   const s = JSON.parse(L.zg ? await gunzipB64(L.zg) : LZString.decompressFromEncodedURIComponent(L.z)), loc = {}; ((S && S.archive) || []).forEach(a => { loc[a.s] = a; });
   s.archive = await Promise.all((L.arch || []).map(async f => { const sn = +f.slice(1, f.indexOf('-')); if (WEB.af[sn] === f && loc[sn] && WEB.at[sn] === archTag(loc[sn])) return loc[sn]; return JSON.parse(LZString.decompressFromEncodedURIComponent(await archFetch(f))); }));
   s.archive.forEach((a, i) => { WEB.af[a.s] = L.arch[i]; WEB.at[a.s] = archTag(a); }); afSave();
-  for (const [k, f] of Object.entries(L.side || {})) { s[k] = S && S[k] != null && sideName(k, JSON.stringify(S[k])) === f ? S[k] : JSON.parse(LZString.decompressFromEncodedURIComponent(await archFetch(f))); } /* 本机那份内容跟云端一样就直接用，不用下载 */ /* 很少变的大块另外存成文件 */
+  const grp = {}; for (const [k, f] of Object.entries(L.side || {})) { const m = k.match(/^(.*)Part([a-z])$/), b = m ? m[1] : k; (grp[b] = grp[b] || []).push([m ? m[2] : '', k, f]); } /* 太大的块（队徽图）拆成几个文件存：tedit、teditParta、teditPartb… 读的时候按顺序接回去 */
+  for (const [k, P] of Object.entries(grp)) { P.sort((a, b) => a[0] < b[0] ? -1 : 1); const fs = P.map(x => x[2]), h = sideHash(fs[0]); if (fs.length > 1) WEB.sideParts['x' + k.toLowerCase() + h] = P.map(x => [x[1], x[2]]);
+    s[k] = S && S[k] != null && sideHash(sideName(k, JSON.stringify(S[k]))) === h ? S[k] : JSON.parse(LZString.decompressFromEncodedURIComponent((await Promise.all(fs.map(archFetch))).join(''))); } /* 本机那份内容跟云端一样就直接用，不用下载 */ /* 很少变的大块另外存成文件 */
   WEB.remote = new Set([...(L.arch || []), ...Object.values(L.side || {})]); return { key: L.key, s, t: L.t }; }
 async function ghPayload() { const arch = [], files = {};
   (S.archive || []).forEach(a => { const tag = archTag(a); let f = WEB.af[a.s];
@@ -9870,7 +9872,11 @@ async function ghPayload() { const arch = [], files = {};
     arch.push(f); if (!WEB.remote.has(f)) files[f] = WEB.txt[f] || LZString.compressToEncodedURIComponent(JSON.stringify(a)); });
   const o = {}, side = {}; for (const k in S) if (k !== 'archive') o[k] = S[k];
   /* 队徽图（tedit）、初始设定快照（init）加起来常有 2MB，几乎不变：另外存成按内容命名的文件，只在改过时上传一次。当季进度因此小很多，不会超过云端单次 4.5MB 的上限 */
-  SIDE_KEYS.forEach(k => { if (o[k] == null) return; const js = JSON.stringify(o[k]); if (js.length < 60000) return; const f = sideName(k, js); delete o[k]; side[k] = f; if (!WEB.remote.has(f)) files[f] = WEB.txt[f] || (WEB.txt[f] = LZString.compressToEncodedURIComponent(js)); });
+  SIDE_KEYS.forEach(k => { if (o[k] == null) return; const js = JSON.stringify(o[k]); if (js.length < 60000) return; const f = sideName(k, js); delete o[k];
+    /* 单个文件超过约 2.5MB 就拆成几份（tedit、teditParta…）：云端单次上传上限 4.5MB，队徽图多了会超过 */
+    let parts = WEB.sideParts[f]; if (parts && parts.every(x => WEB.remote.has(x[1]))) { parts.forEach(([kk, ff]) => side[kk] = ff); return; } if (!parts && WEB.remote.has(f)) { side[k] = f; return; }
+    const txt = WEB.txt[f] || (WEB.txt[f] = LZString.compressToEncodedURIComponent(js)); if (txt.length <= SIDE_CH) { side[k] = f; if (!WEB.remote.has(f)) files[f] = txt; return; }
+    parts = []; for (let i = 0, j = 0; i < txt.length; i += SIDE_CH, j++) { const kk = k + 'Part' + String.fromCharCode(97 + j), ff = 'x' + kk.toLowerCase() + sideHash(f); parts.push([kk, ff]); side[kk] = ff; if (!WEB.remote.has(ff)) files[ff] = txt.slice(i, i + SIDE_CH); } WEB.sideParts[f] = parts; });
   const force = !!WEB.forceOnce; /* 「以这台为准」要一直保持到真的上传成功为止：中途失败、重试、补传旧赛季文件时都不能丢掉，否则重试会被当成普通上传、反过来被云端盖掉 */
   const js = JSON.stringify(o); let z = null, zg = null; if (GZ_OK) { try { zg = await gzB64(js); } catch (e) { zg = null; } } if (!zg) z = LZString.compressToEncodedURIComponent(js);
   const takeover = !!WEB.takeOnce;
