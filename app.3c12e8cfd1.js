@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '62fde085a2';
+const VES_BUILD = 'd4745cd11c';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -1664,7 +1664,7 @@ let XN_ST = null, XN_US = null;
 /* 外赛区来的人（X|…）名字跟威超历史球员撞了：换一个编出来的姓（每次都一样） */
 function xNm(uid, name, nat) { if (!/^X\|/.test(String(uid || ''))) return name; const R0 = EXT_RN[uid]; if (R0 && name === R0.from) return R0.to; if (R0) return name;
   if (!XN_ST) { const s = new Set(); for (let i = 0; i < HIST_N0; i++) if (HIST.players[i]) s.add(HIST.players[i][0]); XN_ST = s; } if (!XN_ST.has(name)) return name;
-  if (!XN_US) { XN_US = new Set(XN_ST); HIST.players.forEach(p => p && XN_US.add(p[0])); } const used = XN_US; /* 只建一次，不再每个撞名的人都复制一份几千人的名单 */ const r = seeded('xdn|' + uid); for (let k = 0; k < 160; k++) { const c = ddName(surExt(oneName(nat || '巴西', r, k), r, k > 60 ? k - 60 : 0)); if (!used.has(c)) { EXT_RN[uid] = { from: name, to: c }; used.add(c); try { YOUTH_USED.add(c); } catch (e) { } return c; } } return name; }
+  if (!XN_US) { XN_US = new Set(XN_ST); HIST.players.forEach(p => p && XN_US.add(p[0])); } const used = XN_US; /* 只建一次，不再每个撞名的人都复制一份几千人的名单 */ const r = seeded('xdn|' + uid); for (let k = 0; k < 160; k++) { const c = ddName(surExt(oneName(nat || '巴西', r, k), r, k > 60 ? k - 60 : 0)); if (!used.has(c)) { EXT_RN[uid] = { from: name, to: c }; used.add(c); try { YOUTH_USED.add(c); } catch (e) { } return c; } } EXT_RN[uid] = { from: name, to: name }; return name; } /* 找不到新名字也记下来，不然每次都要再试 160 次（开机时会被叫十几轮） */
 function applyPLNames() {
   try { Object.entries(EXT_RN).forEach(([uid, r]) => { const pid = UIDPID[uid]; if (pid != null && pid >= HIST_N0 && HIST.players[pid] && HIST.players[pid][0] === r.from) HIST.players[pid][0] = r.to; });
     /* 已经离开（退役/不在名单上）的外赛区球员：名字跟威超历史球员撞了也改掉 */
@@ -1929,7 +1929,36 @@ const MIGRATED = migrateState(); if (MIGRATED) { localSave(); }
 if (!S.archive) S.archive = [];
 cleanArchive();
 SEASON = S.season || 1;
-applyGrowth();
+/* ---------- 开机快照（2026-11-24）----------
+   以前每次打开网页都要从 S18 的原始资料一路推算到现在（成长、退役、青训、外赛区转会……），季数越多越慢。
+   现在第一次推算完就把结果（各队名单、外赛区、青训、转会纪录等）存进 IndexedDB；下次打开、存档没变，就直接拿出来用，不用再推一遍。
+   只要存档内容一变（踢完一季、转会窗、改资料……），键就对不上，自动重算并更新快照。同一季里只是多踢几轮（赛果、U21、本月最佳）不影响推算结果，不会让快照作废（已用测试确认）。
+   网址加 #nosnap 可以强制完整重算。 */
+const SNAP_K = 'vesSnap', SNAP_VOL = new Set(['updated', 'fx', 'u21', 'potm', 'nmPin', 'archive']);
+function snapKey() { const o = {}; for (const k in S) if (!SNAP_VOL.has(k)) o[k] = S[k]; o.__a = (S.archive || []).map(a => [a.s, (a.ps || []).length, (a.rounds || []).length, Object.keys(a).length, (a.table || []).map(r => r.pts).join('.')]);
+  const j = JSON.stringify(o); let h1 = 0x811c9dc5, h2 = 7; for (let i = 0; i < j.length; i++) { const c = j.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = (Math.imul(h2, 31) + c) | 0; } return VES_BUILD + '|' + LKEY + '|' + SEASON + '|' + j.length + '|' + (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36); }
+/* 深拷贝（保留物件之间的共用关系）；函数和「_」开头的快取物件不存 */
+function snapCopy(root) { const M = new Map(); const cp = x => { if (x === null || typeof x !== 'object') return typeof x === 'function' ? undefined : x; if (M.has(x)) return M.get(x);
+    if (x instanceof Map) { const o = new Map(); M.set(x, o); x.forEach((v, k) => { if (typeof v !== 'function') o.set(cp(k), cp(v)); }); return o; }
+    if (x instanceof Set) { const o = new Set(); M.set(x, o); x.forEach(v => { if (typeof v !== 'function') o.add(cp(v)); }); return o; }
+    if (Array.isArray(x)) { const o = new Array(x.length); M.set(x, o); for (let i = 0; i < x.length; i++) o[i] = typeof x[i] === 'function' ? null : cp(x[i]); return o; }
+    if (x instanceof WeakMap || x instanceof WeakSet || (typeof Node !== 'undefined' && x instanceof Node) || (Object.getPrototypeOf(x) !== Object.prototype && Object.getPrototypeOf(x) !== null)) throw new Error('snap: unsupported object');
+    const o = {}; M.set(x, o); for (const k of Object.keys(x)) { const v = x[k]; if (typeof v === 'function') continue; if (k.charCodeAt(0) === 95 && v && typeof v === 'object') continue; o[k] = cp(v); } return o; };
+  return cp(root); }
+/* 还原到原本的常数物件里（保留物件本身，别处拿着的参照才不会断） */
+function snapInto(dst, src) { if (dst instanceof Map) { dst.clear(); src.forEach((v, k) => dst.set(k, v)); return; } if (dst instanceof Set) { dst.clear(); src.forEach(v => dst.add(v)); return; } if (Array.isArray(dst)) { dst.length = 0; for (let i = 0; i < src.length; i++) dst.push(src[i]); return; }
+  for (const k of Object.keys(dst)) if (!(k in src) && typeof dst[k] !== 'function') delete dst[k];
+  for (const k of Object.keys(src)) { const a = dst[k], b = src[k]; if (a && b && typeof a === 'object' && typeof b === 'object' && Object.getPrototypeOf(a) === Object.prototype && Object.getPrototypeOf(b) === Object.prototype) snapInto(a, b); else dst[k] = b; } }
+let SNAP_HIT = false, SNAP_KEY0 = null; const SNAP_OFF = /nosnap/.test(location.hash) || (() => { try { return sessionStorage.getItem('ves_nosnap') === '1'; } catch (e) { return false; } })();
+try { SNAP_KEY0 = IDB_M && !SNAP_OFF ? snapKey() : null; } catch (e) { SNAP_KEY0 = null; }
+/* 一段开机推算：快照对得上就直接还原，对不上就照常算，算完存一份 */
+function snapStage(id, run, take, put) { const ik = SNAP_K + '|' + id, k = SNAP_KEY0 && SNAP_KEY0 + '|' + id, v = k && IDB_M.get(ik); if (IDB_M) IDB_M.delete(ik);
+  if (v && v.k === k && v.d) { try { put(v.d); return true; } catch (e) { console.error(e); try { sessionStorage.setItem('ves_nosnap', '1'); } catch (e2) { } location.reload(); throw e; } }
+  run(); if (k) { try { const d = snapCopy(take()); SNAP_PEND.push([ik, { k, d }]); if (!SNAP_PT) SNAP_PT = setTimeout(snapFlush, 3000); } catch (e) { console.error(e); } } return false; }
+/* 快照晚几秒才写（不跟开站抢时间）；网页在那之前就关掉也照样写进去 */
+const SNAP_PEND = []; let SNAP_PT = 0; function snapFlush() { SNAP_PT = 0; while (SNAP_PEND.length) { const [ik, v] = SNAP_PEND.shift(); try { idbQ(ik, v); } catch (e) { } } }
+try { addEventListener('pagehide', () => { snapFlush(); idbQFlush(); }); } catch (e) { }
+SNAP_HIT = snapStage('g', () => applyGrowth(), () => ({ HSQ_MAX, PERS_C, SCR_CAP, TEAM_OF_UID, TR_LOG, ABROAD, BY_TN, EXT_SHIFT, LOANS_C, ACAD_ID, KLAST, ACAD, ACQ_C, KID_MEMO_K, KID_MEMO, SYNTH_TAKEN, EXTP, RET_S, HSQ_RR, HSQ0, GROWN, PADJ, SCR_ED_PID, SCR_ED_N, YOUTH_BASE, MOD_VER, MOD_VER_SEASON, RET_LOG, H, TD, PDB, ALL_TEAMS, LOGO, CREST_COL, RR_B, ROSTER0, COORDS0, STYLE0, FORM_OF0, RETIRED_UID, YOUTH_USED, YOUTH_UID, KAB_C, KAB_AT, PYR_SET, SYNTH_LO, FDB, EXT_RN, XYN, HIST }), D => { HSQ_MAX = D.HSQ_MAX; PERS_C = D.PERS_C; SCR_CAP = D.SCR_CAP; TEAM_OF_UID = D.TEAM_OF_UID; TR_LOG = D.TR_LOG; ABROAD = D.ABROAD; BY_TN = D.BY_TN; EXT_SHIFT = D.EXT_SHIFT; LOANS_C = D.LOANS_C; ACAD_ID = D.ACAD_ID; KLAST = D.KLAST; ACAD = D.ACAD; ACQ_C = D.ACQ_C; KID_MEMO_K = D.KID_MEMO_K; KID_MEMO = D.KID_MEMO; SYNTH_TAKEN = D.SYNTH_TAKEN; EXTP = D.EXTP; RET_S = D.RET_S; HSQ_RR = D.HSQ_RR; HSQ0 = D.HSQ0; GROWN = D.GROWN; PADJ = D.PADJ; SCR_ED_PID = D.SCR_ED_PID; SCR_ED_N = D.SCR_ED_N; YOUTH_BASE = D.YOUTH_BASE; MOD_VER = D.MOD_VER; MOD_VER_SEASON = D.MOD_VER_SEASON; RET_LOG = D.RET_LOG; snapInto(H, D.H); snapInto(TD, D.TD); snapInto(PDB, D.PDB); snapInto(ALL_TEAMS, D.ALL_TEAMS); snapInto(LOGO, D.LOGO); snapInto(CREST_COL, D.CREST_COL); snapInto(RR_B, D.RR_B); snapInto(ROSTER0, D.ROSTER0); snapInto(COORDS0, D.COORDS0); snapInto(STYLE0, D.STYLE0); snapInto(FORM_OF0, D.FORM_OF0); snapInto(RETIRED_UID, D.RETIRED_UID); snapInto(YOUTH_USED, D.YOUTH_USED); snapInto(YOUTH_UID, D.YOUTH_UID); snapInto(KAB_C, D.KAB_C); snapInto(KAB_AT, D.KAB_AT); snapInto(PYR_SET, D.PYR_SET); snapInto(SYNTH_LO, D.SYNTH_LO); snapInto(FDB, D.FDB); snapInto(EXT_RN, D.EXT_RN); snapInto(XYN, D.XYN); snapInto(HIST, D.HIST); });
 
 /* ---------- 统计 ---------- */
 function table(upto = 38, fx = S.fx, teams = S.teams) {
@@ -2114,7 +2143,8 @@ function registerArchive(A, preview) {
   try { pinNames(); pinLater(); } catch (e) { }
   Object.values(PSEASONS).forEach(l => l.sort((a, b) => a[0] - b[0]));
 }
-S.archive.forEach(A => registerArchive(A));
+snapStage('a', () => S.archive.forEach(A => registerArchive(A)), () => ({ PDB, UIDPID, PID_UID, BY_TN, YOUTH_USED, EXT_RN, NAME_AL, HS, PL, SEASONS, HPS, PSEASONS, HIST }),
+  D => { BY_TN = D.BY_TN; pinLater(); /* 原本登记往季时会排一次稍后整理，这里照样排 */ snapInto(PL, D.PL); D.HIST.players = PL; /* PL 就是 HIST.players，要保持同一个阵列 */ snapInto(HIST, D.HIST); snapInto(PDB, D.PDB); snapInto(UIDPID, D.UIDPID); snapInto(PID_UID, D.PID_UID); snapInto(YOUTH_USED, D.YOUTH_USED); snapInto(EXT_RN, D.EXT_RN); snapInto(NAME_AL, D.NAME_AL); snapInto(HS, D.HS); snapInto(SEASONS, D.SEASONS); snapInto(HPS, D.HPS); snapInto(PSEASONS, D.PSEASONS); });
 setTimeout(() => { if (maybeEndSeason()) render(); }, 0);
 // 升级：从威超以外的球队里挑 3 支（实力越强越有机会）
 function pickPromoted(n, exclude) {
@@ -5271,9 +5301,11 @@ function coachHistory() {
   const bk = SEASONS.join(',') + '|' + SEASON + '|' + (S.reset || '');
   const snap = () => { const ST = stints.map(o => ({ ...o })), C2 = {}; Object.entries(cur).forEach(([t, c]) => { C2[t] = ST[stints.indexOf(c)]; }); return { ST, C2, log: log.map(o => ({ ...o })), trust: { ...trust }, tlog: Object.fromEntries(Object.entries(tlog).map(([k, v]) => [k, v.slice()])) }; };
   let s0 = 1;
+  /* 本季开始前的状态也存进 IndexedDB：下次打开网页只重放本季，不用从 S01 一路重放主帅聘用和下课（季数越多越省） */
+  if (!CH_BASE || CH_BASE.k !== bk) { try { const hit = pcGet('chb', pcBase() + '|' + bk + '|' + snapKey()); if (hit && hit.ST) { const ST = hit.ST, C2 = {}; Object.entries(hit.C2i).forEach(([t, i]) => { C2[t] = ST[i]; }); (hit.reg || []).forEach(c => { if (!COACH_REG[c.id]) { const { form, style, forms, home, ...c0 } = c; COACH_REG[c.id] = { ...c0, clubs: new Set(c.clubs || []) }; } }); /* 战术（阵型、打法）不跟着存：用到时照原本的规则重算 */ CH_BASE = { k: bk, v: { ST, C2, log: hit.log, trust: hit.trust, tlog: hit.tlog } }; } } catch (e) { console.error(e); } }
   if (CH_BASE && CH_BASE.k === bk) { const B = CH_BASE.v; B.ST.forEach(o => stints.push({ ...o })); Object.entries(B.C2).forEach(([t, c]) => { cur[t] = stints[B.ST.indexOf(c)]; }); B.log.forEach(o => log.push({ ...o })); Object.assign(trust, B.trust); Object.entries(B.tlog).forEach(([k, v]) => tlog[k] = v.slice()); s0 = SEASON; }
   for (let s = s0; s <= SEASON; s++) {
-    if (s === SEASON && s0 !== SEASON) CH_BASE = { k: bk, v: snap() };
+    if (s === SEASON && s0 !== SEASON) { CH_BASE = { k: bk, v: snap() }; try { const V = CH_BASE.v, C2i = {}; Object.entries(V.C2).forEach(([t, c]) => { C2i[t] = V.ST.indexOf(c); }); pcSet('chb', pcBase() + '|' + bk + '|' + snapKey(), { ST: V.ST, C2i, log: V.log, trust: V.trust, tlog: V.tlog, reg: Object.values(COACH_REG).map(c => ({ ...c, clubs: [...(c.clubs || [])] })) }); } catch (e) { console.error(e); } }
     const T = teamsInSeason(s); if (!T) break;
     const order = Object.keys(TD).sort((a, b) => clubBaseApprox(b) - clubBaseApprox(a));
     order.forEach(t => { if (!cur[t]) { hire(t, s, 0, s === 1 ? 'first' : 'new'); if (s > 1) log.push({ s, r: 0, team: t, inn: cur[t].id }); } });
@@ -5543,7 +5575,7 @@ function coachForms(C) {
 function coachTactics(id) {
   const C = COACH_REG[id]; if (!C) return null; if (C.form) { coachForms(C); return C; }
   const prof = Object.entries(H.profiles).find(([t, P]) => P.coach === C.name);
-  if (prof) { const F = tid(prof[0]).force; C.form = (F && F.form) || prof[1].formation || FORM_OF0[prof[0]]; C.style = (F && F.style) || prof[1].style || STYLE0[prof[0]]; C.home = prof[0]; return C; }
+  if (prof) { const F = tid(prof[0]).force; C.form = (F && F.form) || prof[1].formation || FORM_OF0[prof[0]]; C.style = (F && F.style) || prof[1].style || STYLE0[prof[0]]; C.home = prof[0]; coachForms(C); return C; } /* 第一次就把三套阵型算好：以前第一次只回传主打阵型，结果看先后调用而不同 */
   const fs = BASE_FORMS, rnd = seeded('tac|' + id);
   C.form = fs[Math.floor(rnd() * fs.length)]; C.style = STYLE_LIST[Math.floor(rnd() * STYLE_LIST.length)];
   /* 球队会找符合自己气质的主帅：新聘的教练七成会打这支球队一贯的风格 */
@@ -5708,14 +5740,14 @@ function formSetOwns(t, id) { const by = ((S && S.formSetBy) || {})[t]; if (by) 
 function tacFor(t, id) { const X = tacFor0(t, id); const f = ((S && S.formSet) || {})[t]; if (!X || !f || !FORMS[f] || !formSetOwns(t, id)) return X; return { ...X, coachForm: X.form, form: f, forms: [f].concat((X.forms || []).slice(1).map(g => g === X.form ? f : g)), set: 1 }; } // 对强队 / 对弱队原本也是主帅主打阵型的，跟着换成你设定的
 const TAC0_C = new Map();
 function tacPrev(t, id) { try { const L = coachHistory().stints.filter(x => x.team === t); const i = L.findIndex(x => x.id === id); for (let j = i - 1; j >= 0; j--) if (L[j].id !== id) return L[j].id; } catch (e) { } return null; }
-function tacFor0(t, id) {
+function tacFor0(t, id, seen) { /* seen：顺着前任一路往回推时已经看过的主帅（防止绕圈）；结果不再受先算谁影响 */
   const C = coachTactics(id); if (!C) return null;
   if (!TRIDENT.has(t)) { const I = tid(t); let style = C.style, form = C.form, forms = C.forms || [C.form];
     /* 球队气质：泽尼联照猛龙的打法踢；有一贯风格的球队，主帅多半会顺着球队的传统来（六成） */
     if (I.force) { style = I.force.style || style; if (I.force.form && FORMS[I.force.form]) { form = I.force.form; forms = [form].concat(forms.slice(1)); } }
     else if (I.styles && !I.styles.includes(style) && ghash('idst|' + id + '|' + t) < 0.4) style = I.styles[Math.floor(ghash('idsx|' + id + '|' + t) * I.styles.length)];
     /* 每位主帅有自己的一套：打法和主打阵型都不跟前任一样 */
-    if (!I.force) { const pv = tacPrev(t, id); if (pv) { const mk = t + '|' + id + '|' + (S && S.reset || ''); let P = TAC0_C.get(mk + '|p'); if (!P) { TAC0_C.set(mk + '|p', { style: null, form: null }); P = tacFor0(t, pv) || {}; TAC0_C.set(mk + '|p', P); }
+    if (!I.force) { const pv = tacPrev(t, id); if (pv && !(seen && seen.has(pv))) { const chn = [id]; { let c = pv; const sn0 = new Set([id]); while (c && !sn0.has(c) && chn.length < 40) { chn.push(c); sn0.add(c); c = tacPrev(t, c); } } const mk = t + '|' + chn.join(',') + '|' + (S && S.reset || '') + '|p'; /* 键用整条前任链：链一样结果就一样，跟先算谁无关 */ let P = !seen ? TAC0_C.get(mk) : null; if (!P) { const sn = new Set(seen || []); sn.add(id); P = tacFor0(t, pv, sn) || {}; if (!seen) TAC0_C.set(mk, P); }
       if (P.style === style) { const L = ((I.styles || []).filter(x => x !== P.style).length && ghash('tvs|' + id) < 0.5 ? I.styles : STYLE_LIST).filter(x => x !== P.style); if (L.length) style = L[Math.floor(ghash('tvx|' + id + '|' + t) * L.length)]; }
       if (P.form === form) { const L = BASE_FORMS.filter(f => f !== P.form && !(P.forms || []).includes(f)); if (L.length) { const nf = L[Math.floor(ghash('tvf|' + id + '|' + t) * L.length)]; forms = [nf].concat(forms.slice(1).map(g => g === nf ? form : g)); form = nf; } } } }
     return { style, form, forms }; }
@@ -7582,7 +7614,7 @@ function scrTransfers() { const out = [];
       const isLn = (p.ln || []).some(x => x[0] === s), isBk = (p.ln || []).some(x => x[1] + 1 === s);
       out.push({ s, pid: p.pid ?? null, name: p.n, team: to, from, to, fee: isLn || isBk ? 0 : Math.max(1, Math.round(valueM(r, age) * (0.85 + ghash('st|' + p.n + '|' + s) * 0.35))), scr: 1, kid: i === 0 && !isLn ? 1 : 0, loan: isLn ? 1 : 0, back: isBk ? 1 : 0 }); }); });
   return out; }
-rebuildTransfers();
+snapStage('t', () => rebuildTransfers(), () => ({ TRANSFERS, TR_BY_PID }), D => { UIDX = null; LOANS_C = null; FS0 = null; PBU = null; /* 这几个是快取，用到时会自己重建 */ snapInto(TRANSFERS, D.TRANSFERS); snapInto(TR_BY_PID, D.TR_BY_PID); });
 const feeTxt = (f, free) => free ? '自由转会' : 'ⰵ' + f + 'M';
 // 外赛区球队（不在威超、没有队徽）
 const isExt = t => !TD[t];
@@ -10254,7 +10286,7 @@ async function exportSave() {
 
 if (MIGRATED) setTimeout(() => toast('S01–S17 的球员流动已经重新推演，进度从 S01 重新开始'), 400);
 const h0 = (location.hash || '').slice(1);
-try { if (S && S.fx && playedRounds() === 0 && !isPending(SEASON) && !String(S.tcal || '').startsWith(String(SEASON)) && CLOUD.status !== 'view' && !(WEB.on && !WEB.key)) tierCal(false, 0); } catch (e) { console.error(e); } /* 新赛季还没开踢时就先按梯队标准校准，球队页看到的首发均分就是开季的水平 */
+try { if (S && S.fx && playedRounds() === 0 && !isPending(SEASON) && !String(S.tcal || '').startsWith(String(SEASON)) && CLOUD.status !== 'view' && !(WEB.on && !WEB.key)) { tierCal(false, 0); setTimeout(() => { try { save(); } catch (e) { } }, 1500); } /* 校准结果（S.tcal、S.pf）要存起来，不然每次开网页都重算一次（两三秒） */ } catch (e) { console.error(e); } /* 新赛季还没开踢时就先按梯队标准校准，球队页看到的首发均分就是开季的水平 */
 go(VIEWS.includes(h0) ? h0 : 'overview', null, false);
 try { history.replaceState(navState(), '', location.hash || ('#' + view)); } catch (e) { }
 /* 返回键：弹窗开着就先关弹窗；否则回到上一页（球队页会记得当时选的是哪支球队） */
