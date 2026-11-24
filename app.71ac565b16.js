@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '58d7f2aaf6';
+const VES_BUILD = '8182e6e80d';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -6993,7 +6993,7 @@ function vPlayers() {
   const seg = `<div class="seg" role="group" aria-label="球员范围">${[['cur', '现役球员'], ['hist', '退役球员']].map(([k, l]) => `<button data-pmode="${k}" aria-pressed="${PF.mode === k}">${l}</button>`).join('')}</div>`;
   const lineSeg = `<div class="seg" role="group" aria-label="位置">${[['', '全部'], ['GK', '门将'], ['DF', '后卫'], ['MF', '中场'], ['FW', '前锋']].map(([k, l]) => `<button data-line="${k}" aria-pressed="${PF.line === k}">${l}</button>`).join('')}</div>`;
   if (PF.mode === 'hist') {
-    let list = allT.filter(p => p.pid != null && PL[p.pid] && (!PL[p.pid][3] || RETIRED_PID.has(p.pid)) && !isActive(p.pid));
+    let list = allT.filter(p => p.pid != null && PL[p.pid] && (!PL[p.pid][3] || RETIRED_PID.has(p.pid) || (kidRetS(kidOfPid(p.pid)) || 1e9) <= SEASON) && !isActive(p.pid)); /* 剧本 / 青训球员到龄退役（杰拉尔、金海秀等）也要列进来 */
     list = list.filter(p => (!PF.q || p.name.includes(PF.q) || (PL[p.pid][2] || '').includes(PF.q)) && (!PF.team || p.teams.includes(PF.team)) && (!PF.line || p.line === PF.line) && pfPass(p, { rating: peakCache(p.pid) || 0, age: null }));
     const key = { rating: p => -(peakCache(p.pid) || 0), goals: p => -p.g, assists: p => -p.a, apps: p => -p.apps }[PF.sort] || (p => -p.g);
     list.sort((a, b) => key(a) - key(b) || b.apps - a.apps);
@@ -7032,7 +7032,9 @@ function vPlayers() {
 }
 const _peak = {}; const peakCache = pid => { if (pid in _peak) return _peak[pid]; const EA = edAll(), E = EA[PID_UID[pid] || ''] || EA['H|' + pid]; return (_peak[pid] = E && E.ret && E.peak ? E.peak : peakRating(pid)); };
 after.players = () => {
-  let tm; $('#pq').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => { PF.q = e.target.value.trim(); PF.limit = 60; render(); const i = $('#pq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 220); });
+  let tm; const pqGo = v => { clearTimeout(tm); tm = setTimeout(() => { PF.q = v.trim(); PF.limit = 60; render(); const i = $('#pq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 220); };
+  /* 中文输入法打拼音时（composing）不要重绘，等选好字（compositionend）再搜 */
+  $('#pq').addEventListener('input', e => { if (e.isComposing) { clearTimeout(tm); return; } pqGo(e.target.value); }); $('#pq').addEventListener('compositionstart', () => clearTimeout(tm)); $('#pq').addEventListener('compositionend', e => pqGo(e.target.value));
   $('#pt').addEventListener('change', e => { PF.team = e.target.value; PF.limit = 60; render(); });
   $('#ps').addEventListener('change', e => { PF.sort = e.target.value; render(); });
   let rq = 0; const on = (id, k, f = e => e.target.value.trim()) => { const el = $('#' + id); if (el) el.addEventListener('change', e => { const v = f(e); if (PF[k] === v) return; PF[k] = v; PF.limit = 60; clearTimeout(rq); rq = setTimeout(() => { const fid = document.activeElement && document.activeElement.id; render(); if (fid) { const n = document.getElementById(fid); if (n) n.focus(); } }, 0); }); }; /* 延后重绘，避免跟切换输入框时的失焦撞在一起 */
