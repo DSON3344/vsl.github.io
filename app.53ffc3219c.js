@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '6850851f4a';
+const VES_BUILD = 'b03bfd29e4';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -2451,6 +2451,7 @@ function pfPanel() { const L = S.pfLog && S.pfLog[SEASON - 1]; if (!L || !L.leng
   const row = x => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto"><span style="display:flex;align-items:center;gap:6px;min-width:0"><span style="display:inline-flex;flex:none">${crest(x[2], 16)}</span><button class="lnk" data-player="${esc(x[2])}|${esc(x[1])}"><b>${esc(x[1])}</b></button><span class="dim mono" style="font-size:11px">${x[5]}${x[4] ? ' · 场均 ' + x[4].toFixed(2) : ''}${x[6] ? ' · ' + esc(x[6]) : ''}</span></span><b class="mono" style="color:${x[3] > 0 ? 'var(--win,#3c9)' : 'var(--loss,#e55)'}">${x[3] > 0 ? '+' : ''}${x[3]}</b></div>`;
   const up = L.filter(x => x[3] > 0).slice(0, 5), dn = L.filter(x => x[3] < 0).slice(0, 5);
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">${SN(SEASON - 1)} → ${SN(SEASON)} · 赛季表现调整</div><h2>踢得好加分、踢得差减分，重伤可能掉分</h2></div><button class="btn ghost" data-act="pfAll">全部 ${L.length} 人</button></div>
+    ${nm4() && SEASON === SCR_END ? `<p class="note" style="margin:0 0 10px">${SN(SCR_END)} 是剧本的最后一季：威超球员这季的能力照旧数据设定，所以 ${SN(SCR_END - 1)} 的场上表现不做加减分（也就没有退步名单）；下面只有青训和次级联赛年轻球员的训练成长。${SN(SCR_END)} 踢完后恢复正常的表现加减。</p>` : ''}
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px"><div><div class="eyebrow" style="margin-bottom:6px">进步最多</div>${up.map(row).join('') || '<p class="muted">没有</p>'}</div><div><div class="eyebrow" style="margin-bottom:6px">退步最多</div>${dn.map(row).join('') || '<p class="muted">没有</p>'}</div></div>
     <p class="note" style="margin:10px 0 0">按场均评分跟同位置、同能力球员的预期比较；年轻球员踢得多会额外成长，老将坐板凳掉得快。年龄一季长一岁。</p></div>`; }
 function pfAllDlg() { const L = (S.pfLog && S.pfLog[SEASON - 1]) || [], d = $('#dlg');
