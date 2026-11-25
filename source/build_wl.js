@@ -38,12 +38,12 @@ const wave = {}; CLUBS.forEach(c => { wave[c] = { ph: rnd() * 6.28, fr: 0.06 + r
 // DSON 设定的威联赛时期（W01–W50）俱乐部纵观实力，按综合实力排序
 const TIER = { S: ['威龙', '猎豹', '金狮', '猛虎', '狂蜂'], A: ['威尔福特', '切狐', '阿尔法骑士', '猛龙', '罗联', '森利西亚虎'], B: ['花豹', '蜜蜂', '飞鹰', '炎狼', '华尔兹', '龙王宫殿', '科摩多尊龙', '沃特梅兹', '泽尼联', '普雷斯顿', '岚', '罗杰剧院', '雷克夏', '威廉斯', '拉普兰德', '威尔顿联'] };
 /* 2026-11-25 调整：原本威龙 24 冠、猎豹 11 冠（50 季占 70%）太过统治 → S 档之间拉近、A 档整体往上，威龙和猎豹依然是最强的两队 */
-const TUNE = Object.assign({ S: [88.7, 89.2, 88.6, 88.4, 88.1], A0: 87.75, Ak: 0.3, lb: 0.035 }, process.env.WLT ? JSON.parse(process.env.WLT) : {});
+const TUNE = Object.assign({ S: [88.75, 89.3, 88.6, 88.4, 88.1], A0: 87.75, Ak: 0.3, lb: 0.035, gold: { 猛龙: [42, 48, 3.3], 罗联: [11, 16, 2.9], 阿尔法骑士: [24, 30, 3.2] }, gs: { 猛龙: [44, 48, 1.5] } }, process.env.WLT ? JSON.parse(process.env.WLT) : {});
 const TVAL = {}; TIER.S.forEach((c, k) => TVAL[c] = TUNE.S[k]); TIER.A.forEach((c, k) => TVAL[c] = TUNE.A0 - k * TUNE.Ak); TIER.B.forEach((c, k) => TVAL[c] = 84.4 - k * 0.28);
 CLUBS.forEach(c => { if (TVAL[c] == null) TVAL[c] = 80; });
 // 没进威超 S01 的俱乐部：W40 之后逐渐衰落（财政困难、卖掉主力）
 // 各队的黄金年代：猛龙「3佩」时期、罗联和阿尔法骑士也各有一段巅峰（DSON：这些球队也夺过威联赛冠军）
-const GOLD = { 猛龙: [43, 48, 1.8], 罗联: [11, 16, 2.4], 阿尔法骑士: [25, 30, 2.4] };
+const GOLD = TUNE.gold; /* 罗联、阿尔法骑士、猛龙都要有自己的冠军年代（DSON 设定），种子 72025 */
 const prest = (c, w) => { let v = prest0(c, w); if (c === '威尔福特' && w >= 44) v += Math.min(3, (w - 43) * 0.8); const g = GOLD[c]; if (g && w >= g[0] && w <= g[1]) v += g[2]; return v; };
 const prest0 = (c, w) => { const v = wave[c], lam = clamp((w - 38) / 10, 0, 0.8); return (1 - lam) * (TVAL[c] + v.amp * Math.sin(v.ph + w * v.fr) + v.tilt) + lam * base[c] - (S1.includes(c) ? 0 : Math.max(0, w - 38) * 0.9); };
 
@@ -182,7 +182,7 @@ function playMatch(h, a, w, opt = {}) {
   // opt.cup: 计入杯赛数据；h/a 可以是外赛区队名（不记个人数据）
   const side = c => {
     if (CI[c] == null) { const f = FSTR[c]; return { foreign: true, c, str: domTop(w) - 1.4 + f.b * 0.6 + Math.sin(f.ph + w * 0.1) * 1.2 + gauss() * 0.6 }; }
-    const L = pickXI(c, w, i => !(injured[i] > 0)); if (c === '威尔福特' && w >= 45) L.str += Math.min(2.6, (w - 44) * 0.9); return { c, ...L };
+    const L = pickXI(c, w, i => !(injured[i] > 0)); if (c === '威尔福特' && w >= 45) L.str += Math.min(2.6, (w - 44) * 0.9); { const b = (TUNE.gs || {})[c]; if (b && w >= b[0] && w <= b[1]) L.str += b[2]; } /* 黄金年代：比赛里直接加一点实力，让这些队真的能在那段时间夺冠 */ return { c, ...L };
   };
   const H = side(h), A = side(a);
   const adv = opt.neutral ? 0 : 0.14;
