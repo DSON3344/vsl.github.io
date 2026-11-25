@@ -1088,4 +1088,4 @@ const LORE = {"_note":"DSON 提供的传奇设定。威超联赛数据由 build_
 const LOGO_URLS = {"ves-league-logo": "logos/e43539f9.webp", "ves-league-mar": "logos/f51e32f4.webp", "切狐": "logos/e628f2b9.webp", "华尔兹": "logos/91aacafb.webp", "威尔福特": "logos/698094d2.webp", "威尔顿联": "logos/498e4e0d.webp", "威廉斯": "logos/8d04f92c.webp", "威超联赛横版": "logos/fda055d7.webp", "威龙": "logos/3f33cbb5.webp", "岚": "logos/3691ff07.webp", "拉普兰德": "logos/63106c28.webp", "普雷斯顿": "logos/8e2e8d60.webp", "森利西亚虎": "logos/05edd97a.webp", "沃特梅兹": "logos/088f9a91.webp", "泽尼联": "logos/247f460e.webp", "炎狼": "logos/c8baff59.webp", "狂蜂": "logos/0de81989.webp", "猎豹": "logos/477ffbdb.webp", "猛虎": "logos/8bb09d5c.webp", "猛龙": "logos/ba44f966.webp", "科摩多尊龙": "logos/52a77d5d.webp", "罗杰剧院": "logos/01249b42.webp", "罗联": "logos/8fc64939.webp", "花豹": "logos/ff9b97a7.webp", "蜜蜂": "logos/bff2ce46.webp", "金狮": "logos/9c0d1cf1.webp", "阿尔法骑士": "logos/606f698b.webp", "雷克夏": "logos/419ac648.webp", "飞鹰": "logos/e3045d34.webp", "龙王宫殿": "logos/ff41dcaf.webp"};
 const LOGOS_B64 = {};
 const WL_DATA = null;
-const WL_URL = "wl.e03ddc3e.json";
+const WL_URL = "wl.d524a398.json";

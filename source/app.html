@@ -5732,8 +5732,12 @@ let CMP_A = null, CMP_B = null;
 const H2H_C = new Map();
 /* 所有交手：[{s, wk, comp, st, h, a, hg, ag, et, hm, fx}]，按时间先后 */
 function h2hOf(A, B) {
-  const key = A + '|' + B + '|' + SEASON + '|' + playedRounds() + '|' + (S.reset || '') + '|' + (S.archive || []).length; if (H2H_C.has(key)) return H2H_C.get(key); if (H2H_C.size > 20) H2H_C.clear();
+  const key = A + '|' + B + '|' + SEASON + '|' + playedRounds() + '|' + (S.reset || '') + '|' + (S.archive || []).length + '|' + (WL ? 1 : 0); if (H2H_C.has(key)) return H2H_C.get(key); if (H2H_C.size > 20) H2H_C.clear();
   const L = [], pair = (x, y) => (x === A && y === B) || (x === B && y === A);
+  /* 威联赛时期（W01–W50）：s 用 w-50（≤0），显示成 W 几 */
+  if (WL) for (let w = 1; w <= WL.S.length; w++) { const M = wlMatches(w); if (!M) continue; const s0 = w - 50;
+    M.lg.forEach(m => { if (pair(m[0], m[1])) L.push({ s: s0, wk: 0, o: 0, comp: '威联赛', st: '联赛', h: m[0], a: m[1], hg: m[2], ag: m[3], wl: 1 }); });
+    M.ko.forEach(m => { if (pair(m[0], m[1])) L.push({ s: s0, wk: 50 + m[5], o: 1, comp: m[4], st: m[7], h: m[0], a: m[1], hg: m[2], ag: m[3], pen: m[6] ? (m[6] === 1 ? m[0] : m[1]) : null, nt: m[4] === '社区杯' || m[7] === '决赛', wl: 1 }); }); }
   for (let s = 1; s <= SEASON; s++) {
     const H = HS[s];
     if (H && H.rounds) { const T = H.teams; if (T.includes(A) && T.includes(B)) H.rounds.forEach((rd, ri) => rd.forEach((m, mi) => { const h = T[m[0]], a = T[m[1]]; if (pair(h, a)) L.push({ s, wk: ri + 1, o: 0, comp: '威超', st: `第 ${ri + 1} 轮`, h, a, hg: m[2], ag: m[3], hm: `${s}:${ri}:${mi}` }); })); }
@@ -5743,6 +5747,7 @@ function h2hOf(A, B) {
     Object.entries(C || {}).forEach(([k, r]) => (r && r.mr || []).forEach(m => { if (!pair(m[0], m[1])) return; if (live && cupWkState(m[5]) !== 'ft') return; L.push({ s, wk: m[5] + 0.5, o: 1, comp: k, st: m[4], h: m[0], a: m[1], hg: m[2], ag: m[3], et: m[7], nt: m[6] }); }));
   }
   L.sort((x, y) => x.s - y.s || x.wk - y.wk); H2H_C.set(key, L); return L; }
+const H2H_SN = s => s <= 0 ? WN(s + 50) : SN(s);
 function h2hSum(L, A) { const o = { n: L.length, w: 0, d: 0, l: 0, gf: 0, ga: 0 }; L.forEach(m => { const f = m.h === A ? m.hg : m.ag, g = m.h === A ? m.ag : m.hg; o.gf += f; o.ga += g; if (f > g) o.w++; else if (f < g) o.l++; else o.d++; }); return o; }
 function cmpTeamOpts(sel) {
   const g = [['威超', S.teams.slice()]], lo = Object.keys(TD).filter(t => !S.teams.includes(t)).sort(); if (lo.length) g.push(['威伊士次级联赛', lo]);
@@ -5795,7 +5800,7 @@ function vCmp() {
   const nm = t => TD[t] ? tlink(t, 22) : `<button class="lnk tname" data-ext="${esc(t)}">${ecrest(t, 22)}<span>${esc(t)}</span></button>`;
   const res = (m, t) => { const f = m.h === t ? m.hg : m.ag, g = m.h === t ? m.ag : m.hg; return f > g ? ['胜', 'good'] : f < g ? ['负', 'bad'] : ['平', '']; };
   const row = m => { const [r, c] = res(m, A); const link = m.hm ? ` data-hm="${m.hm}" role="button" tabindex="0" style="cursor:pointer"` : m.fx ? ` data-fx="${m.fx}" role="button" tabindex="0" style="cursor:pointer"` : '';
-    return `<tr${link}><td class="l mono" style="white-space:nowrap">${SN(m.s)}</td><td class="l" style="white-space:nowrap">${esc(m.comp)}<span class="dim" style="font-size:12px"> · ${esc(m.st)}</span></td><td class="l">${esc(m.h)}${m.nt ? '<span class="dim" style="font-size:11px">（中立场）</span>' : ''}</td><td class="mono" style="white-space:nowrap;font-weight:700">${m.hg}–${m.ag}${m.et ? '<span class="dim" style="font-size:11px;font-weight:400">（加时）</span>' : ''}</td><td class="l">${esc(m.a)}</td><td><span class="chip ${c}" style="font-size:11px">${r}</span></td></tr>`; };
+    return `<tr${link}><td class="l mono" style="white-space:nowrap">${H2H_SN(m.s)}</td><td class="l" style="white-space:nowrap">${esc(m.comp)}<span class="dim" style="font-size:12px"> · ${esc(m.st)}</span></td><td class="l">${esc(m.h)}${m.nt ? '<span class="dim" style="font-size:11px">（中立场）</span>' : ''}</td><td class="mono" style="white-space:nowrap;font-weight:700">${m.hg}–${m.ag}${m.et ? '<span class="dim" style="font-size:11px;font-weight:400">（加时）</span>' : ''}${m.pen ? `<span class="dim" style="font-size:11px;font-weight:400">（点球 ${esc(m.pen)} 胜）</span>` : ''}</td><td class="l">${esc(m.a)}</td><td><span class="chip ${c}" style="font-size:11px">${r}</span></td></tr>`; };
   const bar = (w, d, l) => { const n = w + d + l || 1; return `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--bg-3,#222);margin:8px 0 4px"><span style="width:${w / n * 100}%;background:var(--accent)"></span><span style="width:${d / n * 100}%;background:var(--fg-3)"></span><span style="width:${l / n * 100}%;background:var(--line-2,#555)"></span></div>`; };
   const byComp = {}; L.forEach(m => { (byComp[m.comp] = byComp[m.comp] || []).push(m); });
   let R = null; try { R = rankData(); } catch (e) { }
@@ -5808,12 +5813,12 @@ function vCmp() {
     <label style="display:flex;gap:8px;align-items:center;flex:1 1 220px"><span class="eyebrow">球队 A</span><select id="cmpA" aria-label="球队 A" style="flex:1;min-width:0">${cmpTeamOpts(A)}</select></label>
     <button class="btn ghost" data-act="cmpSwap" aria-label="交换两队">⇄</button>
     <label style="display:flex;gap:8px;align-items:center;flex:1 1 220px"><span class="eyebrow">球队 B</span><select id="cmpB" aria-label="球队 B" style="flex:1;min-width:0">${cmpTeamOpts(B)}</select></label></div></div>
-  <div class="panel"><div class="ph"><div><div class="eyebrow">All-time · S01 起</div><h2>历史总交手</h2></div><span class="note">联赛 + 各项杯赛${L.length ? ` · ${L.length} 场` : ''}</span></div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">All-time · ${WL ? 'W01' : 'S01'} 起</div><h2>历史总交手</h2></div><span class="note">${WL ? '威联赛 + 威超 + 各项杯赛' : '联赛 + 各项杯赛（威联赛时期资料载入中…）'}${L.length ? ` · ${L.length} 场` : ''}</span></div>
   ${L.length ? `<div class="grid g-3" style="gap:10px;text-align:center"><div><div style="margin-bottom:6px">${nm(A)}</div><div class="mono" style="font-size:28px;font-weight:800">${sa.w}</div><div class="note">胜</div></div><div><div class="note" style="margin-bottom:6px">平局</div><div class="mono" style="font-size:28px;font-weight:800">${sa.d}</div><div class="note">平</div></div><div><div style="margin-bottom:6px">${nm(B)}</div><div class="mono" style="font-size:28px;font-weight:800">${sa.l}</div><div class="note">胜</div></div></div>
-  ${bar(sa.w, sa.d, sa.l)}<p class="note" style="margin:0;text-align:center">进球 ${esc(A)} ${sa.gf} : ${sa.ga} ${esc(B)} · 胜率 ${esc(A)} ${Math.round(sa.w / sa.n * 100)}% / ${esc(B)} ${Math.round(sa.l / sa.n * 100)}%</p>
-  <div class="tw" style="margin-top:12px"><table><thead><tr><th class="l">赛事</th><th>场</th><th>${esc(A)} 胜</th><th>平</th><th>${esc(B)} 胜</th><th>进球</th></tr></thead><tbody>${Object.entries(byComp).map(([k, M]) => { const x = h2hSum(M, A); return `<tr><td class="l">${esc(k)}</td><td>${x.n}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td class="mono">${x.gf}–${x.ga}</td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">两队在 S01 起还没有交过手</div>`}</div>
+  ${bar(sa.w, sa.d, sa.l)}<p class="note" style="margin:0;text-align:center">进球 ${esc(A)} ${sa.gf} : ${sa.ga} ${esc(B)} · 胜率 ${esc(A)} ${Math.round(sa.w / sa.n * 100)}% / ${esc(B)} ${Math.round(sa.l / sa.n * 100)}%</p>${(() => { const e1 = L.filter(m => m.wl), e2 = L.filter(m => !m.wl); if (!e1.length || !e2.length) return ''; const x = h2hSum(e1, A), y = h2hSum(e2, A); return `<p class="note" style="margin:4px 0 0;text-align:center">威联赛时期 ${esc(A)} ${x.w} 胜 ${x.d} 平 ${x.l} 负 · 威超时期 ${y.w} 胜 ${y.d} 平 ${y.l} 负</p>`; })()}
+  <div class="tw" style="margin-top:12px"><table><thead><tr><th class="l">赛事</th><th>场</th><th>${esc(A)} 胜</th><th>平</th><th>${esc(B)} 胜</th><th>进球</th></tr></thead><tbody>${Object.entries(byComp).map(([k, M]) => { const x = h2hSum(M, A); return `<tr><td class="l">${esc(k)}</td><td>${x.n}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td class="mono">${x.gf}–${x.ga}</td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">两队还没有交过手</div>`}</div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">Recent meetings</div><h2>近 5 场交手</h2></div><span class="note">结果按 ${esc(A)} 的角度${last.some(m => m.hm || m.fx) ? ' · 点威超的场次看比赛详情' : ''}</span></div>
-  ${last.length ? `<div style="display:flex;gap:6px;margin-bottom:10px">${last.slice().reverse().map(m => { const [r, c] = res(m, A); return `<span class="chip ${c}" title="${SN(m.s)} ${esc(m.comp)} ${m.hg}–${m.ag}">${r}</span>`; }).join('')}<span class="note" style="align-self:center">← 旧 · 新 →</span></div>
+  ${last.length ? `<div style="display:flex;gap:6px;margin-bottom:10px">${last.slice().reverse().map(m => { const [r, c] = res(m, A); return `<span class="chip ${c}" title="${H2H_SN(m.s)} ${esc(m.comp)} ${m.hg}–${m.ag}">${r}</span>`; }).join('')}<span class="note" style="align-self:center">← 旧 · 新 →</span></div>
   <div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">赛事</th><th class="l">主队</th><th>比分</th><th class="l">客队</th><th>${esc(A)}</th></tr></thead><tbody>${last.map(row).join('')}</tbody></table></div>
   ${L.length > 5 ? `<details style="margin-top:10px"><summary class="note" style="cursor:pointer">全部 ${L.length} 场交手</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th class="l">赛季</th><th class="l">赛事</th><th class="l">主队</th><th>比分</th><th class="l">客队</th><th>${esc(A)}</th></tr></thead><tbody>${L.slice().reverse().map(row).join('')}</tbody></table></div></details>` : ''}` : `<div class="empty">还没有交手记录</div>`}</div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">Compare</div><h2>基本数据</h2></div><span class="note">${SN(SEASON)}</span></div>
@@ -5830,13 +5835,12 @@ function cmpHonHTML(A, B, R, nm) { if (!WL) { loadWL().then(() => { if (view ===
     const grp = (era, lab) => { const l = T.filter(x => x.era === era); return l.length ? `<div class="eyebrow" style="margin:10px 0 4px">${lab}</div><div class="rank-list">${l.map(x => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto;font-size:13px;align-items:start"><span><b>${esc(x.lab)}</b><span class="dim" style="font-size:11.5px;display:block;line-height:1.5">${x.ss.join('、')}</span></span><b class="mono" style="color:var(--gold)">×${x.ss.length}</b></div>`).join('')}</div>` : ''; };
     return `<div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px">${nm(t)}<span class="chip gold">${ic('trophy', 13)} ${nS + nW} 冠</span></div><div class="note" style="margin-top:4px">威超时期 ${nS} · 威联赛时期 ${WL ? nW : '…'}</div>${grp('S', '威超时期（S01 起）')}${WL ? grp('W', '威联赛时期（W01–W50）') : '<p class="note">威联赛时期资料载入中…</p>'}${!nS && !nW && WL ? '<p class="note" style="margin-top:10px">还没有拿过冠军</p>' : ''}</div>`; };
   return `<div class="panel"><div class="ph"><div><div class="eyebrow">Trophies</div><h2>冠军对比</h2></div><span class="note">联赛冠军 + 各项杯赛冠军</span></div><div class="grid g-2" style="gap:18px;align-items:start">${col(A)}${col(B)}</div></div>`; }
-/* 威联赛时期的交手：那时只保存了积分榜和杯赛决赛，没有逐场比分 → 列出两队的杯赛决赛对决，和同在威联赛的赛季谁排名更高 */
+/* 威联赛时期两队同在联赛的赛季：逐季名次对比（逐场交手已经并进上面的历史总交手） */
 function cmpWlHTML(A, B, nm) { if (!WL) return ''; const fin = [], lg = []; WL.S.forEach(w => { Object.entries(w.cups || {}).forEach(([k, c]) => { if (c && ((c.w === A && c.r === B) || (c.w === B && c.r === A))) fin.push({ w: w.w, k, win: c.w, sc: c.sc }); }); const ia = w.order.indexOf(A), ib = w.order.indexOf(B); if (ia >= 0 && ib >= 0) lg.push({ w: w.w, a: ia + 1, b: ib + 1, ra: w.tb[ia], rb: w.tb[ib] }); });
-  if (!fin.length && !lg.length) return `<div class="panel"><div class="ph"><div><div class="eyebrow">W01–W50</div><h2>威联赛时期交锋</h2></div></div><div class="empty">两队在威联赛时期没有同场竞技过（没有同季踢威联赛，也没有在杯赛决赛相遇）</div></div>`;
+  if (!lg.length) return '';
   const aw = lg.filter(x => x.a < x.b).length, bw = lg.length - aw, fa = fin.filter(x => x.win === A).length;
-  return `<div class="panel"><div class="ph"><div><div class="eyebrow">W01–W50</div><h2>威联赛时期交锋</h2></div><span class="note">那时只留下积分榜和杯赛决赛，没有逐场比分</span></div>
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">W01–W50</div><h2>威联赛时期名次对比</h2></div><span class="note">两队同在威联赛的赛季，谁排得更前</span></div>
   <div class="grid g-3" style="gap:10px;text-align:center"><div><div style="margin-bottom:6px">${nm(A)}</div><div class="mono" style="font-size:24px;font-weight:800">${aw}</div><div class="note">季排名较高</div></div><div><div class="note" style="margin-bottom:6px">同在威联赛</div><div class="mono" style="font-size:24px;font-weight:800">${lg.length}</div><div class="note">季</div></div><div><div style="margin-bottom:6px">${nm(B)}</div><div class="mono" style="font-size:24px;font-weight:800">${bw}</div><div class="note">季排名较高</div></div></div>
-  ${fin.length ? `<div class="eyebrow" style="margin:14px 0 6px">杯赛决赛对决 · ${esc(A)} ${fa} 胜 ${fin.length - fa} 负</div><div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">赛事</th><th class="l">冠军</th><th>比分</th></tr></thead><tbody>${fin.map(x => `<tr><td class="l mono">${WN(x.w)}</td><td class="l">${esc(x.k)} 决赛</td><td class="l"><b>${esc(x.win)}</b></td><td class="mono">${esc(x.sc)}</td></tr>`).join('')}</tbody></table></div>` : ''}
   ${lg.length ? `<details style="margin-top:10px"><summary class="note" style="cursor:pointer">逐季联赛排名（${lg.length} 季）</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th class="l">赛季</th><th>${esc(A)}</th><th>积分</th><th>${esc(B)}</th><th>积分</th></tr></thead><tbody>${lg.map(x => `<tr><td class="l mono">${WN(x.w)}</td><td class="${x.a < x.b ? 'good' : ''}">第 ${x.a}</td><td class="mono">${x.ra.pts}</td><td class="${x.b < x.a ? 'good' : ''}">第 ${x.b}</td><td class="mono">${x.rb.pts}</td></tr>`).join('')}</tbody></table></div></details>` : ''}</div>`; }
 /* ---------- 俱乐部排行榜：战力 / 外战积分 / 荣誉 ---------- */
 let RKTAB = 'str', RKF = 'all';
@@ -10033,10 +10037,17 @@ function wlDecode(D) {
     const rows = s.r.split(' ').map(r => { const f = r.split('.').map(p36); const o = { id: f[0], team: D.clubs[f[1]], rt: f[2], apps: f[3] || 0, g: f[4] || 0, a: f[5] || 0, avg: (f[6] || 0) / 10, motm: f[7] || 0, cs: f[8] || 0, capps: f[9] || 0, cg: f[10] || 0, ca: f[11] || 0, cavg: (f[12] || 0) / 10, inLg: order.includes(D.clubs[f[1]]) }; (car[o.id] = car[o.id] || []).push([w, o]); return o; });
     const cups = {}; Object.entries(s.c).forEach(([kk, [win, run, sc, mvp]]) => cups[kk] = { w: win, r: run, sc, mvp: mvp >= 0 ? mvp : null });
     const a = s.a;
-    return { w, order, tb, up: s.up.map(i => D.clubs[i]), dn: s.dn.map(i => D.clubs[i]), cups, rows, aw: { ballon: a.b.map(([id, pct]) => ({ id, pct })), mvp: a.m.map(([id, pct]) => ({ id, pct })), boot: a.gb >= 0 ? a.gb : null, ast: a.as >= 0 ? a.as : null, glove: a.gl >= 0 ? a.gl : null, young: a.y >= 0 ? a.y : null } };
+    return { w, order, tb, up: s.up.map(i => D.clubs[i]), dn: s.dn.map(i => D.clubs[i]), cups, rows, raw: s.lg ? { lo: s.lo, lg: s.lg, k: s.k } : null, aw: { ballon: a.b.map(([id, pct]) => ({ id, pct })), mvp: a.m.map(([id, pct]) => ({ id, pct })), boot: a.gb >= 0 ? a.gb : null, ast: a.as >= 0 ? a.as : null, glove: a.gl >= 0 ? a.gl : null, young: a.y >= 0 ? a.y : null } };
   });
-  return { pl, byPid, car, S, clubs: D.clubs };
+  return { pl, byPid, car, S, clubs: D.clubs, fn: D.fn || [], kc: D.kc || [] };
 }
+/* 威联赛某季的逐场比分（v2 的 wl.json 才有）：联赛 [主, 客, 主进, 客进]、杯赛 [主, 客, 主进, 客进, 赛事, 阶段, 点球胜方] */
+function wlMatches(w) { const W2 = WL, S2 = W2 && W2.S[w - 1]; if (!S2 || !S2.raw) return null; if (S2._m) return S2._m; const R = S2.raw, nm = i => i >= 100 ? W2.fn[i - 100] : W2.clubs[i], lo = R.lo.map(i => W2.clubs[i]), lg = []; let k = 0;
+  lo.forEach(h => lo.forEach(a => { if (h === a) return; lg.push([h, a, parseInt(R.lg[k * 2], 36), parseInt(R.lg[k * 2 + 1], 36)]); k++; }));
+  const ko = (R.k ? R.k.split(' ') : []).map(x => { const f = x.split('.').map(v => parseInt(v, 36)); return [nm(f[0]), nm(f[1]), f[2], f[3], W2.kc[f[4]] || '', f[5], f[6] || 0]; });
+  const last = {}; ko.forEach(m => { last[m[4]] = Math.max(last[m[4]] || 0, m[5]); });
+  const stage = m => { if (m[4] === '社区杯') return '决赛'; const b = last[m[4]] - m[5]; return b === 0 ? '决赛' : b === 1 ? '半决赛' : b === 2 ? '1/4 决赛' : b === 3 ? '1/8 决赛' : `第 ${m[5] + 1} 轮`; };
+  return (S2._m = { lg, ko: ko.map(m => m.concat([stage(m)])) }); }
 function loadWL() {
   if (WL) return Promise.resolve(WL);
   if (WL_LOADING) return WL_LOADING;

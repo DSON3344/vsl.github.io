@@ -37,7 +37,9 @@ const base = {}; CLUBS.forEach(c => { const l = ((HIST.squads['1'] || {})[c] || 
 const wave = {}; CLUBS.forEach(c => { wave[c] = { ph: rnd() * 6.28, fr: 0.06 + rnd() * 0.12, amp: 2 + rnd() * 1.8, tilt: gauss() * 0.5 }; });
 // DSON 设定的威联赛时期（W01–W50）俱乐部纵观实力，按综合实力排序
 const TIER = { S: ['威龙', '猎豹', '金狮', '猛虎', '狂蜂'], A: ['威尔福特', '切狐', '阿尔法骑士', '猛龙', '罗联', '森利西亚虎'], B: ['花豹', '蜜蜂', '飞鹰', '炎狼', '华尔兹', '龙王宫殿', '科摩多尊龙', '沃特梅兹', '泽尼联', '普雷斯顿', '岚', '罗杰剧院', '雷克夏', '威廉斯', '拉普兰德', '威尔顿联'] };
-const TVAL = {}; TIER.S.forEach((c, k) => TVAL[c] = 89.6 - k * 0.15 * k); TIER.A.forEach((c, k) => TVAL[c] = 87.4 - k * 0.35); TIER.B.forEach((c, k) => TVAL[c] = 84.4 - k * 0.28);
+/* 2026-11-25 调整：原本威龙 24 冠、猎豹 11 冠（50 季占 70%）太过统治 → S 档之间拉近、A 档整体往上，威龙和猎豹依然是最强的两队 */
+const TUNE = Object.assign({ S: [88.7, 89.2, 88.6, 88.4, 88.1], A0: 87.75, Ak: 0.3, lb: 0.035 }, process.env.WLT ? JSON.parse(process.env.WLT) : {});
+const TVAL = {}; TIER.S.forEach((c, k) => TVAL[c] = TUNE.S[k]); TIER.A.forEach((c, k) => TVAL[c] = TUNE.A0 - k * TUNE.Ak); TIER.B.forEach((c, k) => TVAL[c] = 84.4 - k * 0.28);
 CLUBS.forEach(c => { if (TVAL[c] == null) TVAL[c] = 80; });
 // 没进威超 S01 的俱乐部：W40 之后逐渐衰落（财政困难、卖掉主力）
 // 各队的黄金年代：猛龙「3佩」时期、罗联和阿尔法骑士也各有一段巅峰（DSON：这些球队也夺过威联赛冠军）
@@ -172,7 +174,8 @@ function pickXI(c, w, avail) {
 const GW = { GK: 0, DF: 0.3, MF: 1.0, FW: 4.4 }, AW = { GK: 0.03, DF: 0.8, MF: 2.6, FW: 1.4 };
 const posG = x => x.l === 'FW' ? (/ST/.test(P[x.i].pos) ? 1.25 : 0.95) : x.l === 'MF' ? (/CAM/.test(P[x.i].pos) ? 1.5 : /CDM/.test(P[x.i].pos) ? 0.5 : 1) : 1;
 function wpick(L, f) { const w = L.map(f); let t = w.reduce((a, b) => a + b, 0) * rnd(); for (let k = 0; k < L.length; k++) { t -= w[k]; if (t <= 0) return L[k]; } return L[L.length - 1]; }
-let ROW = null; // 当季个人数据 { i: {apps,g,a,rs,motm,cs,capps,cg,ca, club} }
+let ROW = null, MT = null; // MT：当季每场比分（威联赛逐场 + 杯赛），给网站的球队对比用
+ // 当季个人数据 { i: {apps,g,a,rs,motm,cs,capps,cg,ca, club} }
 function row(i, c) { return ROW[i] || (ROW[i] = { club: c, apps: 0, g: 0, a: 0, rs: 0, motm: 0, cs: 0, capps: 0, cg: 0, ca: 0, crs: 0 }); }
 const injured = {};
 function playMatch(h, a, w, opt = {}) {
@@ -183,9 +186,10 @@ function playMatch(h, a, w, opt = {}) {
   };
   const H = side(h), A = side(a);
   const adv = opt.neutral ? 0 : 0.14;
-  const boost = S => S.foreign ? 1 : 1 + 0.075 * S.xi.filter(x => P[x.i].lore && x.l !== 'GK' && x.l !== 'DF').length;
+  const boost = S => S.foreign ? 1 : 1 + TUNE.lb * S.xi.filter(x => P[x.i].lore && x.l !== 'GK' && x.l !== 'DF').length;
   const lh = 1.32 * boost(H) * Math.exp((H.str - A.str) * 0.085 + adv), la = 1.32 * boost(A) * Math.exp((A.str - H.str) * 0.085 - adv * 0.4);
   let hg = pois(lh), ag = pois(la);
+  if (MT && !opt.noRec) (opt.cup ? MT.ko : MT.lg).push([h, a, hg, ag, opt.cup ? MT.cup : '', opt.rd == null ? 0 : opt.rd]);
   const stat = (S, gf, ga) => {
     if (S.foreign) return;
     const on = S.xi.slice(), subs = S.bench.filter(() => rnd() < 0.4).slice(0, 3);
@@ -218,8 +222,8 @@ function ko(teams, w, single = true) {
     if (alive.length % 2) nx.push(alive.pop());
     for (let k = 0; k < alive.length; k += 2) {
       const a = alive[k], b = alive[k + 1], last = alive.length === 2;
-      let [x, y] = playMatch(a, b, w, { cup: true, neutral: last });
-      let win = x > y ? a : x < y ? b : (rnd() < 0.5 ? a : b), sc = `${Math.max(x, y)}–${Math.min(x, y)}${x === y ? '（点球）' : ''}`;
+      let [x, y] = playMatch(a, b, w, { cup: true, neutral: last, rd: rounds.length });
+      let win = x > y ? a : x < y ? b : (rnd() < 0.5 ? a : b); if (x === y && MT) MT.ko[MT.ko.length - 1].push(win === a ? 1 : 2); let sc = `${Math.max(x, y)}–${Math.min(x, y)}${x === y ? '（点球）' : ''}`;
       rd.push([a, b, sc, win]); nx.push(win);
       if (last) { fin.w = win; fin.r = win === a ? b : a; fin.sc = sc; }
     }
@@ -244,6 +248,7 @@ function simSeason(w) {
   CLUBS.forEach(c => { squads[c].forEach(i => P[i].club = c); fillSquad(c, w); squads[c].forEach(i => P[i].club = c); });
   RCACHE = {}; DOMTOP = {};
   // 联赛：双循环
+  MT = { lo: league.slice(), lg: [], ko: [], cup: '' };
   const T = {}; league.forEach(c => T[c] = { c, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 });
   for (const h of league) for (const a of league) { if (h === a) continue; const [x, y] = playMatch(h, a, w); const A = T[h], B = T[a]; A.gf += x; A.ga += y; B.gf += y; B.ga += x; if (x > y) { A.w++; A.pts += 3; B.l++; } else if (x < y) { B.w++; B.pts += 3; A.l++; } else { A.d++; B.d++; A.pts++; B.pts++; } }
   const tb = Object.values(T).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
@@ -251,18 +256,18 @@ function simSeason(w) {
   // 杯赛
   const cups = {};
   const fpick = n => { const l = FOREIGN.slice(); for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; } return l.slice(0, n); };
-  cups['世联赛'] = ko(order.slice(0, 4).concat(fpick(28)), w);
-  cups['全联杯'] = ko(order.slice(4, 6).concat(fpick(30).filter(x => !cups['世联赛'] || true)), w);
-  cups['威联赛杯'] = ko(CLUBS.slice().concat(['', '', '', '', '']).filter(Boolean), w);
+  MT.cup = '世联赛'; cups['世联赛'] = ko(order.slice(0, 4).concat(fpick(28)), w);
+  MT.cup = '全联杯'; cups['全联杯'] = ko(order.slice(4, 6).concat(fpick(30).filter(x => !cups['世联赛'] || true)), w);
+  MT.cup = '威联赛杯'; cups['威联赛杯'] = ko(CLUBS.slice().concat(['', '', '', '', '']).filter(Boolean), w);
   const cw = cups['威联赛杯'].w, sh = cw === order[0] ? order[1] : cw;
-  { const [x, y] = playMatch(order[0], sh, w, { cup: true, neutral: true }); const win = x > y ? order[0] : x < y ? sh : (rnd() < 0.5 ? order[0] : sh); cups['社区杯'] = { w: win, r: win === order[0] ? sh : order[0], sc: `${Math.max(x, y)}–${Math.min(x, y)}${x === y ? '（点球）' : ''}` }; }
+  MT.cup = '社区杯'; { const [x, y] = playMatch(order[0], sh, w, { cup: true, neutral: true }); const win = x > y ? order[0] : x < y ? sh : (rnd() < 0.5 ? order[0] : sh); if (x === y) MT.ko[MT.ko.length - 1].push(win === order[0] ? 1 : 2); cups['社区杯'] = { w: win, r: win === order[0] ? sh : order[0], sc: `${Math.max(x, y)}–${Math.min(x, y)}${x === y ? '（点球）' : ''}` }; }
   // 升降级
   const down = order.slice(-3), lower = CLUBS.filter(c => !league.includes(c));
   let up;
   if (w === 49) { const stay = order.slice(0, 17), N = stay.filter(c => !S1.includes(c)).length, k = clamp(3 - N, 0, 3); const nonS1 = lower.filter(c => !S1.includes(c)).sort((a, b) => prest(a, w) - prest(b, w)), s1l = lower.filter(c => S1.includes(c)); up = nonS1.slice(0, k).concat(s1l.slice(0, 3 - Math.min(k, nonS1.length))); while (up.length < 3) { const rest = lower.filter(c => !up.includes(c)); up.push(rest[0]); } }
   else if (w >= 46) { const want = S1.filter(c => lower.includes(c)); up = want.slice(0, 3); while (up.length < 3) { const rest = lower.filter(c => !up.includes(c)); up.push(wpick(rest, c => Math.pow(Math.max(1, prest(c, w) - 74), 2))); } }
   else { up = []; const pool = lower.slice(); while (up.length < 3) { const c = wpick(pool, x => Math.pow(Math.max(1, prest(x, w) - 74), 2)); up.push(c); pool.splice(pool.indexOf(c), 1); } }
-  const res = { w, order, tb, down, up, lower, cups, rows: ROW, sq: Object.fromEntries(CLUBS.map(c => [c, squads[c].slice()])) };
+  const res = { w, order, tb, down, up, lower, cups, mt: MT, rows: ROW, sq: Object.fromEntries(CLUBS.map(c => [c, squads[c].slice()])) };
   league = order.slice(0, 17).concat(up);
   return res;
 }
@@ -371,6 +376,7 @@ function exportWL() {
   const used = new Set(); OUT.forEach(S => { Object.keys(S.rows).forEach(i => used.add(+i)); Object.values(S.sq).forEach(l => l.forEach(i => used.add(i))); });
   const ids = [...used].sort((a, b) => a - b), NID = {}; ids.forEach((i, k) => NID[i] = k);
   const b36 = n => Math.round(n).toString(36);
+  const KO_C = ['世联赛', '全联杯', '威联赛杯', '社区杯'], FN = [], tix = c => CI[c] != null ? CI[c] : 100 + (FN.indexOf(c) >= 0 ? FN.indexOf(c) : FN.push(c) - 1);
   const pl = ids.map(i => { const p = P[i]; return [p.name, p.nat, p.pos, p.born, p.pid, p.kind === 'mod' && p.pid >= 0 ? 0 : p.peak, p.lore && p.lore.legend ? p.lore.legend : '']; });
   const seasons = OUT.map((S, k) => {
     const w = k + 1, a = A[k];
@@ -381,10 +387,14 @@ function exportWL() {
       o: S.order.map(c => CI[c]), t: S.tb.map(r => [r.w, r.d, r.l, r.gf, r.ga]), up: S.up.map(c => CI[c]), dn: S.down.map(c => CI[c]),
       c: Object.fromEntries(Object.entries(S.cups).map(([kk, v]) => [kk, [v.w, v.r, v.sc, a.cupMvp[kk] != null ? NID[a.cupMvp[kk]] : -1]])),
       a: { b: pct(a.ballon, 6, 5), m: pct(a.mvp, 3, 3), gb: a.boot != null ? NID[a.boot] : -1, as: a.ast != null ? NID[a.ast] : -1, gl: a.glove != null ? NID[a.glove] : -1, y: a.young != null ? NID[a.young] : -1 },
-      r: rows.join(' ')
+      r: rows.join(' '),
+      /* 逐场比分：lo＝联赛双循环时的球队顺序（主队按 lo 顺序轮，客队也按 lo 顺序，跳过自己），lg＝每场两个字元（主、客进球，36 进位）；
+         k＝杯赛每场「主.客.主进.客进.赛事.轮次[.点球胜方 1 主 2 客]」，球队编号 ≥ 100 是外赛区（fn 表） */
+      lo: S.mt.lo.map(c => CI[c]), lg: S.mt.lg.map(m => b36(Math.min(35, m[2])) + b36(Math.min(35, m[3]))).join(''),
+      k: S.mt.ko.map(m => [tix(m[0]), tix(m[1]), m[2], m[3], KO_C.indexOf(m[4]), m[5]].concat(m[6] ? [m[6]] : []).map(b36).join('.')).join(' ')
     };
   });
-  const out = { v: 1, clubs: CLUBS, pl, s: seasons };
+  const out = { v: 2, clubs: CLUBS, pl, s: seasons, fn: FN, kc: KO_C };
   fs.writeFileSync(D + 'wl.json', JSON.stringify(out));
   return out;
 }
