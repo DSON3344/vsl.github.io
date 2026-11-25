@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '19e42688be';
+const VES_BUILD = 'a3cdf79fe1';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -474,7 +474,10 @@ function mentorInfo(t) { const L = PDB[t] || []; const M = L.filter(p => (p.age 
 /* 手动改过潜力的球员（S.edits[uid].pot，potA = 改的时候的年龄）：现在的能力不变，之后逐年朝新的潜力走（26 岁前后到位） */
 const potEdOf = p => { if (!p || !p.uid || typeof S === 'undefined' || !S || !S.edits || String(p.uid).startsWith('K|')) return null; const e = S.edits[p.uid]; return e && e.pot != null && e.pot !== '' ? e : null; };
 let SCR_CAP = null; const scrCapOf = p => { if (!SCR_CAP) { SCR_CAP = {}; try { SCRIPT.P.forEach(x => { if (x.cap) SCR_CAP['K|X|' + x.n] = x.cap; }); } catch (e) { } } return SCR_CAP[String(p && p.uid || '')] || 0; };
-function growthOf(p) { if (p._gz && p._gzB === p._g) return p._gz; const g = growthOfR(p); if (rzEx(p)) { const c = scrCapOf(p); if (!c) return g; p._gzB = p._g; return (p._gz = { pot: Math.min(c, g.pot), at: a => Math.min(c, g.at(a)), past: a => Math.min(c, g.past(a)), raw: g }); } /* 剧本指定的能力上限（例：特劳纳多约 90） */ p._gzB = p._g; return (p._gz = { pot: Math.round(RZ(g.pot)), at: a => Math.round(RZ(g.at(a))), past: a => Math.round(RZ(g.past(a))), raw: g }); }
+function growthOf(p) { if (p._gz && p._gzB === p._g) return p._gz; const g = growthOfR(p); if (rzEx(p)) { const c = scrCapOf(p); if (!c) return g; p._gzB = p._g; return (p._gz = { pot: Math.min(c, g.pot), at: a => Math.min(c, g.at(a)), past: a => Math.min(c, g.past(a)), raw: g }); } /* 剧本指定的能力上限（例：特劳纳多约 90） */ p._gzB = p._g; const lf = starLift(p); return (p._gz = { pot: Math.min(RMAX, Math.round(RZ(g.pot) + lf)), at: a => Math.min(RMAX, Math.round(RZ(g.at(a)) + lf)), past: a => Math.min(RMAX, Math.round(RZ(g.past(a)) + lf)), raw: g }); }
+/* 外赛区有现实原型的超级球星（现实能力 88 以上，例如哈兰德、姆巴佩）：能力压缩会把他们压到 85 上下，跟现实的地位不符。
+   按现实能力额外往上抬（现实 91 约抬 4.4 分），让外赛区也有 90 以上的世界级球星 */
+function starLift(p) { const r = p && p.realR; return r >= 88 ? (r - 87) * 1.1 : 0; }
 function growthOfR(p) { if (p._g) return p._g; let g = growthOf0(p); const AD = ageEdD(p);
   if (AD) { const e = S.edits[p.uid], aN = typeof e.ageA === 'number' ? e.ageA : (pAge(p, SEASON)), g0 = g; /* 改年龄：现在的能力不变，以后按新年龄的成长 / 衰退走 */
     const at = a => a <= aN ? g0.at(a - AD) : Math.max(40, Math.min(RMAX, Math.round(g0.at(aN - AD) + g0.at(a) - g0.at(aN))));
@@ -1402,7 +1405,7 @@ const FDB0 = {};
     FDB0[club] = list.map(x => {
       const rating = Math.round(RC(Math.max(60, Math.min(RMAX, x.r != null ? x.r + shift : str + OFF[gi++ % OFF.length] + (rnd() - 0.5) * 2))));
       const name = x.real ? fakeName(x.real) : nameFor(x.nat, rnd);
-      const o = extPlayer(club, name, x.pos, x.nat, x.age, rating, rnd); if (x.real) { o.proto = 1; o.career = realCareer(x.real, club); } if (x.ht) { o.height = x.ht; o.weight = x.wt; } return o;
+      const o = extPlayer(club, name, x.pos, x.nat, x.age, rating, rnd); if (x.real) { o.proto = 1; o.realR = x.r; o.career = realCareer(x.real, club); } if (x.ht) { o.height = x.ht; o.weight = x.wt; } return o;
     });
   }));
 })();
