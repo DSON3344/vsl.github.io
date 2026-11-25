@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = 'b03bfd29e4';
+const VES_BUILD = '19e42688be';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -8014,10 +8014,13 @@ function mktOfferB(MK, p, t, to, C, rnd, lo, hi) { if (p.loanFrom) return null; 
 // ── 非卖品：球队可以把最多 5 名球员设为非卖品；大多数买方会知难而退，愿意谈的要付身价 2.2 倍以上（高额转会费 + 违约金） ──
 const NFS_MAX = 5, NFS_MULT = 2.2;
 const NFS_AUTO = 90; // 评分 90 以上自动成为非卖品，跌到 89 以下自动解锁
-function nfsOf(t, p) { return !!p && ((p.rating || 0) >= NFS_AUTO || !!((((S && S.nfs) || {})[t] || {})[roleKey(p)])); }
-function nfsUid(t, uid) { const p = (PDB[t] || []).find(q => q.uid === uid); return p ? nfsOf(t, p) : false; }
-function nfsApply(o, rnd) { if (!TD[o.from] || o.user || o.loan || o.acad || o.nfsDone || !nfsUid(o.from, o.uid)) return o; o.nfs = 1; o.nfsDone = 1; const r = (rnd || seeded('nfs|' + o.uid + '|' + o.to + '|' + SEASON))();
-  if (r < 0.7) { o.st = 'x'; o.sys = false; o.log.push(`${o.from} 视为非卖品，买方知难而退`); }
+/* 外赛区顶级球员（2026-11-25）：跟威超的非卖品一样，母队不轻易放人，买方要付身价 2.2 倍以上（含违约金）才可能成交。
+   评分 86 以上，或是球队头号球星（83 以上）都算 */
+function xNfs(c, p) { if (!p || TD[c] || !EXT_CLUB[c]) return false; const r = p.rating || 0; if (r >= 86) return true; if (r < 83) return false; const L = FDB[c] || []; return !L.some(q => q !== p && (q.rating || 0) > r); }
+function nfsOf(t, p) { if (!TD[t] && EXT_CLUB[t]) return xNfs(t, p); return !!p && ((p.rating || 0) >= NFS_AUTO || !!((((S && S.nfs) || {})[t] || {})[roleKey(p)])); }
+function nfsUid(t, uid) { const p = (PDB[t] || []).find(q => q.uid === uid) || (!TD[t] ? (FDB[t] || []).find(q => q.uid === uid) : null); return p ? nfsOf(t, p) : false; }
+function nfsApply(o, rnd) { if (!(TD[o.from] || EXT_CLUB[o.from]) || o.user || o.loan || o.acad || o.nfsDone || !nfsUid(o.from, o.uid)) return o; o.nfs = 1; o.nfsDone = 1; const r = (rnd || seeded('nfs|' + o.uid + '|' + o.to + '|' + SEASON))();
+  if (r < 0.7) { o.st = 'x'; o.sys = false; o.log.push(`${o.from} 视为非卖品${TD[o.from] ? '' : '（外赛区顶级球员）'}，买方知难而退`); }
   else { o.fee = Math.max(o.fee, Math.round(o.v * (NFS_MULT + r * 0.5))); o.max = Math.max(o.max, Math.round(o.fee * 1.1)); o.log.push(`非卖品：买方开出高额转会费 + 违约金 ${fee$(o.fee)}`); }
   return o; }
 function nfsToggle(t, key) { S.nfs = S.nfs || {}; const M = S.nfs[t] = S.nfs[t] || {}, p = (PDB[t] || []).find(q => roleKey(q) === key); if (!p) return render(); if ((p.rating || 0) >= NFS_AUTO) { toast(`${p.name} 评分 ${p.rating}，自动为非卖品（跌到 89 以下才会解锁）`); return render(); }
@@ -8036,6 +8039,10 @@ function mktGenExtBuys(MK, s, C, salt) {
     Object.entries(FDB).forEach(([c, L]) => { if (!EXT_CLUB[c]) return; L.forEach(p => { if (typeof p.age0 !== 'number') return; const a = C.ageN(p), r = C.ratN(p); if (posGroup(p.pos) !== g.gi || r < bar || r > bar + 6 || a > (big ? 27 : 30)) return; pool.push({ p, c, r }); }); });
     { const RG = capRegion(t, s + 1), NS = RG && RG.set; if (NS) { const P2 = pool.filter(x => NS.has(x.p.nat)); if (P2.length) pool.splice(0, pool.length, ...P2); } } /* 西亚 / 东亚 / 北美资本的球队：补位置也先找同一地区的球员 */
     pool.sort((x, y) => y.r - x.r); const pk = pool.slice(0, 5)[Math.floor(rnd() * Math.min(5, pool.length))]; if (!pk) return; const o = mktOfferB(MK, pk.p, pk.c, t, C, rnd, 0.9, 1.2); if (o) o.ext = 1; });
+  /* 威超强队挖外赛区顶级球员：只有能明显提升主力位置的才会出手；对方视为非卖品，多数时候买方知难而退，真要买就得付身价 2.2 倍以上（还要预算够、球员愿意来） */
+  let nStar = 0; S.teams.filter(t => TD[t] && (C.str[t] || 0) >= 82).sort((a, b) => (C.str[b] || 0) - (C.str[a] || 0)).forEach(t => { if (nStar >= 3) return; const rnd = seeded('xs|' + t + '|' + s + salt); if (rnd() > 0.35) return; let R = []; try { R = squadReport(t); } catch (e) { return; }
+    const pool = []; Object.entries(FDB).forEach(([c, L]) => { if (!EXT_CLUB[c]) return; L.forEach(p => { if (typeof p.age0 !== 'number' || p.loanFrom || !xNfs(c, p)) return; const a = C.ageN(p), r = C.ratN(p), G = R[posGroup(p.pos)]; if (a > 29 || !G) return; const bar = G.st.length ? G.st[G.st.length - 1].rating : 70; if (r < bar + 3) return; if (MK.offers.some(o => o.uid === p.uid)) return; pool.push({ p, c, r }); }); });
+    pool.sort((x, y) => y.r - x.r); const pk = pool.slice(0, 4)[Math.floor(rnd() * Math.min(4, pool.length))]; if (!pk) return; const o = mktOfferB(MK, pk.p, pk.c, t, C, rnd, 1, 1.2); if (o) { o.ext = 1; o.xstar = 1; nStar++; } });
 }
 /* 西亚资本（新月海湾体育集团）出资引援：收购后的每个夏窗，炎狼从外赛区引进西亚球员（第一个窗口 5 人，之后每窗 3 人；西亚球员占到四分之三以后每窗 1 人）。
    老板出钱，不受球队预算限制；球员愿意加盟西亚老板的球队 */
@@ -8344,7 +8351,7 @@ function mktSysResolve(MK, all, s) {
   return n;
 }
 // 卖方俱乐部按常规挑买方：历史转会照历史；否则只考虑球员愿意去的买方，报价不低于身价时选「报价 × 球员意愿」最好的那家
-function sysDecide(L, s) { try { clauseTrigger(L, s); } catch (e) { } { const nf = o => TD[o.from] && nfsUid(o.from, o.uid) && o.fee < o.v * NFS_MULT; const sc = L.find(o => o.sched && !nf(o)); const ok = L.filter(o => !nf(o) && (o.will == null || willNow(o) >= WILL_MIN) && !isRival(o.from, o.to) && (relOf(o.from, o.to) !== 'comp' || o.fee >= o.v * 1.15)); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || L.find(o => o.rc) || ok[0]; L.forEach(o => { if (o === best && (o.sched || o.rc || o.wa || !TD[o.to] || canAfford(o.to, o.fee)) && (o.sched || o.rc || ((s > 17 || HIST_END > 1e8) && o.fee >= o.v * (o.kind === 'vet' ? 0.55 : o.loan ? 0.05 : 0.95)))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : o.rc ? '买方支付解约金，卖方不能拒绝 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
+function sysDecide(L, s) { try { clauseTrigger(L, s); } catch (e) { } { const nf = o => nfsUid(o.from, o.uid) && o.fee < o.v * NFS_MULT; const sc = L.find(o => o.sched && !nf(o)); const ok = L.filter(o => !nf(o) && (o.will == null || willNow(o) >= WILL_MIN) && !isRival(o.from, o.to) && (relOf(o.from, o.to) !== 'comp' || o.fee >= o.v * 1.15)); ok.sort((a, b) => b.fee * (0.6 + 0.4 * (willNow(b) || 0.5)) - a.fee * (0.6 + 0.4 * (willNow(a) || 0.5))); const best = sc || L.find(o => o.rc) || ok[0]; L.forEach(o => { if (o === best && (o.sched || o.rc || o.wa || !TD[o.to] || canAfford(o.to, o.fee)) && (o.sched || o.rc || ((s > 17 || HIST_END > 1e8) && o.fee >= o.v * (o.kind === 'vet' ? 0.55 : o.loan ? 0.05 : 0.95)))) { o.st = 'a'; o.log.push(o.sched ? '照历史成交 ' + fee$(o.fee) : o.rc ? '买方支付解约金，卖方不能拒绝 ' + fee$(o.fee) : '系统接受 ' + fee$(o.fee)); } else { o.st = 'r'; o.log.push('系统拒绝'); } }); } }
 // 历史时期：把和历史不同的决定记成叠加层 ov，实际发生的转会记成 done（转会窗延续期间新成交的也会重新算）
 /* 球员编号（pid）是用到才配发的：青训小将、外赛区来的人，每次开站配到的号码可能不一样。
    转会市场存档里记的是当时的编号，换一次开站就可能指到别人身上（甲的转会记到乙头上、该走的人没走）。
@@ -8809,7 +8816,7 @@ function assistCalc(o, win) {
   if (o.kind === 'vet' && isSt) add(-0.08, `${age} 岁，但还是 ${o.from} 的主力，低价卖掉要想清楚`);
   else if (o.kind === 'vet') add(-0.35, `${age} 岁 / 在 ${o.from} 踢不上主力，留着只会贬值；对方要他当主力，球员也想要上场时间`);
   if (o.kind === 'prospect') why.push(`${o.to} 用卖人的钱买年轻的潜力新星，球队里有老将带的话成长更快`);
-  const isNfs = TD[o.from] && nfsUid(o.from, o.uid); if (isNfs) { thr = Math.max(thr, NFS_MULT); why.unshift(`${o.from} 把他设为非卖品：低于身价 ${NFS_MULT} 倍（约 ${fee$(Math.round(o.v * NFS_MULT))}，含违约金）不卖`); }
+  const isNfs = nfsUid(o.from, o.uid); if (isNfs) { thr = Math.max(thr, NFS_MULT); why.unshift(`${o.from} 把他设为非卖品：低于身价 ${NFS_MULT} 倍（约 ${fee$(Math.round(o.v * NFS_MULT))}，含违约金）不卖`); }
   const headroom = o.max > o.fee * 1.05 && (o.round || 1) < 4, target = Math.round(thr * o.v);
   let verdict, color, tip;
   if (o.sched && isNfs && ratio < thr) { verdict = '非卖品，建议拒绝'; color = '#e66'; tip = `这是历史上会发生的转会，但他是非卖品，报价低于身价 ${NFS_MULT} 倍。拒绝的话他会留队，历史从这里改变。`; }
@@ -8878,7 +8885,7 @@ function buyTargets(t, MK, C, win) {
     const ask = Math.max(1, Math.round(v * m)), will = willOf(p, from, t, C);
     const fit = (r - bar) + (G.pri === '高' ? 4 : 2) + (tag ? 1.5 : 0) + (will >= WILL_MIN ? 1 : -3) + (F && ask > F.rem ? -4 : 0);
     const rel = relOf(t, from), ask2 = rel === 'comp' ? Math.round(ask * 1.2) : ask;
-    const nfs = TD[from] && nfsOf(from, p);
+    const nfs = (TD[from] || EXT_CLUB[from]) && nfsOf(from, p);
     pool.push({ p, from, G, r, a, pot, v, ask: nfs ? Math.round(ask2 * NFS_MULT) : ask2, will, imp, tag: nfs ? (tag ? tag + ' · ' : '') + '非卖品' : tag, nfs, fit: fit - (rel === 'rival' ? 8 : rel === 'comp' ? 1.5 : 0), ext: ext ? 1 : 0, rel }); };
   Object.keys(PDB).forEach(t2 => { if (t2 === t || !TD[t2]) return; (PDB[t2] || []).forEach(p => consider(p, t2, false)); });
   Object.entries(FDB).forEach(([c, L]) => { if (!EXT_CLUB[c]) return; L.forEach(p => { if (typeof p.age0 === 'number') consider(p, c, true); }); });
