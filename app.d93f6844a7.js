@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '188eda82d0';
+const VES_BUILD = '4699e2bc0e';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -4600,7 +4600,16 @@ function awardsOf(s) {
   // 金球奖和世界足球先生看全赛季：联赛数据 + 杯赛 / 洲际赛的进球和助攻（洲际赛进球分量更高）
   const CW = { 世联赛: 1.3, 全联冠: 1.3, 世俱杯: 1.2, 全联杯: 1, 全协联: 0.8, 亚联冠: 1, 威联赛杯: 0.6, 社区杯: 0.4, 超级杯: 0.4 };
   const cupStatPts = p => { const T = allComps(s, p); return Object.entries(T.cups).reduce((a, [k, c]) => a + (c.g * 0.75 + c.a * 0.45) * (CW[k] || 1), 0); };
-  const bsc = p => base(p) + p.g * 0.35 + p.a * 0.15 + cupStatPts(p); /* 名字不能叫 cupPts：会盖掉外面按赛事级别给冠军计分的 cupPts，杯赛冠军就变成 0 分 */
+  const BSC = new Map(), bsc0 = p => base(p) + p.g * 0.35 + p.a * 0.15 + cupStatPts(p); /* 名字不能叫 cupPts：会盖掉外面按赛事级别给冠军计分的 cupPts，杯赛冠军就变成 0 分 */
+  const bsc = p => { if (p.ext || p.pid == null) return bsc0(p); if (!BSC.has(p.pid)) BSC.set(p.pid, bsc0(p)); return BSC.get(p.pid); };
+  /* 位置换算：个人分是「评分 + 进球 + 助攻」，后卫、门将、中场天生吃亏。
+     按本季威超各位置前 3 名的个人分和前锋前 3 名的差距，补回一部分：金球奖补得多（顶级中场偶尔能拿，后卫门将要历史级赛季才有机会），世界足球先生补得少（仍以攻击手为主） */
+  const LINE_REF = (() => { const by = {}, ref = {}; rows.forEach(p => (by[p.line] = by[p.line] || []).push(bsc(p))); Object.entries(by).forEach(([l, v]) => { v.sort((a, b) => b - a); const t = v.slice(0, 3); ref[l] = t.reduce((a, b) => a + b, 0) / t.length; }); return ref; })();
+  const PK_B = { MF: 0.7, DF: 0.65, GK: 0.6 }, PK_W = { MF: 0.45, DF: 0.3, GK: 0.25 };
+  const posAdj = (p, K) => { const f = LINE_REF.FW, r = LINE_REF[p.line]; return f != null && r != null && K[p.line] ? Math.max(0, f - r) * K[p.line] : 0; };
+  /* 金球奖另看「冠军防线」：威超失球最少的球队，后卫和门将加分 */
+  const bestDef = HS[s].table.slice().sort((a, b) => a.ga - b.ga)[0], bestDefT = bestDef && bestDef.team;
+  const defB = p => (p.line === 'DF' || p.line === 'GK') && p.team === bestDefT ? 3 : 0;
   const pick = (l, f) => l.slice().sort((a, b) => f(b) - f(a));
   const extLeagueChamp = {}, extAw = {}; EXT_LEAGUES.forEach(L => { const F = extFinal(L, s); if (L.short !== '列国') extLeagueChamp[F.o.champ] = 1; [['boot', '金靴', 4], ['assist', '助攻王', 2.5], ['mvp', '联赛 MVP', 5]].forEach(([k, lab, v]) => { const q = F.aw[k]; if (q) { const e = extAw[q.uid] = extAw[q.uid] || { L: [], sc: 0 }; e.L.push(L.short + lab); e.sc += v * (LEAGUE_COEF[L.short] || 0.85); } }); });
   // 威超 MVP 只看威超联赛：个人联赛数据 + 球队联赛名次 + 联赛单项榜首，不计杯赛和洲际赛
@@ -4616,16 +4625,21 @@ function awardsOf(s) {
       const fit = L => { L = L.filter(q => q.r >= 78); const n = L.length; if (n < 8) return null; const mx = L.reduce((a, q) => a + q.r, 0) / n, my = L.reduce((a, q) => a + q.v, 0) / n; let sxy = 0, sxx = 0; L.forEach(q => { sxy += (q.r - mx) * (q.v - my); sxx += (q.r - mx) ** 2; }); const b = sxx ? Math.max(0, Math.min(0.12, sxy / sxx)) : 0.05; return [my - b * mx, b]; };
       const fT = fit(rows.map(p => ({ r: RT[p.team + '|' + p.name], v: p.avg })).filter(q => Number.isFinite(q.r))), X0 = extRowsFor(s).filter(p => p.apps >= 15), fX = fit(X0.map(p => ({ r: p.rating, v: p.avg })).filter(q => Number.isFinite(q.r)));
       if (!fT || !fX) return p => p; return p => { if (!Number.isFinite(p.rating)) return p; const d = Math.max(-0.3, Math.min(0.8, (fT[0] + fT[1] * p.rating) - (fX[0] + fX[1] * p.rating))); return { ...p, avg: p.avg + d }; }; } catch (e) { return p => p; } })();
-  const ext = extRowsFor(s).map(XR).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: bsc(p) * (xCoef(p.team, s)) + h.sc - (h.maj ? 0 : 12), _hon: h.L, _honSc: h.sc, _maj: h.maj }; });
+  const ext = extRowsFor(s).map(XR).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: (bsc(p) + posAdj(p, PK_B)) * (xCoef(p.team, s)) + h.sc - (h.maj ? 0 : 12), _hon: h.L, _honSc: h.sc, _maj: h.maj }; });
   const fxMvp = ((fixOf(s) || {}).aw || {}).mvp, fxRow = fxMvp && rows.find(p => p.name === fxMvp), mvpId = fxRow ? fxRow.pid : mvpVotes[0] && mvpVotes[0].pid, bootG = gMax, astA = aMax; /* 内定的 MVP 也算进金球奖的个人荣誉 */
   /* 个人荣誉：威超 MVP、金靴、助攻王（外赛区的联赛金靴 / 助攻王 / MVP 在 extAw 里） */
   const indiv = p => { const L = [], sc = (p.pid != null && p.pid === mvpId ? (L.push('威超 MVP'), 4) : 0) + (p.g === bootG ? (L.push('威超金靴'), 2) : 0) + (p.a === astA ? (L.push('威超助攻王'), 1.5) : 0); return { sc, L }; };
-  const mkB = p => { if (!TD[p.team]) { const e = ext.find(x => x.uid === p.uid); if (e) return e; } const h = honOfP(p, false), I = indiv(p); return { ...p, _sc: bsc(p) + h.sc + I.sc - (h.maj ? 0 : 12), _hon: I.L.concat(h.L), _honSc: h.sc, _maj: h.maj }; }; /* 四大皆空（没有任何大赛冠军）再扣一次 */
+  const mkB = p => { if (!TD[p.team]) { const e = ext.find(x => x.uid === p.uid); if (e) return e; } const h = honOfP(p, false), I = indiv(p), db = defB(p); return { ...p, _sc: bsc(p) + posAdj(p, PK_B) + db + h.sc + I.sc - (h.maj ? 0 : 12), _hon: I.L.concat(db ? ['威超失球最少'] : [], h.L), _honSc: h.sc, _maj: h.maj }; }; /* 四大皆空（没有任何大赛冠军）再扣一次 */
   let ballon = rows.map(mkB).concat(ext).sort((a, b) => b._sc - a._sc);
   // 提名名单每队最多 3 人（世界足球先生 3 人、MVP 和铁卫奖 2 人），避免整队包揽；队内第二、三人的团队荣誉加成打折
   { const seen = {}; ballon.forEach(p => { const k = seen[p.team] = (seen[p.team] || 0) + 1; if (k > 1) p._sc -= (p._honSc || 0) * (k === 2 ? 0.25 : 0.4); }); ballon.sort((a, b) => b._sc - a._sc); }
   { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
+  const ballonAll = ballon.slice();
   ballon = capTeam(ballon, 10, 3);
+  /* 提名保底：前 10 名里至少有 1 名后卫和 1 名门将（同位置分数最高的人），只影响提名，不影响谁得奖 */
+  ['DF', 'GK'].forEach(l => { if (ballon.some(p => p.line === l)) return; const q = ballonAll.find(p => p.line === l && !ballon.includes(p)); if (!q || ballon.length < 10) { if (q) ballon.push(q); return; }
+    for (let i = ballon.length - 1; i > 0; i--) if (ballon[i].line !== 'DF' && ballon[i].line !== 'GK') { ballon[i] = q; break; } });
+  ballon.sort((a, b) => b._sc - a._sc); { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
   /* 四大皆空的人不拿金球：提名里只要有人拿过大赛冠军，就由其中分数最高的人得奖 */
   const needMaj = (L, f) => { if (!L.length || L[0]._maj) return voteShares(L, f, 6); const q = L.find(p => p._maj); return q ? fixVotesSc(L, q.name, s, L, f, 6) : voteShares(L, f, 6); };
   const ballonVotes = needMaj(ballon, p => p._sc);
@@ -4636,7 +4650,7 @@ function awardsOf(s) {
   const defVotes = voteShares(capTeam(pick(rows.filter(p => p.line === 'DF'), defSc), 5, 2), defSc, 2.5), def = defVotes[0] || null;
   const wsc = p => p._w;
   /* 世界足球先生：同样看数据、场均评分、团队荣誉和个人荣誉，只是团队荣誉的分量比金球奖轻一些 */
-  const mkW = p => { if (!TD[p.team]) { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; return { ...p, _w: bsc(p) * xCoef(p.team, s) + h.sc * 0.6 + (x ? x.sc : 0) - (h.maj ? 0 : 14), _hon: h.L.concat(x ? x.L : []), _maj: h.maj }; } const h = honOfP(p, false), I = indiv(p); return { ...p, _w: bsc(p) + h.sc * 0.6 + I.sc - (h.maj ? 0 : 14), _hon: I.L.concat(h.L), _maj: h.maj }; };
+  const mkW = p => { if (!TD[p.team]) { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; return { ...p, _w: (bsc(p) + posAdj(p, PK_W) + p.g * 0.25 + p.a * 0.15) * xCoef(p.team, s) + h.sc * 0.5 + (x ? x.sc : 0) - (h.maj ? 0 : 14), _hon: h.L.concat(x ? x.L : []), _maj: h.maj }; } const h = honOfP(p, false), I = indiv(p); return { ...p, _w: bsc(p) + posAdj(p, PK_W) + p.g * 0.25 + p.a * 0.15 + h.sc * 0.5 + I.sc - (h.maj ? 0 : 14), _hon: I.L.concat(h.L), _maj: h.maj }; };
   const worldPool = rows.map(mkW).concat(extRowsFor(s).map(XR).filter(p => p.apps >= 20).map(mkW));
   const worldVotes = needMaj(capTeam(pick(worldPool, wsc), 8, 3), wsc), world = worldVotes[0] || null;
   [ballonVotes, mvpVotes, defVotes, worldVotes].forEach(L => L.forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
@@ -4740,9 +4754,9 @@ function awardBlock(title, L, kind) {
 const cupMvpLine = m => `${m.name}（${m.team}）· ${m.apps ? m.apps + ' 场 ' : ''}${m.line === 'GK' ? `${m.cs ?? 0} 场零封` : `${m.g} 球 ${m.a} 助攻`}${m.avg != null ? ` · 评分 ${m.avg.toFixed(2)}` : ''}${m.motm ? ` · ${m.motm} 次全场最佳` : ''}`;
 const AWARD_RULES = [
   ['最佳球队', '看该赛季拿到的冠军和它们的含金量，威超球队和外赛区球队一起比。每座冠军按赛事级别计分：S 级（世联赛、全联冠）10 分 > A+（威超、星煌和外赛区五大联赛、世俱杯）6.5 分 > A（全联杯、亚联冠）4 分 > A-（全协联、东海职联、列国、西亚联赛）2.5 分 > B（威联赛杯、威冠联赛）1.2 分 > B-（社区杯、超级杯）0.6 分。所以两个 S 级冠军胜过一个 A+ 加两个 B 级；总分相同才比冠军数量。'],
-  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（按冠军的含金量计分：S 级世联赛、全联冠 > A+ 威超和外赛区五大联赛、星煌、世俱杯 > A 全联杯、亚联冠 > A- 全协联、东海职联 / 列国 / 西亚 > B 威联赛杯 > B- 社区杯、超级杯，两个 S 级冠军胜过一个 A+ 加两个 B 级；杯赛 MVP、双冠/三冠另加分；一项大赛冠军（世联赛、全联冠、世俱杯、联赛冠军、全联杯）都没有会大幅扣分，除非个人数据远远领先，否则拿不到金球）＋ 个人荣誉（威超 MVP、金靴、助攻王；外赛区球员算他联赛的 MVP、金靴、助攻王）。提名 10 人，每队最多 3 人，同队第 2、3 人的团队荣誉加分打折。'],
+  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（按冠军的含金量计分：S 级世联赛、全联冠 > A+ 威超和外赛区五大联赛、星煌、世俱杯 > A 全联杯、亚联冠 > A- 全协联、东海职联 / 列国 / 西亚 > B 威联赛杯 > B- 社区杯、超级杯，两个 S 级冠军胜过一个 A+ 加两个 B 级；杯赛 MVP、双冠/三冠另加分；一项大赛冠军（世联赛、全联冠、世俱杯、联赛冠军、全联杯）都没有会大幅扣分，除非个人数据远远领先，否则拿不到金球）＋ 个人荣誉（威超 MVP、金靴、助攻王；外赛区球员算他联赛的 MVP、金靴、助攻王）。后卫、门将、中场的个人分按位置换算（跟本季同位置的顶尖球员比，补回和前锋之间的大部分差距），威超失球最少球队的后卫和门将另加分，所以顶级中场偶尔能拿，后卫和门将要有历史级赛季才有机会。提名 10 人，每队最多 3 人，同队第 2、3 人的团队荣誉加分打折；前 10 名里至少有 1 名后卫和 1 名门将。'],
   ['威超 MVP', '只看威超联赛。候选：联赛出场 ≥ 20 场的威超球员。计分：联赛场均评分、进球、助攻、全场最佳（门将/后卫计零封）＋ 球队联赛名次（冠军最多，前四递减，降级区扣分）＋ 联赛射手榜、助攻榜、全场最佳次数第一各加分。不计任何杯赛。提名 6 人，每队最多 2 人。'],
-  ['世界足球先生', '威超球员和外赛区球员放在一起比。候选：各联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：全赛季个人数据和场均评分（联赛 + 杯赛 / 洲际赛）为主，加上个人荣誉（MVP、金靴、助攻王）和团队荣誉；团队荣誉同样按冠军含金量计分，但分量是金球奖的六成。比金球奖更看个人表现。提名 8 人，每队最多 3 人。'],
+  ['世界足球先生', '威超球员和外赛区球员放在一起比。候选：各联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：全赛季个人数据和场均评分（联赛 + 杯赛 / 洲际赛）为主，加上个人荣誉（MVP、金靴、助攻王）和团队荣誉；团队荣誉同样按冠军含金量计分，但分量是金球奖的六成。比金球奖更看个人表现和进球助攻，位置换算补得比金球奖少，所以仍以攻击手为主。提名 8 人，每队最多 3 人。'],
   ['各杯赛 MVP（世联赛、全联冠、世俱杯、全联杯、全协联、亚联冠、威联赛杯、社区杯、超级杯）', '只看该项赛事本身。候选：冠军队和亚军队在这项赛事里出场的球员（亚军队打八折）。计分：这项赛事的进球 ×2、助攻 ×1.3、全场最佳次数、场均评分（高于 7 分加、低于扣，按出场数放大）、门将/后卫的零封。冠亚军里有外赛区球队时，外赛区球员只有进球和助攻的数据，这时双方都只比进球和助攻，保持公平。'],
   ['铁卫奖', '威超最佳后卫，只看联赛：零封、抢断、拦截、场均评分，进球助攻少量加分，冠军队小幅加分。'],
   ['金靴 / 助攻王 / 金手套', '威超联赛进球最多 / 助攻最多 / 零封最多的球员（同数时出场少者优先；金手套同零封看评分）。'],
