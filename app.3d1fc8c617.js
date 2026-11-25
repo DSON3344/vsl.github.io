@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '2892bb5f32';
+const VES_BUILD = '9ff82333bd';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -5190,7 +5190,26 @@ function vCmp() {
   ${L.length > 5 ? `<details style="margin-top:10px"><summary class="note" style="cursor:pointer">全部 ${L.length} 场交手</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th class="l">赛季</th><th class="l">赛事</th><th class="l">主队</th><th>比分</th><th class="l">客队</th><th>${esc(A)}</th></tr></thead><tbody>${L.slice().reverse().map(row).join('')}</tbody></table></div></details>` : ''}` : `<div class="empty">还没有交手记录</div>`}</div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">Compare</div><h2>基本数据</h2></div><span class="note">${SN(SEASON)}</span></div>
   <div class="tw"><table><thead><tr><th class="l">${nm(A)}</th><th>项目</th><th style="text-align:right">${nm(B)}</th></tr></thead><tbody>${items.map(([k, x, y]) => `<tr><td class="l mono">${esc(String(x))}</td><td class="dim" style="text-align:center">${k}</td><td class="mono" style="text-align:right">${esc(String(y))}</td></tr>`).join('')}</tbody></table></div>
-  <p class="note" style="margin:8px 0 0">外赛区联赛之间的比赛只记录了积分榜，没有逐场比分，所以外赛区球队之间的交手只算杯赛。杯赛逐场比分从这次更新之后踢的赛季开始记录，较早的赛季只有威超联赛的交手。</p></div></section>`; }
+  <p class="note" style="margin:8px 0 0">外赛区联赛之间的比赛只记录了积分榜，没有逐场比分，所以外赛区球队之间的交手只算杯赛。杯赛逐场比分从这次更新之后踢的赛季开始记录，较早的赛季只有威超联赛的交手。</p></div>
+  ${cmpHonHTML(A, B, R, nm)}${cmpWlHTML(A, B, nm)}</section>`; }
+/* 球队对比：两队的冠军（威超时期 S01 起 + 威联赛时期 W01–W50），列出每项冠军的次数和赛季 */
+function teamTitles(t, R) { const out = []; const x = R && R.hon.find(y => y.t === t); if (x) Object.entries(x.list).forEach(([lab, ss]) => out.push({ lab, ss: ss.map(q => SN(q)), era: 'S' }));
+  if (WL) { const L = {}; WL.S.forEach(w => { const add = lab => (L[lab] = L[lab] || []).push(WN(w.w)); if (w.order[0] === t) add('威联赛冠军'); Object.entries(w.cups || {}).forEach(([k, c]) => { if (c && c.w === t) add(k === '世联赛' ? '世联赛冠军' : k); }); }); Object.entries(L).forEach(([lab, ss]) => out.push({ lab, ss, era: 'W' })); }
+  const ORD = ['世联赛冠军', '全联冠', '世俱杯', '威超冠军', '威联赛冠军', '全联杯', '亚联冠', '全协联', '威联赛杯', '威冠联赛冠军', '社区杯', '超级杯']; const o = l => { const i = ORD.indexOf(l); return i < 0 ? 50 : i; };
+  return out.sort((a, b) => (a.era === b.era ? 0 : a.era === 'S' ? -1 : 1) || o(a.lab) - o(b.lab) || b.ss.length - a.ss.length); }
+function cmpHonHTML(A, B, R, nm) { if (!WL) { loadWL().then(() => { if (view === 'cmp') render(); }).catch(() => { }); }
+  const col = t => { const T = teamTitles(t, R), nS = T.filter(x => x.era === 'S').reduce((a, x) => a + x.ss.length, 0), nW = T.filter(x => x.era === 'W').reduce((a, x) => a + x.ss.length, 0);
+    const grp = (era, lab) => { const l = T.filter(x => x.era === era); return l.length ? `<div class="eyebrow" style="margin:10px 0 4px">${lab}</div><div class="rank-list">${l.map(x => `<div class="rk" style="grid-template-columns:minmax(0,1fr) auto;font-size:13px;align-items:start"><span><b>${esc(x.lab)}</b><span class="dim" style="font-size:11.5px;display:block;line-height:1.5">${x.ss.join('、')}</span></span><b class="mono" style="color:var(--gold)">×${x.ss.length}</b></div>`).join('')}</div>` : ''; };
+    return `<div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px">${nm(t)}<span class="chip gold">${ic('trophy', 13)} ${nS + nW} 冠</span></div><div class="note" style="margin-top:4px">威超时期 ${nS} · 威联赛时期 ${WL ? nW : '…'}</div>${grp('S', '威超时期（S01 起）')}${WL ? grp('W', '威联赛时期（W01–W50）') : '<p class="note">威联赛时期资料载入中…</p>'}${!nS && !nW && WL ? '<p class="note" style="margin-top:10px">还没有拿过冠军</p>' : ''}</div>`; };
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Trophies</div><h2>冠军对比</h2></div><span class="note">联赛冠军 + 各项杯赛冠军</span></div><div class="grid g-2" style="gap:18px;align-items:start">${col(A)}${col(B)}</div></div>`; }
+/* 威联赛时期的交手：那时只保存了积分榜和杯赛决赛，没有逐场比分 → 列出两队的杯赛决赛对决，和同在威联赛的赛季谁排名更高 */
+function cmpWlHTML(A, B, nm) { if (!WL) return ''; const fin = [], lg = []; WL.S.forEach(w => { Object.entries(w.cups || {}).forEach(([k, c]) => { if (c && ((c.w === A && c.r === B) || (c.w === B && c.r === A))) fin.push({ w: w.w, k, win: c.w, sc: c.sc }); }); const ia = w.order.indexOf(A), ib = w.order.indexOf(B); if (ia >= 0 && ib >= 0) lg.push({ w: w.w, a: ia + 1, b: ib + 1, ra: w.tb[ia], rb: w.tb[ib] }); });
+  if (!fin.length && !lg.length) return `<div class="panel"><div class="ph"><div><div class="eyebrow">W01–W50</div><h2>威联赛时期交锋</h2></div></div><div class="empty">两队在威联赛时期没有同场竞技过（没有同季踢威联赛，也没有在杯赛决赛相遇）</div></div>`;
+  const aw = lg.filter(x => x.a < x.b).length, bw = lg.length - aw, fa = fin.filter(x => x.win === A).length;
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">W01–W50</div><h2>威联赛时期交锋</h2></div><span class="note">那时只留下积分榜和杯赛决赛，没有逐场比分</span></div>
+  <div class="grid g-3" style="gap:10px;text-align:center"><div><div style="margin-bottom:6px">${nm(A)}</div><div class="mono" style="font-size:24px;font-weight:800">${aw}</div><div class="note">季排名较高</div></div><div><div class="note" style="margin-bottom:6px">同在威联赛</div><div class="mono" style="font-size:24px;font-weight:800">${lg.length}</div><div class="note">季</div></div><div><div style="margin-bottom:6px">${nm(B)}</div><div class="mono" style="font-size:24px;font-weight:800">${bw}</div><div class="note">季排名较高</div></div></div>
+  ${fin.length ? `<div class="eyebrow" style="margin:14px 0 6px">杯赛决赛对决 · ${esc(A)} ${fa} 胜 ${fin.length - fa} 负</div><div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">赛事</th><th class="l">冠军</th><th>比分</th></tr></thead><tbody>${fin.map(x => `<tr><td class="l mono">${WN(x.w)}</td><td class="l">${esc(x.k)} 决赛</td><td class="l"><b>${esc(x.win)}</b></td><td class="mono">${esc(x.sc)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+  ${lg.length ? `<details style="margin-top:10px"><summary class="note" style="cursor:pointer">逐季联赛排名（${lg.length} 季）</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th class="l">赛季</th><th>${esc(A)}</th><th>积分</th><th>${esc(B)}</th><th>积分</th></tr></thead><tbody>${lg.map(x => `<tr><td class="l mono">${WN(x.w)}</td><td class="${x.a < x.b ? 'good' : ''}">第 ${x.a}</td><td class="mono">${x.ra.pts}</td><td class="${x.b < x.a ? 'good' : ''}">第 ${x.b}</td><td class="mono">${x.rb.pts}</td></tr>`).join('')}</tbody></table></div></details>` : ''}</div>`; }
 /* ---------- 俱乐部排行榜：战力 / 外战积分 / 荣誉 ---------- */
 let RKTAB = 'str', RKF = 'all';
 const RK_C = new Map();
