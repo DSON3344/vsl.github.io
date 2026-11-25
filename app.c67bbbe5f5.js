@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '55d2db698e';
+const VES_BUILD = '188eda82d0';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -9986,7 +9986,12 @@ document.addEventListener('click', e => {
   if (act === 'newsAll') { newsAll = !newsAll; return render(); }
   if (act === 'initNow') { S.init = initSnap(); save(); toast('已把现在的设定存为初始设定'); return confirmResetAll ? confirmResetAll() : $('#dlg').close(); }
   if (act === 'doResetAll') { $('#dlg').close(); doResetAll(); return; }
-  if (act === 'doReset') { if (S.market) { delete S.market[SEASON]; delete S.market['w' + SEASON]; } rollSalt(SEASON); S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null; for (let i = 0; i < 38; i++) DIRTY.add(i); save(); $('#dlg').close(); go('overview'); toast('赛季已重置'); }
+  if (act === 'doReset') { if (S.market) { delete S.market[SEASON]; delete S.market['w' + SEASON]; } rollSalt(SEASON); S.fx = ENGINE.fixtures(S.teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))); S.demo = false; M = null; ovRound = null;
+    /* 2026-11-25 修：本季踢过的轮次留下的东西一起清掉（月度最佳、U21 积分榜、本季第 1 轮之后的动态），
+       并标记「重置时间」：不标的话，云端上那份已经踢了几轮的进度会被当成比较新的，重新整理后又被载回来，看起来像没重置 */
+    if (S.potm) delete S.potm[SEASON]; if (S.u21 && S.u21.s === SEASON) delete S.u21; if (S.cstr && S.cstr.s === SEASON) delete S.cstr;
+    const afterR0 = x => x && x.s === SEASON && /第 ([1-9]\d*) 轮|冬窗/.test(String(x.when || x.phase || '')); if (Array.isArray(S.mkInbox)) S.mkInbox = S.mkInbox.filter(x => !afterR0(x)); if (Array.isArray(S.yup)) S.yup = S.yup.filter(x => !(x.s === SEASON && x.ri > 0));
+    S.updated = Date.now(); S.reset = S.updated; $('#dlg').close(); persistAndReload('正在重置赛季…'); }
   if (act === 'dismissDemo') { S.demo = false; save(); render(); }
   if (act === 'takeOwn') return takeOwn(false);
   if (act === 'takeOwnForce') { const b = $('#takeForceBtn'); if (b && !b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '确定用这台覆盖？再按一次'; return; } return takeOwn(true); }
