@@ -221,6 +221,24 @@ tr.eline td{border-bottom:2px solid var(--accent)!important}tr.rline td{border-t
 .hnews2{padding:0 4px}.hn-i{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid rgba(var(--tint),.06)}.hn-i:last-child{border-bottom:0}
 @media (max-width:760px){.wgrid{grid-template-columns:1fr 1fr;gap:8px}.wbig{font-size:17px}.hother{grid-template-columns:1fr!important}}
 .hm-only{display:none}@media (max-width:760px){.hd-only{display:none!important}.hm-only{display:grid}.hseg::-webkit-scrollbar{display:none}.ovhero .big{font-size:56px}.ovhero h1{font-size:24px}.ovhero p.muted{display:none}.ovhero .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ovhero .btns .btn{justify-content:center;font-size:13px;padding:8px 6px}.ovhero .btns .btn.primary:first-child{grid-column:1/-1}.hdet>summary::-webkit-details-marker{display:none}.hm-only .fx{padding:5px 2px;gap:6px}.hm-only .fx .sc{min-width:52px}.hm-only .fx .sc small{display:none}.hm-only .fx .tname img,.hm-only .fx .tname svg{width:18px;height:18px}.hm-only .fx .tname{font-size:13.5px}}
+.tick{display:flex;align-items:stretch;height:40px;border:1px solid var(--line);border-top-color:rgba(var(--tint),.14);border-radius:4px;background:var(--bg-2);overflow:hidden;min-width:0}
+.tick-h{flex:none;display:flex;align-items:center;gap:6px;padding:0 14px;font:700 12px var(--mono);letter-spacing:.06em;color:var(--acc-ink);background:var(--accent)}
+.tk-dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:tkb 1.2s ease-in-out infinite}@keyframes tkb{50%{opacity:.25}}
+.tick-v{flex:1;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
+.tick-t{display:flex;width:max-content;height:100%;animation:tickmv var(--tkd,90s) linear var(--tkdl,0s) infinite;will-change:transform}
+.tick:hover .tick-t,.tick:focus-within .tick-t{animation-play-state:paused}
+.tick-g{display:flex;align-items:center;flex:none}
+.tk-i{display:inline-flex;align-items:center;gap:6px;padding:0 16px;white-space:nowrap;font-size:13px;height:100%;position:relative}
+.tk-i+.tk-i::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:1px;background:var(--line-2)}
+.tk-fx{cursor:pointer}.tk-fx:hover{background:rgba(var(--tint),.05)}
+.tk-lab{font:700 11px var(--mono);letter-spacing:.08em;color:var(--accent)}
+.tk-sc{font-family:var(--mono);font-size:14px;color:var(--accent-2);padding:0 2px}.tk-st{font-style:normal;font-size:10.5px;color:var(--fg-3)}.tk-ko{font-family:var(--mono);font-size:12px;color:var(--fg-2)}
+.tk-lv .livefx,.tk-lv{display:inline-flex;align-items:center;gap:6px}.tk-lv .livesc{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent-2)}.tk-lv .livedot{font:10.5px var(--mono);color:var(--loss)}
+.tk-tag{font-style:normal;font-size:10.5px;padding:1px 6px;border:1px solid var(--line-2);border-radius:3px;color:var(--fg-2)}.tk-tag.gold{color:var(--gold);border-color:rgba(217,180,90,.45)}.tk-tag.good{color:var(--accent)}
+.tk-n .lnk{font-size:13px}
+@keyframes tickmv{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.tick-t{animation:none}.tick-v{overflow-x:auto;-webkit-mask-image:none;mask-image:none}.tick-g+.tick-g{display:none}}
+@media (max-width:760px){.tick{height:36px}.tick-h{padding:0 10px}.tk-i{font-size:12.5px;padding:0 12px}}
 .ovhero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:22px;align-items:center}
 .ovhero .big{font-family:var(--disp);font-size:clamp(56px,8vw,100px);line-height:.85;font-weight:700;letter-spacing:-.01em;color:var(--accent-2)}
 .ovhero .big small{font-size:.32em;letter-spacing:0;color:var(--fg-3);margin-left:6px}
@@ -410,6 +428,21 @@ dialog .tw:not(:has(select,input,textarea)){overflow-x:auto;margin-inline:0;-web
 dialog .dlg [style*="max-height"]{max-height:62vh!important}}
 .dlg-x{position:absolute;top:10px;right:10px}
 .pcard{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+/* 球员资料改版：身份卡 + 关键资料格 + 本季数据条 + 分页 */
+.phero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center;padding-right:36px}
+.phero-ovr{display:grid;justify-items:center;gap:4px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.phero-ovr .ovr{font-family:var(--disp);font-size:46px;line-height:.9;font-weight:700;letter-spacing:-.01em}.phero-ovr{min-width:92px}
+.phero-name{margin:0;font-size:24px;line-height:1.2}
+.phero-meta{color:var(--fg-2);font-size:13px;margin-top:4px}
+.pfacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
+.pfact{border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--panel);min-width:0}
+.pfact span{display:block;font-size:11px;color:var(--fg-3);letter-spacing:.04em}
+.pfact b{display:block;font-size:13.5px;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pfact small{font-weight:400}
+.pstrip{display:grid;grid-template-columns:auto repeat(4,minmax(0,1fr));gap:8px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--panel-2)}
+.pstrip>div{text-align:center}.pstrip b{display:block;font-family:var(--disp);font-size:22px;line-height:1}.pstrip span:not(.eyebrow){font-size:11px;color:var(--fg-3)}
+.bad-t{color:var(--loss)}
+@media (max-width:560px){.phero{gap:12px}.phero-name{font-size:20px}.phero-ovr .ovr{font-size:36px}.pfacts{grid-template-columns:repeat(3,minmax(0,1fr))}.pfact{padding:6px 8px}.phero-ovr{min-width:74px;padding:8px 10px}.pstrip{grid-template-columns:repeat(4,minmax(0,1fr))}.pstrip .eyebrow{grid-column:1/-1}}
 .pcard .ovr{font-family:var(--disp);font-size:64px;font-weight:700;line-height:.9;letter-spacing:0}
 .pcard h3{font-size:24px;font-weight:900}
 .attrs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 22px}
@@ -568,9 +601,9 @@ body.busy-sim .ovhero .btns .btn{pointer-events:none;opacity:.5}
 .u21tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;padding:0 5px;border-radius:4px;background:rgba(var(--acc-rgb),.16);color:var(--acc-hi,#fff);vertical-align:1px}
 .u21dg{grid-template-columns:minmax(260px,.9fr) minmax(0,1.3fr)}@media (max-width:760px){.u21dg{grid-template-columns:1fr}}
 </style>
-<link rel="preload" as="script" href="lib.47a97d5fbf.js">
+<link rel="preload" as="script" href="lib.7200b59f6b.js">
 <link rel="preload" as="script" href="lib.e7d92d2e84.js">
-<link rel="preload" as="script" href="app.3c12e8cfd1.js">
+<link rel="preload" as="script" href="app.581b00b7c5.js">
 </head>
 <body>
 
@@ -608,9 +641,9 @@ body.busy-sim .ovhero .btns .btn{pointer-events:none;opacity:.5}
 <div id="navSheet" aria-hidden="true"><div class="nsh-bg" data-act="navClose"></div><div class="nsh glass" role="menu"></div></div>
 <dialog id="dlg"></dialog>
 
-<script src="lib.47a97d5fbf.js" defer></script>
+<script src="lib.7200b59f6b.js" defer></script>
 <script src="lib.e7d92d2e84.js" defer></script>
-<script id="vesMain" type="text/ves" data-src="app.3c12e8cfd1.js"></script>
+<script id="vesMain" type="text/ves" data-src="app.581b00b7c5.js"></script>
 <script>
 /* 先读 IndexedDB 里的往季存档，再执行主程序（主程序开场就要同步读存档） */
 (function () { let done = false, early = false;
