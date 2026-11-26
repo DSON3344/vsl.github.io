@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '06a7b778a1';
+const VES_BUILD = 'f8f29c76f4';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -2494,16 +2494,22 @@ function maybeEndSeason(force) {
 function seasonDoneBanner(T) {
   const A = pendingArchive(), C = (A && A.cups) || {}, W = awardsOf(SEASON) || {}, bv = W.ballonVotes || [], mv = W.mvpVotes || [];
   const who = p => p ? `<button class="lnk" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${esc(p.name)}</button><span class="dim">（${esc(p.team)}）</span>` : '–';
-  const cupL = ['世联赛', '全联冠', '世俱杯', '全联杯', '全协联', '亚联冠', '威联赛杯', '社区杯', '超级杯'].filter(k => C[k]).map(k => `<div class="rk" style="grid-template-columns:76px minmax(0,1fr)"><span class="muted">${k}</span><span>${cupClub(C[k].winner, 16)}${C[k].mvp ? ` <span class="dim" style="font-size:11px">MVP ${esc(C[k].mvp)}</span>` : ''}</span></div>`).join('');
+  const crow = (lab, t, sub) => t ? `<div class="rk" style="grid-template-columns:76px minmax(0,1fr)"><span class="muted">${lab}</span><span>${cupClub(t, 16)}${sub ? ` <span class="dim" style="font-size:11px">${sub}</span>` : ''}</span></div>` : '';
+  const crs = ks => ks.filter(k => C[k] && C[k].winner).map(k => crow(k, C[k].winner, C[k].mvp ? 'MVP ' + esc(C[k].mvp) : '')).join('');
+  /* 全部赛事的冠军：威伊士国内（威超、威冠联赛、威联赛杯、社区杯）、洲际与世界赛事、外赛区各联赛（联赛 + 国内杯赛 + 超级杯） */
+  const grp = (lab, body) => body ? `<div class="eyebrow" style="margin:10px 0 4px;font-size:10px">${lab}</div><div class="rank-list">${body}</div>` : '';
+  const cupL = grp('威伊士', crow('威超', T[0] && T[0].team) + crs(['威冠联赛', '威联赛杯', '社区杯'])) + grp('洲际与世界赛事', crs(['世联赛', '全联冠', '世俱杯', '全联杯', '全协联', '亚联冠', '超级杯']));
+  const extL = A && A.extl ? EXT_LEAGUES.map(L => { const e = A.extl[L.short]; if (!e || !e.champ) return ''; const D = EXT_DC[L.short], dc = e.dc || {}, ks = D ? [D.cup, D.lc, D.sup].filter(k => k && dc[k] && dc[k][0]) : [];
+    return `<div class="rk" style="grid-template-columns:64px minmax(0,1fr);align-items:start"><span class="muted">${esc(L.short)}</span><span style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px"><span><span class="dim">联赛</span> ${extNm(e.champ, 14)}</span>${ks.map(k => `<span><span class="dim">${esc(k)}</span> ${extNm(dc[k][0], 14)}</span>`).join('')}</span></div>`; }).join('') : '';
   return `<div class="panel" style="padding:16px 18px;border-color:var(--gold)"><div class="split"><div><div class="eyebrow">Season complete · 已结算</div><b style="font-size:16px">${SN(SEASON)} 赛季已全部踢完 · ${esc(T[0].team)} 夺冠</b><p class="note" style="margin:4px 0 0">杯赛和个人奖项已经结算，可以先在「赛事与奖项」、积分榜、数据榜里看个够；满意后再进入新赛季（届时才正式存档、升降级、退役与转会）。不满意可以重踢本季。</p></div><span class="btns"><button class="btn ghost" data-act="reset">重踢本季</button><button class="btn ghost" data-act="seeCups">查看杯赛与奖项</button>${true ? `<button class="btn ghost" data-go="transfers">转会市场${(() => { const n = mktGet().offers.filter(o => o.st === 'p').length; return n ? ` · ${n} 份报价` : ''; })()}</button>` : ''}<button class="btn primary" data-act="nextSeason">进入 ${SN(SEASON + 1)} →</button></span></div>
-    <div class="grid g-2" style="gap:14px;margin-top:12px"><div><div class="eyebrow" style="margin-bottom:6px">杯赛冠军</div><div class="rank-list">${cupL}</div></div>
+    <div class="grid g-2" style="gap:14px;margin-top:12px"><div><div class="eyebrow" style="margin-bottom:2px">各项赛事冠军</div>${cupL}</div>
     <div><div class="eyebrow" style="margin-bottom:6px">个人奖项</div><div class="rank-list">
       <div class="rk" style="grid-template-columns:76px minmax(0,1fr)"><span class="muted">金球奖</span><span>${who(W.ballon && W.ballon[0])}${bv[0] ? ` <span class="mono dim">${bv[0].pct}%</span>` : ''}</span></div>
       <div class="rk" style="grid-template-columns:76px minmax(0,1fr)"><span class="muted">威超 MVP</span><span>${who(mv[0])}${mv[0] ? ` <span class="mono dim">${mv[0].pct}%</span>` : ''}</span></div>
       <div class="rk" style="grid-template-columns:76px minmax(0,1fr)"><span class="muted">金靴</span><span>${who(W.boot)}${W.boot ? ` <span class="mono dim">${W.boot.g} 球</span>` : ''}</span></div>
       <div class="rk" style="grid-template-columns:76px minmax(0,1fr)"><span class="muted">世界足球先生</span><span>${who(W.world)}</span></div>
       <div class="rk" style="grid-template-columns:76px minmax(0,1fr)"><span class="muted">升级球队</span><span>${(A && A.next || []).map(t => esc(t)).join('、')}</span></div>
-    </div></div></div></div>`;
+    </div>${extL ? `<div class="eyebrow" style="margin:14px 0 4px">外赛区</div><div class="rank-list">${extL}</div>` : ''}</div></div></div>`;
 }
 function seasonEndDialog(A) {
   const top = A.ps.slice().sort((x, y) => y[4] - x[4])[0];
