@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '6717f17dfe';
+const VES_BUILD = '4447c9e18e';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -2473,11 +2473,13 @@ function u21Name(nat, rnd) { const one = a => a[Math.floor(rnd() * a.length)]; i
 function xuIntake(c, y) { const X = EXT_CLUB[c]; if (!X) return []; const rnd = seeded('xu|' + c + '|' + y), L = LEAGUE_OF[c] || EXT_LEAGUES[0], nats = STYLE_NATS[X.style || L.style] || STYLE_NATS.nord, PS = { DF: ['CB', 'CB', 'LB', 'RB'], MF: ['CDM', 'CM', 'CM', 'CAM'], FW: ['ST', 'ST', 'LW', 'RW'] };
   return ['DF', y % 2 ? 'GK' : 'DF', 'MF', 'FW'].map((ln, i) => { const nat = rnd() < (L.wa ? 0.9 : 0.75) ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)], pos = ln === 'GK' ? 'GK' : PS[ln][Math.floor(rnd() * 4)];
     return { id: 'XU|' + c + '|' + y + '|' + i, name: u21Name(nat, rnd), nat, pos, line: ln, y, pot: (X.str || 75) - 17 + rnd() * 13 }; }); }
-function xuRating(k, s) { return Math.round(Math.max(35, k.pot - (23 - (16 + s - k.y)) * 4.5)); }
+/* 梯队能力对齐威超青训：豪门的梯队不会因为一线队强就整批碾压（威超 U21 主力平均约 48–60），所以球队实力超过 78 的部分打五折 */
+function xuRating(k, s) { const c = k.id.split('|')[1], str = (EXT_CLUB[c] && EXT_CLUB[c].str) || 75; return Math.round(Math.max(35, k.pot - Math.max(0, str - 78) * 0.5 - (23 - (16 + s - k.y)) * 4.5)); }
+const XU_FIRST = 69; /* 梯队球员练到这个能力就已经在一线队踢球（跟威超一样，升上一线队的不算 U21 梯队） */
 function extU21Kids(c, s) { if (XU_SCANN !== EXTP.length) { XU_SCANN = EXTP.length; EXTP.forEach(p => { if (p.u21 && !XU_PROMO.has(p.u21)) { XU_PROMO.set(p.u21, p.s0); XU_C.clear(); } }); } /* 从快照还原时 XU_PROMO 是空的：从一线队名单补回谁已经升上去 */ const key = c + '|' + s; if (XU_C.has(key)) return XU_C.get(key); if (XU_C.size > 3000) XU_C.clear(); const out = [];
-  for (let y = s - 5; y <= s; y++) xuIntake(c, y).forEach(k => { const pr = XU_PROMO.get(k.id); if (pr != null && pr <= s) return; out.push({ ...k, age: 16 + s - y, r: xuRating(k, s) }); });
+  for (let y = s - 5; y <= s; y++) xuIntake(c, y).forEach(k => { const pr = XU_PROMO.get(k.id); if (pr != null && pr <= s) return; const r = xuRating(k, s); out.push({ ...k, age: 16 + s - y, r, up: r >= XU_FIRST }); });
   XU_C.set(key, out); return out; }
-function extU21Squad(c, s) { const L = extU21Kids(c, s), pick = (ln, n) => L.filter(x => x.line === ln).sort((a, b) => b.r - a.r).slice(0, n), xi = [...pick('GK', 1), ...pick('DF', 4), ...pick('MF', 3), ...pick('FW', 3)];
+function extU21Squad(c, s) { const L = extU21Kids(c, s).filter(k => !k.up), pick = (ln, n) => L.filter(x => x.line === ln).sort((a, b) => b.r - a.r).slice(0, n), xi = [...pick('GK', 1), ...pick('DF', 4), ...pick('MF', 3), ...pick('FW', 3)];
   return xi.map(x => ({ id: x.id, name: x.name, pos: x.pos, line: x.line, r: x.r })); }
 /* 一线队球员退役、接班新人时：S20 起改由梯队里最好的同线球员（19–21 岁）升上一线队 */
 function xuGraduate(c, line, s) { if (!u21xOn(s) || !EXT_CLUB[c]) return null; const L = extU21Kids(c, s).filter(k => k.age >= 19 && (k.line === line || (line !== 'GK' && k.line !== 'GK'))).sort((a, b) => (b.line === line) - (a.line === line) || b.r - a.r); const k = L[0]; if (!k) return null; XU_PROMO.set(k.id, s); XU_C.clear(); return k; }
