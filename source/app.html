@@ -1102,10 +1102,22 @@ function mentorInfo(t) { const L = PDB[t] || []; const M = L.filter(p => (p.age 
 /* 手动改过潜力的球员（S.edits[uid].pot，potA = 改的时候的年龄）：现在的能力不变，之后逐年朝新的潜力走（26 岁前后到位） */
 const potEdOf = p => { if (!p || !p.uid || typeof S === 'undefined' || !S || !S.edits || String(p.uid).startsWith('K|')) return null; const e = S.edits[p.uid]; return e && e.pot != null && e.pot !== '' ? e : null; };
 let SCR_CAP = null; const scrCapOf = p => { if (!SCR_CAP) { SCR_CAP = {}; try { SCRIPT.P.forEach(x => { if (x.cap) SCR_CAP['K|X|' + x.n] = x.cap; }); } catch (e) { } } return SCR_CAP[String(p && p.uid || '')] || 0; };
-function growthOf(p) { if (p._gz && p._gzB === p._g) return p._gz; const g = growthOfR(p); if (rzEx(p)) { const c = scrCapOf(p); if (!c) return g; p._gzB = p._g; return (p._gz = { pot: Math.min(c, g.pot), at: a => Math.min(c, g.at(a)), past: a => Math.min(c, g.past(a)), raw: g }); } /* 剧本指定的能力上限（例：特劳纳多约 90） */ p._gzB = p._g; const lf = starLift(p); return (p._gz = { pot: Math.min(RMAX, Math.round(RZ(g.pot) + lf)), at: a => Math.min(RMAX, Math.round(RZ(g.at(a)) + lf)), past: a => Math.min(RMAX, Math.round(RZ(g.past(a)) + lf)), raw: g }); }
+function growthOf(p) { if (p._gz && p._gzB === p._g) return p._gz; const g = growthOfR(p); if (rzEx(p)) { const c = scrCapOf(p); if (!c) return g; p._gzB = p._g; return (p._gz = { pot: Math.min(c, g.pot), at: a => Math.min(c, g.at(a)), past: a => Math.min(c, g.past(a)), raw: g }); } /* 剧本指定的能力上限（例：特劳纳多约 90） */ p._gzB = p._g; const lf = starLift(p), lx = xsLift(p, g), xt = lx ? xsTgt(p.uid) : 0, V = (b, a) => Math.min(RMAX, Math.round(Math.max(b + lf, lx ? Math.max(b, Math.min(xt, b + lx * xsRamp(a))) : b))); /* 球星加成不会把人抬过目标值 */ return (p._gz = { pot: Math.min(RMAX, Math.round(Math.max(RZ(g.pot) + lf, lx ? Math.min(xt, RZ(g.pot) + lx) : 0))), at: a => V(RZ(g.at(a)), a), past: a => V(RZ(g.past(a)), a), raw: g }); }
 /* 外赛区有现实原型的超级球星（现实能力 88 以上，例如哈兰德、姆巴佩）：能力压缩会把他们压到 85 上下，跟现实的地位不符。
    按现实能力额外往上抬（现实 91 约抬 4.4 分），让外赛区也有 90 以上的世界级球星 */
 function starLift(p) { const r = p && p.realR; return r >= 88 ? (r - 87) * 1.1 : 0; }
+/* 外赛区球星（2026-11-26 依 DSON 设定）：原本全世界能力前 30 名有 25 人在威超，外赛区最多 88–90，金球奖几乎都是威超球员。
+   各联赛头部球队指定几名球星，巅峰能力补到目标值：星煌三强各 3 人（93、91、90），其他顶级豪门各 2 人（92、90），次一级豪门各 1 人（90）。
+   人选：该队资料里非门将、按「能力 + 年轻加成」排前面的人；球星退役时，接替他的青训新人继承球星身份，球队一直有球星。
+   年轻球星的加成按年龄渐进（18 岁四成，24 岁满额），跟着成长慢慢变强。只影响球员能力，不影响外赛区各队的球队实力（球队实力另有设定）。 */
+let XSTAR = null; const XSTAR_Y = new Map();
+function xstarMap() { if (XSTAR) return XSTAR; XSTAR = new Map(); try { const T = {}; Object.values(EXT_TGT_DEF).forEach(([, H]) => H.forEach(([c, v]) => T[c] = v));
+    Object.entries(T).forEach(([c, v]) => { const tg = v >= 85 ? [93, 91, 90] : v >= 83.4 ? [92, 90] : v >= 82.2 ? [90] : []; if (!tg.length || !FDB0[c]) return;
+      const L = FDB0[c].filter(p => p.uid && ENGINE.LINE(p.pos) !== 'GK').map(p => [p, (p.rating || 0) + Math.max(0, 24 - (p.age || 25)) * 0.6]).sort((a, b) => b[1] - a[1]), at = L.find(([p]) => ENGINE.LINE(p.pos) === 'FW' || /AM|W/.test(p.pos)); /* 头号球星是攻击手 */
+      const pick = (at ? [at] : []).concat(L.filter(x => x !== at)).slice(0, tg.length); pick.forEach(([p], i) => XSTAR.set(p.uid, tg[i])); }); } catch (e) { console.error(e); } return XSTAR; }
+const xsTgt = uid => uid ? (xstarMap().get(uid) || XSTAR_Y.get(uid) || 0) : 0;
+function xsLift(p, g) { if (!p || !p.uid) return 0; const t = xsTgt(p.uid); if (!t) return 0; return Math.max(0, Math.min(8, t - RZ(g.pot))); }
+const xsRamp = a => a >= 24 ? 1 : a <= 18 ? 0.4 : 0.4 + 0.6 * (a - 18) / 6;
 function growthOfR(p) { if (p._g) return p._g; let g = growthOf0(p); const AD = ageEdD(p);
   if (AD) { const e = S.edits[p.uid], aN = typeof e.ageA === 'number' ? e.ageA : (pAge(p, SEASON)), g0 = g; /* 改年龄：现在的能力不变，以后按新年龄的成长 / 衰退走 */
     const at = a => a <= aN ? g0.at(a - AD) : Math.max(40, Math.min(RMAX, Math.round(g0.at(aN - AD) + g0.at(a) - g0.at(aN))));
@@ -2069,7 +2081,7 @@ function extYouth(club, old, season) {
   const nk = club + '|' + old.name + '|' + season + '|' + YOUTH_USED.size, hit = XYN.get(nk); let nm;
   if (hit && !YOUTH_USED.has(hit[0])) { for (let i = 0; i < hit[1]; i++) rnd(); nm = hit[0]; YOUTH_USED.add(nm); }
   else { let cnt = 0; const r2 = () => { cnt++; return rnd(); }; nm = nameFor(nat, r2, club); XYN.set(nk, [nm, cnt]); }
-  const o = extPlayer(club, nm, old.pos, nat, age, rating, rnd); o.cGP = o.cG = o.cA = 0; o.youth = 1; o.rating0 = rating; o.age0 = age; o.s0 = season; o.stints = [[club, season]]; o.cEnd = season + 3; o.potFix = extPA(seeded('xpa|' + club + '|' + old.name + '|' + season), club, rating);
+  const o = extPlayer(club, nm, old.pos, nat, age, rating, rnd); { const t = xsTgt(old.uid); if (t && o.uid) XSTAR_Y.set(o.uid, t); } /* 球星退役，接班的新人继承球星身份 */ o.cGP = o.cG = o.cA = 0; o.youth = 1; o.rating0 = rating; o.age0 = age; o.s0 = season; o.stints = [[club, season]]; o.cEnd = season + 3; o.potFix = extPA(seeded('xpa|' + club + '|' + old.name + '|' + season), club, rating);
   return o;
 }
 const clubAt = (p, s) => { let c = null; (p.stints || []).forEach(([cl, from]) => { if (from <= s) c = cl; }); return c; };
@@ -5310,7 +5322,18 @@ function awardsOf(s) {
   // 金球奖和世界足球先生看全赛季：联赛数据 + 杯赛 / 洲际赛的进球和助攻（洲际赛进球分量更高）
   const CW = { 世联赛: 1.3, 全联冠: 1.3, 世俱杯: 1.2, 全联杯: 1, 全协联: 0.8, 亚联冠: 1, 威联赛杯: 0.6, 社区杯: 0.4, 超级杯: 0.4 };
   const cupStatPts = p => { const T = allComps(s, p); return Object.entries(T.cups).reduce((a, [k, c]) => a + (c.g * 0.75 + c.a * 0.45) * (CW[k] || (DC_TIER[k] === 'B' ? 0.6 : DC_TIER[k] ? 0.4 : 1)), 0); };
-  const BSC = new Map(), bsc0 = p => base(p) + p.g * 0.35 + p.a * 0.15 + cupStatPts(p); /* 名字不能叫 cupPts：会盖掉外面按赛事级别给冠军计分的 cupPts，杯赛冠军就变成 0 分 */
+  /* 外赛区没有逐场模拟，数据是估算的；威超是逐场模拟，顶级球星的数据会比外赛区夸张很多（同为 92 能力，威超可以 60 球、场均 8.9，外赛区约 30 球、场均 7.5），
+     星煌联赛只有 9 轮加季后赛，数据更少。所以联赛数据不直接比，改成「在自己联赛里有多突出」：
+     各联赛取联赛数据分前 20 名的平均和离散程度，把外赛区球员的联赛数据分换算成威超同等突出程度的分数（杯赛、洲际赛大家踢的是同一批比赛，照原样算），联赛实力差另由联赛系数折扣。 */
+  const XR = p => p;
+  const LGN_W = 0.5; /* 换算的比重：0 = 不换算（原始数据），1 = 完全按联赛内突出程度 */
+  const lgRaw = p => base(p) + p.g * 0.35 + p.a * 0.15, lgOf = p => { const g = extLgAtM(p.team, s); return g && g.tier === 1 ? g.short : null; };
+  const LGN = (() => { const G = {}, st = L => { const v = L.map(lgRaw).sort((a, b) => b - a).slice(0, 20); if (v.length < 8) return null; const m = v.reduce((a, b) => a + b, 0) / v.length, sd = Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length) || 1; return { m, sd }; };
+    try { G.V = st(rows); const by = {}; extRowsFor(s).forEach(p => { const k = lgOf(p); if (!k) return; const L = EXT_LEAGUES.find(x => x.short === k); if (p.apps >= Math.min(20, ((L && extSeason(L, s).days.length) || 38) * 0.55)) (by[k] = by[k] || []).push(p); }); Object.entries(by).forEach(([k, L]) => G[k] = st(L)); } catch (e) { console.error(e); } return G; })();
+  const lgN = p => { if (TD[p.team] || !LGN.V) return lgRaw(p); const k = lgOf(p), G = k && LGN[k]; if (!G) return lgRaw(p); const raw = lgRaw(p); return raw + (LGN.V.m + (raw - G.m) * Math.max(0.5, Math.min(3, LGN.V.sd / G.sd)) - raw) * LGN_W; };
+  /* 联赛实力折扣只打在「高于基准（场均 6 分）」的那部分：整个分数一起乘，平均 140 分会被扣掉 4–8 分，太重 */
+  const xAdj = (v, t) => 60 + (v - 60) * xCoef(t, s);
+  const BSC = new Map(), bsc0 = p => lgN(p) + cupStatPts(p); /* 名字不能叫 cupPts：会盖掉外面按赛事级别给冠军计分的 cupPts，杯赛冠军就变成 0 分 */
   const bsc = p => { if (p.ext || p.pid == null) return bsc0(p); if (!BSC.has(p.pid)) BSC.set(p.pid, bsc0(p)); return BSC.get(p.pid); };
   /* 位置换算：个人分是「评分 + 进球 + 助攻」，后卫、门将、中场天生吃亏。
      按本季威超各位置前 3 名的个人分和前锋前 3 名的差距，补回一部分：金球奖补得多（顶级中场偶尔能拿，后卫门将要历史级赛季才有机会），世界足球先生补得少（仍以攻击手为主） */
@@ -5329,19 +5352,7 @@ function awardsOf(s) {
   const mvpSc = p => base(p) + rkBonus(p.team) + (p.g === gMax ? 1.5 : 0) + (p.a === aMax ? 1 : 0) + (p.motm === mMax ? 1 : 0);
   const lgTags = p => { const r = rk[p.team], L = [r === 1 ? '威超冠军' : `威超第 ${r} 名`]; if (p.g === gMax) L.push('威超射手榜第一'); if (p.a === aMax) L.push('威超助攻榜第一'); if (p.motm === mMax) L.push('全场最佳次数最多'); return L; };
   const mvpVotes = voteShares(capTeam(pick(rows, mvpSc), 6, 2), mvpSc, 3).map(p => ({ ...p, _lg: lgTags(p), _rk: rk[p.team] }));
-  /* 外赛区没有逐场模拟，数据是估算的；威超是逐场模拟，顶级球星的场均评分和进球会比同能力的外赛区球员高很多（同为 92 能力，威超场均可到 8.9、60 球，外赛区约 6.9、25 球）。
-     评奖前按同一季「能力 → 场均评分 / 场均进球 / 场均助攻」的关系，把外赛区球员的数据换算到威超的尺度（只用在评奖计分；名单上显示的仍是原始数据） */
-  const XR = (() => { try { const A2 = s < SEASON ? (S.archive || []).find(x => x.s === s) : pendingArchive(), RT = {}; if (A2 && A2.sq) Object.entries(A2.sq).forEach(([t, L]) => L.forEach(x => { RT[t + '|' + x[1]] = x[5]; }));
-      /* 每个联赛按「能力 → 数据」做回归，再看球员比同能力的人好多少（用各自联赛的离散程度换算成标准分）；外赛区球员的数据 = 威超同能力的期望值 + 标准分 × 威超的离散程度 */
-      const fit = (L, minR, cap) => { L = L.filter(q => Number.isFinite(q.r) && q.r >= minR && Number.isFinite(q.v)); const n = L.length; if (n < 8) return null; const mx = L.reduce((a, q) => a + q.r, 0) / n, my = L.reduce((a, q) => a + q.v, 0) / n; let sxy = 0, sxx = 0; L.forEach(q => { sxy += (q.r - mx) * (q.v - my); sxx += (q.r - mx) ** 2; }); const b = sxx ? Math.max(0, Math.min(cap, sxy / sxx)) : 0, f = r => my + b * (r - mx); const sd = Math.sqrt(L.reduce((a, q) => a + (q.v - f(q.r)) ** 2, 0) / n) || 0.01; return { f, sd }; };
-      const att = p => p.line === 'FW' || /AM|W/.test(p.pos || ''), V = rows.map(p => ({ p, r: RT[p.team + '|' + p.name] })), X0 = extRowsFor(s).filter(p => p.apps >= 15).map(p => ({ p, r: p.rating }));
-      const mk = (L, f, sel, minR, cap) => fit(L.filter(q => sel(q.p)).map(q => ({ r: q.r, v: f(q.p) })), minR, cap);
-      const aT = mk(V, p => p.avg, () => true, 80, 0.35), aX = mk(X0, p => p.avg, () => true, 80, 0.35), gT = mk(V, p => p.g / p.apps, att, 80, 0.2), gX = mk(X0, p => p.g / p.apps, att, 80, 0.2), sT = mk(V, p => p.a / p.apps, p => p.line !== 'GK', 80, 0.1), sX = mk(X0, p => p.a / p.apps, p => p.line !== 'GK', 80, 0.1);
-      const map = (T, X, r, v) => { if (!T || !X) return v; const k = Math.max(0.5, Math.min(3, T.sd / X.sd)); return T.f(r) + (v - X.f(r)) * k; };
-      return p => { if (!Number.isFinite(p.rating) || !p.apps) return p; const r = p.rating, avg = Math.max(5.5, Math.min(10, map(aT, aX, r, p.avg)));
-        const g = att(p) ? Math.max(0, Math.round(map(gT, gX, r, p.g / p.apps) * p.apps)) : p.g, a = p.line !== 'GK' ? Math.max(0, Math.round(map(sT, sX, r, p.a / p.apps) * p.apps)) : p.a;
-        return { ...p, avg, g, a, _raw: { avg: p.avg, g: p.g, a: p.a } }; }; } catch (e) { console.error(e); return p => p; } })();
-  const ext = extRowsFor(s).map(XR).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: (bsc(p) + posAdj(p, PK_B)) * (xCoef(p.team, s)) + h.sc, _hon: h.L, _honSc: h.sc, _maj: h.maj }; });
+  const ext = extRowsFor(s).map(XR).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: xAdj(bsc(p) + posAdj(p, PK_B), p.team) + h.sc, _hon: h.L, _honSc: h.sc, _maj: h.maj }; });
   const fxMvp = ((fixOf(s) || {}).aw || {}).mvp, fxRow = fxMvp && rows.find(p => p.name === fxMvp), mvpId = fxRow ? fxRow.pid : mvpVotes[0] && mvpVotes[0].pid, bootG = gMax, astA = aMax; /* 内定的 MVP 也算进金球奖的个人荣誉 */
   /* 个人荣誉：威超 MVP、金靴、助攻王（外赛区的联赛金靴 / 助攻王 / MVP 在 extAw 里） */
   const indiv = p => { const L = [], sc = (p.pid != null && p.pid === mvpId ? (L.push('威超 MVP'), 4) : 0) + (p.g === bootG ? (L.push('威超金靴'), 2) : 0) + (p.a === astA ? (L.push('威超助攻王'), 1.5) : 0); return { sc, L }; };
@@ -5368,7 +5379,7 @@ function awardsOf(s) {
   const defVotes = voteShares(capTeam(pick(rows.filter(p => p.line === 'DF'), defSc), 5, 2), defSc, 2.5), def = defVotes[0] || null;
   const wsc = p => p._w;
   /* 世界足球先生：同样看数据、场均评分、团队荣誉和个人荣誉，只是团队荣誉的分量比金球奖轻一些 */
-  const mkW = p => { if (!TD[p.team]) { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; return { ...p, _w: (bsc(p) + posAdj(p, PK_W) + p.g * 0.25 + p.a * 0.15) * xCoef(p.team, s) + h.sc * 0.5 + (x ? x.sc : 0) - (h.maj ? 0 : 4), _hon: h.L.concat(x ? x.L : []), _maj: h.maj }; } const h = honOfP(p, false), I = indiv(p); return { ...p, _w: bsc(p) + posAdj(p, PK_W) + p.g * 0.25 + p.a * 0.15 + h.sc * 0.5 + I.sc - (h.maj ? 0 : 4), _hon: I.L.concat(h.L), _maj: h.maj }; };
+  const mkW = p => { if (!TD[p.team]) { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; return { ...p, _w: xAdj(bsc(p) + posAdj(p, PK_W) + p.g * 0.25 + p.a * 0.15, p.team) + h.sc * 0.5 + (x ? x.sc : 0) - (h.maj ? 0 : 4), _hon: h.L.concat(x ? x.L : []), _maj: h.maj }; } const h = honOfP(p, false), I = indiv(p); return { ...p, _w: bsc(p) + posAdj(p, PK_W) + p.g * 0.25 + p.a * 0.15 + h.sc * 0.5 + I.sc - (h.maj ? 0 : 4), _hon: I.L.concat(h.L), _maj: h.maj }; };
   const worldPool = rows.map(mkW).concat(extRowsFor(s).map(XR).filter(p => p.apps >= 20).map(mkW));
   const worldVotes = needMaj(capTeam(pick(worldPool, wsc), 12, 3), wsc, 3), world = worldVotes[0] || null;
   [ballonVotes, mvpVotes, defVotes, worldVotes].forEach(L => L.forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
