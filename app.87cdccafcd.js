@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = 'f8f29c76f4';
+const VES_BUILD = '7fc5bbacfe';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -4621,6 +4621,43 @@ function bestGoalOf(s) {
   const top = cands.sort((a, b) => b.w - a.w).slice(0, 3).map((c, i) => ({ ...c, desc: GOAL_DESC[Math.floor(rnd() * GOAL_DESC.length)], v: 10 + rnd() * 6 - i * 1.2 }));
   return top.length ? voteShares(top.sort((a, b) => b.v - a.v), x => x.v, 1.6) : null;
 }
+/* ---------- 金球奖、世界足球先生的投票（参照现实规则） ----------
+   金球奖：30 人候选名单；评委是每个国家 1 位记者（共 80 国），每人排出前 10 名，依次给 15、12、10、8、7、5、4、3、2、1 分，总分最高者得奖。
+   世界足球先生：12 人候选名单；各国主教练、各国国家队队长、各国 1 位记者、球迷四组投票，各占 25%；每人选 3 人，依次给 5、3、1 分（队长不能投自己）。
+   每位投票人的判断 = 候选人的综合分 + 随机看法 + 投本国球员的小偏好；内定或「没有大赛冠军」规则选出的得主一定排第一（不行就重投）。 */
+const VOTE_IX = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', BD_PTS = [15, 12, 10, 8, 7, 5, 4, 3, 2, 1], WP_PTS = [5, 3, 1];
+let NATU = null; const natOfUid = u => { if (!u) return null; if (!NATU) { NATU = {}; [PDB, FDB].forEach(D => Object.values(D).forEach(L => (L || []).forEach(p => { if (p && p.uid && p.nat && !NATU[p.uid]) NATU[p.uid] = natKey(p.nat); }))); } return NATU[u] || null; };
+const natOfNom = p => natOfUid(p.uid || (p.pid != null ? PID_UID[p.pid] : null) || (p.pid != null ? (PL[p.pid] && PL[p.pid].uid) : null));
+const gumbel = r => -Math.log(-Math.log(Math.max(1e-12, r())));
+function voteZ(L, f) { const sc = L.map(p => { const v = f(p); return Number.isFinite(v) ? v : (p.pct ? Math.log(Math.max(0.05, p.pct)) * 6 : -99); }), mx = Math.max(...sc); return sc.map((v, i) => (v - mx) / 6 + (i === 0 && v < mx + 1 ? (mx + 1 - v) / 6 : 0)); }
+function ballot(z, nats, voterNat, k, rnd, skip, bias) { return z.map((v, i) => [i, skip === i ? -1e9 : v + (bias && voterNat && nats[i] === voterNat ? bias : 0) + gumbel(rnd)]).sort((a, b) => b[1] - a[1]).slice(0, k).map(x => x[0]); }
+/* 存进存档的候选人只留显示要用的栏位（30 人名单 + 12 人名单，完整资料太占空间） */
+const NOM_KEEP = ['pid', 'uid', 'name', 'pos', 'line', 'team', 'apps', 'starts', 'g', 'a', 'cs', 'sv', 'tk', 'int', 'motm', 'avg', 'rating', 'ext', '_hon', '_maj', 'pct', 'pts', 'v1', 'wg'];
+function slimNom(p) { const o = {}; NOM_KEEP.forEach(k => { if (p[k] !== undefined) o[k] = p[k]; }); if (typeof o.avg === 'number') o.avg = Math.round(o.avg * 100) / 100;
+  if (p._all) o._all = { apps: p._all.apps, g: p._all.g, a: p._all.a, capps: p._all.capps, cups: Object.fromEntries(Object.entries(p._all.cups || {}).filter(([, c]) => c.apps || c.g || c.a).map(([k, c]) => [k, { g: c.g || 0, a: c.a || 0 }])) }; return o; }
+function awardVoting(s, R) { const J = Object.keys(NAT_INFO), salt = saltOf(s);
+  /* 金球奖 */
+  const B = R.ballonVotes || []; if (B.length >= 2) { const nats = B.map(natOfNom); let best = null;
+    for (let t = 0; t < 40; t++) { const z = voteZ(B, p => p._sc).map((v, i) => v + (i === 0 ? t * 0.25 : 0)), pts = B.map(() => 0), v1 = B.map(() => 0), bl = J.map(n => { const b = ballot(z, nats, n, Math.min(10, B.length), seeded('bdv|' + s + '|' + salt + '|' + t + '|' + n), -1, 0.45); b.forEach((i, r) => { pts[i] += BD_PTS[r]; if (!r) v1[i]++; }); return b; });
+      const ord = B.map((_, i) => i).sort((a, b) => pts[b] - pts[a] || v1[b] - v1[a]); best = { ord, pts, v1, bl }; if (ord[0] === 0) break; }
+    const { ord, pts, v1, bl } = best; if (ord[0] !== 0) { ord.splice(ord.indexOf(0), 1); ord.unshift(0); }
+    const pos = {}; ord.forEach((i, r) => pos[i] = r);
+    R.ballonVotes = ord.map((i, r) => { const p = slimNom({ ...B[i], pts: pts[i], v1: v1[i], pct: Math.round(pts[i] / (J.length * 15) * 1000) / 10 }); if (r >= 10) delete p._all; return p; });
+    R.ballon = R.ballonVotes.slice(0, 3); R.bJury = { n: J, b: bl.map(b => b.map(i => VOTE_IX[pos[i]]).join('')) }; }
+  /* 世界足球先生 */
+  const W = R.worldVotes || []; if (W.length >= 2) { const nats = W.map(natOfNom), uidOf = p => p.uid || (p.pid != null ? PID_UID[p.pid] : null);
+    let cap = {}; try { const P = natPool(s, false); J.forEach(n => { const c = (P[n] || []).filter(q => q.age >= 18 && q.age <= 36).sort((a, b) => b.r - a.r)[0]; if (c) cap[n] = c; }); } catch (e) { }
+    let best = null;
+    for (let t = 0; t < 40; t++) { const z = voteZ(W, p => p._w).map((v, i) => v + (i === 0 ? t * 0.25 : 0)), G = { co: [], ca: [], jo: [] }, P = { co: W.map(() => 0), ca: W.map(() => 0), jo: W.map(() => 0), fa: W.map(() => 0) };
+      J.forEach(n => { [['co', 0.4], ['ca', 0.3], ['jo', 0.35]].forEach(([g, bias]) => { const c = cap[n], self = g === 'ca' && c ? W.findIndex(p => uidOf(p) && uidOf(p) === c.uid) : -1, b = ballot(z, nats, n, Math.min(3, W.length), seeded('wpv|' + s + '|' + salt + '|' + t + '|' + g + '|' + n), self, bias); b.forEach((i, r) => P[g][i] += WP_PTS[r]); G[g].push(b); }); });
+      const fr = seeded('wpf|' + s + '|' + salt + '|' + t), fz = z.map((v, i) => v * 0.7 + (W[i].g || 0) * 0.012); for (let k = 0; k < 400; k++) ballot(fz, nats, null, Math.min(3, W.length), fr, -1, 0).forEach((i, r) => P.fa[i] += WP_PTS[r]);
+      const sh = g => { const tot = P[g].reduce((a, b) => a + b, 0) || 1; return P[g].map(v => v / tot * 100); }, S4 = { co: sh('co'), ca: sh('ca'), jo: sh('jo'), fa: sh('fa') }, tot = W.map((_, i) => (S4.co[i] + S4.ca[i] + S4.jo[i] + S4.fa[i]) / 4);
+      const ord = W.map((_, i) => i).sort((a, b) => tot[b] - tot[a]); best = { ord, P, S4, tot, G }; if (ord[0] === 0) break; }
+    const { ord, P, S4, tot, G } = best; if (ord[0] !== 0) { ord.splice(ord.indexOf(0), 1); ord.unshift(0); }
+    const pos = {}, r1 = x => Math.round(x * 10) / 10; ord.forEach((i, r) => pos[i] = r);
+    R.worldVotes = ord.map(i => slimNom({ ...W[i], pct: r1(tot[i]), wg: { co: [P.co[i], r1(S4.co[i])], ca: [P.ca[i], r1(S4.ca[i])], jo: [P.jo[i], r1(S4.jo[i])], fa: r1(S4.fa[i]) } })); R.world = R.worldVotes[0];
+    const enc = L => L.map(b => b.map(i => VOTE_IX[pos[i]]).join(''));
+    R.wJury = { n: J, co: enc(G.co), ca: enc(G.ca), jo: enc(G.jo), cap: J.map(n => cap[n] ? cap[n].name : '') }; } }
 function awardsOf(s) {
   if (s === SEASON && !pendingArchive()) return null;
   if (AWARD_CACHE[s]) return AWARD_CACHE[s];
@@ -4680,10 +4717,10 @@ function awardsOf(s) {
   { const seen = {}; ballon.forEach(p => { const k = seen[p.team] = (seen[p.team] || 0) + 1; if (k > 1) p._sc -= (p._honSc || 0) * (k === 2 ? 0.25 : 0.4); }); ballon.sort((a, b) => b._sc - a._sc); }
   { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
   const ballonAll = ballon.slice();
-  ballon = capTeam(ballon, 10, 3);
-  /* 提名保底：前 10 名里至少有 1 名后卫和 1 名门将（同位置分数最高的人），只影响提名，不影响谁得奖 */
-  ['DF', 'GK'].forEach(l => { if (ballon.some(p => p.line === l)) return; const q = ballonAll.find(p => p.line === l && !ballon.includes(p)); if (!q || ballon.length < 10) { if (q) ballon.push(q); return; }
-    for (let i = ballon.length - 1; i > 0; i--) if (ballon[i].line !== 'DF' && ballon[i].line !== 'GK') { ballon[i] = q; break; } });
+  ballon = capTeam(ballon, 30, 5);
+  /* 提名保底：30 人候选名单里至少有 2 名后卫和 1 名门将（同位置分数最高的人），只影响提名，不影响谁得奖 */
+  [['DF', 2], ['GK', 1]].forEach(([l, need]) => { for (let c = ballon.filter(p => p.line === l).length; c < need; c++) { const q = ballonAll.find(p => p.line === l && !ballon.includes(p)); if (!q) return; if (ballon.length < 30) { ballon.push(q); continue; }
+    for (let i = ballon.length - 1; i > 0; i--) if (ballon[i].line !== 'DF' && ballon[i].line !== 'GK') { ballon[i] = q; break; } } });
   ballon.sort((a, b) => b._sc - a._sc); { const fp = loreAward('ballon', s), i = fp != null ? ballon.findIndex(p => p.pid === fp) : -1; if (i > 0) ballon.unshift(ballon.splice(i, 1)[0]); }
   /* 四大皆空的人不拿金球：提名里只要有人拿过大赛冠军，就由其中分数最高的人得奖 */
   /* 一项大赛冠军都没有的人原则上不拿奖，例外（像 C 罗 2013 年）：拿了联赛 MVP 或金靴，而且分数领先有大赛冠军的最高分者 margin 分以上 */
@@ -4699,7 +4736,7 @@ function awardsOf(s) {
   /* 世界足球先生：同样看数据、场均评分、团队荣誉和个人荣誉，只是团队荣誉的分量比金球奖轻一些 */
   const mkW = p => { if (!TD[p.team]) { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; return { ...p, _w: (bsc(p) + posAdj(p, PK_W) + p.g * 0.25 + p.a * 0.15) * xCoef(p.team, s) + h.sc * 0.5 + (x ? x.sc : 0) - (h.maj ? 0 : 4), _hon: h.L.concat(x ? x.L : []), _maj: h.maj }; } const h = honOfP(p, false), I = indiv(p); return { ...p, _w: bsc(p) + posAdj(p, PK_W) + p.g * 0.25 + p.a * 0.15 + h.sc * 0.5 + I.sc - (h.maj ? 0 : 4), _hon: I.L.concat(h.L), _maj: h.maj }; };
   const worldPool = rows.map(mkW).concat(extRowsFor(s).map(XR).filter(p => p.apps >= 20).map(mkW));
-  const worldVotes = needMaj(capTeam(pick(worldPool, wsc), 8, 3), wsc, 3), world = worldVotes[0] || null;
+  const worldVotes = needMaj(capTeam(pick(worldPool, wsc), 12, 3), wsc, 3), world = worldVotes[0] || null;
   [ballonVotes, mvpVotes, defVotes, worldVotes].forEach(L => L.forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
   const boot = pick((HPS[s] || []), p => p.g * 1000 - p.apps)[0];
   const assist = pick((HPS[s] || []), p => p.a * 1000 - p.apps)[0];
@@ -4718,6 +4755,7 @@ function awardsOf(s) {
       if (aw.glove) R.glove = fixRow(aw.glove, s, rows) || glove; if (aw.young) R.young = fixRow(aw.young, s, rows) || young;
       [R.ballonVotes, R.mvpVotes, R.defVotes, R.worldVotes].forEach(L => (L || []).forEach(p => { if (!p._all) p._all = allComps(s, p); if (!p._hon) p._hon = honOfP(p, !TD[p.team] && !!extLeagueChamp[p.team]).L; }));
       const tie = (nm, k, cur) => { const r = fixRow(nm, s, HPS[s]); return r && cur && r[k] >= cur[k] ? r : cur; }; if (FX.boot) R.boot = tie(FX.boot, 'g', boot); if (FX.assist) R.assist = tie(FX.assist, 'a', assist); } }
+  try { awardVoting(s, R); } catch (e) { console.error(e); }
   if (AR && !AR.awd) AR.awd = R;
   return (AWARD_CACHE[s] = R);
 }
@@ -4792,21 +4830,35 @@ function awardReason(p, kind) {
   const stat = T ? `全赛季各项赛事 ${T.apps} 场 ${T.g} 球 ${T.a} 助攻（威超 ${p.g} 球${Object.entries(T.cups).filter(([, c]) => c.g).map(([k, c]) => `、${k} ${c.g} 球`).join('')}），联赛场均 ${p.avg.toFixed(2)} 分` : kind === 'def' ? `${p.cs} 场零封、${p.tk} 次抢断、${p.int} 次拦截，场均 ${p.avg.toFixed(2)} 分` : p.line === 'GK' ? `${p.cs} 场零封，场均 ${p.avg.toFixed(2)} 分` : `${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}`;
   return `${stat}${champs.length ? `，帮助${team}拿下${champs.join('、')}` : '，个人表现力压群雄'}${mvps.length ? `，并当选${mvps.join('、')}` : ''}。`;
 }
-function awardBlock(title, L, kind) {
+function awardBlock(title, L, kind, A) {
   if (!L.length) return '';
   const w = L[0];
   const who = p => `<button class="lnk tname" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${TD[p.team] ? crest(p.team, 20) : ecrest(p.team, 20)}<span><b>${esc(p.name)}</b> <span class="sub">${esc(p.team)}${TD[p.team] ? '' : '（' + esc(extTag(p.team)) + '）'} · ${esc(p.pos)}</span></span></button>`;
-  const bar = pct => `<span style="display:inline-block;width:64px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, pct * 1.6)}%;background:var(--gold)"></i></span><b>${pct.toFixed(1)}%</b>`;
+  const mx = Math.max(1, ...L.map(p => p.pct || 0)), bar = pct => `<span style="display:inline-block;width:64px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, pct / mx * 100)}%;background:var(--gold)"></i></span><b>${pct.toFixed(1)}%</b>`;
+  const val = p => p.pct == null ? '' : p.pts != null ? `${bar(p.pct)}<div class="dim" style="font-size:11px;text-align:right">${p.pts} 分${p.v1 ? ` · 第一 ${p.v1} 票` : ''}</div>` : bar(p.pct);
+  const wgL = p => p.wg ? `<div class="dim" style="font-size:11px;margin-top:2px">主教练 ${p.wg.co[1]}%（${p.wg.co[0]} 分）· 队长 ${p.wg.ca[1]}%（${p.wg.ca[0]} 分）· 记者 ${p.wg.jo[1]}%（${p.wg.jo[0]} 分）· 球迷 ${p.wg.fa}%</div>` : '';
+  const head = w.pct == null ? '–' : w.pts != null ? `得票率 ${w.pct.toFixed(1)}% · ${w.pts} 分${w.v1 != null ? ` · 第一 ${w.v1} 票` : ''}` : `得票率 ${w.pct.toFixed(1)}%`;
+  const row = (p, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto;align-items:start"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><div style="min-width:0">${who(p)}${strengthChips(p, kind)}${wgL(p)}</div><span class="v mono" style="font-size:12px;white-space:nowrap">${val(p)}</span></div>`;
+  const cut = kind === 'ballon' ? 10 : L.length;
   return `<div class="eyebrow" style="margin:16px 0 8px">${esc(title)}</div>
-    <div class="panel" style="padding:10px 12px;margin-bottom:8px;border-color:var(--gold)"><div class="split" style="align-items:center"><span><span style="color:var(--gold);font-weight:800">得主</span> ${who(w)}</span><span class="mono" style="color:var(--gold)">得票率 ${w.pct != null ? w.pct.toFixed(1) + '%' : '–'}</span></div><div class="muted" style="font-size:12.5px;margin-top:6px">获奖原因：${esc(awardReason(w, kind))}</div></div>
-    <div class="rank-list">${L.map((p, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto;align-items:start"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><div style="min-width:0">${who(p)}${strengthChips(p, kind)}</div><span class="v mono" style="font-size:12px;white-space:nowrap">${p.pct != null ? bar(p.pct) : ''}</span></div>`).join('')}</div>`;
+    <div class="panel" style="padding:10px 12px;margin-bottom:8px;border-color:var(--gold)"><div class="split" style="align-items:center"><span><span style="color:var(--gold);font-weight:800">得主</span> ${who(w)}</span><span class="mono" style="color:var(--gold)">${head}</span></div><div class="muted" style="font-size:12.5px;margin-top:6px">获奖原因：${esc(awardReason(w, kind))}</div></div>
+    <div class="rank-list">${L.slice(0, cut).map(row).join('')}</div>${L.length > cut ? `<details style="margin-top:6px"><summary class="note" style="cursor:pointer">第 ${cut + 1}–${L.length} 名</summary><div class="rank-list" style="margin-top:6px">${L.slice(cut).map((p, i) => row(p, i + cut)).join('')}</div></details>` : ''}${A ? juryHTML(A, kind, L) : ''}`;
 }
+/* 投票明细：金球奖每位记者的前 10 名；世界足球先生各国主教练、队长、记者的前 3 名 */
+function juryHTML(A, kind, L) { const nm = c => { const p = L[VOTE_IX.indexOf(c)]; return p ? `<span${VOTE_IX.indexOf(c) === 0 ? ' style="color:var(--gold)"' : ''}>${esc(p.name)}</span>` : '–'; };
+  const tbl = (rows, cols, natLab) => `<div class="tw" style="max-height:420px;overflow:auto;margin-top:6px"><table><thead><tr><th class="l">${natLab}</th>${cols.map(c => `<th class="l">${c}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+  if (kind === 'ballon' && A.bJury) { const J = A.bJury, cols = BD_PTS.map((v, i) => `第 ${i + 1}（${v}）`);
+    return `<details style="margin-top:8px"><summary class="note" style="cursor:pointer">投票明细：${J.n.length} 国各 1 位记者，每人排前 10 名</summary>${tbl(J.n.map((n, k) => `<tr><td class="l" style="white-space:nowrap">${natBadge(n, 14)} ${esc(n)}记者</td>${[...(J.b[k] || '')].map(c => `<td class="l" style="white-space:nowrap;font-size:12px">${nm(c)}</td>`).join('')}</tr>`), cols, '评委')}</details>`; }
+  if (kind === 'world' && A.wJury) { const J = A.wJury, cols = WP_PTS.map((v, i) => `第 ${i + 1}（${v}）`), part = (g, lab, sub) => `<details style="margin-top:6px"><summary class="note" style="cursor:pointer">${lab}（${J.n.length} 人）</summary>${tbl(J.n.map((n, k) => `<tr><td class="l" style="white-space:nowrap">${natBadge(n, 14)} ${esc(n)}${sub(n, k)}</td>${[...(J[g][k] || '')].map(c => `<td class="l" style="white-space:nowrap;font-size:12px">${nm(c)}</td>`).join('')}</tr>`), cols, '投票人')}</details>`;
+    return `<details style="margin-top:8px"><summary class="note" style="cursor:pointer">投票明细：各国主教练、各国队长、各国记者、球迷，各占 25%</summary><div style="padding-left:8px">${part('co', '各国国家队主教练', () => '主教练')}${part('ca', '各国国家队队长', (n, k) => ` · ${esc(J.cap[k] || '队长')}`)}${part('jo', '各国记者', () => '记者')}
+      <p class="note" style="margin:8px 0 0">球迷投票：${L.map(p => `${esc(p.name)} ${p.wg ? p.wg.fa : 0}%`).join('、')}</p></div></details>`; }
+  return ''; }
 const cupMvpLine = m => `${m.name}（${m.team}）· ${m.apps ? m.apps + ' 场 ' : ''}${m.line === 'GK' ? `${m.cs ?? 0} 场零封` : `${m.g} 球 ${m.a} 助攻`}${m.avg != null ? ` · 评分 ${m.avg.toFixed(2)}` : ''}${m.motm ? ` · ${m.motm} 次全场最佳` : ''}`;
 const AWARD_RULES = [
   ['最佳球队', '看该赛季拿到的冠军和它们的含金量，威超球队和外赛区球队一起比。每座冠军按赛事级别计分：S 级（世联赛、全联冠）10 分 > A+（威超、星煌和外赛区五大联赛、世俱杯）6.5 分 > A（全联杯、亚联冠）4 分 > A-（全协联、东海职联、列国、西亚联赛）2.5 分 > B（威联赛杯、威冠联赛）1.2 分 > B-（社区杯、超级杯）0.6 分。所以两个 S 级冠军胜过一个 A+ 加两个 B 级；总分相同才比冠军数量。'],
-  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（按冠军的含金量计分：S 级世联赛、全联冠 > A+ 威超和外赛区五大联赛、星煌、世俱杯 > A 全联杯、亚联冠 > A- 全协联、东海职联 / 列国 / 西亚 > B 威联赛杯 > B- 社区杯、超级杯，两个 S 级冠军胜过一个 A+ 加两个 B 级；杯赛 MVP、双冠/三冠另加分；一项大赛冠军（世联赛、全联冠、世俱杯、联赛冠军、全联杯）都没有会扣分，原则上拿不到金球；例外是拿了联赛 MVP 或金靴，而且总分仍领先有大赛冠军的最高分者 6 分以上）＋ 个人荣誉（威超 MVP、金靴、助攻王；外赛区球员算他联赛的 MVP、金靴、助攻王）。后卫、门将、中场的个人分按位置换算（跟本季同位置的顶尖球员比，补回和前锋之间的大部分差距），威超失球最少球队的后卫和门将另加分，所以顶级中场偶尔能拿，后卫和门将要有历史级赛季才有机会。提名 10 人，每队最多 3 人，同队第 2、3 人的团队荣誉加分打折；前 10 名里至少有 1 名后卫和 1 名门将。'],
+  ['金球奖', '全赛季综合表现 + 团队荣誉。候选：威超和外赛区当季联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：联赛数据（场均评分、进球、助攻、全场最佳；门将/后卫另计零封）＋ 各项杯赛和洲际赛的进球助攻（世联赛、全联冠分量最高）＋ 团队荣誉（按冠军的含金量计分：S 级世联赛、全联冠 > A+ 威超和外赛区五大联赛、星煌、世俱杯 > A 全联杯、亚联冠 > A- 全协联、东海职联 / 列国 / 西亚 > B 威联赛杯 > B- 社区杯、超级杯，两个 S 级冠军胜过一个 A+ 加两个 B 级；杯赛 MVP、双冠/三冠另加分；一项大赛冠军（世联赛、全联冠、世俱杯、联赛冠军、全联杯）都没有会扣分，原则上拿不到金球；例外是拿了联赛 MVP 或金靴，而且总分仍领先有大赛冠军的最高分者 6 分以上）＋ 个人荣誉（威超 MVP、金靴、助攻王；外赛区球员算他联赛的 MVP、金靴、助攻王）。后卫、门将、中场的个人分按位置换算（跟本季同位置的顶尖球员比，补回和前锋之间的大部分差距），威超失球最少球队的后卫和门将另加分，所以顶级中场偶尔能拿，后卫和门将要有历史级赛季才有机会。候选名单 30 人，每队最多 5 人，同队第 2、3 人的团队荣誉加分打折，名单里至少有 2 名后卫和 1 名门将。投票（同现实规则）：80 国各 1 位记者当评委，每人排出前 10 名，依次给 15、12、10、8、7、5、4、3、2、1 分，总分最高者得奖；得票率 = 得分 ÷ 满分（所有评委都投他第一）。评委会参考上面的综合分，但各有看法，也略偏爱本国球员。'],
   ['威超 MVP', '只看威超联赛。候选：联赛出场 ≥ 20 场的威超球员。计分：联赛场均评分、进球、助攻、全场最佳（门将/后卫计零封）＋ 球队联赛名次（冠军最多，前四递减，降级区扣分）＋ 联赛射手榜、助攻榜、全场最佳次数第一各加分。不计任何杯赛。提名 6 人，每队最多 2 人。'],
-  ['世界足球先生', '威超球员和外赛区球员放在一起比。候选：各联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：全赛季个人数据和场均评分（联赛 + 杯赛 / 洲际赛）为主，加上个人荣誉（MVP、金靴、助攻王）和团队荣誉；团队荣誉同样按冠军含金量计分，但分量是金球奖的六成。比金球奖更看个人表现和进球助攻，位置换算补得比金球奖少，所以仍以攻击手为主。提名 8 人，每队最多 3 人。'],
+  ['世界足球先生', '威超球员和外赛区球员放在一起比。候选：各联赛出场 ≥ 20 场的球员（外赛区按联赛实力打折）。计分：全赛季个人数据和场均评分（联赛 + 杯赛 / 洲际赛）为主，加上个人荣誉（MVP、金靴、助攻王）和团队荣誉；团队荣誉同样按冠军含金量计分，但分量是金球奖的六成。比金球奖更看个人表现和进球助攻，位置换算补得比金球奖少，所以仍以攻击手为主。候选名单 12 人，每队最多 3 人。投票（同现实规则）：各国国家队主教练、各国国家队队长、各国 1 位记者、球迷四组，各占 25%；每人选 3 人，依次给 5、3、1 分，队长不能投自己。每组按得分换算成占比，四组平均就是得票率。'],
   ['各杯赛 MVP（世联赛、全联冠、世俱杯、全联杯、全协联、亚联冠、威联赛杯、社区杯、超级杯）', '只看该项赛事本身。候选：冠军队和亚军队在这项赛事里出场的球员（亚军队打八折）。计分：这项赛事的进球 ×2、助攻 ×1.3、全场最佳次数、场均评分（高于 7 分加、低于扣，按出场数放大）、门将/后卫的零封。冠亚军里有外赛区球队时，外赛区球员只有进球和助攻的数据，这时双方都只比进球和助攻，保持公平。'],
   ['铁卫奖', '威超最佳后卫，只看联赛：零封、抢断、拦截、场均评分，进球助攻少量加分，冠军队小幅加分。'],
   ['金靴 / 助攻王 / 金手套', '威超联赛进球最多 / 助攻最多 / 零封最多的球员（同数时出场少者优先；金手套同零封看评分）。'],
@@ -4829,10 +4881,10 @@ function awardsHTML(s) {
   const bar = pct => `<span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, pct * 1.6)}%;background:var(--gold)"></i></span><b>${pct.toFixed(1)}%</b>`;
   const voteList = (L, extra) => `<div class="rank-list">${L.map((p, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span>${who(p, extra(p))}<span class="v mono" style="font-size:12px;white-space:nowrap">${bar(p.pct)}</span></div>`).join('')}</div>`;
   return awardRulesHTML() + `<div class="grid g-2" style="align-items:start">
-    <div>${awardBlock('金球奖', (A.ballonVotes || A.ballon).slice(0, 8), 'ballon')}
+    <div>${awardBlock('金球奖', (A.ballonVotes || A.ballon).slice(0, 30), 'ballon', A)}
       ${awardBlock('威超 MVP', (A.mvpVotes || [A.mvp]).filter(Boolean).slice(0, 5), 'mvp')}
       ${cupMvpsHTML(s)}
-      ${A.worldVotes && A.worldVotes.length ? awardBlock('世界足球先生（与外赛区球员同场竞争）', A.worldVotes.slice(0, 5), 'world') : ''}
+      ${A.worldVotes && A.worldVotes.length ? awardBlock('世界足球先生（与外赛区球员同场竞争）', A.worldVotes.slice(0, 12), 'world', A) : ''}
       ${A.defVotes && A.defVotes.length ? awardBlock('铁卫奖（威超最佳后卫）', A.defVotes.slice(0, 5), 'def') : ''}
       ${A.goal ? `<div class="eyebrow" style="margin:16px 0 8px">最佳进球 · 球迷投票</div><div class="panel" style="padding:10px 12px;margin-bottom:8px;border-color:var(--gold)"><b style="color:var(--gold)">得主：${esc(A.goal[0].name)}</b>（${esc(A.goal[0].team)}）· 得票率 ${A.goal[0].pct}%<div class="muted" style="font-size:12.5px;margin-top:4px">获奖原因：第 ${A.goal[0].ri + 1} 轮对阵 ${esc(A.goal[0].opp)} 第 ${Math.round(A.goal[0].min)} 分钟${esc(A.goal[0].desc)}，比分 ${A.goal[0].score}。</div></div><div class="rank-list">${A.goal.map((g, i) => `<div class="rk" style="grid-template-columns:24px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span><button class="lnk" data-pid="${g.pid}"><b>${esc(g.name)}</b></button> <span class="sub">${esc(g.team)} · 第 ${g.ri + 1} 轮对阵 ${esc(g.opp)} 第 ${Math.round(g.min)} 分钟，${esc(g.desc)}（${g.score}）</span></span><span class="v mono" style="font-size:12px;white-space:nowrap">${bar(g.pct)}</span></div>`).join('')}</div>` : ''}
       <div class="rank-list" style="margin-top:16px">${row('金靴', A.boot, A.boot && A.boot.g + ' 球')}${row('助攻王', A.assist, A.assist && A.assist.a + ' 次')}${row('金手套', A.glove, A.glove && A.glove.cs + ' 场零封')}${row('金童奖', A.young, A.young ? ageAtSeason(A.young.pid, s) + ' 岁' : '')}</div></div>
@@ -9453,7 +9505,7 @@ function healthReport() {
     // 奖项
     const W = awardsOf(s); if (W) { const mx = Math.max(0, ...(HPS[s] || []).map(p => p.g)); if (W.boot && W.boot.g !== mx) add(err, '奖项', `${SN(s)} 金靴 ${W.boot.name} 只有 ${W.boot.g} 球，但最多的是 ${mx} 球`);
       if (W.ballon[0] && TD[W.ballon[0].team] && W.ballon[0].apps < 20) add(warn, '奖项', `${SN(s)} 金球奖得主 ${W.ballon[0].name} 只出场 ${W.ballon[0].apps} 次`);
-      const c = {}; (W.ballonVotes || []).forEach(p => c[p.team] = (c[p.team] || 0) + 1); Object.entries(c).forEach(([t, k]) => { if (k > 3) add(warn, '奖项', `${SN(s)} 金球提名里 ${t} 占了 ${k} 人`); }); }
+      const c = {}; (W.ballonVotes || []).forEach(p => c[p.team] = (c[p.team] || 0) + 1); Object.entries(c).forEach(([t, k]) => { if (k > 5) add(warn, '奖项', `${SN(s)} 金球提名里 ${t} 占了 ${k} 人`); }); }
   });
   const stats = n ? [['已检查的历史比赛', n + ' 场'], ['场均进球', (goals / n).toFixed(2)], ['净胜 7 球以上的大胜', `${blow} 场（${(blow / n * 100).toFixed(1)}%）`], ['单场最多进球', maxM ? `${maxM.t} 球 · ${maxM.txt}` : '–']] : [];
   return { err, warn, stats };
