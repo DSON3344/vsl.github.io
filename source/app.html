@@ -4862,7 +4862,7 @@ function seasonAll(s) {
 function allComps(s, p) {
   const m = seasonAll(s); let c = (m && m[p.team + '|' + p.name]) || { cups: {}, sum: sumRows([]) };
   if (p.uid && !TD[p.team] && EXT_CLUB[p.team]) { const X = extDcPlayer(p.team, p.uid, s); if (X && Object.keys(X).length) { const cups = { ...c.cups }; Object.entries(X).forEach(([k, q]) => { const o = { pid: null, uid: p.uid, name: p.name, team: p.team, pos: p.pos, line: p.line }; SUMF.forEach(f => o[f] = 0); Object.assign(o, { apps: q.apps, starts: q.apps, min: q.apps * 88, g: q.g, a: q.a, motm: q.motm, rs: q.rs }); cups[k] = finishP(o); }); c = { cups, sum: sumRows(Object.values(cups)) }; } } /* 外赛区国内杯赛 */
-  const tot = sumRows([p, c.sum]);
+  const tot = sumRows([p._raw ? { ...p, ...p._raw } : p, c.sum]);
   return { cups: c.cups, tot, apps: tot.apps, g: tot.g, a: tot.a, cg: c.sum.g, ca: c.sum.a, capps: c.sum.apps, partial: !!(m && m.__partial) };
 }
 // 某季所有威超球员的杯赛合计行（带 pid），给数据榜「全部赛事」用
@@ -5261,7 +5261,7 @@ function voteZ(L, f) { const sc = L.map(p => { const v = f(p); return Number.isF
 function ballot(z, nats, voterNat, k, rnd, skip, bias) { return z.map((v, i) => [i, skip === i ? -1e9 : v + (bias && voterNat && nats[i] === voterNat ? bias : 0) + gumbel(rnd)]).sort((a, b) => b[1] - a[1]).slice(0, k).map(x => x[0]); }
 /* 存进存档的候选人只留显示要用的栏位（30 人名单 + 12 人名单，完整资料太占空间） */
 const NOM_KEEP = ['pid', 'uid', 'name', 'pos', 'line', 'team', 'apps', 'starts', 'g', 'a', 'cs', 'sv', 'tk', 'int', 'motm', 'avg', 'rating', 'ext', '_hon', '_maj', 'pct', 'pts', 'v1', 'wg'];
-function slimNom(p) { const o = {}; NOM_KEEP.forEach(k => { if (p[k] !== undefined) o[k] = p[k]; }); if (typeof o.avg === 'number') o.avg = Math.round(o.avg * 100) / 100;
+function slimNom(p) { const o = {}; NOM_KEEP.forEach(k => { if (p[k] !== undefined) o[k] = p[k]; }); if (p._raw) Object.assign(o, p._raw); if (typeof o.avg === 'number') o.avg = Math.round(o.avg * 100) / 100;
   if (p._all) o._all = { apps: p._all.apps, g: p._all.g, a: p._all.a, capps: p._all.capps, cups: Object.fromEntries(Object.entries(p._all.cups || {}).filter(([, c]) => c.apps || c.g || c.a).map(([k, c]) => [k, { g: c.g || 0, a: c.a || 0 }])) }; return o; }
 function awardVoting(s, R) { const J = Object.keys(NAT_INFO), salt = saltOf(s);
   /* 金球奖 */
@@ -5329,12 +5329,18 @@ function awardsOf(s) {
   const mvpSc = p => base(p) + rkBonus(p.team) + (p.g === gMax ? 1.5 : 0) + (p.a === aMax ? 1 : 0) + (p.motm === mMax ? 1 : 0);
   const lgTags = p => { const r = rk[p.team], L = [r === 1 ? '威超冠军' : `威超第 ${r} 名`]; if (p.g === gMax) L.push('威超射手榜第一'); if (p.a === aMax) L.push('威超助攻榜第一'); if (p.motm === mMax) L.push('全场最佳次数最多'); return L; };
   const mvpVotes = voteShares(capTeam(pick(rows, mvpSc), 6, 2), mvpSc, 3).map(p => ({ ...p, _lg: lgTags(p), _rk: rk[p.team] }));
-  /* 外赛区没有逐场模拟，场均评分是估算的，同样能力的人估出来的评分比威超逐场模拟的低（约 0.3–0.5），金球奖一直偏向威超球员。
-     按同一季「能力 → 场均评分」的关系把外赛区评分校正到威超的尺度（只用在评奖，不改球员资料里的数据） */
+  /* 外赛区没有逐场模拟，数据是估算的；威超是逐场模拟，顶级球星的场均评分和进球会比同能力的外赛区球员高很多（同为 92 能力，威超场均可到 8.9、60 球，外赛区约 6.9、25 球）。
+     评奖前按同一季「能力 → 场均评分 / 场均进球 / 场均助攻」的关系，把外赛区球员的数据换算到威超的尺度（只用在评奖计分；名单上显示的仍是原始数据） */
   const XR = (() => { try { const A2 = s < SEASON ? (S.archive || []).find(x => x.s === s) : pendingArchive(), RT = {}; if (A2 && A2.sq) Object.entries(A2.sq).forEach(([t, L]) => L.forEach(x => { RT[t + '|' + x[1]] = x[5]; }));
-      const fit = L => { L = L.filter(q => q.r >= 78); const n = L.length; if (n < 8) return null; const mx = L.reduce((a, q) => a + q.r, 0) / n, my = L.reduce((a, q) => a + q.v, 0) / n; let sxy = 0, sxx = 0; L.forEach(q => { sxy += (q.r - mx) * (q.v - my); sxx += (q.r - mx) ** 2; }); const b = sxx ? Math.max(0, Math.min(0.12, sxy / sxx)) : 0.05; return [my - b * mx, b]; };
-      const fT = fit(rows.map(p => ({ r: RT[p.team + '|' + p.name], v: p.avg })).filter(q => Number.isFinite(q.r))), X0 = extRowsFor(s).filter(p => p.apps >= 15), fX = fit(X0.map(p => ({ r: p.rating, v: p.avg })).filter(q => Number.isFinite(q.r)));
-      if (!fT || !fX) return p => p; return p => { if (!Number.isFinite(p.rating)) return p; const d = Math.max(-0.3, Math.min(0.8, (fT[0] + fT[1] * p.rating) - (fX[0] + fX[1] * p.rating))); return { ...p, avg: p.avg + d }; }; } catch (e) { return p => p; } })();
+      /* 每个联赛按「能力 → 数据」做回归，再看球员比同能力的人好多少（用各自联赛的离散程度换算成标准分）；外赛区球员的数据 = 威超同能力的期望值 + 标准分 × 威超的离散程度 */
+      const fit = (L, minR, cap) => { L = L.filter(q => Number.isFinite(q.r) && q.r >= minR && Number.isFinite(q.v)); const n = L.length; if (n < 8) return null; const mx = L.reduce((a, q) => a + q.r, 0) / n, my = L.reduce((a, q) => a + q.v, 0) / n; let sxy = 0, sxx = 0; L.forEach(q => { sxy += (q.r - mx) * (q.v - my); sxx += (q.r - mx) ** 2; }); const b = sxx ? Math.max(0, Math.min(cap, sxy / sxx)) : 0, f = r => my + b * (r - mx); const sd = Math.sqrt(L.reduce((a, q) => a + (q.v - f(q.r)) ** 2, 0) / n) || 0.01; return { f, sd }; };
+      const att = p => p.line === 'FW' || /AM|W/.test(p.pos || ''), V = rows.map(p => ({ p, r: RT[p.team + '|' + p.name] })), X0 = extRowsFor(s).filter(p => p.apps >= 15).map(p => ({ p, r: p.rating }));
+      const mk = (L, f, sel, minR, cap) => fit(L.filter(q => sel(q.p)).map(q => ({ r: q.r, v: f(q.p) })), minR, cap);
+      const aT = mk(V, p => p.avg, () => true, 80, 0.35), aX = mk(X0, p => p.avg, () => true, 80, 0.35), gT = mk(V, p => p.g / p.apps, att, 80, 0.2), gX = mk(X0, p => p.g / p.apps, att, 80, 0.2), sT = mk(V, p => p.a / p.apps, p => p.line !== 'GK', 80, 0.1), sX = mk(X0, p => p.a / p.apps, p => p.line !== 'GK', 80, 0.1);
+      const map = (T, X, r, v) => { if (!T || !X) return v; const k = Math.max(0.5, Math.min(3, T.sd / X.sd)); return T.f(r) + (v - X.f(r)) * k; };
+      return p => { if (!Number.isFinite(p.rating) || !p.apps) return p; const r = p.rating, avg = Math.max(5.5, Math.min(10, map(aT, aX, r, p.avg)));
+        const g = att(p) ? Math.max(0, Math.round(map(gT, gX, r, p.g / p.apps) * p.apps)) : p.g, a = p.line !== 'GK' ? Math.max(0, Math.round(map(sT, sX, r, p.a / p.apps) * p.apps)) : p.a;
+        return { ...p, avg, g, a, _raw: { avg: p.avg, g: p.g, a: p.a } }; }; } catch (e) { console.error(e); return p => p; } })();
   const ext = extRowsFor(s).map(XR).filter(p => p.apps >= Math.min(20, (extSeason(LEAGUE_OF[p.team], s).days.length) * 0.55)).map(p => { const h = honOfP(p, !!extLeagueChamp[p.team]), x = extAw[p.uid]; if (x) { h.L.push(...x.L); h.sc += x.sc; } return { ...p, _sc: (bsc(p) + posAdj(p, PK_B)) * (xCoef(p.team, s)) + h.sc, _hon: h.L, _honSc: h.sc, _maj: h.maj }; });
   const fxMvp = ((fixOf(s) || {}).aw || {}).mvp, fxRow = fxMvp && rows.find(p => p.name === fxMvp), mvpId = fxRow ? fxRow.pid : mvpVotes[0] && mvpVotes[0].pid, bootG = gMax, astA = aMax; /* 内定的 MVP 也算进金球奖的个人荣誉 */
   /* 个人荣誉：威超 MVP、金靴、助攻王（外赛区的联赛金靴 / 助攻王 / MVP 在 extAw 里） */
