@@ -483,6 +483,16 @@ th.sorted{color:var(--accent-2)}
 
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--bg-2);border:1px solid var(--line-2);padding:9px 16px;border-radius:4px;font-size:13px;z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.5)}
 .toast{max-width:calc(100% - 32px);text-align:center;pointer-events:none}@media (max-width:760px){.toast{bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:70}} /* 手机：提示放到顶部，不再盖住底部导航和内容 */
+.ms-pops{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:80;display:grid;gap:8px;width:min(420px,calc(100% - 32px));pointer-events:none}
+.ms-pop{pointer-events:auto;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--bg-2);border:1px solid var(--line-2);border-left:3px solid var(--gold);border-radius:6px;padding:10px 10px 10px 12px;box-shadow:0 10px 34px rgba(0,0,0,.55);animation:msIn .45s var(--ease) both}
+.ms-pop.out{animation:msOut .35s var(--ease) both}
+.ms-pop .ms-ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold);font-family:var(--mono);font-weight:800;font-size:12px}
+.ms-pop .ms-k{font-size:10.5px;letter-spacing:.08em;color:var(--gold);text-transform:uppercase}.ms-pop .ms-t{font-size:13.5px;line-height:1.4;margin-top:1px}
+.ms-pop .ms-x{background:none;border:0;color:var(--fg-3);font-size:18px;line-height:1;padding:4px 6px;cursor:pointer;min-width:32px;min-height:32px}.ms-pop .ms-x:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@keyframes msIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}@keyframes msOut{to{opacity:0;transform:translateY(-10px)}}
+.ms-row{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}.ms-row:last-child{border-bottom:0}
+.ms-row .ms-n{font-family:var(--mono);font-weight:800;color:var(--gold);text-align:center;font-size:14px}.ms-row .ms-when{font-size:11px;color:var(--fg-3);font-family:var(--mono);white-space:nowrap}
+.ms-bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:4px}.ms-bar i{display:block;height:100%;background:var(--accent)}
 .note{font-size:12px;color:var(--fg-3)}
 .split{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -603,7 +613,7 @@ body.busy-sim .ovhero .btns .btn{pointer-events:none;opacity:.5}
 </style>
 <link rel="preload" as="script" href="lib.169e36a4ec.js">
 <link rel="preload" as="script" href="lib.e7d92d2e84.js">
-<link rel="preload" as="script" href="app.aaa4ff3dd7.js">
+<link rel="preload" as="script" href="app.07fe1442ed.js">
 </head>
 <body>
 
@@ -643,7 +653,7 @@ body.busy-sim .ovhero .btns .btn{pointer-events:none;opacity:.5}
 
 <script src="lib.169e36a4ec.js" defer></script>
 <script src="lib.e7d92d2e84.js" defer></script>
-<script id="vesMain" type="text/ves" data-src="app.aaa4ff3dd7.js"></script>
+<script id="vesMain" type="text/ves" data-src="app.07fe1442ed.js"></script>
 <script>
 /* 先读 IndexedDB 里的往季存档，再执行主程序（主程序开场就要同步读存档） */
 (function () { let done = false, early = false;

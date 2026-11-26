@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '50d1c58dbc';
+const VES_BUILD = '8849d8fc9a';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -2707,6 +2707,7 @@ function render() {
   app.innerHTML = ({ overview: vHome, league: vOverview, table: vTable, stats: vStats, match: vMatch, teams: vTeams, players: vPlayers, transfers: vTransfers, cups: vCups, awards: vAwards, ext: vExt, xclub: vXClub, rank: vRank, cmp: vCmp, review: vReview, xi: vXI, history: vHistory, wl: vWL, u21: vU21, pyr: vPyr, intl: vIntl })[view]();
   after[view] && after[view]();
   lazyFlush();
+  try { msSchedule(); } catch (e) { }
 }
 const after = {};
 /* 重计算的区块先放占位，画面出来后再一块一块补上（手机上首屏快很多，中间也能让浏览器喘口气） */
@@ -6637,7 +6638,7 @@ function homeNews(N, k) { return N.length ? `<div class="hnews2"><div class="eye
 /* 首页只画用得到的那一版（手机 / 桌面），不再两版都生成再用 CSS 藏起一版：每次重画首页省下约一秒 */
 const HOME_MQ = typeof matchMedia === 'function' ? matchMedia('(max-width:760px)') : null, HOME_NARROW = () => !!(HOME_MQ && HOME_MQ.matches);
 if (HOME_MQ) { const f = () => { try { if (view === 'overview') render(); } catch (e) { } }; HOME_MQ.addEventListener ? HOME_MQ.addEventListener('change', f) : HOME_MQ.addListener(f); }
-function homeMobile(N) { return `<div class="hm-only grid" style="gap:12px">${homeLgFx()}${homeWatch()}${homeLgTable()}${homeOther()}${homeIntl()}${homeHonours(4)}${homeCups()}</div>`; }
+function homeMobile(N) { return `<div class="hm-only grid" style="gap:12px">${homeLgFx()}${homeWatch()}${homeLgTable()}${homeOther()}${homeIntl()}${homeHonours(4)}${homeMilestones()}${homeCups()}</div>`; }
 /* 首页国家队大赛：最近一届最重要的大赛（世界杯 > 洲际杯 > 联合会杯 / 国家联赛 > U21）放大显示，再列同一个夏天的其他赛事和下一届 */
 const INTL_RANK = { wc: 6, euro: 5, ame: 5, asia: 4, afr: 4, conf: 3, nl: 3, u21: 2, wcq: 1, ecq: 1 };
 function homeIntl() { try { const ss = intlSeasons(), nx = nextIntl(), cur = ss.length ? intlAll()[ss[0]] : null;
@@ -6656,6 +6657,82 @@ function homeIntl() { try { const ss = intlSeasons(), nx = nextIntl(), cur = ss.
 /* 首页赛事总览：每项赛事目前进行到哪 */
 function homeCups() { try { CUP_ST = {}; cupLiveHTML(); const all = cupAll(), last = all[0] != null ? cupsOf(all[0]) || {} : {}; const st = k => CUP_ST[k] || (last[k] ? `${SN(all[0])} 冠军 ${esc(last[k].winner)}` : '尚未开赛');
     return `<div class="panel"><div class="ph"><div><div class="eyebrow">Competitions</div><h2>赛事总览</h2></div><button class="btn ghost" data-go="cups">全部赛事 →</button></div><div class="rank-list">${CUP_KS.map(k => `<button class="rk" data-go="cups" data-cup="${k}" style="grid-template-columns:76px minmax(0,1fr);text-align:left;width:100%;background:none;border:0;color:inherit;cursor:pointer"><b style="font-size:13px">${esc(k)}</b><span class="muted" style="font-size:12px">${st(k)}</span></button>`).join('')}</div></div>`; } catch (e) { console.error(e); return ''; } }
+/* ---------- 里程碑：每个联赛各自累计（球员出场 / 进球 / 助攻，球队胜场 / 进球 / 冠军），从 S1 起算 ----------
+   历史赛季在浏览器空闲时一季一季累计（外赛区要重算整季比赛，一次算完会卡），本季数据每轮重新对一次；新达成的会在页面上方弹窗 */
+const MS_STEP = { apps: [100, 100], g: [50, 50], a: [50, 50], w: [100, 100], gf: [500, 500], tt: [5, 5] };
+const MS_NEAR = { apps: 5, g: 3, a: 3, w: 3, gf: 15 };
+const msLgs = () => [{ k: '威超', L: null }].concat(EXT_LEAGUES.filter(L => L.short !== '列国').map(L => ({ k: L.short, L })));
+let MSD = null, MS_T = 0, MS_CUR = null, MS_LG = '威超';
+const msCross = (st, b, a) => { const [f, d] = MS_STEP[st], out = []; for (let v = b < f ? f : (Math.floor(b / d) + 1) * d; v <= a; v += d) out.push(v); return out; };
+const msNext = (st, a) => { const [f, d] = MS_STEP[st]; return a < f ? f : (Math.floor(a / d) + 1) * d; };
+function msNew() { const C = {}; msLgs().forEach(x => C[x.k] = { P: new Map(), T: new Map() }); return { k: (S.reset || '') + '|' + (SEASONS[0] || 0), done: 0, todo: [], C, ev: [] }; }
+/* 一个联赛一季的数据：players [[id, name, team, apps, g, a]], teams [[team, w, gf]], champ */
+function msSeasonData(x, s, cur) {
+  if (!x.L) { if (cur) { const P = liveStats().map(p => ['p' + p.pid, p.name, p.team, p.apps, p.g, p.a]); return { P, T: table().map(r => [r.team, r.w, r.gf]), champ: null }; }
+    if (!HS[s]) return null; return { P: (HPS[s] || []).map(p => ['p' + p.pid, PL[p.pid] ? PL[p.pid][0] : p.name, p.team, p.apps, p.g, p.a]), T: HS[s].table.map(r => [r.team, r.w, r.gf]), champ: HS[s].table[0] && HS[s].table[0].team }; }
+  let o, md, T; if (cur) { const n = extNow(x.L); o = n.o; md = n.md; T = extTbl(x.L); } else { o = extSeason(x.L, s); md = o.days.length; T = o.table; }
+  const R = extRows(o, md), P = Object.values(R).map(q => { const b = o.byUid[q.uid], pid = UIDPID[q.uid]; return [pid != null ? 'p' + pid : 'u' + q.uid, b ? b.name : '', q.team, q.apps, q.g, q.a]; });
+  let champ = null; if (!cur) { const A = (S.archive || []).find(z => z.s === s), e = A && A.extl && extlOf(A, x.L.short); champ = e ? e.champ : (T[0] && T[0][0]); }
+  return { P, T: T.map(r => [r[0], r[2], r[5]]), champ }; }
+/* 把一季加进累计；返回这一季跨过的里程碑 */
+function msFold(C, lg, D, s, dry) { const ev = [], P = C.P, T = C.T;
+  D.P.forEach(([id, name, team, apps, g, a]) => { const o = P.get(id) || { apps: 0, g: 0, a: 0 }; [['apps', apps], ['g', g], ['a', a]].forEach(([st, v]) => { if (v) msCross(st, o[st], o[st] + v).forEach(m => ev.push({ lg, kd: 'p', id, name, team, st, v: m, s })); });
+    if (!dry) P.set(id, { apps: o.apps + apps, g: o.g + g, a: o.a + a, name: name || o.name, team }); });
+  D.T.forEach(([team, w, gf]) => { const o = T.get(team) || { w: 0, gf: 0, tt: 0 }; [['w', w], ['gf', gf]].forEach(([st, v]) => { if (v) msCross(st, o[st], o[st] + v).forEach(m => ev.push({ lg, kd: 't', id: team, name: team, team, st, v: m, s })); });
+    const tt = o.tt + (D.champ === team ? 1 : 0); if (tt > o.tt) msCross('tt', o.tt, tt).forEach(m => ev.push({ lg, kd: 't', id: team, name: team, team, st: 'tt', v: m, s }));
+    if (!dry) T.set(team, { w: o.w + w, gf: o.gf + gf, tt }); });
+  return ev; }
+const msReady = () => MSD && !MSD.todo.length && MSD.done === SEASON - 1 && MSD.k === (S.reset || '') + '|' + (SEASONS[0] || 0);
+/* 空闲时排程：先补历史，补完再对本季 */
+function msSchedule() { if (BATCH) return; clearTimeout(MS_T); MS_T = setTimeout(() => { const ric = window.requestIdleCallback || (f => setTimeout(() => f({ timeRemaining: () => 8 }), 30)); ric(msWork, { timeout: 3000 }); }, 1200); }
+function msWork(dl) { try {
+    const k = (S.reset || '') + '|' + (SEASONS[0] || 0); if (!MSD || MSD.k !== k || MSD.done > SEASON - 1) { MSD = msNew(); MS_CUR = null; }
+    if (!MSD.todo.length && MSD.done < SEASON - 1) { for (let s = MSD.done + 1; s <= SEASON - 1; s++) msLgs().forEach(x => MSD.todo.push([x, s])); }
+    const t0 = performance.now(); while (MSD.todo.length && (performance.now() - t0 < 12 || (dl && dl.timeRemaining && dl.timeRemaining() > 6))) { const [x, s] = MSD.todo.shift(); try { const D = msSeasonData(x, s, false); if (D) MSD.ev.push(...msFold(MSD.C[x.k], x.k, D, s, false)); } catch (e) { console.error(e); } if (!MSD.todo.length || MSD.todo[0][1] !== s) MSD.done = s; if (performance.now() - t0 > 40) break; }
+    if (MSD.todo.length) { setTimeout(() => msWork(null), 60); return; }
+    msCurrent(); } catch (e) { console.error(e); } }
+function msCurrent() { const key = SEASON + '|' + playedRounds() + '|' + cupP() + '|' + nextRound() + '|' + (S.reset || ''); if (MS_CUR && MS_CUR.key === key) return;
+  const ev = [], near = []; msLgs().forEach(x => { let D = null; try { D = msSeasonData(x, SEASON, true); } catch (e) { console.error(e); } if (!D) return; const C = MSD.C[x.k];
+    ev.push(...msFold(C, x.k, D, SEASON, true));
+    D.P.forEach(([id, name, team, apps, g, a]) => { const o = C.P.get(id) || { apps: 0, g: 0, a: 0 }; [['apps', apps], ['g', g], ['a', a]].forEach(([st, v]) => { const tot = o[st] + v, nx = msNext(st, tot); if (v && nx - tot <= MS_NEAR[st]) near.push({ lg: x.k, kd: 'p', id, name: name || o.name, team, st, v: nx, left: nx - tot, tot }); }); });
+    D.T.forEach(([team, w, gf]) => { const o = C.T.get(team) || { w: 0, gf: 0 }; [['w', w], ['gf', gf]].forEach(([st, v]) => { const tot = o[st] + v, nx = msNext(st, tot); if (nx - tot <= MS_NEAR[st]) near.push({ lg: x.k, kd: 't', id: team, name: team, team, st, v: nx, left: nx - tot, tot }); }); }); });
+  MS_CUR = { key, ev, near }; msPopups(); msPaint(); }
+const msId = e => [e.lg, e.kd, e.id, e.st, e.v].join('|');
+/* 值得弹窗的：威超的进球、助攻、200 场以上出场和球队里程碑；外赛区只弹 100 球 / 100 助攻 / 400 场以上和球队里程碑 */
+const msBig = e => e.kd === 't' || (e.lg === '威超' ? (e.st !== 'apps' || e.v >= 200) : (e.st === 'apps' ? e.v >= 400 : e.v >= 100));
+function msPopups() { let st = null; try { st = JSON.parse(localStorage.getItem('ves_ms_seen') || 'null'); } catch (e) { }
+  const all = MSD.ev.filter(e => e.s >= SEASON - 1).concat(MS_CUR.ev), fresh = [], rk = playedRounds();
+  if (!st || st.r !== (S.reset || '')) st = { r: S.reset || '', ids: {}, init: 1 };
+  all.forEach(e => { if (!msBig(e) && e.lg !== '威超') return; const id = msId(e); if (st.ids[id] == null) { st.ids[id] = e.s === SEASON ? rk : 0; if (!st.init && msBig(e)) fresh.push(e); } });
+  const live = new Set(all.map(msId)); Object.keys(st.ids).forEach(id => { if (!live.has(id)) delete st.ids[id]; }); /* 只留最近两季 */
+  st.init = 0; try { localStorage.setItem('ves_ms_seen', JSON.stringify(st)); } catch (e) { } MSD.rk = st.ids;
+  if (!fresh.length || fresh.length > 25) return; /* 一次冒出一大堆：多半是切换了存档，不弹 */ const k = HOME_NARROW() ? 2 : 3; fresh.sort((a, b) => msW(b) - msW(a)); fresh.slice(0, k).forEach((e, i) => setTimeout(() => msPop(e), i * 700));
+  if (fresh.length > k) setTimeout(() => msPop(null, fresh.length - k), k * 700); }
+const msW = e => (e.lg === '威超' ? 1000 : 0) + (e.st === 'tt' ? 500 : 0) + e.v / (MS_STEP[e.st][1]);
+const MS_ST = { apps: ['场', '出场'], g: ['球', '进球'], a: ['助', '助攻'], w: ['胜', '胜场'], gf: ['球', '总进球'], tt: ['冠', '冠军'] };
+function msText(e, html) { const lg = e.lg === '威超' ? '威超' : e.lg, nm = html ? msWho(e) : esc(e.name);
+  return e.st === 'apps' ? `${nm} 迎来${lg}生涯第 <b>${e.v}</b> 场出场` : e.st === 'g' ? `${nm} 打进${lg}生涯第 <b>${e.v}</b> 球` : e.st === 'a' ? `${nm} 送出${lg}生涯第 <b>${e.v}</b> 次助攻`
+    : e.st === 'w' ? `${nm} 取得${lg}第 <b>${e.v}</b> 场胜利` : e.st === 'gf' ? `${nm} ${lg}总进球突破 <b>${e.v}</b> 球` : `${nm} 夺得第 <b>${e.v}</b> 个${lg}冠军`; }
+function msWho(e) { if (e.kd === 't') return TD[e.id] ? `<button class="lnk" data-team="${esc(e.id)}">${esc(e.id)}</button>` : `<button class="lnk" data-ext="${esc(e.id)}">${esc(e.id)}</button>`;
+  if (/^p/.test(e.id)) return `<button class="lnk" data-pid="${e.id.slice(1)}">${esc(e.name)}</button>`; const t = e.team; return t && BY_TN[t + '|' + e.name] ? `<button class="lnk" data-player="${esc(t)}|${esc(e.name)}">${esc(e.name)}</button>` : esc(e.name); }
+function msPop(e, more) { let box = document.querySelector('.ms-pops'); if (!box) { box = document.createElement('div'); box.className = 'ms-pops'; box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); document.body.appendChild(box); }
+  const d = document.createElement('div'); d.className = 'ms-pop';
+  d.innerHTML = e ? `<span class="ms-ic">${e.v}</span><div><div class="ms-k">里程碑 · ${esc(e.lg)}</div><div class="ms-t">${msText(e, true)}</div></div><button class="ms-x" aria-label="关闭">×</button>` : `<span class="ms-ic">+${more}</span><div><div class="ms-k">里程碑</div><div class="ms-t">还有 ${more} 项新里程碑，<button class="lnk" data-go="overview">到首页查看</button></div></div><button class="ms-x" aria-label="关闭">×</button>`;
+  const close = () => { if (!d.isConnected) return; d.classList.add('out'); setTimeout(() => d.remove(), 360); };
+  d.querySelector('.ms-x').addEventListener('click', ev => { ev.stopPropagation(); close(); }); d.addEventListener('click', ev => { if (ev.target.closest('[data-pid],[data-player],[data-team],[data-ext],[data-go]')) setTimeout(close, 50); });
+  box.appendChild(d); while (box.children.length > (HOME_NARROW() ? 3 : 4)) box.firstElementChild.remove(); setTimeout(close, 7000); }
+function msBody() { if (!msReady() || !MS_CUR) return `<p class="note" style="margin:0">正在统计历届数据…</p>`;
+  const lg = MS_LG, rk = MSD.rk || {}, when = e => e.s === SEASON ? (rk[msId(e)] ? `${SN(SEASON)} R${rk[msId(e)]}` : `${SN(SEASON)}`) : SN(e.s);
+  const rec = MSD.ev.filter(e => e.lg === lg && e.s >= SEASON - 1).concat(MS_CUR.ev.filter(e => e.lg === lg)).sort((a, b) => b.s - a.s || (rk[msId(b)] || 0) - (rk[msId(a)] || 0) || msW(b) - msW(a)).slice(0, 8);
+  const nc = {}, near = MS_CUR.near.filter(e => e.lg === lg).sort((a, b) => a.left / MS_NEAR[a.st] - b.left / MS_NEAR[b.st] || msW(b) - msW(a)).filter(e => (nc[e.st] = (nc[e.st] || 0) + 1) <= 2).slice(0, 6);
+  const row = e => `<div class="ms-row"><span class="ms-n">${e.v}<span class="dim" style="font-size:10px;font-weight:400">${MS_ST[e.st][0]}</span></span><span>${msText(e, true)}</span><span class="ms-when">${when(e)}</span></div>`;
+  const nr = e => `<div class="ms-row"><span class="ms-n" style="color:var(--fg-2)">${e.v}<span class="dim" style="font-size:10px;font-weight:400">${MS_ST[e.st][0]}</span></span><span>${msWho(e)} <span class="dim">${MS_ST[e.st][1]} ${e.tot}</span><div class="ms-bar"><i style="width:${Math.round((1 - e.left / (MS_NEAR[e.st] * 4)) * 100)}%"></i></div></span><span class="ms-when">差 ${e.left}</span></div>`;
+  return `<div class="eyebrow" style="margin:4px 0 2px">最近达成 · ${SN(SEASON - 1)}–${SN(SEASON)}</div>${rec.length ? rec.map(row).join('') : '<p class="note" style="margin:4px 0">这两季还没有新的里程碑。</p>'}
+    ${near.length ? `<div class="eyebrow" style="margin:12px 0 2px">即将达成</div>${near.map(nr).join('')}` : ''}`; }
+function msPaint() { const el = document.getElementById('msBody'); if (el) el.innerHTML = msBody(); }
+function homeMilestones() { const L = msLgs(); if (!L.some(x => x.k === MS_LG)) MS_LG = '威超';
+  const seg = `<div class="seg hseg" role="group" aria-label="选择联赛" style="overflow-x:auto;flex-wrap:nowrap;max-width:100%">${L.map(x => `<button data-act="msTab" data-v="${esc(x.k)}" aria-pressed="${x.k === MS_LG}" style="flex:none">${esc(x.k)}</button>`).join('')}</div>`;
+  return `<div class="panel"><div class="ph"><div><div class="eyebrow">Milestones</div><h2>里程碑</h2></div></div>${seg}<div id="msBody" style="margin-top:10px">${msBody()}</div><p class="note" style="margin:10px 0 0">各联赛分开累计，从 ${SN(1)} 起算：球员出场每 100 场、进球和助攻每 50 个，球队胜场每 100 场、进球每 500 个、联赛冠军每 5 个。</p></div>`; }
 /* 首页跑马灯：威超本轮比分（直播中每 10 秒跟着更新）+ 头条，一行由右向左循环。
    首页会定时整页重画：用开站时刻算出动画已经跑到哪，重画后接着跑，不会每次跳回开头 */
 const TICK_T0 = Date.now(), TICK_V = 64;
@@ -6698,6 +6775,7 @@ function vHome() {
     <div class="grid" style="align-content:start">
       ${homeLgTable()}
       ${homeHonours(6)}
+      ${homeMilestones()}
       ${homeCups()}
     </div>
   </div>`}
@@ -10249,6 +10327,7 @@ document.addEventListener('click', e => {
   if (act === 'cupFxAll') { CUPFX_ALL = !CUPFX_ALL; return render(); }
   if (act === 'homeTab') { HOME_MX = el.dataset.v; return render(); }
   if (act === 'u21xt') { U21XT = el.dataset.v; return render(); }
+  if (act === 'msTab') { MS_LG = el.dataset.v; el.parentNode.querySelectorAll('[data-act=msTab]').forEach(b => b.setAttribute('aria-pressed', b === el)); return msPaint(); }
   if (act === 'cvw') { CAREER_VIEW = el.dataset.v; const box = el.closest('.cvw'); if (box) { box.querySelectorAll(':scope > [data-cv]').forEach(d => d.hidden = d.dataset.cv !== CAREER_VIEW); box.querySelectorAll('[data-act=cvw]').forEach(b => b.setAttribute('aria-pressed', b === el)); } return; }
   if (act === 'extTab') { EXT_TAB = el.dataset.v; if (el.dataset.goext) return go('ext'); return render(); }
   if (act === 'intlTab') { INTL_V.tab = el.dataset.v; return render(); }
