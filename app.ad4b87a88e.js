@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '444ea86d33';
+const VES_BUILD = '710a80d575';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -5017,8 +5017,17 @@ function awardsOf(s) {
   const fg = loreAward('glove', s); const glove = (fg != null && rows.find(p => p.pid === fg)) || pick(rows.filter(p => p.line === 'GK'), p => p.cs * 100 + p.avg)[0];
   // 金童奖：21 岁或以下、代表一线队在联赛首发至少 20 场
   const young = pick((HPS[s] || []).filter(p => { const a = ageAtSeason(p.pid, s); return a != null && a <= 21 && (p.starts ?? p.apps) >= 20; }), base)[0] || null;
+  /* 年度最佳阵容（2026-11-27 起含外赛区各顶级联赛球员）：同位置分开比。外赛区球员先看在自己联赛同位置前 12 名里有多突出，
+     换算成威超同位置的分数尺度，再按联赛实力扣分（星煌不扣，东海 / 西亚扣得最多）。至少踢满联赛一半以上的场次 */
+  const xgrp = p => p.line === 'GK' ? 'GK' : /CB/.test(p.pos) ? 'CB' : /LB|RB|WB/.test(p.pos) ? 'FB' : p.line;
+  const xst = L => { const v = L.map(base).sort((a, b) => b - a).slice(0, 12); if (v.length < 4) return null; const m = v.reduce((a, b) => a + b, 0) / v.length, sd = Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length) || 1; return { m, sd }; };
+  const XV = {}; ['GK', 'CB', 'FB', 'MF', 'FW'].forEach(g => XV[g] = xst(rows.filter(p => xgrp(p) === g)));
+  let xiExt = []; try { const E = extRowsFor(s).filter(p => { const g = extLgAtM(p.team, s); if (!g || g.tier !== 1) return false; const L = EXT_LEAGUES.find(x => x.name === g.name); return L && p.apps >= Math.min(20, extSeason(L, s).days.length * 0.55); }), by = {};
+    E.forEach(p => { const k = extLgAtM(p.team, s).short + '|' + xgrp(p); (by[k] = by[k] || []).push(p); }); const GS = {}; Object.entries(by).forEach(([k, L]) => GS[k] = xst(L));
+    xiExt = E.map(p => { const g = xgrp(p), sh = extLgAtM(p.team, s).short, G = GS[sh + '|' + g], R = XV[g]; let v = base(p); if (G && R) v = R.m + (v - G.m) / G.sd * R.sd; v -= (1 - (LEAGUE_COEF[sh] || 0.85)) * 40; return { ...p, _xi: v }; }); } catch (e) { console.error(e); }
+  const xiPool = rows.map(p => ({ ...p, _xi: base(p) })).concat(xiExt), xk = p => p.pid != null ? 'p' + p.pid : 'u' + p.uid;
   const used = new Set(), xi = [];
-  const take = (f, n) => pick(rows.filter(p => !used.has(p.pid) && f(p)), base).slice(0, n).forEach(p => { used.add(p.pid); xi.push(p); });
+  const take = (f, n) => pick(xiPool.filter(p => !used.has(xk(p)) && f(p)), p => p._xi).slice(0, n).forEach(p => { used.add(xk(p)); const o = { ...p }; delete o._xi; xi.push(o); });
   take(p => p.line === 'GK', 1); take(p => /CB/.test(p.pos), 2); take(p => /LB|RB|WB/.test(p.pos), 2); take(p => p.line === 'MF', 3); take(p => p.line === 'FW', 3);
   let R = { ballon, ballonVotes, mvp, mvpVotes, goal, def, defVotes, world, worldVotes, boot, assist, glove, young, xi };
   { const FX = fixOf(s); if (FX) { const aw = FX.aw || {}, pool = rows.concat(ballonVotes, worldVotes); /* 内定的个人奖项 */
