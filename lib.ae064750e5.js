@@ -490,7 +490,9 @@ const ENGINE = (() => {
       const ms = [];
       for (let i = 0; i < n / 2; i++) {
         const a = ring[i], b = ring[n - 1 - i];
-        ms.push((r + i) % 2 === 0 ? { h: a, a: b } : { h: b, a: a });
+        /* 固定那队每轮换主客；其余对阵按位置奇偶定主客，转圈后每队主客场自然交替（最多连续 3 场同一边，原来会连踢半季主场） */
+        const home = i === 0 ? r % 2 === 0 : i % 2 === 1;
+        ms.push(home ? { h: a, a: b } : { h: b, a: a });
       }
       rounds.push(ms);
       arr.unshift(arr.pop());
