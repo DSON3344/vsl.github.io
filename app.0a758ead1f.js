@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '55310815af';
+const VES_BUILD = 'ace98c796b';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -1487,7 +1487,7 @@ function extRow(p, s) {
   const starter = r >= str - 4 || rnd() < 0.25;
   const apps = starter ? 27 + Math.floor(rnd() * 12) : 5 + Math.floor(rnd() * 18), starts = starter ? apps - Math.floor(rnd() * 4) : Math.floor(apps * 0.35);
   const avg = Math.max(5.9, Math.min(8.6, 6.25 + (r - 80) * 0.055 + (rnd() - 0.5) * 0.3));
-  const LR = extLeagueRow(club, p.uid, s); if (LR) return finishP({ pid: null, uid: p.uid, name: p.name, team: club, pos: p.pos, line, apps: LR.apps, starts: LR.apps, min: LR.apps * 86, g: LR.g, a: LR.a, y: Math.round(LR.apps * 0.1), r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: LR.motm, rs: LR.rs, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, ext: 1, rating: r });
+  const LR = extLeagueRow(club, p.uid, s); if (!LR) { const g0 = extLgAtM(club, s); if (g0 && g0.tier === 1 && s <= SEASON && EXT_LEAGUES.some(L => L.name === g0.name)) return null; } /* 顶级联赛有逐场数据：没出场就是没有，不再编估算数据（2026-11-27） */ if (LR) return finishP({ pid: null, uid: p.uid, name: p.name, team: club, pos: p.pos, line, apps: LR.apps, starts: LR.apps, min: LR.apps * 86, g: LR.g, a: LR.a, y: Math.round(LR.apps * 0.1), r: 0, sh: 0, ot: 0, tk: 0, sv: 0, cs: 0, motm: LR.motm, rs: LR.rs, kp: 0, int: 0, ps: 0, pc: 0, pg: 0, pm: 0, ext: 1, rating: r });
   const k = 0.8 + rnd() * 0.45;
   const g = Math.round(apps * k * (line === 'FW' ? 0.16 + Math.max(0, r - 76) * 0.028 : /AM|W/.test(p.pos) ? 0.1 + Math.max(0, r - 78) * 0.012 : line === 'MF' ? 0.05 : line === 'DF' ? 0.03 : 0));
   const as = Math.round(apps * (0.8 + rnd() * 0.5) * (line === 'FW' ? 0.12 : /AM|W/.test(p.pos) ? 0.2 : line === 'MF' ? 0.12 : line === 'DF' ? 0.06 : 0));
@@ -4198,7 +4198,7 @@ function extSeason(L, s) { const key = L.name + '|' + s + '|' + saltOf(s) + '|' 
   let rnd = seeded('xs|' + key); const SQ = extSquadsAt(s), T = clubsAt(L, s), po = EXT_PO[L.name], str = {}; T.forEach(c => str[c] = clubStrAt(c, s));
   const XI = {}; T.forEach(c => { const P = (SQ[c] || []).slice().sort((a, b) => b.r - a.r), need = { GK: 1, DF: 4, MF: 4, FW: 2 }, xi = [], bench = []; P.forEach(q => { if (need[q.line] > 0) { need[q.line]--; xi.push(q); } else bench.push(q); }); while (xi.length < 11 && bench.length) xi.push(bench.shift()); XI[c] = { xi, bench }; });
   const lineup = c => { const { xi, bench } = XI[c], used = new Set(); return xi.map(q => { if (q.line !== 'GK' && rnd() < 0.12) { const b = bench.find(x => x.line === q.line && !used.has(x.uid)); if (b) { used.add(b.uid); return b; } } return q; }); };
-  const gW = q => ({ FW: 6, MF: /AM|W/.test(q.pos) ? 3 : 1.6, DF: 0.5, GK: 0 })[q.line] * Math.exp((q.r - 80) / 8), aW = q => ({ FW: 2, MF: /AM|W/.test(q.pos) ? 3.2 : 2.6, DF: 1, GK: 0.1 })[q.line] * Math.exp((q.r - 80) / 9);
+  /* 进球分配（2026-11-27 调平）：中锋 / 前锋优先、边锋次之，能力差距的影响放缓（原本每高 8 分进球机会多 1.7 倍，边锋跟中锋一样多，射手王动辄 40 多球） */ const gW = q => (/ST|CF/.test(q.pos) ? 5.5 : /LW|RW/.test(q.pos) ? 3.4 : /AM/.test(q.pos) ? 2.6 : q.line === 'FW' ? 4.5 : q.line === 'MF' ? (/LM|RM/.test(q.pos) ? 1.8 : 1.3) : q.line === 'DF' ? 0.5 : 0) * Math.exp((q.r - 80) / 13), aW = q => ({ FW: 2, MF: /AM|W/.test(q.pos) ? 3.2 : 2.6, DF: 1, GK: 0.1 })[q.line] * Math.exp((q.r - 80) / 13);
   const pick = (L2, w, not) => { const ws = L2.map(q => q === not ? 0 : w(q)), tot = ws.reduce((a, b) => a + b, 0); if (!tot) return null; let x = rnd() * tot; for (let i = 0; i < L2.length; i++) { x -= ws[i]; if (x <= 0) return L2[i]; } return L2[L2.length - 1]; };
   const play = (h, a, neutral) => { const d = Math.max(-14, Math.min(14, str[h] - str[a])), adv = neutral ? 1 : 1.12, x = pois(1.3 * Math.exp(0.045 * d) * adv, rnd), y = pois(1.3 * Math.exp(-0.045 * d) / adv, rnd), lh = lineup(h), la = lineup(a), gl = [];
     [[x, lh, 0], [y, la, 1]].forEach(([n, Lx, sd]) => { for (let i = 0; i < n; i++) { const sc = pick(Lx, gW); if (!sc) continue; const as = rnd() < 0.75 ? pick(Lx, aW, sc) : null; gl.push([sd, sc.uid, as ? as.uid : null]); } });

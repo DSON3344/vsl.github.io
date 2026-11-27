@@ -11,7 +11,7 @@ const ENGINE = (() => {
   // 进球/助攻倾向（按位置）
   const GOAL_W = { GK: 0, DF: 0.35, MF: 1.1, FW: 4.2 };
   // 进球分配（按现实联赛的比例校准：前锋约四成、边锋两成多、中场两成多、后卫一成）
-  const POS_GOAL = p => /CAM|LAM|RAM/.test(p) ? 2.1 : /LW|RW/.test(p) ? 2.7 : /CF/.test(p) ? 2.4 : /ST/.test(p) ? 2.6 : /WB/.test(p) ? 0.7 : /LM|RM/.test(p) ? 1.5 : /DM/.test(p) ? 0.6 : /CB/.test(p) ? 0.6 : /LB|RB/.test(p) ? 0.4 : GOAL_W[LINE(p)];
+  const POS_GOAL = p => /CAM|LAM|RAM/.test(p) ? 2.0 : /LW|RW/.test(p) ? 2.6 : /CF/.test(p) ? 3.4 : /ST/.test(p) ? 3.7 : /WB/.test(p) ? 0.7 : /LM|RM/.test(p) ? 1.5 : /DM/.test(p) ? 0.6 : /CB/.test(p) ? 0.6 : /LB|RB/.test(p) ? 0.4 : GOAL_W[LINE(p)];
   const POS_AST = p => /CAM|LAM|RAM/.test(p) ? 3.4 : /LW|RW|LM|RM/.test(p) ? 2.8 : /WB|LB|RB/.test(p) ? 1.6 : /CM/.test(p) ? 2 : /CDM|DM/.test(p) ? 1 : /ST/.test(p) ? 1.6 : LINE(p) === 'GK' ? 0.05 : 0.5;
 
   // ---------- 阵容 ----------
@@ -196,7 +196,7 @@ const ENGINE = (() => {
   const shoOf = s => (s.p && s.p.attributes && s.p.attributes.sho) || s.rating;
   const pasOf = s => (s.p && s.p.attributes && s.p.attributes.pas) || s.rating;
   function goalScorer(on, team) {
-    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 1.6) * Math.pow(s.rating / 85, 1.6) * (pickHook && team ? (pickHook('g', team, s.name) || 1) : 1)); /* 指数调小：球星依然进得多，但不会把全队的进球都包了 */
+    const w = on.map(s => POS_GOAL(s.slot) * Math.pow(shoOf(s) / 80, 2.4) * Math.pow(s.rating / 85, 2.2) * /* 2026-11-27：中锋和射术好的人进得更多（原本中锋跟边锋、前腰差不多，威超射手王只有 20 来球） */ (pickHook && team ? (pickHook('g', team, s.name) || 1) : 1)); /* 指数调小：球星依然进得多，但不会把全队的进球都包了 */
     return pick(on, w);
   }
   function assister(on, scorer, team) {
