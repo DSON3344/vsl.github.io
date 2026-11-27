@@ -2877,7 +2877,10 @@ const isPending = s => s === SEASON && !!pendingArchive();
    同位置线、同能力的球员场均评分该有多高先拟合出来，踢得比预期好就加分、差就减分；
    年轻球员拿到大量出场时间额外成长，老将坐板凳会掉得更快。少数人会有大爆发或大滑坡。 */
 function pfOf(uid) { if (typeof S === "undefined" || !S) return 0; if (uid && String(uid).startsWith('K|X|') && scrLockedUid(uid)) return 0; /* 剧本球员的能力按剧本走，不受场上表现加减 */ return ((S.pf && uid && S.pf[uid]) || 0) - (uid ? Math.round(S.gdef || 0) : 0); } /* gdef：全联赛的能力通胀校正 */
-function topAdj(r) { const g = (typeof S !== 'undefined' && S && S.gtop) || 0; return g > 0 && r > 85 ? Math.round(g * Math.min(1, (r - 85) / 6)) : 0; }
+/* 顶端压缩：85 分以上的部分按比例缩（g 越大缩得越多），保证原始能力越高、显示的能力不会越低。
+   2026-11-27 修：原本是「85 以上每分扣 g/6、扣满 g 为止」，g 超过 6 后会倒挂（g=11 时原始 91 只剩 80、比原始 86 的 84 还低），
+   年轻球员越练越强、显示的能力反而一季掉 5、6 分，联赛的球星也越来越少 */
+function topAdj(r) { const g = (typeof S !== 'undefined' && S && S.gtop) || 0; return g > 0 && r > 85 ? Math.round((r - 85) * g / (g + 6)) : 0; }
 function pfApply(p) { if (!p || p._pf) return; p._pf = 1; if (nm4() && SEASON <= SCR_END && scrLockedUid(p.uid)) return; /* 剧本球员：能力照剧本 */ let d = pfOf(p.uid); d -= topAdj(p.rating + d); /* 顶端防通胀：只压 85 分以上的，越高压得越多 */ { const z = pf0Of(p.uid); d = capGain(p.rating + z, d - z) - p.rating; } if (d > 0) { /* 防通胀：场上表现加的分不能把球员顶过潜力太多（青训小将按青训潜力，年轻球员按成长潜力，最多高出 2 分） */ let pt = null; try { const kk = p.acad && typeof ACAD_ID !== 'undefined' ? ACAD_ID[p.acad] : null; if (kk && !kk.lock) pt = kidPot(kk, SEASON); else if (typeof p.age0 === 'number' && (p.age || 30) <= 23) pt = growthOf(p).pot; } catch (e) { } if (pt != null) d = Math.min(d, Math.max(0, Math.round(pt) + 2 - p.rating)); } if (!rzEx(p) && d) d = Math.round(RZ(RZI(p.rating) + d)) - p.rating; /* 压缩后的能力上，表现加减也按同样比例 */ if (p.rating + d > RMAX) d = RMAX - p.rating; if (!d) return; p.rating = Math.max(40, Math.min(RMAX, p.rating + d)); if (p.attributes) Object.keys(p.attributes).forEach(k => p.attributes[k] = Math.max(20, Math.min(99, p.attributes[k] + d))); }
 /* 伤病类型：比赛里的伤按缺阵轮数定性（同样的轮数用固定种子挑一种），训练伤沿用原本的描述 */
 function injKind(dur, key, what) { const h = ghash('ik|' + key); if (dur >= 15) return '十字韧带断裂'; if (dur >= 10) return h < 0.5 ? '跟腱撕裂' : '骨折'; if (dur >= 6) return h < 0.5 ? '半月板损伤' : '膝关节韧带撕裂'; if (what) return what; return dur >= 4 ? '肌肉撕裂' : '肌肉拉伤'; }
