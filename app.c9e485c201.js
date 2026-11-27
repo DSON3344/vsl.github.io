@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = 'ace98c796b';
+const VES_BUILD = '5218f3b383';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -5035,6 +5035,9 @@ function gbCalc(s) { const P = {}, byUid = {}, byPid = {};
   return { boot: top('g', 'a'), assist: top('a', 'g') }; }
 /* 已结束的赛季：读档案；没算过的（旧存档）由 gbWarm 在空闲时一季一季补算 */
 function gbOf(s) { const A = (S.archive || []).find(x => x.s === s); return A && A.gb ? A.gb : null; }
+/* 结算后、进入下一季前（国家队大赛还没踢）：先给暂定名次（联赛 + 杯赛），只用来显示，不算正式荣誉 */
+let GB_LIVE = null; function gbLive(s) { if (!(s === SEASON && isPending(SEASON))) return null; const k = SEASON + '|' + (S.reset || '') + '|' + (S.archive || []).length; if (GB_LIVE && GB_LIVE.k === k) return GB_LIVE.v; let v = null; try { v = { ...gbCalc(s), prov: 1 }; } catch (e) { console.error(e); } GB_LIVE = { k, v }; return v; }
+const gbView = s => { const G = gbOf(s); if (G) return G; if (s < SEASON) { try { if (gbMissing().length) setTimeout(gbWarm, 0); } catch (e) { } return null; } return gbLive(s); };
 function gbMissing() { return (S && S.archive || []).filter(A => !A.gb && A.s < SEASON && HPS[A.s]).map(A => A.s); }
 let GB_BUSY = false;
 function gbWarm() { if (GB_BUSY) return; const go = () => { if (BATCH || awardBusy()) { setTimeout(gbWarm, 3000); return; } const m = gbMissing(); if (!m.length) return; GB_BUSY = true;
@@ -5042,11 +5045,11 @@ function gbWarm() { if (GB_BUSY) return; const go = () => { if (BATCH || awardBu
     if (m.length > 1) setTimeout(gbWarm, 120); else { save(); if (view === 'awards' || view === 'history') render(); } };
   if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 }); else setTimeout(go, 200); }
 const gbWho = (p, extra) => p ? `<button class="lnk tname" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${TD[p.team] ? crest(p.team, 20) : EXT_CLUB[p.team] ? ecrest(p.team, 20) : ''}<span><b>${esc(p.name)}</b> <span class="sub">${esc(p.team)}${extra ? ' · ' + extra : ''}</span></span></button>` : '<span class="dim">–</span>';
-function gbHTML(s) { const G = gbOf(s);
-  if (!G) return `<div class="eyebrow" style="margin:0 0 8px">全联盟金靴 · 全联盟助攻王</div><p class="note" style="margin:0 0 14px">${s === SEASON ? '国家队大赛在季末夏天进行，进入下一季时连同国家队比赛一起评出。' : '正在统计这季全部赛事的数据…'}</p>`;
+function gbHTML(s) { const G = gbView(s);
+  if (!G) return `<div class="eyebrow" style="margin:0 0 8px">全联盟金靴 · 全联盟助攻王</div><p class="note" style="margin:0 0 14px">${s === SEASON ? '赛季结束后先列出暂定名次；国家队大赛在季末夏天进行，进入下一季时连同国家队比赛一起正式评出。' : '正在统计这季全部赛事的数据，稍等几秒会自动显示…'}</p>`;
   const brk = (p, i) => `联赛 ${p.lg[i]} · 杯赛 ${p.cup[i]}${p.nt[0] ? ' · 国家队 ' + p.nt[i] : ''}`;
   const blk = (lab, L, i, unit) => `<div><div class="eyebrow" style="margin-bottom:6px">${lab}</div>${L.length ? `<div class="panel" style="padding:10px 12px;margin-bottom:8px;border-color:var(--gold)">${gbWho(L[0])}<div class="muted" style="font-size:12.5px;margin-top:4px"><b style="color:var(--gold)">${L[0][i === 1 ? 'g' : 'a']} ${unit}</b> · ${L[0].apps} 场 · ${brk(L[0], i)}</div></div><div class="rank-list">${L.slice(1, 6).map((p, j) => `<div class="rk" style="grid-template-columns:22px minmax(0,1fr) auto"><span class="n">${j + 2}</span>${gbWho(p)}<span class="v mono" style="font-size:12px;white-space:nowrap" title="${esc(brk(p, i))}">${p[i === 1 ? 'g' : 'a']}</span></div>`).join('')}</div>` : '<div class="empty">没有数据</div>'}</div>`;
-  return `<div class="grid g-2" style="align-items:start;margin-bottom:16px">${blk('全联盟金靴 · 全部赛事进球最多', G.boot, 1, '球')}${blk('全联盟助攻王 · 全部赛事助攻最多', G.assist, 2, '次助攻')}</div><p class="note" style="margin:-8px 0 16px">算威超和外赛区各顶级联赛、所有杯赛和洲际赛事、成年国家队比赛；次级联赛不算。含金量仅次于金球奖和世界足球先生。</p>`; }
+  return `${G.prov ? '<p class="note" style="margin:0 0 8px;color:var(--gold)">暂定名次：国家队大赛还没踢（季末夏天进行），进入下一季时连同国家队比赛正式评出。</p>' : ''}<div class="grid g-2" style="align-items:start;margin-bottom:16px">${blk('全联盟金靴 · 全部赛事进球最多' + (G.prov ? '（暂定）' : ''), G.boot, 1, '球')}${blk('全联盟助攻王 · 全部赛事助攻最多' + (G.prov ? '（暂定）' : ''), G.assist, 2, '次助攻')}</div><p class="note" style="margin:-8px 0 16px">算威超和外赛区各顶级联赛、所有杯赛和洲际赛事、成年国家队比赛；次级联赛不算。含金量仅次于金球奖和世界足球先生。</p>`; }
 const AWARD_NAMES = { ballon: '金球奖', world: '世界足球先生', def: '铁卫奖', goal: '最佳进球', mvp: '威超最佳球员', boot: '威超金靴', assist: '威超助攻王', gboot: '全联盟金靴', gassist: '全联盟助攻王', glove: '威超金手套', young: '金童奖', xi: '年度最佳阵容' };
 function awardsOfPid(pid, uid) {
   const out = [], K = pid != null ? 'p' + pid : 'u' + uid; const is = p => p && akey(p) === K;
@@ -5469,7 +5472,7 @@ function vAwards() {
     ${all.map(x => { const B = cupsOf(x) || {}; const bt = (bestTeamOf(x) || [])[0]; return `<tr><td class="l mono">${SN(x)}</td><td class="l">${bt ? cupClub(bt.team) + ` <span class="dim mono" style="font-size:11px">${bt.n}</span>` : '–'}</td><td class="l">${tlink(ranking(x)[0], 18)}</td>${KS.map(k => `<td class="l">${B[k] ? cupClub(B[k].winner) : '–'}</td>`).join('')}</tr>`; }).join('')}
     </tbody></table></div></div>
   <div class="panel"><div class="ph"><div><div class="eyebrow">Ballon d'Or</div><h2>历届金球奖</h2></div></div><div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">金球奖</th><th class="l">亚军</th><th class="l">季军</th><th class="l">全联盟金靴</th><th class="l">全联盟助攻王</th><th class="l">威超金靴</th><th class="l">金童奖</th></tr></thead><tbody>
-    ${all.map(x => { const A = awardsOf(x); if (!A) return ''; const nm = p => p ? `<button class="lnk tname" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${TD[p.team] ? crest(p.team, 16) : ecrest(p.team, 16)}<span>${esc(p.name)}${TD[p.team] ? '' : ` <span class="dim" style="font-size:11px">${esc(LEAGUE_SHORT_OF(p.team))}</span>`}</span></button>` : '–'; return `<tr><td class="l mono">${SN(x)}</td><td class="l">${nm(A.ballon[0])}</td><td class="l">${nm(A.ballon[1])}</td><td class="l">${nm(A.ballon[2])}</td>${(() => { const G = gbOf(x), b = G && G.boot[0], a = G && G.assist[0]; return `<td class="l">${b ? nm(b) + ` <span class="dim mono">${b.g}</span>` : '<span class="dim">…</span>'}</td><td class="l">${a ? nm(a) + ` <span class="dim mono">${a.a}</span>` : '<span class="dim">…</span>'}</td>`; })()}<td class="l">${nm(A.boot)} <span class="dim mono">${A.boot ? A.boot.g : ''}</span></td><td class="l">${nm(A.young)}</td></tr>`; }).join('')}
+    ${all.map(x => { const A = awardsOf(x); if (!A) return ''; const nm = p => p ? `<button class="lnk tname" ${p.pid != null ? `data-pid="${p.pid}"` : `data-player="${esc(p.team)}|${esc(p.name)}"`}>${TD[p.team] ? crest(p.team, 16) : ecrest(p.team, 16)}<span>${esc(p.name)}${TD[p.team] ? '' : ` <span class="dim" style="font-size:11px">${esc(LEAGUE_SHORT_OF(p.team))}</span>`}</span></button>` : '–'; return `<tr><td class="l mono">${SN(x)}</td><td class="l">${nm(A.ballon[0])}</td><td class="l">${nm(A.ballon[1])}</td><td class="l">${nm(A.ballon[2])}</td>${(() => { const G = gbView(x), b = G && G.boot[0], a = G && G.assist[0], pv = G && G.prov ? ' <span class="chip" style="font-size:10px;padding:0 5px">暂定</span>' : ''; return `<td class="l">${b ? nm(b) + ` <span class="dim mono">${b.g}</span>` + pv : '<span class="dim">统计中…</span>'}</td><td class="l">${a ? nm(a) + ` <span class="dim mono">${a.a}</span>` + pv : '<span class="dim">统计中…</span>'}</td>`; })()}<td class="l">${nm(A.boot)} <span class="dim mono">${A.boot ? A.boot.g : ''}</span></td><td class="l">${nm(A.young)}</td></tr>`; }).join('')}
     </tbody></table></div></div>
 ` : `<div class="panel"><p class="muted" style="margin:0">${SN(SEASON)} 赛季结束后会评出第一批个人奖项。</p></div>`}
   </section>`;
