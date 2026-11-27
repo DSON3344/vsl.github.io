@@ -5216,12 +5216,109 @@ function extBackfill(club) { if (EXT_BF.has(club)) return; EXT_BF.add(club);
 function loPeek(club, s = SEASON) { const X = EXT_CLUB[club]; if (!X || !X.lo) return []; return synthLo(club).map(q => { const a = pAge(q, s); if (a < 17 || a > 34) return null; let r; try { r = s >= q.s0 ? growthOf(q).at(a) : growthOf(q).past(a); } catch (e) { r = q.rating; } r = Math.round(r); const d = r - (q.rating0 != null ? q.rating0 : q.rating);
   return { ...q, team: club, age: a, rating: r, attributes: Object.fromEntries(Object.entries(q.attributes || {}).map(([k, v]) => [k, Math.max(20, Math.min(99, v + d))])), value: 'ⰵ' + valueM(r, a) + 'M', peek: 1 }; }).filter(Boolean); }
 function extSquadRows(club) { let SQ = {}; try { SQ = extSquadsAt(SEASON); } catch (e) { } const F = FDB[club] || [];
-  const L = (SQ[club] || []).map(q => { const f = F.find(x => x.name === q.name) || q.p || {}, age = (() => { try { return pAge(q.p, SEASON); } catch (e) { return f.age; } })(), r = Math.round(q.r); return { no: f.no ?? '', name: q.name, pos: q.pos, nat: f.nat || (q.p && q.p.nat) || '', age, rating: r, pot: f.rating != null ? potentialOf(f) : 0, value: f.value || 'ⰵ' + valueM(r, age) + 'M' }; });
+  const L = (SQ[club] || []).map(q => { const f = F.find(x => x.name === q.name) || q.p || {}, age = (() => { try { return pAge(q.p, SEASON); } catch (e) { return f.age; } })(), r = Math.round(q.r); return { uid: q.uid, line: q.line, no: f.no ?? '', name: q.name, pos: q.pos, nat: f.nat || (q.p && q.p.nat) || '', age, rating: r, pot: f.rating != null ? potentialOf(f) : 0, value: f.value || 'ⰵ' + valueM(r, age) + 'M' }; });
   if (!L.length && !F.length) loPeek(club).forEach(p => L.push({ no: p.no, name: p.name, pos: p.pos, nat: p.nat, age: p.age, rating: p.rating, pot: potentialOf(p), value: p.value }));
   return L.length ? L.sort((a, b) => b.rating - a.rating) : F.slice().sort((a, b) => b.rating - a.rating).map(p => ({ no: p.no, name: p.name, pos: p.pos, nat: p.nat, age: p.age, rating: p.rating, pot: potentialOf(p), value: p.value })); }
 /* 外赛区球队：跟威超球队一样开成整页（阵容 / 战绩与荣誉 / 转会） */
 let XTAB = 'squad';
 function openExtClub(club) { if (!EXT_CLUB[club]) return; const d = $('#dlg'); if (d && d.open) d.close(); if (view === 'xclub' && viewArg === club) return render(); go('xclub', club); }
+/* 外赛区顶级联赛球队资料（对标威超球队页）：本季赛程 / 积分榜、阵容本季数据、逐季战绩、队史榜单和纪录。
+   历史赛季每季要整季重算一次（约 10ms），所以放进空闲时间一季一季算，算完存在内存里，不写存档 */
+const XC_C = new Map(), XC_BUSY = new Set();
+const xcKey = () => (S && S.reset || '') + '|' + SEASON;
+function xcLg(club, s) { const g = extLeagueAt(club, s); if (!g || g.tier !== 1) return null; return EXT_LEAGUES.find(x => x.name === g.name) || null; }
+function xcTopNow(club) { return !!xcLg(club, SEASON); }
+function xcPoOn(p) { return [p >= 35 ? 'qf' : '', p >= 36 ? 'sf' : '', p >= 38 ? 'f' : ''].join(','); }
+/* 某季（已结束）这队在顶级联赛的数据 */
+function xcSeason(club, L, s, live) { const o = extSeason(L, s), p = live ? cupP() : 99, md = live ? extMd(o, p) : o.days.length, R = extRows(o, md, live ? xcPoOn(p) : 'qf,sf,f');
+  const T = md ? pyrTable(clubsAt(L, s), o.days.slice(0, md).map(D => D.map(m => [m.h, m.a, m.x, m.y]))) : null, i = T ? T.findIndex(r => r[0] === club) : -1, row = i >= 0 ? T[i] : null;
+  const P = Object.values(R).filter(q => q.team === club).map(q => { const b = o.byUid[q.uid] || {}; return [q.uid, b.name || '?', q.apps, q.g, q.a, b.pos || '']; });
+  const M = []; o.days.slice(0, md).forEach((D, r) => D.forEach(m => { if (m.h === club || m.a === club) M.push([r + 1, m.h === club ? 1 : 0, m.h === club ? m.a : m.h, m.h === club ? m.x : m.y, m.h === club ? m.y : m.x]); }));
+  if (o.po) [['qf', '八强'], ['sf', '半决赛'], ['f', '决赛']].forEach(([k, lab]) => { if (live && !xcPoOn(p).includes(k)) return; (k === 'f' ? [o.po.f] : o.po[k]).forEach(m => { if (m[0] === club || m[1] === club) { const h = m[0] === club; M.push([lab, h ? 1 : 0, h ? m[1] : m[0], h ? m[2] : m[3], h ? m[3] : m[2], m[5] ? (h ? m[5] : [m[5][1], m[5][0]]) : null, m[4] === club]); } }); });
+  return { s, L: L.name, pos: i >= 0 ? i + 1 : null, n: T ? T.length : clubsAt(L, s).length, t: row ? row.slice(1) : null, P, M, champ: !live && o.champ === club, po: !!o.po }; }
+function xcPast(club) { const k = xcKey(), c = XC_C.get(club); return c && c.k === k ? c.per : null; }
+function xcMissing(club) { const per = xcPast(club) || {}, out = []; for (let s = 1; s <= extDone(); s++) { if (per[s]) continue; const L = xcLg(club, s); if (L) out.push([s, L]); } return out; }
+function xcBuild(club) { if (XC_BUSY.has(club) || BATCH) return; const miss = xcMissing(club); if (!miss.length) return; XC_BUSY.add(club);
+  const k = xcKey(); let c = XC_C.get(club); if (!c || c.k !== k) { c = { k, per: {} }; XC_C.set(club, c); } if (XC_C.size > 30) { const f = XC_C.keys().next().value; if (f !== club) XC_C.delete(f); }
+  (async () => { try { for (const [s, L] of miss) { if (xcKey() !== k) break; const t0 = performance.now(); try { c.per[s] = xcSeason(club, L, s, s === SEASON && !isPending(s)); } catch (e) { console.error(e); c.per[s] = { s, L: L.name, P: [], M: [], err: 1 }; } await new Promise(r => setTimeout(r, Math.min(120, 20 + (performance.now() - t0) * 2))); } }
+    finally { XC_BUSY.delete(club); } if (view === 'xclub' && viewArg === club && (XTAB === 'record' || XTAB === 'data')) render(); })(); }
+/* 本季（进行中）数据：本季联赛已缓存，直接算 */
+function xcLive(club) { if (isPending(SEASON)) return null; const L = xcLg(club, SEASON); if (!L) return null; try { return xcSeason(club, L, SEASON, true); } catch (e) { console.error(e); return null; } }
+const xcRes = (a, b) => a > b ? 'W' : a < b ? 'L' : 'D';
+function xcForm(M, n = 5) { const L = M.filter(m => typeof m[0] === 'number').slice(-n); return L.length ? `<span class="form">${L.map(m => `<i class="${xcRes(m[3], m[4])}" title="第 ${m[0]} 轮 ${m[1] ? '主' : '客'} ${esc(m[2])} ${m[3]}–${m[4]}">${({ W: '胜', D: '平', L: '负' })[xcRes(m[3], m[4])]}</i>`).join('')}</span>` : ''; }
+const xcOpp = t => TD[t] ? tlink(t, 16) : EXT_CLUB[t] ? extNm(t, 16) : esc(t);
+const xcPl = (club, name) => `<button class="lnk" data-player="${esc(club)}|${esc(name)}"><span>${esc(name)}</span></button>`;
+/* 赛程页：联赛全部轮次（未踢的只写对手）、季后赛、国内杯赛、洲际杯赛、积分榜 */
+function xcFxTab(club) { const L = xcLg(club, SEASON); if (!L) return ''; const { o, md } = extNow(L), p = cupP(), lv = xcLive(club) || { M: [] }, done = isPending(SEASON);
+  const rows = []; o.days.forEach((D, r) => D.forEach(m => { if (m.h !== club && m.a !== club) return; const h = m.h === club, played = done || r < md; rows.push(`<tr><td class="mono">${r + 1}</td><td class="l"><div style="display:flex;align-items:center;gap:8px;min-width:0">${h ? '<span class="chip" style="font-size:10px;padding:0 5px;flex:none">主</span>' : '<span class="chip" style="font-size:10px;padding:0 5px;opacity:.7;flex:none">客</span>'}${xcOpp(h ? m.a : m.h)}</div></td><td class="mono"><b>${played ? (h ? m.x + '–' + m.y : m.y + '–' + m.x) : '<span class="dim" style="font-weight:400">–</span>'}</b></td><td>${played ? (() => { const R = xcRes(h ? m.x : m.y, h ? m.y : m.x); return `<span class="form"><i class="${R}">${({ W: '胜', D: '平', L: '负' })[R]}</i></span>`; })() : '<span class="dim">未赛</span>'}</td></tr>`); }));
+  const po = lv.M.filter(m => typeof m[0] !== 'number');
+  const T = extTbl(L), me = T.findIndex(r => r[0] === club);
+  const dc = (() => { try { const A = extDcAll(L, SEASON), out = []; Object.entries(A).forEach(([k, c]) => c.rounds.forEach(r => { if (!done && r.wk > p) return; r.ms.forEach(m => { if (m[0] !== club && m[1] !== club) return; const h = m[0] === club; out.push(`<div class="rk" style="grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto auto;gap:8px;font-size:12.5px"><span class="dim">${esc(k)} · ${esc(r.lab)}</span><span>${h ? '' : '@ '}${xcOpp(h ? m[1] : m[0])}</span><b class="mono">${h ? m[2] + '–' + m[3] : m[3] + '–' + m[2]}${m[5] ? ` <span class="dim" style="font-weight:400">点球 ${h ? m[5][0] + '–' + m[5][1] : m[5][1] + '–' + m[5][0]}</span>` : ''}</b>${m[4] === club ? '<span class="chip gold" style="font-size:10px;padding:0 5px">晋级</span>' : '<span class="chip" style="font-size:10px;padding:0 5px">出局</span>'}</div>`); }); })); return out; } catch (e) { return []; } })();
+  return `<div class="grid g-2" style="align-items:start">
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Fixtures</div><h2>${SN(SEASON)} ${esc(L.name)}赛程</h2></div><span class="note">${done ? '本季已结束' : md ? `已踢 ${md} / ${o.days.length} 轮` : '未开赛'}</span></div>
+      <div class="tw" style="max-height:560px;overflow:auto"><table><thead><tr><th>轮</th><th class="l">对手</th><th>比分</th><th>结果</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>
+      ${o.po ? `<p class="note" style="margin:8px 0 0">${po.length ? '季后赛：' + po.map(m => `${m[0]} ${m[1] ? '' : '@ '}${esc(m[2])} ${m[3]}–${m[4]}${m[5] ? `（点球 ${m[5][0]}–${m[5][1]}）` : ''}${m[6] ? ' 胜' : ' 负'}`).join(' · ') : '常规赛前 8 名进季后赛（八强、半决赛、决赛）决定冠军。'}</p>` : ''}</div>
+    <div style="display:grid;gap:16px">
+      <div class="panel"><div class="ph"><div><div class="eyebrow">Table</div><h2>积分榜</h2></div>${me >= 0 ? `<span class="note">第 ${me + 1} 名 · ${T[me][1]} 分</span>` : ''}</div>
+        <div class="tw"><table><thead><tr><th>#</th><th class="l">球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>净</th><th>分</th></tr></thead><tbody>${T.map((r, i) => `<tr${r[0] === club ? ' style="background:rgba(var(--tint),.09);font-weight:700"' : ''}><td class="pos">${i + 1}</td><td class="l">${extNm(r[0], 16)}</td><td>${r[2] + r[3] + r[4]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5] - r[6] > 0 ? '+' : ''}${r[5] - r[6]}</td><td class="pts">${r[1]}</td></tr>`).join('')}</tbody></table></div></div>
+      ${dc.length ? `<div class="panel"><div class="ph"><div><div class="eyebrow">Domestic cups</div><h2>${SN(SEASON)} 国内杯赛</h2></div></div><div class="rank-list">${dc.join('')}</div></div>` : ''}
+    </div></div>
+  ${teamCupPanel(club)}`; }
+/* 队史合计（顶级联赛，含本季已踢的轮次） */
+function xcAgg(club) { const per = xcPast(club) || {}, lv = xcLive(club), S2 = Object.values(per).concat(lv ? [lv] : []).filter(x => !x.err).sort((a, b) => a.s - b.s), P = {};
+  S2.forEach(x => x.P.forEach(([uid, name, apps, g, a]) => { const o = P[uid] = P[uid] || { name, apps: 0, g: 0, a: 0, ss: [] }; o.name = name; o.apps += apps; o.g += g; o.a += a; o.ss.push(x.s); }));
+  return { S2, P: Object.values(P) }; }
+const xcSpan = ss => { const a = Math.min(...ss), b = Math.max(...ss); return a === b ? SN(a) : SN(a) + '–' + SN(b); };
+function xcDataTab(club) { const miss = xcMissing(club).length, { S2, P } = xcAgg(club); if (miss) xcBuild(club);
+  const list = (k, unit) => { const top = P.filter(o => o[k] > 0).sort((a, b) => b[k] - a[k] || a.apps - b.apps).slice(0, 15); return top.length ? `<div class="rank-list">${top.map((o, i) => `<div class="rk" style="grid-template-columns:26px minmax(0,1fr) auto"><span class="n" style="${i === 0 ? 'color:var(--gold)' : ''}">${i + 1}</span><span>${xcPl(club, o.name)} <span class="sub">${k === 'apps' ? o.g + ' 球 · ' + o.a + ' 助' : o.apps + ' 场'} · ${xcSpan(o.ss)}</span></span><span class="v">${o[k]}${unit}</span></div>`).join('')}</div>` : '<div class="empty">还没有比赛数据</div>'; };
+  const all = []; S2.forEach(x => x.M.forEach(m => { if (typeof m[0] === 'number') all.push([x.s, ...m]); }));
+  const best = (f, cmp) => all.filter(f).sort(cmp)[0], gd = m => m[4] - m[5];
+  const bw = best(m => m[4] > m[5], (a, b) => gd(b) - gd(a) || b[4] - a[4]), bl = best(m => m[4] < m[5], (a, b) => gd(a) - gd(b) || b[5] - a[5]);
+  const fin = S2.filter(x => x.t && !(x.s === SEASON && !isPending(SEASON)));
+  const sb = (f, lab) => { const x = fin.slice().sort((a, b) => f(b) - f(a))[0]; return x ? `<div><dt>${lab}</dt><dd class="mono">${f(x)} <span class="dim" style="font-size:11px">${SN(x.s)}</span></dd></div>` : ''; };
+  const ts = []; S2.forEach(x => x.P.forEach(q => ts.push([x.s, ...q]))); const tg = ts.sort((a, b) => b[4] - a[4])[0], ta = ts.slice().sort((a, b) => b[5] - a[5])[0];
+  const wdl = all.reduce((t, m) => { t[xcRes(m[4], m[5])]++; t.gf += m[4]; t.ga += m[5]; return t; }, { W: 0, D: 0, L: 0, gf: 0, ga: 0 });
+  const mr = m => `${m[2] ? '主' : '客'} ${esc(m[3])} <b class="mono">${m[4]}–${m[5]}</b> <span class="dim" style="font-size:11px">${SN(m[0])} 第 ${m[1]} 轮</span>`;
+  return `${miss ? `<div class="panel"><p class="note" style="margin:0">正在统计较早赛季的数据（还剩 ${miss} 季），算完会自动更新…</p></div>` : ''}
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Club records</div><h2>球队纪录</h2></div><span class="note">顶级联赛 · ${S2.length} 个赛季（含本季已踢轮次）</span></div>
+    <dl class="facts">
+      <div><dt>联赛总战绩</dt><dd class="mono">${all.length} 场 · ${wdl.W}胜 ${wdl.D}平 ${wdl.L}负</dd></div>
+      <div><dt>联赛总进 / 失球</dt><dd class="mono">${wdl.gf} / ${wdl.ga}</dd></div>
+      <div><dt>最大胜利</dt><dd>${bw ? mr(bw) : '—'}</dd></div>
+      <div><dt>最惨失利</dt><dd>${bl ? mr(bl) : '—'}</dd></div>
+      ${sb(x => x.t[0], '单季最高积分')}${sb(x => x.t[4], '单季最多进球')}${sb(x => x.t[1], '单季最多胜场')}
+      ${(() => { const x = fin.slice().sort((a, b) => a.t[5] - b.t[5])[0]; return x ? `<div><dt>单季最少失球</dt><dd class="mono">${x.t[5]} <span class="dim" style="font-size:11px">${SN(x.s)}</span></dd></div>` : ''; })()}
+      <div><dt>单季联赛进球最多</dt><dd>${tg && tg[4] ? `${xcPl(club, tg[2])} <span class="mono">${tg[4]} 球</span> <span class="dim" style="font-size:11px">${SN(tg[0])}</span>` : '—'}</dd></div>
+      <div><dt>单季联赛助攻最多</dt><dd>${ta && ta[5] ? `${xcPl(club, ta[2])} <span class="mono">${ta[5]} 次</span> <span class="dim" style="font-size:11px">${SN(ta[0])}</span>` : '—'}</dd></div>
+    </dl></div>
+  <div class="grid g-2" style="align-items:start">
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Club top scorers</div><h2>队史射手榜</h2></div><span class="note">顶级联赛 · 在本队</span></div>${list('g', ' 球')}</div>
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Club top assists</div><h2>队史助攻榜</h2></div><span class="note">顶级联赛 · 在本队</span></div>${list('a', ' 次')}</div>
+  </div>
+  <div class="panel"><div class="ph"><div><div class="eyebrow">Most appearances</div><h2>队史出场榜</h2></div><span class="note">顶级联赛 · 在本队</span></div>${list('apps', ' 场')}</div>
+  <p class="note">外赛区队史只统计顶级联赛（含季后赛），不含国内杯赛和洲际杯赛；球员名字都是化名。</p>`; }
+/* 历年排名折线：只画在顶级联赛的赛季 */
+function xcRankChart(club, rows) { const pts = rows.filter(r => r.g.tier === 1 && r.pos).map(r => [r.s, r.pos, r.n]); if (pts.length < 2) return '';
+  const W = 640, Hh = 190, pl = 30, pr = 16, pt = 14, pb = 26, N = Math.max(...pts.map(p => p[2]), 10), s0 = pts[0][0], s1 = pts[pts.length - 1][0], x = s => pl + (s1 === s0 ? 0.5 : (s - s0) / (s1 - s0)) * (W - pl - pr), y = v => pt + (v - 1) / (N - 1) * (Hh - pt - pb);
+  const tc = '#' + (Math.floor(ghash('xc|' + club) * 0xffffff) | 0x404040).toString(16).padStart(6, '0').slice(0, 6);
+  let g = ''; [1, Math.ceil(N / 4), Math.ceil(N / 2), N].filter((v, i, A) => A.indexOf(v) === i).forEach(v => g += `<line class="gl" x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 8}" y="${y(v) + 3}" text-anchor="end">${v}</text>`);
+  const step = Math.ceil((s1 - s0 + 1) / 12); for (let s = s0; s <= s1; s += step) g += `<text x="${x(s)}" y="${Hh - 8}" text-anchor="middle">${SN(s).replace('S0', 'S')}</text>`;
+  const segs = []; let cur = []; pts.forEach((p, i) => { if (i && p[0] !== pts[i - 1][0] + 1) { segs.push(cur); cur = []; } cur.push(p); }); segs.push(cur);
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="历年联赛排名">${g}${segs.map(sg => `<polyline class="ln" points="${sg.map(p => x(p[0]).toFixed(1) + ',' + y(p[1]).toFixed(1)).join(' ')}" stroke="${tc}"/>`).join('')}${pts.map(p => `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="${p[1] === 1 ? 4.6 : 2.6}" fill="${p[1] === 1 ? 'var(--gold)' : tc}"><title>${SN(p[0])}：第 ${p[1]} 名 / ${p[2]}</title></circle>`).join('')}</svg></div>`; }
+/* 阵容概况：主力阵容（4-4-2，跟外赛区模拟选人一样）、各线均分、国籍 */
+function xcSquadSide(club, sq) { if (!sq.length) return ''; const need = { GK: 1, DF: 4, MF: 4, FW: 2 }, xi = [], bench = []; sq.forEach(p => { const ln = p.line || ENGINE.LINE(p.pos); if (need[ln] > 0) { need[ln]--; xi.push({ ...p, ln }); } else bench.push(p); });
+  const LN = [['FW', '前锋'], ['MF', '中场'], ['DF', '后卫'], ['GK', '门将']], av = A => A.length ? (A.reduce((t, p) => t + p.rating, 0) / A.length).toFixed(1) : '–';
+  const nat = {}; sq.forEach(p => { if (p.nat) nat[p.nat] = (nat[p.nat] || 0) + 1; }); const NT = Object.entries(nat).sort((a, b) => b[1] - a[1]);
+  const u21 = sq.filter(p => +p.age <= 21).length, vet = sq.filter(p => +p.age >= 31).length;
+  return `<div class="grid g-2" style="align-items:start">
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Starting XI</div><h2>主力阵容 · 4-4-2</h2></div><span class="note">按各位置能力最高的球员</span></div>
+      ${LN.map(([k, l]) => `<div style="margin:0 0 10px"><div class="eyebrow" style="margin-bottom:4px">${l}</div><div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">${xi.filter(p => p.ln === k).map(p => `<span class="chip" style="gap:6px"><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span>${xcPl(club, p.name)}<span class="dim mono" style="font-size:11px">${esc(p.pos)}</span></span>`).join('')}</div></div>`).join('')}</div>
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Squad report</div><h2>阵容概况</h2></div></div>
+      <dl class="facts">${LN.slice().reverse().map(([k, l]) => { const A = sq.filter(p => (p.line || ENGINE.LINE(p.pos)) === k); return `<div><dt>${l} · ${A.length} 人</dt><dd class="mono">均分 ${av(A)}</dd></div>`; }).join('')}
+        <div><dt>21 岁及以下</dt><dd class="mono">${u21} 人</dd></div><div><dt>31 岁及以上</dt><dd class="mono">${vet} 人</dd></div>
+        <div><dt>能力最高</dt><dd>${xcPl(club, sq[0].name)} <span class="mono">${sq[0].rating}</span></dd></div>
+        ${(() => { const y = sq.filter(p => p.pot > p.rating).sort((a, b) => b.pot - a.pot)[0]; return y ? `<div><dt>潜力最高</dt><dd>${xcPl(club, y.name)} <span class="mono" style="color:var(--gold)">${y.pot}</span> <span class="dim" style="font-size:11px">${y.age} 岁</span></dd></div>` : ''; })()}
+        <div style="grid-column:1/-1"><dt>国籍分布 · ${NT.length} 个</dt><dd style="font-size:12.5px">${NT.slice(0, 8).map(([n, c]) => `${esc(n)} <span class="mono dim">${c}</span>`).join(' · ')}${NT.length > 8 ? ' · …' : ''}</dd></div></dl></div></div>`; }
 function vXClub() {
   const club = viewArg; if (!club || !EXT_CLUB[club]) return vExt();
   const x = EXT_CLUB[club], cur = extLeagueAt(club, SEASON) || {}, sq = extSquadRows(club), H = extClubHist(club, false), hon = extHonours(club, H.rows);
@@ -5232,9 +5329,12 @@ function vXClub() {
   let cups = []; try { const E = cupEntrants(SEASON); cups = Object.entries(E).filter(([, v]) => Array.isArray(v) && v.includes(club)).map(([k]) => k); } catch (e) { }
   const tr = TRANSFERS.filter(t => t.from === club || t.to === club).sort((a, b) => b.s - a.s);
   const tc = '#' + (Math.floor(ghash('xc|' + club) * 0xffffff) | 0x404040).toString(16).padStart(6, '0').slice(0, 6);
-  const T = [['squad', '阵容'], ['record', '战绩与荣誉'], ['trans', `转会 · ${tr.length}`]];
+  const topNow = xcTopNow(club), lv = topNow ? xcLive(club) : null, lvP = {}; if (lv) lv.P.forEach(q => lvP[q[0]] = q);
+  if (!topNow && (XTAB === 'fx' || XTAB === 'data')) XTAB = 'squad'; if (topNow && (XTAB === 'record' || XTAB === 'data') && xcMissing(club).length) setTimeout(() => xcBuild(club), 0);
+  const T = [['squad', '阵容']].concat(topNow ? [['fx', '赛程']] : [], [['record', '战绩与荣誉']], topNow ? [['data', '队史数据']] : [], [['trans', `转会 · ${tr.length}`]]);
+  const lvT = lv && lv.t ? lv.t : null, XP = topNow ? xcPast(club) : null;
   const cnt = k => (hon.find(([n]) => n === k) || [0, []])[1];
-  const cab = [[(cur.tier === 1 && L ? L.name : (EXT_FAM[x.league] ? x.league : (x.nat ? LG_NAME : x.league))) + '冠军', 'on'], ['世联赛冠军', 'on'], ['全联冠冠军', ''], ['世俱杯冠军', ''], ['全联杯冠军', ''], ['全协联冠军', ''], ['亚联冠冠军', '', !/东海|西亚/.test(x.league)], ['超级杯冠军', ''], ['年度最佳球队', '']].concat(EXT_FAM[x.league] ? [[EXT_FAM[x.league].lo.name + '冠军', '']] : []).concat(x.nat ? [[x.nat + '联赛冠军', '']] : []);
+  const cab = [[(cur.tier === 1 && L ? L.name : (EXT_FAM[x.league] ? x.league : (x.nat ? LG_NAME : x.league))) + '冠军', 'on'], ['世联赛冠军', 'on'], ['全联冠冠军', ''], ['世俱杯冠军', ''], ['全联杯冠军', ''], ['全协联冠军', ''], ['亚联冠冠军', '', !/东海|西亚/.test(x.league)], ['超级杯冠军', ''], ['年度最佳球队', '']].concat((() => { const D = L && EXT_DC[L.short]; return D ? [D.cup, D.lc, D.sup].filter(Boolean).map(k => [k + '冠军', '']) : []; })()).concat(EXT_FAM[x.league] ? [[EXT_FAM[x.league].lo.name + '冠军', '']] : []).concat(x.nat ? [[x.nat + '联赛冠军', '']] : []);
   const pl = (t, other) => t.pid != null ? `data-pid="${t.pid}"` : `data-player="${esc(t.to === club ? club : other)}|${esc(t.name || '')}"`;
   if (H.miss) setTimeout(() => extBackfill(club), 0);
   return `<section class="view">
@@ -5246,6 +5346,7 @@ function vXClub() {
       <div class="btns" style="margin-top:10px"><span class="chip">${esc(cur.name || x.league)}</span>${x.nat ? `<span class="chip">${esc(x.nat)}</span>` : ''}${lgT ? `<span class="chip gold">顶级联赛冠军 ×${lgT}</span>` : ''}${cnt('年度最佳球队').length ? `<span class="chip gold">★ 最佳球队 ×${cnt('年度最佳球队').length}</span>` : ''}${cups.map(k => `<span class="chip">本季 ${esc(k)}</span>`).join('')}</div>
       <dl class="facts">
         <div><dt>本季联赛</dt><dd>${esc(cur.name || '—')}${cur.tier === 2 && !x.nat ? ' <span class="dim">次级</span>' : ''}</dd></div>
+        ${lvT ? `<div><dt>本季排名</dt><dd class="mono">第 ${lv.pos} 名 · ${lvT[0]} 分 <span class="dim" style="font-size:11px">${lvT[1]}胜 ${lvT[2]}平 ${lvT[3]}负</span></dd></div><div><dt>近期状态</dt><dd>${xcForm(lv.M) || '—'}</dd></div>` : ''}
         <div><dt>球队实力</dt><dd class="mono">${str}</dd></div>
         <div><dt>首发均分</dt><dd class="mono">${xiAvg ? xiAvg.toFixed(2) : '—'}</dd></div>
         <div><dt>替补均分</dt><dd class="mono">${bAvg ? bAvg.toFixed(2) : '—'}</dd></div>
@@ -5257,14 +5358,18 @@ function vXClub() {
   </div>
   <div class="seg" role="tablist" aria-label="外赛区球队资料" style="flex-wrap:wrap;position:sticky;top:0;z-index:5">${T.map(([k, l]) => `<button data-act="xTab" data-tab="${k}" aria-pressed="${XTAB === k}">${l}</button>`).join('')}</div>
   ${XTAB === 'squad' ? `<div class="panel"><div class="ph"><div><div class="eyebrow">Squad</div><h2>${SN(SEASON)} 球员名单 · ${sq.length} 人</h2></div><span class="note">外赛区球员的名字都是化名</span></div>
-    <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>潜力</th><th>身价</th></tr></thead><tbody>
-    ${sq.map((p, i) => `<tr${i === 10 ? ' style="border-bottom:2px solid var(--line2,#333)"' : ''}><td class="dim">${p.no}</td><td class="l"><button class="lnk" data-player="${esc(club)}|${esc(p.name)}"><span>${esc(p.name)}</span></button>${i < 11 ? ' <span class="dim" style="font-size:11px">主力</span>' : ''}</td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${p.pot > p.rating ? `<span class="mono" style="color:var(--gold)">${p.pot}</span>` : '<span class="dim">–</span>'}</td><td class="muted">${esc(p.value)}</td></tr>`).join('')}
-    </tbody></table></div></div>` : ''}
+    <div class="tw"><table><thead><tr><th>号</th><th class="l">球员</th><th class="l">位置</th><th class="l">国籍</th><th>年龄</th><th>评分</th><th>潜力</th><th>身价</th>${lv ? `<th>${SN(SEASON)} 出场</th><th>进球</th><th>助攻</th>` : ''}</tr></thead><tbody>
+    ${sq.map((p, i) => `<tr${i === 10 ? ' style="border-bottom:2px solid var(--line2,#333)"' : ''}><td class="dim">${p.no}</td><td class="l"><button class="lnk" data-player="${esc(club)}|${esc(p.name)}"><span>${esc(p.name)}</span></button>${i < 11 ? ' <span class="dim" style="font-size:11px">主力</span>' : ''}</td><td class="l mono" style="font-size:12px">${p.pos}</td><td class="l muted">${esc(p.nat)}</td><td>${p.age}</td><td><span class="rt-pill" style="background:${rtColor(p.rating)}">${p.rating}</span></td><td>${p.pot > p.rating ? `<span class="mono" style="color:var(--gold)">${p.pot}</span>` : '<span class="dim">–</span>'}</td><td class="muted">${esc(p.value)}</td>${lv ? (() => { const q = lvP[p.uid]; return q ? `<td>${q[2]}</td><td>${q[3] || '<span class="dim">0</span>'}</td><td>${q[4] || '<span class="dim">0</span>'}</td>` : '<td class="dim">0</td><td class="dim">–</td><td class="dim">–</td>'; })() : ''}</tr>`).join('')}
+    </tbody></table></div>${lv ? '<p class="note" style="margin:8px 0 0">本季数据只算顶级联赛（含已踢的季后赛）。</p>' : ''}</div>
+    ${topNow ? xcSquadSide(club, sq) : ''}` : ''}
+  ${XTAB === 'fx' && topNow ? xcFxTab(club) : ''}
+  ${XTAB === 'data' && topNow ? xcDataTab(club) : ''}
   ${XTAB === 'record' ? `<div class="panel"><div class="ph"><div><div class="eyebrow">Honours</div><h2>荣誉</h2></div></div>
     <div class="troph">${cab.map(([k, c, na]) => { const v = cnt(k); return na && !v.length ? `<div class="zero" title="本赛区的球队不参加这项赛事"><b>–</b><span>${esc(k.replace(/冠军$/, ''))}</span></div>` : `<div class="${v.length ? c : 'zero'}" title="${v.map(SN).join('、')}"><b>${v.length}</b><span>${esc(k.replace(/冠军$/, ''))}</span></div>`; }).join('')}</div></div>
-    <div class="panel"><div class="ph"><div><div class="eyebrow">Seasons</div><h2>历年战绩</h2></div>${H.miss ? '<span class="note">正在补算较早赛季的名次…</span>' : '<span class="note">金字为冠军</span>'}</div>
-    ${H.rows.length ? `<div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">联赛</th><th>${x.nat ? '列国名次' : '名次'}</th>${x.nat ? '<th>国内联赛</th>' : ''}<th class="l">下季</th><th class="l">杯赛</th></tr></thead><tbody>
-      ${H.rows.slice().reverse().map(r => { const C = cupsOf(r.s) || {}; const cw = Object.entries(C).filter(([, v]) => v && v.winner === club).map(([k]) => k), cr = Object.entries(C).filter(([, v]) => v && v.runner === club).map(([k]) => k); return `<tr><td class="l mono">${SN(r.s)}</td><td class="l">${esc(r.g.name)}${r.g.tier === 2 && !r.dom ? ' <span class="dim">次级</span>' : ''}</td><td class="mono">${r.g.tier === 2 && r.dom ? '<span class="dim">–</span>' : r.pos ? (r.pos === 1 ? '<b style="color:var(--gold)">冠军</b>' : r.pos + ' / ' + r.n) : '<span class="dim">…</span>'}</td>${x.nat ? `<td class="mono">${r.dom ? (r.dom[0] === 1 ? '<b style="color:var(--gold)">冠军</b>' : r.dom[0] + ' / ' + r.dom[1]) : '–'}</td>` : ''}<td class="l">${r.note ? `<span class="chip${/升|晋级|保住/.test(r.note) ? ' gold' : ''}">${r.note}</span>` : '<span class="dim">–</span>'}</td><td class="l" style="font-size:12px">${cw.map(k => `<span class="chip gold">${esc(k)}冠军</span>`).join('')}${cr.map(k => `<span class="chip">${esc(k)}亚军</span>`).join('')}</td></tr>`; }).join('')}
+    ${topNow ? (() => { const ch = xcRankChart(club, H.rows); return ch ? `<div class="panel"><div class="ph"><div><div class="eyebrow">League position</div><h2>历年顶级联赛排名</h2></div><span class="note">金点为夺冠 · 中断处为不在顶级联赛</span></div>${ch}</div>` : ''; })() : ''}
+    <div class="panel"><div class="ph"><div><div class="eyebrow">Seasons</div><h2>历年战绩</h2></div>${H.miss ? '<span class="note">正在补算较早赛季的名次…</span>' : topNow && xcMissing(club).length ? '<span class="note">正在统计各季胜负和射手…</span>' : '<span class="note">金字为冠军</span>'}</div>
+    ${H.rows.length ? `<div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">联赛</th><th>${x.nat ? '列国名次' : '名次'}</th>${x.nat ? '<th>国内联赛</th>' : ''}${topNow ? '<th>胜</th><th>平</th><th>负</th><th>进</th><th>失</th><th>分</th><th class="l">队内最佳射手</th>' : ''}<th class="l">下季</th><th class="l">杯赛</th></tr></thead><tbody>
+      ${H.rows.slice().reverse().map(r => { const C = cupsOf(r.s) || {}; const cw = Object.entries(C).filter(([, v]) => v && v.winner === club).map(([k]) => k), cr = Object.entries(C).filter(([, v]) => v && v.runner === club).map(([k]) => k); return `<tr><td class="l mono">${SN(r.s)}</td><td class="l">${esc(r.g.name)}${r.g.tier === 2 && !r.dom ? ' <span class="dim">次级</span>' : ''}</td><td class="mono">${r.g.tier === 2 && r.dom ? '<span class="dim">–</span>' : r.pos ? (r.pos === 1 ? '<b style="color:var(--gold)">冠军</b>' : r.pos + ' / ' + r.n) : '<span class="dim">…</span>'}</td>${x.nat ? `<td class="mono">${r.dom ? (r.dom[0] === 1 ? '<b style="color:var(--gold)">冠军</b>' : r.dom[0] + ' / ' + r.dom[1]) : '–'}</td>` : ''}${topNow ? (() => { const d = (XP || {})[r.s]; if (!d || !d.t) return `<td colspan="7" class="dim" style="text-align:center">${r.g.tier === 1 ? '…' : '–'}</td>`; const tp = d.P.slice().sort((a, b) => b[3] - a[3] || a[2] - b[2])[0]; return `<td>${d.t[1]}</td><td>${d.t[2]}</td><td>${d.t[3]}</td><td>${d.t[4]}</td><td>${d.t[5]}</td><td class="pts">${d.t[0]}</td><td class="l">${tp && tp[3] ? `${xcPl(club, tp[1])} <span class="dim mono">${tp[3]}</span>` : '<span class="dim">–</span>'}</td>`; })() : ''}<td class="l">${r.note ? `<span class="chip${/升|晋级|保住/.test(r.note) ? ' gold' : ''}">${r.note}</span>` : '<span class="dim">–</span>'}</td><td class="l" style="font-size:12px">${(() => { const L2 = r.g.tier === 1 ? EXT_LEAGUES.find(l => l.name === r.g.name) : null, dc = L2 ? extDcRes(L2, r.s, false) : null; return dc ? Object.entries(dc).filter(([, v]) => v && v[0] === club).map(([k]) => `<span class="chip gold">${esc(k)}冠军</span>`).join('') : ''; })()}${cw.map(k => `<span class="chip gold">${esc(k)}冠军</span>`).join('')}${cr.map(k => `<span class="chip">${esc(k)}亚军</span>`).join('')}</td></tr>`; }).join('')}
     </tbody></table></div>` : `<p class="note">${SN(SEASON)} 赛季结束后会记下每季的名次。</p>`}</div>` : ''}
   ${XTAB === 'trans' ? `<div class="panel"><div class="ph"><div><div class="eyebrow">Transfers</div><h2>转会记录 · ${tr.length}</h2></div></div>
     ${tr.length ? `<div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">球员</th><th class="l">进 / 出</th><th class="l">对方球队</th><th>费用</th></tr></thead><tbody>
