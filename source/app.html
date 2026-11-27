@@ -2083,7 +2083,7 @@ function extPA(rnd, club, rating) { const X = EXT_CLUB[club], eff = X ? X.str + 
   if (r < XPA_P[0] * lvl) return 95 + Math.floor(rnd() * 3); if (r < (XPA_P[0] + XPA_P[1]) * lvl) return 90 + Math.floor(rnd() * 5);
   const body = RZI(eff - 2 + (rnd() + rnd() + rnd() - 1.5) * 5); return Math.max(rating + 2, Math.min(89, Math.round(body))); }
 /* U21 洲际赛事和外赛区梯队用到的状态，要放在开站时第一次整体重算（applyGrowth）之前 */
-var U21X_S0 = 20, XU_SCANN = -1; const XU_PROMO = new Map(), XU_C = new Map();
+var U21X_S0 = 1, XU_GRAD_S0 = 20, XU_SCANN = -1; const XU_PROMO = new Map(), XU_C = new Map();
 function extYouth(club, old, season) {
   const rnd = seeded('xy|' + club + '|' + old.name + '|' + season), L = LEAGUE_OF[club] || EXT_LEAGUES[0], wb = waBoost(club, season);
   const nats = STYLE_NATS[(EXT_CLUB[club] || L).style] || STYLE_NATS.nord, nat = rnd() < (L.wa ? 0.9 : 0.75) ? nats[Math.floor(rnd() * nats.length)] : YP.NATS[Math.floor(rnd() * YP.NATS.length)];
@@ -3019,7 +3019,7 @@ const U21_QF = 28, U21_SF = 30, U21_F = 32;
 function u21Teams() { return S.teams.filter(t => TD[t]); } /* U21 联赛的球队 = 当季威超 20 队 */
 function u21Fixtures(s) { const T = u21Teams().sort(), rnd = seeded('u21fx|' + s + '|' + saltOf(s)); for (let i = T.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [T[i], T[j]] = [T[j], T[i]]; }
   const L = T.length % 2 ? T.concat([null]) : T.slice(), n = L.length, R = [];
-  for (let r = 0; r < n - 1; r++) { const M = []; for (let i = 0; i < n / 2; i++) { const x = L[i], y = L[n - 1 - i]; if (x && y) M.push((r + i) % 2 ? [y, x] : [x, y]); } R.push(M); L.splice(1, 0, L.pop()); }
+  for (let r = 0; r < n - 1; r++) { const M = []; for (let i = 0; i < n / 2; i++) { const x = L[i], y = L[n - 1 - i]; if (x && y) M.push((i === 0 ? r % 2 === 0 : i % 2 === 1) ? [x, y] : [y, x]); /* 主客场轮流 */ } R.push(M); L.splice(1, 0, L.pop()); }
   return R.concat(R.map(M => M.map(([h, a]) => [a, h]))); } /* 双循环：后半程主客对调 */
 function u21Sync() { if (!S || !S.fx || !TD) return; let U = S.u21; if (!U || U.s !== SEASON || !U.fx) U = S.u21 = { s: SEASON, n: 0, t: {}, p: {}, fx: u21Fixtures(SEASON).map(r => r.map(([h, a]) => [h, a])) , po: {}, drr: 1 };
   const done = playedRounds(); let ch = false;
@@ -3089,7 +3089,7 @@ function u21TeamDlg(t) { u21Sync(); const U = S.u21 || { p: {}, t: {} }, C = u21
 const u21EvRow = ev => { if (!ev) return ''; const [hs, as] = String(ev).split('#'), f = x => (x ? x.split('|') : []).map(g => { const [sc, a] = g.split('>'); return esc(sc) + (a ? `<span class="dim">（${esc(a)}）</span>` : ''); }).join('、'); const H = f(hs), A = f(as); if (!H && !A) return '';
   return `<div class="dim" style="display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);gap:6px;font-size:11px;margin:-2px 0 6px;line-height:1.5"><span style="text-align:right">${H}</span><span style="text-align:center">${H || A ? ic('goal', 11) : ''}</span><span>${A}</span></div>`; };
 
-/* ---------- U21 洲际赛事（S20 起，2026-11-26 依 DSON 设定）：U21 世联赛 + U21 全联冠 / 全联杯 / 全协联 ----------
+/* ---------- U21 洲际赛事（S01 起；2026-11-27 依 DSON 从原本的 S20 提前到 S01。外赛区梯队升一线队仍是 S20 起，见 XU_GRAD_S0）：U21 世联赛 + U21 全联冠 / 全联杯 / 全协联 ----------
    参赛：威超和外赛区各顶级联赛球队的 U21 梯队。名额分配照一线队的比例；威超按上季 U21 联赛名次，外赛区（没有 U21 联赛）按一线队上季联赛名次。
    威超球队用青训梯队（同 U21 联赛）；外赛区球队有系统自动生成的固定梯队（每季招 4 名 16 岁新人，会长大，一线队有人退役时由梯队里最好的同线球员接上）。
    赛果每周跟着威超的进度踢、存在 S.u21x（只存当季）；季末把冠亚军和射手王存进 S.u21xh。冠军单独列为 U21 荣誉，不算进一线队的荣誉和含金量。 */
@@ -3120,7 +3120,7 @@ function extU21Kids(c, s) { if (XU_SCANN !== EXTP.length) { XU_SCANN = EXTP.leng
 function extU21Squad(c, s) { const L = extU21Kids(c, s).filter(k => !k.up), pick = (ln, n) => L.filter(x => x.line === ln).sort((a, b) => b.r - a.r).slice(0, n), xi = [...pick('GK', 1), ...pick('DF', 4), ...pick('MF', 3), ...pick('FW', 3)];
   return xi.map(x => ({ id: x.id, name: x.name, pos: x.pos, line: x.line, r: x.r })); }
 /* 一线队球员退役、接班新人时：S20 起改由梯队里最好的同线球员（19–21 岁）升上一线队 */
-function xuGraduate(c, line, s) { if (!u21xOn(s) || !EXT_CLUB[c]) return null; const L = extU21Kids(c, s).filter(k => k.age >= 19 && (k.line === line || (line !== 'GK' && k.line !== 'GK'))).sort((a, b) => (b.line === line) - (a.line === line) || b.r - a.r); const k = L[0]; if (!k) return null; XU_PROMO.set(k.id, s); XU_C.clear(); return k; }
+function xuGraduate(c, line, s) { if (s < XU_GRAD_S0 || !EXT_CLUB[c]) return null; const L = extU21Kids(c, s).filter(k => k.age >= 19 && (k.line === line || (line !== 'GK' && k.line !== 'GK'))).sort((a, b) => (b.line === line) - (a.line === line) || b.r - a.r); const k = L[0]; if (!k) return null; XU_PROMO.set(k.id, s); XU_C.clear(); return k; }
 const U21X_SQ = new Map();
 function u21xSquad(t, s, wk) { if (!TD[t]) return extU21Squad(t, s); const key = t + '|' + s + '|' + wk; if (!U21X_SQ.has(key)) { if (U21X_SQ.size > 500) U21X_SQ.clear(); let L = []; try { L = u21Squad(t, s).map(x => ({ id: x.k.id, name: x.k.name, pos: x.k.pos, line: x.line, r: x.r })); } catch (e) { } U21X_SQ.set(key, L); } return U21X_SQ.get(key); }
 function u21xPlay(h, a, key, neutral, wk, P) { const rnd = seeded('u21x|' + key), H = u21xSquad(h, SEASON, wk), A2 = u21xSquad(a, SEASON, wk);
@@ -3133,7 +3133,7 @@ function u21xPlay(h, a, key, neutral, wk, P) { const rnd = seeded('u21x|' + key)
   return [x, y]; }
 function u21xKO(h, a, key, neutral, wk, P) { const r = u21xPlay(h, a, key, neutral, wk, P); let w = r[0] > r[1] ? h : r[1] > r[0] ? a : null, pen = null; if (!w) { const hp = 3 + Math.floor(ghash('xpen|' + key) * 3), ap = hp + (ghash('xpen2|' + key) < 0.5 ? 1 : -1); pen = [hp, ap]; w = hp > ap ? h : a; } return [h, a, r[0], r[1], w, pen]; }
 function u21xRR(T, rnd) { const L = T.slice(); for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [L[i], L[j]] = [L[j], L[i]]; } if (L.length % 2) L.push(null); const n = L.length, R = [];
-  for (let r = 0; r < n - 1; r++) { const M = []; for (let i = 0; i < n / 2; i++) { const x = L[i], y = L[n - 1 - i]; if (x && y) M.push((r + i) % 2 ? [y, x] : [x, y]); } R.push(M); L.splice(1, 0, L.pop()); }
+  for (let r = 0; r < n - 1; r++) { const M = []; for (let i = 0; i < n / 2; i++) { const x = L[i], y = L[n - 1 - i]; if (x && y) M.push((i === 0 ? r % 2 === 0 : i % 2 === 1) ? [x, y] : [y, x]); /* 主客场轮流 */ } R.push(M); L.splice(1, 0, L.pop()); }
   return R.concat(R.map(M => M.map(([h, a]) => [a, h]))); }
 function u21xInit(s) { const salt = saltOf(s), ent = u21xEntrants(s), U = { s, n: 0, ent, wl: { fx: u21xRR(ent.wl, seeded('u21xwl|' + s + '|' + salt)).map(R => R.map(([h, a]) => [h, a])), t: {} }, cu: {}, p: {} };
   const str = t => { try { return clubStrAt(t, s); } catch (e) { return 70; } };
