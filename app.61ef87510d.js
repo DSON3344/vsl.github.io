@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '5aff7ed360';
+const VES_BUILD = 'a38681d807';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -5079,12 +5079,15 @@ function playerHonours(pid, uid) {
     CUP_KS.forEach(k => { const c = C[k]; if (!c) return; if (c.winner === r.team) { team.push([k + '冠军', s, r.team]); if (c.mvp === r.name) ind.push([k + ' MVP', s]); } else if (c.runner === r.team && (k === '世联赛' || k === '全联冠')) team.push([k + '亚军', s, r.team]); });
   });
   /* 海外联赛、下级联赛的个人奖项（金靴、助攻王、联赛 MVP），按季末存档认人 */
-  (S.archive || []).forEach(A => { const chk = (q, lab) => { if (q && ((q.pid != null && pid != null && q.pid === pid) || (q.uid && uid && q.uid === uid))) ind.push([lab, A.s]); };
+  const UIDS = new Set([uid, pid != null ? PID_UID[pid] : null].filter(Boolean)); try { if (pid != null) vesAbroad().forEach(v => { if (v.pid === pid) UIDS.add(v.uid); }); } catch (e) { } /* 去过外赛区的人在外赛区用另一个 ID */
+  (S.archive || []).forEach(A => { const chk = (q, lab) => { if (q && ((q.pid != null && pid != null && q.pid === pid) || (q.uid && UIDS.has(q.uid)))) ind.push([lab, A.s]); };
     if (A.extl) Object.entries(A.extl).forEach(([sh, e]) => { if (!e || !e.aw) return; chk(e.aw.boot, sh + '金靴'); chk(e.aw.assist, sh + '助攻王'); chk(e.aw.mvp, sh + ' MVP'); });
     if (A.pyrl) Object.entries(A.pyrl).forEach(([k, e]) => { if (!e) return; chk(e.boot, k + '联赛金靴'); chk(e.assist, k + '联赛助攻王'); }); });
   /* 外赛区效力期间：联赛冠军 + 国内杯赛冠军（按季末存档） */
   try { const st = []; if (pid != null) { const have = new Set(rows.map(([q]) => q)); otherSeasons(pid, have).forEach(([q, r]) => { if (r && EXT_CLUB[r.team]) st.push([q, r.team]); }); } else if (uid) { const xp = EXTP.find(p => p.uid === uid); if (xp) seasons.forEach(q => { const r = extRow(xp, q); if (r && r.apps && EXT_CLUB[r.team]) st.push([q, r.team]); }); }
-    st.forEach(([q, t]) => { if (!(q < SEASON || isPending(q))) return; const g = extLgAtM(t, q); if (!g || g.tier !== 1) return; const L = EXT_LEAGUES.find(x => x.name === g.name), A = extArchOf(q), x = A && L && extlOf(A, L.short); if (!x) return; if (x.champ === t) team.push([L.name + '冠军', q, t]); const dc = extDcRes(L, q, false); if (dc) Object.entries(dc).forEach(([k, v]) => { if (v && v[0] === t) team.push([k + '冠军', q, t]); }); }); } catch (e) { }
+    st.forEach(([q, t]) => { if (!(q < SEASON || isPending(q))) return; const g = extLgAtM(t, q); if (!g || g.tier !== 1) return; const L = EXT_LEAGUES.find(x => x.name === g.name), A = extArchOf(q), x = A && L && extlOf(A, L.short); if (!x) return; if (x.champ === t) team.push([L.name + '冠军', q, t]); const dc = extDcRes(L, q, false); if (dc) Object.entries(dc).forEach(([k, v]) => { if (v && v[0] === t) team.push([k + '冠军', q, t]); }); });
+    /* 外赛区效力期间的洲际 / 世界级杯赛（世联赛、全联冠、世俱杯……）冠军和杯赛 MVP（2026-11-27） */
+    const nm = pid != null ? (PL[pid] || [])[0] : (EXTP.find(p => p.uid === uid) || {}).name; st.forEach(([q, t]) => { if (!(q < SEASON || isPending(q))) return; const C = cupsOf(q) || {}; CUP_KS.forEach(k => { const c = C[k]; if (!c) return; if (c.winner === t) { team.push([k + '冠军', q, t]); if (nm && c.mvp === nm) ind.push([k + ' MVP', q]); } else if (c.runner === t && (k === '世联赛' || k === '全联冠')) team.push([k + '亚军', q, t]); }); }); } catch (e) { }
   let nat = { ind: [], hon: [], nat: null }; try { const I = intlCareer(pid, uid); nat = { ind: I.ind, hon: I.hon, nat: I.nat }; } catch (e) { } /* 国家队大赛：单独一栏 */
   return { ind, team, best, noms, nat };
 }
@@ -5106,7 +5109,8 @@ function awardChips(pid, uid) {
   if (WH && WH.best && (!best || WH.best.rk < best.rk)) best = { rk: WH.best.rk, lab: WN(WH.best.w) };
   const ballon = !hasBallon && best ? `<span class="chip">金球奖最高排名：第 ${best.rk} 名 <span class="dim" style="font-size:10.5px">${best.lab}</span></span>` : '';
   const indL = oi.filter(k => bi[k]).concat(Object.keys(bi).filter(k => !oi.includes(k) && !/^金球奖(亚|季)军$/.test(k))).map(k => chip(k, bi[k], /^金球奖$|世界足球先生|全联盟|威超最佳球员|世联赛 MVP|全联冠 MVP/.test(k))).join('');
-  const teamL = ot.filter(k => bt[k]).map(k => chip(k, bt[k], /冠军$/.test(k) && !/威联赛杯|社区杯|超级杯|全协联/.test(k))).join('');
+  const extK = Object.keys(bt).filter(k => !ot.includes(k)).sort((a, b) => (/亚军$/.test(a) - /亚军$/.test(b)) || (DC_RE.test(a) - DC_RE.test(b)) || bt[b].length - bt[a].length); /* 外赛区联赛 / 国内杯赛的冠军（之前不在固定清单里，整个被略过） */
+  const teamL = ot.filter(k => bt[k]).concat(extK).map(k => chip(k, bt[k], /冠军$/.test(k) && !/威联赛杯|社区杯|超级杯|全协联/.test(k) && !DC_RE.test(k))).join('');
   const NH = H.nat || { ind: [], hon: [] }, natChamp = NH.hon.some(x => /冠军$/.test(x[0]));
   const nHon = NH.hon.filter(x => !/亚军$/.test(x[0]) || !natChamp), bn = group(nHon), bni = group(NH.ind);
   const isU = k => /U21/.test(k), rk = k => (isU(k) ? 10 : 0) + (/世界杯/.test(k) ? 0 : /洲|杯/.test(k) ? 1 : 2) + (/亚军$/.test(k) ? 5 : 0);
