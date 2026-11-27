@@ -230,7 +230,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '5218f3b383';
+const VES_BUILD = '5aff7ed360';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -1476,7 +1476,7 @@ const clubAt = (p, s) => { let c = null; (p.stints || []).forEach(([cl, from]) =
 function extRealRow(p, s) { const club = clubAt(p, s); if (!club || TD[club] || !EXT_CLUB[club]) return null; let r = null; try { r = extLeagueRow(club, p.uid, s); } catch (e) { }
   if (r && r.apps) return { team: club, apps: r.apps, g: r.g, a: r.a, avg: r.rs / r.apps, est: 1, sim: 1, lg: extTag(club) };
   let g = null; try { g = extLgAtM(club, s); } catch (e) { } if (g && g.tier === 1 && EXT_LEAGUES.some(L => L.name === g.name)) return null; /* 顶级联赛有逐场数据：没出场（或已退役）就是没有，不再估算 */
-  if (p.vesOut) { const a = pAge(p, s); let rr = p.rating; try { rr = growthOf(p).at(a); } catch (e) { } if (retiresAt(p, a, rr)) return null; }
+  if (p.kid && kidRetired(p.kid, s)) return null; if (p.vesOut && !p.kid) { const a = pAge(p, s); let rr = p.rating; try { rr = growthOf(p).at(a); } catch (e) { } if (retiresAt(p, a, rr)) return null; }
   const x = extRow(p, s); if (!x || !x.apps) return null; const row = { team: x.team, apps: x.apps, g: x.g, a: x.a, avg: x.avg, est: 1, lg: extTag(x.team) }; if (s === SEASON) { const f = Math.min(1, playedRounds() / 38); if (f < 1) ['apps', 'g', 'a'].forEach(k => row[k] = Math.round(row[k] * f)); } return row; }
 function extRow(p, s) {
   const club = clubAt(p, s); if (!club || TD[club] || !EXT_CLUB[club]) return null;
@@ -4188,11 +4188,20 @@ function vesAbroad() { const M = (S && S.market) || {}, key = Object.keys(M).len
     (MK.offers || []).forEach(o => { if (o.st === 'a' && !o.loan) add(o); }); (MK.free || []).forEach(add); });
   const L = Object.values(by).map(({ o, s, eff }) => { let pot = Math.min(RMAX, o.r + Math.max(0, 24 - o.a) * 1.2), nat = ''; try { if (o.pid != null && PL[o.pid]) nat = PL[o.pid][2] || ''; const kd = o.pid != null ? kidOfPid(o.pid) : null; if (kd) { pot = Math.max(o.r, kidPot(kd, s)); nat = nat || kd.nat; } } catch (e) { }
     return { uid: String(o.uid), pid: o.pid, name: o.name, pos: o.pos, nat, age0: o.a, s0: s, rating0: o.r, rating: o.r, potFix: Math.round(Math.max(o.r, pot)), stints: [[o.from, -99], [o.to, eff]], team: o.to, vesOut: 1 }; });
+  /* 青训 / 剧本球员去外赛区（2026-11-27）：剧本写的「X:阿罗拉」、青训卖到外赛区，走的是青训事件（kidWhere 记成离队、去向外赛区球队），转会窗没有成交记录。
+     照事件逐季排出他在哪支球队；能力照剧本 / 青训成长曲线（kidRating），退役照 kidRetired */
+  try { const seen = new Set(L.map(p => p.uid)), KL = [];
+    kidIdsAll().forEach(id => { const k = ACAD_ID[id]; if (!k) return; const ev = kidEvents(id); if (!ev.some(e => (e.act === 'sell' || e.act === 'loan') && e.to && EXT_CLUB[e.to] && !TD[e.to])) return;
+      const st = []; let last, s1 = null; for (let q = 1; q <= SEASON; q++) { const w = kidWhere(k, q); const c = w && w.team && (w.at === 'gone' || w.at === 'loan') && EXT_CLUB[w.team] && !TD[w.team] ? w.team : w && (w.at === 'first' || w.at === 'loan') && TD[w.team] ? w.team : '—'; if (c !== last) { st.push([c, q]); last = c; } if (s1 == null && EXT_CLUB[c]) s1 = q; } if (s1 == null) return;
+      const uid = 'K|' + k.id, r1 = (() => { try { return kidRating(k, s1); } catch (e) { return 75; } })(), pid = k.pid != null ? k.pid : UIDPID[uid] ?? null;
+      const o = { uid, pid, name: k.name, pos: k.pos, nat: k.nat, age0: kAge(k, s1), s0: s1, rating0: r1, rating: r1, potFix: r1, stints: st, team: st[st.length - 1][0], vesOut: 1, kid: k };
+      if (seen.has(uid)) { const i = L.findIndex(p => p.uid === uid); if (i >= 0) L.splice(i, 1); } KL.push(o); });
+    L.push(...KL); } catch (e) { console.error(e); }
   VAB_C = { k: key, L }; return L; }
 function extSquadsAt(s) { const key = s + '|' + saltOf(s) + '|' + (S && S.reset || '') + '|' + TRANSFERS.length + '|' + (S.archive || []).length; if (EXT_SQ_C && EXT_SQ_C.key === key) return EXT_SQ_C.M; const M = {}, TDU = tdUidsAt(s);
   let VA = []; try { VA = vesAbroad(); } catch (e) { console.error(e); }
   EXTP.concat(synthExt(), synthActive(s), VA).forEach(p => { if (typeof p.age0 !== 'number' && p.sa == null) return; if (!p.synth && (TDU.has(p.uid) || tdJoined(p.uid, s))) return; const c = p.synth ? (p.stints && p.stints[0] ? (p.stints[0][1] <= s ? p.stints[0][0] : null) : p.team) : clubAt(p, s); if (!c || TD[c] || !EXT_CLUB[c]) return; if (RET_S[p.uid] != null && s > RET_S[p.uid]) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return;
-    let r; try { r = s >= p.s0 ? growthOf(p).at(a) : growthOf(p).past(a); } catch (e) { r = p.rating; } if (p.vesOut && retiresAt(p, a, r)) return; (M[c] = M[c] || []).push({ uid: p.uid, name: p.name, pos: p.pos, line: ENGINE.LINE(p.pos), r, p }); });
+    let r; if (p.kid) { if (kidRetired(p.kid, s)) return; try { r = kidRating(p.kid, s); } catch (e) { r = p.rating; } } else { try { r = s >= p.s0 ? growthOf(p).at(a) : growthOf(p).past(a); } catch (e) { r = p.rating; } if (p.vesOut && retiresAt(p, a, r)) return; } (M[c] = M[c] || []).push({ uid: p.uid, name: p.name, pos: p.pos, line: ENGINE.LINE(p.pos), r, p }); });
   EXT_SQ_C = { key, M }; return M; }
 function extSeason(L, s) { const key = L.name + '|' + s + '|' + saltOf(s) + '|' + (S && S.reset || ''); if (EXT_SEA_C.has(key)) return EXT_SEA_C.get(key); if (EXT_SEA_C.size > 40) EXT_SEA_C.clear();
   let rnd = seeded('xs|' + key); const SQ = extSquadsAt(s), T = clubsAt(L, s), po = EXT_PO[L.name], str = {}; T.forEach(c => str[c] = clubStrAt(c, s));
@@ -7868,7 +7877,7 @@ function estLgRow(uid, pos, r, team, str, s, frac) {
   if (frac < 1) { apps = Math.round(apps * frac); g = Math.round(g * frac); a = Math.round(a * frac); }
   return { team, apps, g, a, avg, est: 1 }; }
 function otherSeasons(pid, have) {
-  const U = new Set([PID_UID[pid]].filter(Boolean)); Object.values(PDB).concat(Object.values(FDB)).forEach(L => (L || []).forEach(p => { if (p && p.uid && UIDPID[p.uid] === pid) U.add(p.uid); })); const uid = [...U][0], out = []; if (!uid) return out; /* 同一人可能有好几个 ID（旧资料 D| 和剧本 K|X| 等） */ const lgOf = t => TD[t] ? (PYR_SET && PYR_SET.has && PYR_SET.has(t) ? '威伊士次级' : '威冠联赛') : extTag(t);
+  const U = new Set([PID_UID[pid]].filter(Boolean)); Object.values(PDB).concat(Object.values(FDB)).forEach(L => (L || []).forEach(p => { if (p && p.uid && UIDPID[p.uid] === pid) U.add(p.uid); })); try { vesAbroad().forEach(p => { if (p.pid === pid) U.add(p.uid); }); } catch (e) { } /* 剧本球员去外赛区：ID 只在外赛区档案里 */ const uid = [...U][0], out = []; if (!uid) return out; /* 同一人可能有好几个 ID（旧资料 D| 和剧本 K|X| 等） */ const lgOf = t => TD[t] ? (PYR_SET && PYR_SET.has && PYR_SET.has(t) ? '威伊士次级' : '威冠联赛') : extTag(t);
   const xp = EXTP.find(p => U.has(p.uid)) || (() => { try { return vesAbroad().find(p => U.has(p.uid) || p.pid === pid); } catch (e) { return null; } })(), frac = Math.min(1, playedRounds() / 38);
   for (let q = 1; q <= SEASON; q++) { if (have.has(q)) continue; let row = null;
     try {
