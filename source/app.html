@@ -172,7 +172,7 @@ a.lnk,button.lnk{background:none;border:0;padding:0;color:inherit;text-align:lef
 button.lnk:hover span,a.lnk:hover{color:var(--accent-2)}
 
 /* tables */
-.tw{overflow-x:auto;margin-inline:-4px}
+.tw{overflow-x:auto;margin-inline:-4px}.cgrp .gs{border-left:1px solid var(--line-2)}.cgrp th.gh{text-align:center}
 @media (max-width:600px){.fin-hide{display:none}}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.12em;color:var(--fg-3);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -730,7 +730,8 @@ Object.values(PLAYER_DATABASE).forEach(L => L.forEach(q => { if (q && q.pos) { q
 (HIST.players || []).forEach(x => { if (x && x[1]) x[1] = normPos(x[1]); });
 const $ = (s, r = document) => r.querySelector(s);
 // 手机上对话框里的表格改成卡片：每格带上表头文字
-function dlgLabel(root) { root.querySelectorAll('.tw table').forEach(tb => { const hs = [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim()); tb.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (hs[i] && !td.dataset.l) td.dataset.l = hs[i]; })); }); }
+function hdrCols(tb) { /* 多行表头（colspan / rowspan）展开成逐列标签 */ const hr = [...tb.querySelectorAll('thead tr')]; if (hr.length < 2) return [...tb.querySelectorAll('thead th')].map(th => th.textContent.trim()); const g = []; hr.forEach((tr, ri) => { let c = 0; [...tr.cells].forEach(th => { while (g[ri] && g[ri][c] != null) c++; const cs = th.colSpan || 1, rs = th.rowSpan || 1, t = th.textContent.trim(); for (let y = 0; y < rs; y++) for (let x = 0; x < cs; x++) { (g[ri + y] = g[ri + y] || [])[c + x] = g[ri + y][c + x] == null ? t : g[ri + y][c + x]; } c += cs; }); }); const top = g[0] || [], bot = g[g.length - 1] || []; return bot.map((t, i) => top[i] && top[i] !== t ? top[i] + t : t); }
+function dlgLabel(root) { root.querySelectorAll('.tw table').forEach(tb => { const hs = hdrCols(tb); tb.querySelectorAll('tbody tr, tfoot tr').forEach(tr => [...tr.children].forEach((td, i) => { if (hs[i] && !td.dataset.l) td.dataset.l = hs[i]; })); }); }
 document.addEventListener('change', e => { const t = e.target; if (t && t.dataset && t.dataset.ndsel && teamSel) { const F = ND_F && ND_F.t === teamSel ? ND_F : (ND_F = { t: teamSel, cont: 'all', sub: 'all', nat: '*' }); F[t.dataset.ndsel] = t.value; if (t.dataset.ndsel === 'cont') { F.sub = 'all'; F.nat = '*'; } if (t.dataset.ndsel === 'sub') F.nat = '*'; render(); return; } if (t && (t.id === 'cmpA' || t.id === 'cmpB')) { if (t.id === 'cmpA') CMP_A = t.value; else CMP_B = t.value; if (CMP_A === CMP_B) { const o = [...t.options].find(x => x.value !== t.value); if (t.id === 'cmpA') CMP_B = o.value; else CMP_A = o.value; } render(); return; } });
 document.addEventListener('change', e => { const el = e.target.closest && e.target.closest('[data-xisel]'); if (!el) return; XI_PREV = { t: el.dataset.xisel, f: el.value || null }; render(); });
 setTimeout(function dlgObs() { const d = document.getElementById('dlg'); if (!d) return setTimeout(dlgObs, 300); new MutationObserver(() => dlgLabel(d)).observe(d, { childList: true, subtree: true }); }, 0);
@@ -8592,17 +8593,17 @@ function careerAllHTML(pid, pp, rows) {
   const name = pid != null ? PL[pid][0] : pp.name, uid = pid != null ? PID_UID[pid] : pp.uid;
   const I = intlBySeason(pid, uid), by = {}; rows.forEach(([s, r]) => by[s] = r); Object.keys(I).forEach(s => { if (!by[s]) by[s] = null; });
   const ss = Object.keys(by).map(Number).sort((a, b) => a - b); if (!ss.length) return '';
-  const cell = q => q && q.apps ? `<span class="mono">${q.apps}<span class="dim">/</span>${q.g}<span class="dim">/</span>${q.a}</span>` : '<span class="muted">–</span>';
-  let TT = { apps: 0, g: 0, a: 0 }, anyCup = 0, anyNat = 0;
+  const cell = (q, tp, ext) => q && q.apps ? `<td class="gs"${tp || ''}>${q.apps}${ext || ''}</td><td${tp || ''}>${q.g}</td><td${tp || ''}>${q.a}</td>` : '<td class="gs muted">–</td><td class="muted">–</td><td class="muted">–</td>';
+  let TT = { apps: 0, g: 0, a: 0 }, anyCup = 0, anyNat = 0; const GT = [{ apps: 0, g: 0, a: 0 }, { apps: 0, g: 0, a: 0 }, { apps: 0, g: 0, a: 0 }];
   const tr = ss.map(s => { const r = by[s], lg = r ? { apps: r.apps, g: r.g, a: r.a } : null; let cp = null; try { if (r) cp = cupSeasonOf(s, r.team, name, uid); } catch (e) { } const nt = I[s] || null;
     const t = [lg, cp, nt].reduce((m, q) => q ? { apps: m.apps + (q.apps || 0), g: m.g + (q.g || 0), a: m.a + (q.a || 0) } : m, { apps: 0, g: 0, a: 0 }); if (cp && cp.apps) anyCup = 1; if (nt) anyNat = 1;
-    TT = { apps: TT.apps + t.apps, g: TT.g + t.g, a: TT.a + t.a };
+    TT = { apps: TT.apps + t.apps, g: TT.g + t.g, a: TT.a + t.a }; [lg, cp, nt].forEach((q, k) => { if (q) { GT[k].apps += q.apps || 0; GT[k].g += q.g || 0; GT[k].a += q.a || 0; } });
     const tip = q => q && q.ev && q.ev.length ? ` title="${esc(q.ev.join('、'))}"` : '';
-    return `<tr><td class="l mono">${SN(s)}${s === SEASON ? '*' : ''}</td><td class="l">${r ? (TD[r.team] ? `<span class="tname">${crest(r.team, 16)}<span>${esc(r.team)}</span></span>` : clubCell(r.team, 16)) : '<span class="muted">–</span>'}${nt ? ` <span class="dim" style="font-size:11px">· ${esc(nt.nat)}</span>` : ''}</td><td>${cell(lg)}${r && r.est ? '<span class="dim" style="font-size:10px"> 估</span>' : ''}</td><td${tip(cp)}>${cell(cp)}</td><td${tip(nt)}>${cell(nt)}</td><td><b>${t.apps}</b></td><td><b>${t.g}</b></td><td><b>${t.a}</b></td></tr>`; }).join('');
+    return `<tr><td class="l mono">${SN(s)}${s === SEASON ? '*' : ''}</td><td class="l">${r ? (TD[r.team] ? `<span class="tname">${crest(r.team, 16)}<span>${esc(r.team)}</span></span>` : clubCell(r.team, 16)) : '<span class="muted">–</span>'}${nt ? ` <span class="dim" style="font-size:11px">· ${esc(nt.nat)}</span>` : ''}</td>${cell(lg, '', r && r.est ? '<span class="dim" style="font-size:10px"> 估</span>' : '')}${cell(cp, tip(cp))}${cell(nt, tip(nt))}<td class="gs"><b>${t.apps}</b></td><td><b>${t.g}</b></td><td><b>${t.a}</b></td></tr>`; }).join('');
   return `<div class="eyebrow" style="margin-bottom:8px">逐季全部赛事数据 · ${ss.length} 个赛季</div>
-    <div class="tw"><table><thead><tr><th class="l">赛季</th><th class="l">球队 · 国家队</th><th>联赛</th><th>杯赛</th><th>国家队</th><th>总出场</th><th>总进球</th><th>总助攻</th></tr></thead><tbody>${tr}
-    ${ss.length > 1 ? `<tr style="border-top:1px solid var(--line-2)"><td class="l"><b>合计</b></td><td class="l muted">–</td><td class="muted">–</td><td class="muted">–</td><td class="muted">–</td><td><b>${TT.apps}</b></td><td><b>${TT.g}</b></td><td><b>${TT.a}</b></td></tr>` : ''}
-    </tbody></table></div><p class="note" style="margin:6px 0 0">联赛、杯赛、国家队三栏的格式是「出场/进球/助攻」，鼠标停在杯赛或国家队格子上可以看到参加了哪些赛事。杯赛包括威伊士国内杯赛、洲际和世界级杯赛、外赛区国内杯赛；国家队只算成年队，大赛在赛季末进行。${anyCup || anyNat ? '' : '这名球员目前还没有杯赛或国家队出场。'}</p>`;
+    <div class="tw"><table class="cgrp"><thead><tr><th class="l" rowspan="2">赛季</th><th class="l" rowspan="2">球队 · 国家队</th><th class="gs gh" colspan="3">联赛</th><th class="gs gh" colspan="3">杯赛</th><th class="gs gh" colspan="3">国家队</th><th class="gs gh" colspan="3">合计</th></tr><tr>${'<th class="gs">出场</th><th>进球</th><th>助攻</th>'.repeat(4)}</tr></thead><tbody>${tr}</tbody>
+    ${ss.length > 1 ? `<tfoot><tr style="border-top:1px solid var(--line-2)"><td class="l"><b>合计</b></td><td class="l muted">–</td>${GT.map(q => cell(q)).join('')}<td class="gs"><b>${TT.apps}</b></td><td><b>${TT.g}</b></td><td><b>${TT.a}</b></td></tr></tfoot>` : ''}
+    </table></div><p class="note" style="margin:6px 0 0">联赛、杯赛、国家队、合计各分出场、进球、助攻三格；鼠标停在杯赛或国家队格子上可以看到参加了哪些赛事。杯赛包括威伊士国内杯赛、洲际和世界级杯赛、外赛区国内杯赛；国家队只算成年队，大赛在赛季末进行。${anyCup || anyNat ? '' : '这名球员目前还没有杯赛或国家队出场。'}</p>`;
 }
 // 退役 / 历史球员的完整资料：资料库有的直接用，没有的按位置和巅峰评分补齐（同一名球员每次都一样）
 const PDB0_BY_UID = {}; Object.entries(PDB0).forEach(([t, l]) => l.forEach(p => PDB0_BY_UID['D|' + t + '|' + p.name] = p));
@@ -11257,8 +11258,10 @@ const cellVal = c => { const t = (c.dataset.v != null ? c.dataset.v : c.textCont
 document.addEventListener('click', e => {
   const th = e.target.closest('.tw table thead th'); if (!th || th.classList.contains('sort') || th.dataset.scat || th.dataset.hs) return;
   const table = th.closest('table'), tb = table.tBodies[0]; if (!tb || !tb.rows.length) return;
-  const rows = [...tb.rows], nCol = th.parentNode.cells.length; if (rows.some(r => r.cells.length !== nCol)) return;
-  const i = th.cellIndex, numeric = rows.every(r => cellVal(r.cells[i]).n);
+  const rows = [...tb.rows]; let nCol = th.parentNode.cells.length, i = th.cellIndex;
+  if (table.tHead.rows.length > 1) { if (th.colSpan > 1) return; const tr0 = table.tHead.rows[0]; if (th.parentNode !== tr0) { const lead = [...tr0.cells].filter(x => x.rowSpan > 1).length; i += lead; nCol += lead; } else { if (th.rowSpan < 2) return; nCol = rows[0].cells.length; } } /* 多行表头：子表头的列号要加上左边跨两行的格子 */
+  if (rows.some(r => r.cells.length !== nCol)) return;
+  const numeric = rows.every(r => cellVal(r.cells[i]).n);
   const dir = th.dataset.dir ? (th.dataset.dir === 'desc' ? 'asc' : 'desc') : (numeric ? 'desc' : 'asc');
   table.querySelectorAll('thead th').forEach(x => x.removeAttribute('data-dir')); th.dataset.dir = dir;
   const sg = dir === 'asc' ? 1 : -1;
