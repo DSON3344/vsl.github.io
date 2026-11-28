@@ -16,6 +16,8 @@ var WL_W0 = {"129":50,"174":50,"736":46,"737":39,"738":42,"742":37,"743":38,"744
 /* 球队气质（参考原型，不代表实力）：财力、青训、主场、打法倾向、引援偏好、性格 */
 /* 历史模式（逐季的阵容由上一季延续 + 青训 + 转会）不再在 S18 结束：S18 起不切换回旧的球队资料，直接接着 S17 的模拟结果往下走 */
 var HIST_END = 1e9, HSQ_MAX = 17;
+/* 历史资料（S01–S17）里每名球员最后出现的赛季；开机时 HIST.squads 还是原始资料，之后会被延续推算的名单取代，所以先记下来 */
+const WL_LAST = (() => { const m = {}; try { Object.entries(HIST.squads || {}).forEach(([s, T]) => { if (+s > 17) return; Object.values(T).forEach(L => L.forEach(x => { if (!m[x[0]] || m[x[0]] < +s) m[x[0]] = +s; })); }); } catch (e) { } return m; })();
 var TEAM_ID = {
   威龙: { proto: '曼联', budget: 1.3, acad: '世界级', yth: 1.4, styles: ['边路突破', '全能反击', '快速反击'] },
   罗联: { proto: '曼城', budget: 1.6, styles: ['极致攻击性控球', '攻击性控球', '中场控制和组织进攻'] },
@@ -231,7 +233,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '63cd8352e5';
+const VES_BUILD = '23a1cf4c56';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -1716,6 +1718,9 @@ function setupHistoric(s) {
   EXTP.concat(synthExt(), (() => { try { return synthActive(s); } catch (e) { return []; } })()).forEach(p => { if (typeof p.age0 !== 'number' || XEX.has(p.uid) || (PLN && PLN.has(p.name))) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return; const c = p.career ? clubAt(p, s) : (p.stints && p.stints[0] ? (p.synth && p.stints[0][1] > s ? null : p.stints[0][0]) : p.team); if (!c || !XF[c]) return; if (XF[c].some(q => q.name === p.name)) return; p.age = a; p.rating = growthOf(p).past(a); XF[c].push(p); });
   Object.keys(FDB).forEach(c => { FDB[c] = XF[c]; toCF(FDB[c]); }); extDedup(); Object.keys(FDB).forEach(c => { FDB[c].forEach(p => { BY_TN[c + '|' + p.name] = p; if (p.uid) TEAM_OF_UID[p.uid] = c; }); }); pinNames();
   applyAllEdits();
+  /* 手动设定的号码套回去后可能两人同号（两人都被设定成同一个号码）：能力高的保留，另一人改用同位置的空号 */
+  Object.keys(TD).forEach(t => { const L = PDB[t]; if (!L || !L.length) return; const used = new Set(), dup = []; L.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0)).forEach(p => { if (used.has(p.no)) dup.push(p); else used.add(p.no); });
+    dup.forEach(p => { const pool = { GK: [1, 12, 13, 22, 25, 31], DF: [2, 3, 4, 5, 6, 15, 23, 24, 26, 32], MF: [8, 10, 14, 16, 18, 20, 21, 27, 28], FW: [7, 9, 11, 17, 19, 29, 30] }[ENGINE.LINE(p.pos)] || []; let n = pool.find(x => !used.has(x)); if (!n) { n = 33; while (used.has(n)) n++; } p.no = n; used.add(n); }); });
 }
 /* ---------- 自定义编辑球员资料（存进进度，会同步；每个赛季重新推算后都会套用） ---------- */
 // 内置的球员资料设定（DSON 指定的球衣号码、能力、位置、惯用脚）；进度里自己改过的会覆盖这些
@@ -1904,6 +1909,12 @@ function refreshAfterEdit() {
   $('#dlg').close(); render();
 }
 let YOUTH_BASE = null, MOD_VER = 0, MOD_CACHE = {}, MOD_VER_SEASON = 0, TAC_KEY = null;
+/* 旧赛季档案里的名单（一次性修正，2026-11-28）：威联赛老将的年龄改按资料最后一季不超过 38 岁重算；同队同号的，能力低的改用同位置空号 */
+function sqArchFix() { if (!S || S.sqFix >= 1 || !S.archive) return; S.sqFix = 1;
+  const pool = { GK: [1, 12, 13, 22, 25, 31], DF: [2, 3, 4, 5, 6, 15, 23, 24, 26, 32], MF: [8, 10, 14, 16, 18, 20, 21, 27, 28], FW: [7, 9, 11, 17, 19, 29, 30] };
+  S.archive.forEach(A => Object.values(A.sq || {}).forEach(L => { L.forEach(r => { const m = /^H\|(\d+)$/.exec(r[0] || ''); if (!m) return; const a = histAge(+m[1], A.s); if (typeof a === 'number' && typeof r[4] === 'number' && a < r[4]) r[4] = a; });
+    const used = new Set(), dup = []; L.slice().sort((x, y) => (y[5] || 0) - (x[5] || 0)).forEach(r => { if (used.has(r[3])) dup.push(r); else used.add(r[3]); });
+    dup.forEach(r => { let n = (pool[ENGINE.LINE(r[2])] || []).find(x => !used.has(x)); if (!n) { n = 33; while (used.has(n)) n++; } r[3] = n; used.add(n); }); })); }
 function applyGrowth() {
   try { genEnsure(); } catch (e) { console.error(e); }
   applyHistOverrides();
@@ -1917,6 +1928,7 @@ function applyGrowth() {
   RETIRED_UID.clear(); RET_LOG = {}; TR_LOG = {}; ABROAD = {}; RET_S = {}; ENGINE.clearCache(); Object.keys(AWARD_CACHE).forEach(k => delete AWARD_CACHE[k]);
   acadInit(); loans18(); kidsCarry18();
   try { scrPfFix(); } catch (e) { console.error(e); }
+  try { sqArchFix(); } catch (e) { console.error(e); }
   try { winGhostFix(); } catch (e) { console.error(e); }
   try { if (xferMigrate()) { HSQ0 = null; HSQ_RR = 0; setTimeout(() => { GROWN = 0; applyGrowth(); (S.xfer || []).filter(x => x.fixMig && x.s === SEASON).forEach(x => kidPlace(x.uid, x.to)); save(); }, 0); } } catch (e) { console.error(e); }
   Object.keys(FDB).forEach(k => delete FDB[k]); EXTP = []; XU_PROMO.clear(); XU_C.clear();
@@ -4203,12 +4215,17 @@ function vesAbroad() { const M = (S && S.market) || {}, key = Object.keys(M).len
   VAB_C = { k: key, L }; return L; }
 function extSquadsAt(s) { const key = s + '|' + saltOf(s) + '|' + (S && S.reset || '') + '|' + TRANSFERS.length + '|' + (S.archive || []).length; if (EXT_SQ_C && EXT_SQ_C.key === key) return EXT_SQ_C.M; const M = {}, TDU = tdUidsAt(s);
   let VA = []; try { VA = vesAbroad(); } catch (e) { console.error(e); }
-  EXTP.concat(synthExt(), synthActive(s), VA).forEach(p => { if (typeof p.age0 !== 'number' && p.sa == null) return; if (!p.synth && (TDU.has(p.uid) || tdJoined(p.uid, s))) return; const c = p.synth ? (p.stints && p.stints[0] ? (p.stints[0][1] <= s ? p.stints[0][0] : null) : p.team) : clubAt(p, s); if (!c || TD[c] || !EXT_CLUB[c]) return; if (RET_S[p.uid] != null && s > RET_S[p.uid]) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return;
+  EXTP.concat(synthExt(), synthActive(s), VA).forEach(p => { if (typeof p.age0 !== 'number' && p.sa == null) return; if (TDU.has(p.uid) || (!p.synth && tdJoined(p.uid, s))) return; /* 历史外援被威超球队买走的那季，不再同时出现在外赛区名单 */ const c = p.synth ? (p.stints && p.stints[0] ? (p.stints[0][1] <= s ? p.stints[0][0] : null) : p.team) : clubAt(p, s); if (!c || TD[c] || !EXT_CLUB[c]) return; if (RET_S[p.uid] != null && s > RET_S[p.uid]) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return;
     let r; if (p.kid) { if (kidRetired(p.kid, s)) return; try { r = kidRating(p.kid, s); } catch (e) { r = p.rating; } } else { try { r = s >= p.s0 ? growthOf(p).at(a) : growthOf(p).past(a); } catch (e) { r = p.rating; } if (p.vesOut && retiresAt(p, a, r)) return; } (M[c] = M[c] || []).push({ uid: p.uid, name: p.name, pos: p.pos, line: ENGINE.LINE(p.pos), r, p }); });
   EXT_SQ_C = { key, M }; return M; }
 /* 外赛区「状态起伏 + 压低霸主」从哪一季开始：新进度从 S01，旧进度从还没开踢的下一季（已踢的赛季结果不变） */
 function xfFrom() { if (!S) return 1e9; if (S.xfv == null) { let pr = 0; try { pr = playedRounds(); } catch (e) { } S.xfv = SEASON <= 1 && !pr && !(S.archive || []).length ? 1 : SEASON + (pr ? 1 : 0); } return S.xfv; }
-function extSeason(L, s) { const key = L.name + '|' + s + '|' + saltOf(s) + '|' + (S && S.reset || ''); if (EXT_SEA_C.has(key)) return EXT_SEA_C.get(key); if (EXT_SEA_C.size > 40) EXT_SEA_C.clear();
+/* 已存档的赛季：重算出来的冠军要跟档案一致（程序改版后名单变了，重算可能换了冠军，球队页、球员数据就会跟档案对不上）。
+   对不上就换一条随机数重踢，找到冠军相同的那条记进档案（e.sd），以后直接用；最多试 16 次 */
+function extSeason(L, s) { const A = (S && S.archive || []).find(x => x.s === s), e = A && A.extl ? extlOf(A, L.short) : null;
+  if (!e || !e.champ) return extSeason0(L, s, 0); if (e.sd > 0) return extSeason0(L, s, e.sd); let o = extSeason0(L, s, 0); if (e.sd != null || o.champ === e.champ) return o;
+  for (let k = 1; k <= 16; k++) { const o2 = extSeason0(L, s, k); if (o2.champ === e.champ) { e.sd = k; return o2; } } e.sd = -1; return o; }
+function extSeason0(L, s, sd) { const key = L.name + '|' + s + '|' + saltOf(s) + '|' + (S && S.reset || '') + (sd ? '|r' + sd : ''); if (EXT_SEA_C.has(key)) return EXT_SEA_C.get(key); if (EXT_SEA_C.size > 40) EXT_SEA_C.clear();
   let rnd = seeded('xs|' + key); const SQ = extSquadsAt(s), T = clubsAt(L, s), po = EXT_PO[L.name], str = {}; T.forEach(c => str[c] = clubStrAt(c, s));
   if (s >= xfFrom()) { /* 2026-11-28 起的赛季：每队每季有状态起伏（±1.75），联赛头号球队领先第二名超过 2 分的部分只算四成，不再年年包揽（只影响比赛模拟，显示的实力不变；之前已踢完的赛季照旧） */
     T.forEach(c => str[c] += (ghash('xf|' + c + '|' + s + '|' + (S && S.reset || '')) - 0.5) * 3.5);
@@ -4582,7 +4599,8 @@ function ageOld(pid, s) { const uid = PID_UID[pid], b = uid && pbu()[uid]; if (b
    威联赛时代就出道的球员，按他在威联赛第一次登场的赛季推算（当时 20–25 岁，威联赛一季一岁），
    所以 W37 出道的老将到 S01 已经 33–38 岁。只会往大调，不会让人变年轻；能力仍按资料，不会因此突然暴跌。 */
 function curveAge(pid, s) { const f = fs0(pid), sa = f != null ? f : 18, o = ageOld(pid, sa); return o == null ? null : o + dAge(s, sa); }
-function wlAgeOff(pid) { if (typeof WL_W0 === 'undefined' || !WL_W0) return 0; const w0 = WL_W0[pid]; if (w0 == null || w0 > 44) return 0; const c1 = curveAge(pid, 1); if (c1 == null) return 0; const a1 = Math.min(38, 20 + Math.floor(ghash('wlage|' + pid) * 6) + (51 - w0)); /* W44 以前出道的才调；之后出道的本来就年轻 */ return Math.max(0, a1 - c1); }
+function wlAgeOff(pid) { if (typeof WL_W0 === 'undefined' || !WL_W0) return 0; const w0 = WL_W0[pid]; if (w0 == null || w0 > 44) return 0; const c1 = curveAge(pid, 1); if (c1 == null) return 0; const a1 = Math.min(38, 20 + Math.floor(ghash('wlage|' + pid) * 6) + (51 - w0)); /* W44 以前出道的才调；之后出道的本来就年轻 */ let off = Math.max(0, a1 - c1);
+  const ls = WL_LAST[pid]; if (ls) { const cl = curveAge(pid, ls); if (cl != null) off = Math.min(off, Math.max(0, 38 - cl)); } /* 资料里他一直踢到哪季：那季最多 38 岁（不然会出现 43、44 岁还在威超踢主力） */ return off; }
 function histAgeE(pid) { if (typeof S === 'undefined' || !S || !S.edits || typeof PID_UID === 'undefined') return null; const e = S.edits[PID_UID[pid] || 'H|' + pid]; return e && e.dAge ? e : null; } /* 手动改过年龄的历史球员 */
 function histAge(pid, s) { const c = curveAge(pid, s); return c == null ? null : c + wlAgeOff(pid) + (+((histAgeE(pid) || {}).dAge) || 0); }
 /* 改过年龄的球员：改的那季以前的能力照旧；之后每季的升降按新年龄的能力曲线走（现在的能力不变） */
@@ -8261,7 +8279,7 @@ function rebuildTransfers() {
   { const NM = {}; PL.forEach((q, i) => { if (q && q[0]) (NM[q[0]] = NM[q[0]] || []).push(i); }); /* 只有名字的转会记录（外赛区买进来的人等）：按名字和球队对回球员编号，点进去才找得到人 */
     TRANSFERS.forEach(t => { if (t.pid != null || !t.name || !NM[t.name]) return; const c = NM[t.name].filter(i => (PSEASONS[i] || []).some(([, x]) => x.team === t.to || x.team === t.from)); if (c.length === 1) t.pid = c[0]; else if (NM[t.name].length === 1) t.pid = NM[t.name][0]; }); }
   trReconcile(); trDocExit();
-  { const seen = new Set(); for (let i = 0; i < TRANSFERS.length; i++) { const t = TRANSFERS[i], k = t.s + '|' + (t.pid != null ? '#' + t.pid : t.name) + '|' + t.from + '|' + t.to; if (seen.has(k)) { TRANSFERS.splice(i--, 1); continue; } seen.add(k); } } /* 同一季、同一人、同样从哪到哪的只留一笔 */
+  { const seen = new Set(); for (let i = 0; i < TRANSFERS.length; i++) { const t = TRANSFERS[i], k = t.s + '|' + (t.pid != null ? '#' + t.pid : t.name) + '|' + t.from + '|' + t.to; if (seen.has(k) || (t.from && t.from === t.to && !t.loan)) /* 从自己队转到自己队的不算 */ { TRANSFERS.splice(i--, 1); continue; } seen.add(k); } } /* 同一季、同一人、同样从哪到哪的只留一笔 */
   TRANSFERS.forEach(t => { if (t.pid != null) (TR_BY_PID[t.pid] = TR_BY_PID[t.pid] || []).push(t); });
   Object.values(TR_BY_PID).forEach(l => l.sort((a, b) => a.s - b.s));
 }
@@ -8646,7 +8664,7 @@ function nfsToggle(t, key) { S.nfs = S.nfs || {}; const M = S.nfs[t] = S.nfs[t] 
 function mktOffer(MK, p, t, to, C, rnd, lo, hi) {
   const a = C.ageN(p), r = C.ratN(p), v = valueM(r, a), fee = Math.max(1, Math.round(v * (lo + rnd() * (hi - lo)))), max = Math.max(fee, Math.round(v * (1.08 + rnd() * 0.42)));
   const o = { id: 'o' + (MK.seq = (MK.seq || 0) + 1), uid: p.uid, pid: UIDPID[p.uid] ?? (String(p.uid).startsWith('H|') ? +String(p.uid).slice(2) : null), name: p.name, pos: p.pos, a, r, v, from: t, to, fee, max, round: 1, st: 'p', log: [], will: willOf(p, t, to, C) };
-  nfsApply(o); if (scrLockedUid(p.uid) || keepUid(p.uid)) { o.st = 'x'; return o; } MK.offers.push(o); return o;
+  nfsApply(o); if (scrLockedUid(p.uid) || keepUid(p.uid) || t === to) { o.st = 'x'; return o; } /* 买自己队的人（租借中的青训球员常见）不成立 */ MK.offers.push(o); return o;
 }
 // 从外赛区买人：引援计划里有高优先级位置的球队，去外赛区找合适的球员（豪门只要 27 岁以下的）。S01–S17 也有
 function mktGenExtBuys(MK, s, C, salt) {
@@ -8992,7 +9010,7 @@ function mktCompute(s) {
   Object.keys(MK.rel || {}).forEach(uid => { const pid = UIDPID[uid] ?? (String(uid).startsWith('H|') ? +String(uid).slice(2) : null); if (pid == null) return; const hdest = MK.sched[pid] || MK.rel[uid].from, fr = (MK.free || []).find(f => f.uid === uid && f.to && f.rel); if (TD[hdest]) ov.push({ pid, from: hdest, to: fr && TD[fr.to] ? fr.to : null, s: ns }); done.push({ s: ns, pid, from: MK.rel[uid].from, to: '解约', fee: 0, rel: 1, late: MK.rel[uid].late ? 1 : 0 }); if (fr) done.push({ s: ns, pid, from: MK.rel[uid].from, to: fr.to, fee: 0, free: true }); }); /* 被解约后以自由球员身份签下新东家 */
   (MK.offers || []).forEach(o => { if (o.st === 'a' && !o.loan && String(o.uid || '').startsWith('X|')) done.push({ s: ns, pid: null, name: o.name, from: o.from, to: TD[o.to] ? o.to : o.to, fee: o.fee, late: o.late ? 1 : 0 }); });
   /* 青训出身球员的转会：成交后写进他的青训档案（kidWhere 按这个决定他下季在哪队），也记进转会记录 */
-  (MK.offers || []).forEach(o => { const id = o.acad || (String(o.uid || '').startsWith('K|') ? String(o.uid).slice(2) : null); if (!id || o.st !== 'a' || o.loan || !ACAD_ID[id]) return;
+  (MK.offers || []).forEach(o => { const id = o.acad || (String(o.uid || '').startsWith('K|') ? String(o.uid).slice(2) : null); if (!id || o.st !== 'a' || o.loan || !ACAD_ID[id] || o.from === o.to) return; /* 旧进度里「从自己队买自己的人」的成交不算 */
     S.acadDec = S.acadDec || {}; const ev = S.acadDec[id] = S.acadDec[id] || [], eff = ns; if (!ev.some(e => e.act === 'sell' && e.to === o.to && e.s === eff)) ev.push({ s: eff, act: 'sell', to: o.to, fee: o.fee || 0 });
     const dd = done.find(d => d.pid != null && d.pid === o.pid && d.to === o.to); if (dd) { dd.kid = 1; dd.name = o.name; } else done.push({ s: ns, pid: o.pid ?? null, name: o.name, from: o.from, to: o.to, fee: o.fee || 0, late: o.late ? 1 : 0, kid: 1 }); });
   /* 青训出身 / 剧本球员（K|）的租借和自由球员签约，也写进青训档案，下季才真的换队 */
