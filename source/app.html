@@ -1531,7 +1531,9 @@ function kidAbroadDest(k, g) { const key = g; let L = KAB_C[key]; if (!L) { L = 
 /* 每名球员最后一次出现在威伊士球队名单（赛季档案）的赛季和球队 */
 let KLAST = null;
 function kidLastSeen() { const n = (S.archive || []).length + '|' + (S.archive || []).filter(A => A.sq).length; if (KLAST && KLAST.n === n) return KLAST.m; const m = {}; (S.archive || []).forEach(A => Object.entries(A.sq || {}).forEach(([t, L]) => L.forEach(r => { const o = m[r[0]]; if (!o || o[0] < A.s) m[r[0]] = [A.s, t]; }))); KLAST = { n, m }; return m; }
-function kidAbroadOf(k, s) { if (s <= SCR_END) return null; const st = kidWhere(k, s); if (st.at !== 'gone' || st.team) return null; const ls = kidLastSeen()['K|' + k.id]; if (!ls || ls[0] >= s || ls[0] < SCR_END) return null; const g = ls[0] + 1;
+function kidAbroadOf(k, s) { const st = kidWhere(k, s); if (st.at !== 'gone' || st.team) return null; const ls = kidLastSeen()['K|' + k.id]; let g;
+  if (st.doc && k._dg && k._dg.at != null) { g = k._dg.at; if (!ls || ls[0] >= g || s < g) return null; if (kidEvents(k.id).some(e => (e.act === 'sell' || e.act === 'loan') && e.to && EXT_CLUB[e.to] && !TD[e.to])) return null; /* 已经卖到外赛区的照转会记录 */ } /* 剧本 S16/S17 名单照文档、被放走的青训球员：不再凭空消失，去外赛区继续踢 */
+  else { if (s <= SCR_END || !ls || ls[0] >= s || ls[0] < SCR_END) return null; g = ls[0] + 1; }
   if (k._ab && k._ab.g === g) return k._ab; const club = kidAbroadDest(k, g); if (!club) return null; k._ab = { g, club, from: ls[1] }; return k._ab; }
 const KAB_AT = new Map(); /* 放出去的球员现在在哪队：只查那一队，不用每次翻遍所有外赛区名单 */
 function kidAbroad(s) { kidIdsAll().forEach(id => { const k = ACAD_ID[id]; if (!k || k.lock) return; { const c = KAB_AT.get(k.id); if (c) { const L = FDB[c] || [], i = L.findIndex(q => q.acad === k.id && q.kab); if (i >= 0) L.splice(i, 1); KAB_AT.delete(k.id); } }
@@ -4830,8 +4832,8 @@ function vesAbroad() { const M = (S && S.market) || {}, key = Object.keys(M).len
   /* 青训 / 剧本球员去外赛区（2026-11-27）：剧本写的「X:阿罗拉」、青训卖到外赛区，走的是青训事件（kidWhere 记成离队、去向外赛区球队），转会窗没有成交记录。
      照事件逐季排出他在哪支球队；能力照剧本 / 青训成长曲线（kidRating），退役照 kidRetired */
   try { const seen = new Set(L.map(p => p.uid)), KL = [];
-    kidIdsAll().forEach(id => { const k = ACAD_ID[id]; if (!k) return; const ev = kidEvents(id); if (!ev.some(e => (e.act === 'sell' || e.act === 'loan') && e.to && EXT_CLUB[e.to] && !TD[e.to])) return;
-      const st = []; let last, s1 = null; for (let q = 1; q <= SEASON; q++) { const w = kidWhere(k, q); const c = w && w.team && (w.at === 'gone' || w.at === 'loan') && EXT_CLUB[w.team] && !TD[w.team] ? w.team : w && (w.at === 'first' || w.at === 'loan') && TD[w.team] ? w.team : '—'; if (c !== last) { st.push([c, q]); last = c; } if (s1 == null && EXT_CLUB[c]) s1 = q; } if (s1 == null) return;
+    kidIdsAll().forEach(id => { const k = ACAD_ID[id]; if (!k) return; const ev = kidEvents(id); let ab = null; if (!ev.some(e => (e.act === 'sell' || e.act === 'loan') && e.to && EXT_CLUB[e.to] && !TD[e.to])) { try { ab = kidAbroadOf(k, SEASON); } catch (e) { } if (!ab) return; } /* 被放走、按能力安排到外赛区的（kidAbroadOf）也一样排进去 */
+      const st = []; let last, s1 = null; for (let q = 1; q <= SEASON; q++) { const w = kidWhere(k, q); const c = ab && q >= ab.g ? ab.club : w && w.team && (w.at === 'gone' || w.at === 'loan') && EXT_CLUB[w.team] && !TD[w.team] ? w.team : w && (w.at === 'first' || w.at === 'loan') && TD[w.team] ? w.team : '—'; if (c !== last) { st.push([c, q]); last = c; } if (s1 == null && EXT_CLUB[c]) s1 = q; } if (s1 == null) return;
       const uid = 'K|' + k.id, r1 = (() => { try { return kidRating(k, s1); } catch (e) { return 75; } })(), pid = k.pid != null ? k.pid : UIDPID[uid] ?? null;
       const o = { uid, pid, name: k.name, pos: k.pos, nat: k.nat, age0: kAge(k, s1), s0: s1, rating0: r1, rating: r1, potFix: r1, stints: st, team: st[st.length - 1][0], vesOut: 1, kid: k };
       if (seen.has(uid)) { const i = L.findIndex(p => p.uid === uid); if (i >= 0) L.splice(i, 1); } KL.push(o); });
@@ -4842,8 +4844,13 @@ function extSquadsAt(s) { const key = s + '|' + saltOf(s) + '|' + (S && S.reset 
   EXTP.concat(synthExt(), synthActive(s), VA).forEach(p => { if (typeof p.age0 !== 'number' && p.sa == null) return; if (!p.synth && (TDU.has(p.uid) || tdJoined(p.uid, s))) return; const c = p.synth ? (p.stints && p.stints[0] ? (p.stints[0][1] <= s ? p.stints[0][0] : null) : p.team) : clubAt(p, s); if (!c || TD[c] || !EXT_CLUB[c]) return; if (RET_S[p.uid] != null && s > RET_S[p.uid]) return; const a = pAge(p, s); if (a < 17 || (p.synth && a > 34)) return;
     let r; if (p.kid) { if (kidRetired(p.kid, s)) return; try { r = kidRating(p.kid, s); } catch (e) { r = p.rating; } } else { try { r = s >= p.s0 ? growthOf(p).at(a) : growthOf(p).past(a); } catch (e) { r = p.rating; } if (p.vesOut && retiresAt(p, a, r)) return; } (M[c] = M[c] || []).push({ uid: p.uid, name: p.name, pos: p.pos, line: ENGINE.LINE(p.pos), r, p }); });
   EXT_SQ_C = { key, M }; return M; }
+/* 外赛区「状态起伏 + 压低霸主」从哪一季开始：新进度从 S01，旧进度从还没开踢的下一季（已踢的赛季结果不变） */
+function xfFrom() { if (!S) return 1e9; if (S.xfv == null) { let pr = 0; try { pr = playedRounds(); } catch (e) { } S.xfv = SEASON <= 1 && !pr && !(S.archive || []).length ? 1 : SEASON + (pr ? 1 : 0); } return S.xfv; }
 function extSeason(L, s) { const key = L.name + '|' + s + '|' + saltOf(s) + '|' + (S && S.reset || ''); if (EXT_SEA_C.has(key)) return EXT_SEA_C.get(key); if (EXT_SEA_C.size > 40) EXT_SEA_C.clear();
   let rnd = seeded('xs|' + key); const SQ = extSquadsAt(s), T = clubsAt(L, s), po = EXT_PO[L.name], str = {}; T.forEach(c => str[c] = clubStrAt(c, s));
+  if (s >= xfFrom()) { /* 2026-11-28 起的赛季：每队每季有状态起伏（±1.75），联赛头号球队领先第二名超过 2 分的部分只算四成，不再年年包揽（只影响比赛模拟，显示的实力不变；之前已踢完的赛季照旧） */
+    T.forEach(c => str[c] += (ghash('xf|' + c + '|' + s + '|' + (S && S.reset || '')) - 0.5) * 3.5);
+    const o2 = T.slice().sort((a, b) => str[b] - str[a]); if (o2.length > 2) { const g = str[o2[0]] - str[o2[1]]; if (g > 2) str[o2[0]] = str[o2[1]] + 2 + (g - 2) * 0.4; } }
   const XI = {}; T.forEach(c => { const P = (SQ[c] || []).slice().sort((a, b) => b.r - a.r), need = { GK: 1, DF: 4, MF: 4, FW: 2 }, xi = [], bench = []; P.forEach(q => { if (need[q.line] > 0) { need[q.line]--; xi.push(q); } else bench.push(q); }); while (xi.length < 11 && bench.length) xi.push(bench.shift()); XI[c] = { xi, bench }; });
   const lineup = c => { const { xi, bench } = XI[c], used = new Set(); return xi.map(q => { if (q.line !== 'GK' && rnd() < 0.12) { const b = bench.find(x => x.line === q.line && !used.has(x.uid)); if (b) { used.add(b.uid); return b; } } return q; }); };
   /* 进球分配（2026-11-27 调平）：中锋 / 前锋优先、边锋次之，能力差距的影响放缓（原本每高 8 分进球机会多 1.7 倍，边锋跟中锋一样多，射手王动辄 40 多球） */ const gW = q => (/ST|CF/.test(q.pos) ? 5.5 : /LW|RW/.test(q.pos) ? 3.4 : /AM/.test(q.pos) ? 2.6 : q.line === 'FW' ? 4.5 : q.line === 'MF' ? (/LM|RM/.test(q.pos) ? 1.8 : 1.3) : q.line === 'DF' ? 0.5 : 0) * Math.exp((q.r - 80) / 13), aW = q => ({ FW: 2, MF: /AM|W/.test(q.pos) ? 3.2 : 2.6, DF: 1, GK: 0.1 })[q.line] * Math.exp((q.r - 80) / 13);
@@ -10841,8 +10848,9 @@ async function persistAndReload(msg) {
 // 回到某个已踢完的赛季重新模拟：之后的赛季清空，可一键自动推演回原来的进度
 function rewindTo(s) {
   const A = S.archive.find(x => x.s === s); if (!A && s !== SEASON) return;
-  const teams = A ? A.teams.slice() : S.teams.slice(), target = Math.max(S.target || 0, SEASON);
+  const teams = A ? A.teams.slice() : S.teams.slice(), xf0 = S.xfv, target = Math.max(S.target || 0, SEASON);
   S = { season: s, teams, promoted: A ? (A.promoted || []).slice() : (S.promoted || []), fx: ENGINE.fixtures(teams.slice().sort(() => Math.random() - .5)).map(r => r.map(m => ({ ...m, c: null, r: null }))), demo: false, archive: S.archive.filter(x => x.s < s), edits: S.edits || {}, salt: Object.fromEntries(Object.entries(S.salt || {}).filter(([k]) => +k < s).concat([[s, newSalt()]])), target: target > s ? target : null, updated: Date.now() };
+  if (xf0 != null) S.xfv = xf0; /* 外赛区新规则的起始赛季跟着进度走 */
   S.reset = S.updated;
   persistAndReload(`回到 ${SN(s)}…`);
 }
