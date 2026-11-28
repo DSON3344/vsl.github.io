@@ -233,7 +233,7 @@ function archSave(retry) { try { archSave0(); } catch (e) { if (retry > 30) thro
 /* 往季存档改存在浏览器的 IndexedDB（2026-11）：localStorage 只有约 5MB，大约 S28 就会存不下；IndexedDB 空间大得多。
    网页打开前先把 IndexedDB 里的存档读进 __VES_IDB，这里同步取用；写入先进内存，再在背景写进 IndexedDB，写好才删掉 localStorage 里的旧副本 */
 const IDB_M = (typeof window !== 'undefined' && window.__VES_IDB instanceof Map) ? window.__VES_IDB : null;
-const VES_BUILD = '23a1cf4c56';
+const VES_BUILD = '6747d1d737';
 /* 开站用的计算快取：只存在 IndexedDB，键里带版本号和存档时间，程序或进度一变就自动作废重算 */
 const PC_PRE = 'vesC|';
 function pcGet(name, key) { if (!IDB_M) return null; try { const v = IDB_M.get(PC_PRE + name); if (typeof v !== 'string') return null; const i = v.indexOf('\n'); if (i < 0 || v.slice(0, i) !== key) return null; return JSON.parse(v.slice(i + 1)); } catch (e) { return null; } }
@@ -5193,7 +5193,7 @@ function awardReason(p, kind) {
   if (kind === 'mvp') { const L = (p._lg || []).slice(1); return `威超联赛 ${p.apps} 场 ${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}${p._rk === 1 ? `，率领${p.team}夺得威超冠军` : p._rk ? `，帮助${p.team}拿到威超第 ${p._rk} 名` : ''}${L.length ? `，并且是${L.join('、')}` : ''}。（只计威超联赛表现）`; }
   const team = p.team, H = p._hon || [], champs = H.filter(h => /冠军$/.test(h)), mvps = H.filter(h => /MVP/.test(h));
   const T = p._all && (kind === 'ballon' || kind === 'world') && p._all.capps && p.line !== 'GK' ? p._all : null;
-  const stat = T ? `全赛季各项赛事 ${T.apps} 场 ${T.g} 球 ${T.a} 助攻（威超 ${p.g} 球${Object.entries(T.cups).filter(([, c]) => c.g).map(([k, c]) => `、${k} ${c.g} 球`).join('')}），联赛场均 ${p.avg.toFixed(2)} 分` : kind === 'def' ? `${p.cs} 场零封、${p.tk} 次抢断、${p.int} 次拦截，场均 ${p.avg.toFixed(2)} 分` : p.line === 'GK' ? `${p.cs} 场零封，场均 ${p.avg.toFixed(2)} 分` : `${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}`;
+  const stat = T ? `全赛季各项赛事 ${T.apps} 场 ${T.g} 球 ${T.a} 助攻（${(() => { if (TD[team]) return '威超'; let n = ''; try { n = extTag(team) || ''; } catch (e) { } return n ? n.replace(/联赛$/, '') : '联赛'; })()} ${p.g} 球${Object.entries(T.cups).filter(([, c]) => c.g).map(([k, c]) => `、${k} ${c.g} 球`).join('')}），联赛场均 ${p.avg.toFixed(2)} 分` : kind === 'def' ? `${p.cs} 场零封、${p.tk} 次抢断、${p.int} 次拦截，场均 ${p.avg.toFixed(2)} 分` : p.line === 'GK' ? `${p.cs} 场零封，场均 ${p.avg.toFixed(2)} 分` : `${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}`;
   return `${stat}${champs.length ? `，帮助${team}拿下${champs.join('、')}` : '，个人表现力压群雄'}${mvps.length ? `，并当选${mvps.join('、')}` : ''}。`;
 }
 function awardBlock(title, L, kind, A) {

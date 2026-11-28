@@ -5831,7 +5831,7 @@ function awardReason(p, kind) {
   if (kind === 'mvp') { const L = (p._lg || []).slice(1); return `威超联赛 ${p.apps} 场 ${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}${p._rk === 1 ? `，率领${p.team}夺得威超冠军` : p._rk ? `，帮助${p.team}拿到威超第 ${p._rk} 名` : ''}${L.length ? `，并且是${L.join('、')}` : ''}。（只计威超联赛表现）`; }
   const team = p.team, H = p._hon || [], champs = H.filter(h => /冠军$/.test(h)), mvps = H.filter(h => /MVP/.test(h));
   const T = p._all && (kind === 'ballon' || kind === 'world') && p._all.capps && p.line !== 'GK' ? p._all : null;
-  const stat = T ? `全赛季各项赛事 ${T.apps} 场 ${T.g} 球 ${T.a} 助攻（威超 ${p.g} 球${Object.entries(T.cups).filter(([, c]) => c.g).map(([k, c]) => `、${k} ${c.g} 球`).join('')}），联赛场均 ${p.avg.toFixed(2)} 分` : kind === 'def' ? `${p.cs} 场零封、${p.tk} 次抢断、${p.int} 次拦截，场均 ${p.avg.toFixed(2)} 分` : p.line === 'GK' ? `${p.cs} 场零封，场均 ${p.avg.toFixed(2)} 分` : `${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}`;
+  const stat = T ? `全赛季各项赛事 ${T.apps} 场 ${T.g} 球 ${T.a} 助攻（${(() => { if (TD[team]) return '威超'; let n = ''; try { n = extTag(team) || ''; } catch (e) { } return n ? n.replace(/联赛$/, '') : '联赛'; })()} ${p.g} 球${Object.entries(T.cups).filter(([, c]) => c.g).map(([k, c]) => `、${k} ${c.g} 球`).join('')}），联赛场均 ${p.avg.toFixed(2)} 分` : kind === 'def' ? `${p.cs} 场零封、${p.tk} 次抢断、${p.int} 次拦截，场均 ${p.avg.toFixed(2)} 分` : p.line === 'GK' ? `${p.cs} 场零封，场均 ${p.avg.toFixed(2)} 分` : `${p.g} 球 ${p.a} 助攻，场均 ${p.avg.toFixed(2)} 分${p.motm ? `、${p.motm} 次全场最佳` : ''}`;
   return `${stat}${champs.length ? `，帮助${team}拿下${champs.join('、')}` : '，个人表现力压群雄'}${mvps.length ? `，并当选${mvps.join('、')}` : ''}。`;
 }
 function awardBlock(title, L, kind, A) {
